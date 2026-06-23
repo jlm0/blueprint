@@ -1,0 +1,28 @@
+{
+  "name": "blueprint",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "check:fixtures": "tsx src/scripts/validate-fixtures.ts",
+    "scan:scope": "tsx src/scripts/scope-scan.ts",
+    "query": "tsx src/scripts/query.ts",
+    "extract:artifacts": "tsx src/scripts/create-extraction-artifacts.ts",
+    "smoke:browser": "tsx src/scripts/browser-smoke.ts",
+    "build": "vite build",
+    "qa": "npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6"
+  }
+}

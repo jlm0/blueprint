@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "starter-app",
+  "screens": [
+    {
+      "id": "home",
+      "name": "Home",
+      "description": "Replace with the first app-owned screen composition.",
+      "framePresetId": "phone",
+      "styleRefs": ["screen.home"],
+      "notes": ["Keep sections small enough for focused extraction."],
+      "prototypeOnly": false,
+      "implementationHints": ["Translate sections into the target app's screen/component structure."],
+      "sections": [
+        {
+          "id": "primary-action",
+          "name": "Primary Action",
+          "description": "Starter section using the button primitive.",
+          "styleRefs": ["screen.home.primary-action"],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Main command"
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "nova-care",
+  "primitives": [
+    {
+      "id": "action-button",
+      "name": "Action Button",
+      "description": "Primary and secondary command surface for patient tasks.",
+      "tokenGroupIds": ["color", "space", "shape"],
+      "styleRefs": ["primitive.action-button", ".nova-action-button"],
+      "notes": ["The primitive is generic enough to transfer into a target app button implementation."],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Map intent states to the app button variant API.",
+        "Preserve focus-visible and disabled states when moving to production UI."
+      ],
+      "stateSets": [
+        {
+          "id": "intent",
+          "name": "Intent States",
+          "description": "Visual variants for command priority.",
+          "styleRefs": ["primitive.action-button.intent"],
+          "states": [
+            {
+              "id": "primary",
+              "name": "Primary",
+              "tokens": ["color.accent", "color.surface", "space.cluster", "shape.radius-control"],
+              "prototypeOnly": false,
+              "notes": ["Used for the next-best patient action."],
+              "implementationHints": ["Use as the default high-emphasis action."]
+            },
+            {
+              "id": "secondary",
+              "name": "Secondary",
+              "tokens": ["color.ink", "color.surface", "shape.radius-control"],
+              "prototypeOnly": false,
+              "notes": ["Used for lower-risk follow-up actions."],
+              "implementationHints": ["Render with a visible border in low-contrast themes."]
+            },
+            {
+              "id": "draft-lab",
+              "name": "Draft Lab",
+              "tokens": ["color.warning", "shape.radius-control"],
+              "prototypeOnly": true,
+              "notes": ["Exploratory state kept out of production parity expectations."],
+              "implementationHints": ["Do not ship without a product decision."]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "status-pill",
+      "name": "Status Pill",
+      "description": "Compact status label for appointment and care-plan state.",
+      "tokenGroupIds": ["color", "shape"],
+      "styleRefs": ["primitive.status-pill", ".nova-status-pill"],
+      "notes": ["Used by screen sections that need quick scan state."],
+      "prototypeOnly": false,
+      "implementationHints": ["Keep text short and expose status through accessible text."],
+      "stateSets": [
+        {
+          "id": "tone",
+          "name": "Tone States",
+          "description": "Semantic status tones.",
+          "styleRefs": ["primitive.status-pill.tone"],
+          "states": [
+            {
+              "id": "ready",
+              "name": "Ready",
+              "tokens": ["color.accent", "color.surface"],
+              "prototypeOnly": false,
+              "notes": ["Used when a task is ready to start."],
+              "implementationHints": ["Pair color with explicit text."]
+            },
+            {
+              "id": "attention",
+              "name": "Attention",
+              "tokens": ["color.warning", "color.surface"],
+              "prototypeOnly": false,
+              "notes": ["Used for upcoming care tasks."],
+              "implementationHints": ["Avoid relying on color alone."]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "info-card",
+      "name": "Info Card",
+      "description": "A compact card for care-plan summaries and medication context.",
+      "tokenGroupIds": ["color", "space", "shape"],
+      "styleRefs": ["primitive.info-card", ".nova-info-card"],
+      "notes": ["Cards are content containers, not page sections."],
+      "prototypeOnly": false,
+      "implementationHints": ["Keep radius at 8px or less unless the target app design system differs."],
+      "stateSets": [
+        {
+          "id": "density",
+          "name": "Density States",
+          "description": "Information density variants.",
+          "styleRefs": ["primitive.info-card.density"],
+          "states": [
+            {
+              "id": "compact",
+              "name": "Compact",
+              "tokens": ["space.cluster", "shape.shadow-panel"],
+              "prototypeOnly": false,
+              "notes": ["Used for lists and short summaries."],
+              "implementationHints": ["Prefer compact for repeated mobile rows."]
+            },
+            {
+              "id": "expanded",
+              "name": "Expanded",
+              "tokens": ["space.section", "shape.shadow-panel"],
+              "prototypeOnly": false,
+              "notes": ["Used for a primary content module."],
+              "implementationHints": ["Use when a section owns the current task."]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

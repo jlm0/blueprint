@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "project": {
+    "id": "starter-app",
+    "name": "Starter App",
+    "description": "Replace with the app-owned Blueprint project description.",
+    "owner": "app-owned",
+    "sourceRoot": "design/blueprint"
+  },
+  "defaultBoardId": "primitives",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "App-owned primitive families, state samples, and token references."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "App-owned reference-shaped mobile screens and sections."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "phone",
+      "name": "Phone",
+      "type": "mobile",
+      "width": 393,
+      "height": 852,
+      "safeArea": {
+        "top": 59,
+        "right": 20,
+        "bottom": 34,
+        "left": 20
+      }
+    }
+  ]
+}

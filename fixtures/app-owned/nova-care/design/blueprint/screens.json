@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "nova-care",
+  "screens": [
+    {
+      "id": "home",
+      "name": "Care Home",
+      "description": "A patient home screen built from starter primitives.",
+      "framePresetId": "phone-ios",
+      "styleRefs": ["screen.home", ".nova-care-home"],
+      "notes": ["This screen demonstrates a production-intended composition with one prototype-only section."],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Build as a scrollable mobile screen with safe-area padding from the frame preset.",
+        "Keep the prototype-only insight lab behind a product decision."
+      ],
+      "sections": [
+        {
+          "id": "summary",
+          "name": "Today Summary",
+          "description": "Shows current care-plan context and status.",
+          "styleRefs": ["screen.home.summary"],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "info-card",
+              "reason": "Primary content container"
+            },
+            {
+              "kind": "primitive",
+              "id": "status-pill",
+              "reason": "Displays current appointment state"
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": ["Agent extraction should include the card and status dependencies."],
+          "implementationHints": ["Use concise summary copy and avoid more than two nested cards."]
+        },
+        {
+          "id": "next-action",
+          "name": "Next Action",
+          "description": "Primary patient action for the day.",
+          "styleRefs": ["screen.home.next-action"],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "action-button",
+              "reason": "Main command"
+            },
+            {
+              "kind": "state-set",
+              "id": "action-button/intent",
+              "reason": "Uses primary and secondary action states"
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": ["This section is the cleanest screen-to-primitive extraction proof."],
+          "implementationHints": ["Map the high-emphasis command to the target app's primary button."]
+        },
+        {
+          "id": "insight-lab",
+          "name": "Insight Lab",
+          "description": "Exploratory model-generated care insight area.",
+          "styleRefs": ["screen.home.insight-lab"],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "info-card",
+              "reason": "Temporary insight container"
+            }
+          ],
+          "prototypeOnly": true,
+          "notes": ["Prototype-only; not part of target production parity."],
+          "implementationHints": ["Requires clinical review before production implementation."]
+        }
+      ]
+    }
+  ]
+}
