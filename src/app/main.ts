@@ -3,6 +3,7 @@ import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
 import type { BlueprintProjectBundle, BoardDefinition, BoundaryKind, ScreenDefinition } from '../core/types';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
+import { createCanvasItemLayout } from './canvas-layout';
 import { loadStarterProject } from './fixture-projects';
 
 type BoardId = 'primitives' | 'screens';
@@ -158,6 +159,14 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
       fallbackHeight: 240
     });
   const controller = configure();
+  const layout = createCanvasItemLayout(root, {
+    selector: '.group-head, .spec',
+    chipClearance: 38,
+    stackGap: 34,
+    horizontalGap: 24,
+    fallbackWidth: 400,
+    fallbackHeight: 220
+  });
   const projectId = bundle.manifest.project.id;
   const tone = {
     tokens: 'var(--accent-token)',
@@ -459,9 +468,17 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     }
   });
 
+  if (document.fonts?.ready) {
+    void document.fonts.ready.then(() => {
+      if (!root.hidden) {
+        controller.fitTo(layout.reflow());
+      }
+    });
+  }
+
   return {
     configure,
-    fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.group-head, .spec')])
+    fit: () => controller.fitTo(layout.reflow())
   };
 }
 

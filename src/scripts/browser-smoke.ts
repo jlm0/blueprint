@@ -28,6 +28,7 @@ async function main(): Promise<void> {
     await assertDashboardChromeRemoved(page);
     await assertDarkBlueprintCanvas(page);
     await assertReferencePrimitiveBoard(page);
+    await assertPrimitiveCanvasPlacement(page);
     await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-primitives-desktop.png'), fullPage: true });
 
     const beforeWheel = await readWorldTransform(page);
@@ -155,6 +156,51 @@ async function assertReferencePrimitiveBoard(page: import('playwright').Page): P
   const inputRows = await page.locator('.input-state-matrix .mx-row').count();
   if (inputRows < 6) {
     throw new Error(`Input primitive should show variant x state rows, received ${inputRows}.`);
+  }
+}
+
+async function assertPrimitiveCanvasPlacement(page: import('playwright').Page): Promise<void> {
+  const overlaps = await page.locator('.board-primitives').evaluate(root => {
+    const elements = [...root.querySelectorAll<HTMLElement>('.group-head, .spec')];
+    const boxes = elements.map(element => {
+      const left = parseFloat(element.style.left || '0');
+      const top = parseFloat(element.style.top || '0');
+      const chip = element.querySelector<HTMLElement>('.spec-chip');
+      const chipTop = chip ? top + chip.offsetTop : top;
+      const chipLeft = chip ? left + chip.offsetLeft : left;
+      return {
+        label: element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || element.className,
+        left: Math.min(left, chipLeft),
+        right: Math.max(left + element.offsetWidth, chipLeft + (chip?.offsetWidth ?? 0)),
+        top: Math.min(top, chipTop),
+        bottom: Math.max(top + element.offsetHeight, chipTop + (chip?.offsetHeight ?? 0))
+      };
+    });
+
+    const collisions: string[] = [];
+    for (let a = 0; a < boxes.length; a += 1) {
+      for (let b = a + 1; b < boxes.length; b += 1) {
+        const one = boxes[a];
+        const two = boxes[b];
+        if (one.left < two.right && one.right > two.left && one.top < two.bottom && one.bottom > two.top) {
+          collisions.push(`${one.label} overlaps ${two.label}`);
+        }
+      }
+    }
+    return collisions;
+  });
+
+  if (overlaps.length > 0) {
+    throw new Error(`Primitive canvas items should not overlap:\n${overlaps.join('\n')}`);
+  }
+
+  const overflow = await page.locator('.board-primitives .spec-body').evaluateAll(elements =>
+    elements
+      .filter(element => element.scrollWidth > element.clientWidth + 1)
+      .map(element => element.closest('.spec')?.querySelector('.spec-chip')?.textContent?.trim() ?? 'unknown spec')
+  );
+  if (overflow.length > 0) {
+    throw new Error(`Primitive sample content should fit within its card: ${overflow.join(', ')}`);
   }
 }
 

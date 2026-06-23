@@ -4,7 +4,7 @@ Blueprint is a portable design-system canvas template for modeling interface sys
 
 The product goal is not to preserve one app's prototype, and it is not to create a centralized app that owns or switches between every project's design system. The goal is to turn the working reference canvas pattern into a reusable standalone template that any app can instantiate, usually under a path such as `design/blueprint/`, while keeping that app's tokens, primitives, screens, copy, theme, and product decisions in the app repo that owns them.
 
-Blueprint core should reconcile the repeatable behavior across projects: a full-screen infinite canvas, a small board switcher, Primitives and Screens boards, smooth reference-style pan/zoom/fit behavior, baseline token categories behind primitive samples, universal primitive families such as buttons and inputs, iPhone-class frame/viewport conventions, screen-section composition, dependency lookup, and extraction-ready handoff packets. Each app's Blueprint project should adapt those structures into its own theme and prototype screens by changing app-owned token values, primitive definitions, and screen composition, without re-deciding how the canvas, frame wrappers, primitive state matrices, or agent handoff boundaries work.
+Blueprint core should reconcile the repeatable behavior across projects: a full-screen infinite canvas, a small board switcher, Primitives and Screens boards, smooth reference-style pan/zoom/fit behavior, collision-aware canvas placement, baseline token categories behind primitive samples, universal primitive families such as buttons and inputs, iPhone-class frame/viewport conventions, screen-section composition, dependency lookup, and extraction-ready handoff packets. Each app's Blueprint project should adapt those structures into its own theme and prototype screens by changing app-owned token values, primitive definitions, and screen composition, without re-deciding how the canvas, frame wrappers, primitive state matrices, canvas placement rules, or agent handoff boundaries work.
 
 Structured Blueprint files are the source of truth for agents. HTML and CSS are the human-facing prototype surface or reference evidence, not the contract agents should reverse-engineer. Agents should be able to ask for a single token group, primitive, primitive state set, screen, or screen section and receive only the relevant data, dependencies, notes, style references, prototype-only caveats, and target-neutral implementation hints needed to move that boundary into React, React Native, HTML, or another target.
 
@@ -28,7 +28,7 @@ The first implementation is a browser-native TypeScript template with no runtime
 
 ```text
 src/core/        typed schema, validation, boundary IDs, queries, extraction packets
-src/app/         browser-native reference-style canvas template
+src/app/         browser-native reference-style canvas template and placement helpers
 src/scripts/     validation, query, extraction, scope, and smoke commands
 fixtures/        app-owned proof fixtures and invalid fixture
 starter/         copyable design/blueprint starter shape
