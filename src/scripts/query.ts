@@ -17,6 +17,7 @@ interface Args {
   boundary?: string;
   screen?: string;
   out?: string;
+  mode?: 'focused' | 'deep';
 }
 
 async function main(): Promise<void> {
@@ -40,7 +41,7 @@ async function main(): Promise<void> {
     output = queryPrototypeOnly(bundle);
   }
   if (args.command === 'extract') {
-    output = createExtractionPacket(bundle, requireArg(args.boundary, '--boundary'));
+    output = createExtractionPacket(bundle, requireArg(args.boundary, '--boundary'), { mode: args.mode ?? 'focused' });
   }
 
   const serialized = `${JSON.stringify(output, null, 2)}\n`;
@@ -81,6 +82,11 @@ function parseArgs(argv: string[]): Args {
       args.screen = value;
     } else if (key === '--out') {
       args.out = value;
+    } else if (key === '--mode') {
+      if (value !== 'focused' && value !== 'deep') {
+        throw new Error(`--mode must be "focused" or "deep", received "${value}".`);
+      }
+      args.mode = value;
     } else {
       throw new Error(`Unknown argument ${key}.`);
     }

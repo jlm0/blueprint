@@ -8,11 +8,46 @@
       "description": "Primary and secondary command surface for patient tasks.",
       "tokenGroupIds": ["color", "space", "shape"],
       "styleRefs": ["primitive.action-button", ".nova-action-button"],
+      "styleEvidence": [
+        {
+          "styleRef": "primitive.action-button",
+          "status": "source",
+          "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#action-button",
+          "notes": ["Structured primitive definition is the source anchor for production handoff."]
+        },
+        {
+          "styleRef": ".nova-action-button",
+          "status": "linked-artifact-pending",
+          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/action-button.json",
+          "notes": ["Rendered selector proof is produced by the canvas review-loop workstream."]
+        }
+      ],
       "notes": ["The primitive is generic enough to transfer into a target app button implementation."],
       "prototypeOnly": false,
       "implementationHints": [
         "Map intent states to the app button variant API.",
         "Preserve focus-visible and disabled states when moving to production UI."
+      ],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "react",
+          "candidatePath": "src/components/ActionButton.tsx",
+          "symbolName": "ActionButton",
+          "operationIntent": "adapt-existing-component",
+          "propMapping": {
+            "intent": "variant",
+            "disabled": "disabled"
+          },
+          "stateMapping": {
+            "primary": "variant=primary",
+            "secondary": "variant=secondary"
+          },
+          "tokenAdapter": "theme.tokens",
+          "testPaths": ["src/components/ActionButton.test.tsx"],
+          "storyPaths": ["src/components/ActionButton.stories.tsx"],
+          "unresolvedDecisions": []
+        }
       ],
       "stateSets": [
         {
@@ -20,6 +55,13 @@
           "name": "Intent States",
           "description": "Visual variants for command priority.",
           "styleRefs": ["primitive.action-button.intent"],
+          "styleEvidence": [
+            {
+              "styleRef": "primitive.action-button.intent",
+              "status": "source",
+              "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#action-button.intent"
+            }
+          ],
           "states": [
             {
               "id": "primary",
@@ -55,15 +97,55 @@
       "description": "Compact status label for appointment and care-plan state.",
       "tokenGroupIds": ["color", "shape"],
       "styleRefs": ["primitive.status-pill", ".nova-status-pill"],
+      "styleEvidence": [
+        {
+          "styleRef": "primitive.status-pill",
+          "status": "source",
+          "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#status-pill"
+        },
+        {
+          "styleRef": ".nova-status-pill",
+          "status": "linked-artifact-pending",
+          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/status-pill.json"
+        }
+      ],
       "notes": ["Used by screen sections that need quick scan state."],
       "prototypeOnly": false,
       "implementationHints": ["Keep text short and expose status through accessible text."],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "react",
+          "candidatePath": "src/components/StatusPill.tsx",
+          "symbolName": "StatusPill",
+          "operationIntent": "adapt-existing-component",
+          "propMapping": {
+            "tone": "tone",
+            "children": "label"
+          },
+          "stateMapping": {
+            "ready": "tone=ready",
+            "attention": "tone=attention"
+          },
+          "tokenAdapter": "theme.tokens",
+          "testPaths": ["src/components/StatusPill.test.tsx"],
+          "storyPaths": ["src/components/StatusPill.stories.tsx"],
+          "unresolvedDecisions": []
+        }
+      ],
       "stateSets": [
         {
           "id": "tone",
           "name": "Tone States",
           "description": "Semantic status tones.",
           "styleRefs": ["primitive.status-pill.tone"],
+          "styleEvidence": [
+            {
+              "styleRef": "primitive.status-pill.tone",
+              "status": "source",
+              "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#status-pill.tone"
+            }
+          ],
           "states": [
             {
               "id": "ready",
@@ -91,15 +173,55 @@
       "description": "A compact card for care-plan summaries and medication context.",
       "tokenGroupIds": ["color", "space", "shape"],
       "styleRefs": ["primitive.info-card", ".nova-info-card"],
+      "styleEvidence": [
+        {
+          "styleRef": "primitive.info-card",
+          "status": "source",
+          "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#info-card"
+        },
+        {
+          "styleRef": ".nova-info-card",
+          "status": "linked-artifact-pending",
+          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/info-card.json"
+        }
+      ],
       "notes": ["Cards are content containers, not page sections."],
       "prototypeOnly": false,
       "implementationHints": ["Keep radius at 8px or less unless the target app design system differs."],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "react",
+          "candidatePath": "src/components/InfoCard.tsx",
+          "symbolName": "InfoCard",
+          "operationIntent": "adapt-existing-component",
+          "propMapping": {
+            "density": "density",
+            "children": "children"
+          },
+          "stateMapping": {
+            "compact": "density=compact",
+            "expanded": "density=expanded"
+          },
+          "tokenAdapter": "theme.tokens",
+          "testPaths": ["src/components/InfoCard.test.tsx"],
+          "storyPaths": ["src/components/InfoCard.stories.tsx"],
+          "unresolvedDecisions": []
+        }
+      ],
       "stateSets": [
         {
           "id": "density",
           "name": "Density States",
           "description": "Information density variants.",
           "styleRefs": ["primitive.info-card.density"],
+          "styleEvidence": [
+            {
+              "styleRef": "primitive.info-card.density",
+              "status": "source",
+              "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/primitives.json#info-card.density"
+            }
+          ],
           "states": [
             {
               "id": "compact",

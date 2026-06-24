@@ -1,10 +1,16 @@
 import './styles.css';
 import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
+import {
+  createCanvasStyleEvidence,
+  createReviewManifest,
+  validateVisibleBoundaryRecords
+} from '../core/review';
 import type { BlueprintProjectBundle, BoardDefinition, BoundaryKind, ScreenDefinition } from '../core/types';
+import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
-import { loadStarterProject } from './fixture-projects';
+import { loadConfiguredProject } from './fixture-projects';
 
 type BoardId = 'primitives' | 'screens';
 
@@ -47,7 +53,7 @@ if (!app) {
   throw new Error('Blueprint app root is missing.');
 }
 
-const project = loadStarterProject();
+const project = loadConfiguredProject();
 const shell = el('div');
 shell.id = 'app-shell';
 
@@ -131,6 +137,8 @@ function showBoard(id: BoardId): void {
   } else {
     requestAnimationFrame(() => state.mounted.fit());
   }
+
+  refreshCanvasReviewState(id);
 }
 
 function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
@@ -244,7 +252,7 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     label: 'BUTTON · variant x state matrix',
     x: 1430,
     y: 380,
-    width: 430,
+    width: 500,
     accent: tone.actions,
     boundary: ['primitive', 'button', projectId],
     html: buttonMatrix(),
@@ -523,6 +531,9 @@ function addPrimitiveSpec(root: HTMLElement, controller: CanvasController, optio
     accent: options.accent,
     boundary: options.boundary
   });
+  if (options.note) {
+    card.dataset.boundarySummary = options.note;
+  }
   const body = appendSpecBody(card);
   body.innerHTML = options.html;
   if (options.note) {
@@ -537,13 +548,15 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, screen: ScreenDefi
   const frame = el('article', 'frame');
   frame.style.left = `${x}px`;
   frame.style.top = `${y}px`;
-  setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id);
+  setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id, screen.name);
   frame.dataset.screenId = screen.id;
+  frame.dataset.boundarySummary = screen.description;
 
   const head = el('div', 'frame-head');
   const chip = el('button', 'frame-chip') as HTMLButtonElement;
   chip.type = 'button';
-  chip.title = 'Copy screen id';
+  chip.title = 'Copy screen boundary id';
+  chip.dataset.boundaryAction = 'copy-id';
   chip.append(el('span', 'dot'), el('span', 'frame-name', `${screen.id.toUpperCase()} · ${screen.name}`));
   chip.addEventListener('click', () => {
     void copyText(boundaryId(bundle.manifest.project.id, 'screen', screen.id));
@@ -565,7 +578,8 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, screen: ScreenDefi
   head.append(chip, shot, save);
 
   const screenEl = el('div', 'screen screen-template');
-  screenEl.append(createStatusBar(), el('div', 'screen-template-body'), el('div', 'home-indicator'));
+  const body = el('div', 'screen-template-body');
+  screenEl.append(createStatusBar(), body, el('div', 'home-indicator'));
   wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
 
   frame.append(head, screenEl);
@@ -593,7 +607,7 @@ function createSpecCard(options: {
   card.style.top = `${options.y}px`;
   card.style.width = `${options.width}px`;
   card.style.setProperty('--accent', options.accent);
-  setBoundary(card, options.boundary[0], options.boundary[1], options.boundary[2]);
+  setBoundary(card, options.boundary[0], options.boundary[1], options.boundary[2], options.label);
 
   const chip = el('button', 'spec-chip') as HTMLButtonElement;
   chip.type = 'button';
@@ -719,7 +733,7 @@ function checkbox(state: string): string {
 }
 
 function switcherControl(state: string): string {
-  return `<div class="sw ${state}"><div class="thumb"></div></div>`;
+  return `<div class="sw ${state}"><div class="sw-thumb"></div></div>`;
 }
 
 function otpGrid(): string {
@@ -933,9 +947,53 @@ function downloadIcon(): string {
   return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
 }
 
-function setBoundary(element: HTMLElement, kind: BoundaryKind, localId: string, projectId: string): void {
+function refreshCanvasReviewState(boardId: BoardId): void {
+  const state = boardState.get(boardId);
+  if (!state) {
+    return;
+  }
+
+  const records = collectVisibleBoundaryRecords(state.root, boardId);
+  const boundarySync = validateVisibleBoundaryRecords(project, records);
+  const screenId = records.find(record => record.kind === 'screen')?.screenId;
+  window.__BLUEPRINT_REVIEW__ = {
+    projectId: project.manifest.project.id,
+    boundarySync,
+    manifest: createReviewManifest(project, records, {
+      board: boardId,
+      screenId,
+      packetCommandBase: 'blueprint extract'
+    }),
+    styleEvidence: createCanvasStyleEvidence(project, records)
+  };
+}
+
+function collectVisibleBoundaryRecords(root: HTMLElement, board: BoardId): VisibleBoundaryRecord[] {
+  return [...root.querySelectorAll<HTMLElement>('[data-boundary-id][data-boundary-kind]')].map(element => {
+    const computed = window.getComputedStyle(element);
+    return {
+      id: element.dataset.boundaryId ?? '',
+      kind: (element.dataset.boundaryKind ?? 'project') as BoundaryKind,
+      board,
+      label: element.dataset.boundaryLabel ?? element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? '',
+      screenId: element.dataset.screenId,
+      renderedSnippet: element.outerHTML.slice(0, 900),
+      computedStyles: {
+        backgroundColor: computed.backgroundColor,
+        borderColor: computed.borderColor,
+        borderRadius: computed.borderRadius,
+        color: computed.color
+      }
+    };
+  });
+}
+
+function setBoundary(element: HTMLElement, kind: BoundaryKind, localId: string, projectId: string, label = localId): void {
   element.dataset.boundaryId = boundaryId(projectId, kind, localId);
   element.dataset.boundaryKind = kind;
+  element.dataset.boundaryLocalId = localId;
+  element.dataset.boundaryLabel = label;
+  element.dataset.handoffCommand = `blueprint extract --project ${project.sourceRoot} --boundary ${kind}:${localId} --mode deep`;
 }
 
 async function copyText(text: string): Promise<void> {

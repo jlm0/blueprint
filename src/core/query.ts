@@ -6,12 +6,20 @@ import type {
   BoundaryPacket,
   BoundaryReference,
   BoundarySelector,
+  DeepHandoffPacket,
+  DesignToken,
+  ExtractionOptions,
+  ExtractionPacket,
   PrimitiveDefinition,
+  PrimitiveState,
   PrimitiveStateSet,
   QueryResult,
+  ResolvedToken,
   ScreenDefinition,
   ScreenSection,
-  TokenGroup
+  StyleEvidence,
+  TokenGroup,
+  TraversalCycle
 } from './types';
 
 export function listBoundaryReferences(bundle: BlueprintProjectBundle): BoundaryReference[] {
@@ -41,6 +49,7 @@ export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: Bo
       return packet(bundle, selector.kind, 'root', bundle.manifest.project, {
         sourceFiles: [bundle.sourceFiles.manifest],
         styleRefs: [],
+        styleEvidence: [],
         uses: [],
         usedBy: [],
         notes: [bundle.manifest.project.description],
@@ -52,6 +61,7 @@ export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: Bo
       return packet(bundle, selector.kind, board.id, board, {
         sourceFiles: [bundle.sourceFiles.manifest],
         styleRefs: [],
+        styleEvidence: [],
         uses: [],
         usedBy: [],
         notes: [board.description],
@@ -140,18 +150,174 @@ export function queryPrototypeOnly(bundle: BlueprintProjectBundle): QueryResult 
   };
 }
 
-export function createExtractionPacket(bundle: BlueprintProjectBundle, selectorInput: string): BoundaryPacket {
-  const packet = showBoundary(bundle, selectorInput);
-  if (packet.kind !== 'primitive' && packet.kind !== 'screen') {
-    throw new Error(`Extraction packets are supported for primitive and screen boundaries, not "${packet.kind}".`);
+export function createExtractionPacket(
+  bundle: BlueprintProjectBundle,
+  selectorInput: string,
+  options: ExtractionOptions = {}
+): ExtractionPacket {
+  if ((options.mode ?? 'focused') === 'deep') {
+    return createDeepHandoffPacket(bundle, selectorInput);
   }
+
+  const packet = showBoundary(bundle, selectorInput);
   return packet;
+}
+
+function createDeepHandoffPacket(bundle: BlueprintProjectBundle, selectorInput: string): DeepHandoffPacket {
+  const selectedPacket = showBoundary(bundle, selectorInput);
+  const selected = referenceForPacket(bundle, selectedPacket);
+  const boundaries: BoundaryPacket[] = [];
+  const cycles: TraversalCycle[] = [];
+  const unsupportedReferences: string[] = [];
+  const visited = new Set<string>();
+  const queue: Array<{ selector: string; from?: string; path: string[] }> = [
+    { selector: selectorInput, path: [selectedPacket.id] }
+  ];
+
+  while (queue.length > 0) {
+    const entry = queue.shift();
+    if (!entry) {
+      break;
+    }
+
+    let current: BoundaryPacket;
+    try {
+      current = showBoundary(bundle, entry.selector);
+    } catch (error) {
+      unsupportedReferences.push(`${entry.selector}: ${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
+
+    if (visited.has(current.id)) {
+      continue;
+    }
+
+    visited.add(current.id);
+    boundaries.push(current);
+
+    for (const dependency of deepDependencyReferences(bundle, current)) {
+      if (entry.path.includes(dependency.id)) {
+        cycles.push({
+          from: current.id,
+          to: dependency.id,
+          path: [...entry.path, dependency.id],
+          reason: 'dependency already exists in the current traversal path'
+        });
+        continue;
+      }
+
+      if (visited.has(dependency.id)) {
+        continue;
+      }
+
+      queue.push({
+        selector: selectorFromReference(dependency),
+        from: current.id,
+        path: [...entry.path, dependency.id]
+      });
+    }
+  }
+
+  const includedBoundaryIds = boundaries.map(boundary => boundary.id);
+  return {
+    ...selectedPacket,
+    extraction: {
+      mode: 'deep',
+      selected,
+      includedBoundaryIds,
+      cycles,
+      unsupportedReferences
+    },
+    boundaries,
+    resolvedTokens: resolveTokensForPackets(bundle, boundaries)
+  };
+}
+
+function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: BoundaryPacket): BoundaryReference[] {
+  const refs = [...packet.dependencies.uses];
+  const localId = localIdFromPacket(packet);
+  const projectId = bundle.manifest.project.id;
+
+  if (packet.kind === 'screen') {
+    const screen = findScreen(bundle, localId);
+    refs.push(...screen.sections.map(section => reference(projectId, 'section', `${screen.id}/${section.id}`, section.name)));
+  }
+
+  if (packet.kind === 'primitive') {
+    const primitive = findPrimitive(bundle, localId);
+    refs.push(
+      ...primitive.stateSets.map(stateSet => reference(projectId, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet.name))
+    );
+  }
+
+  if (packet.kind === 'state-set') {
+    const { stateSet } = findStateSet(bundle, localId);
+    const groupIds = new Set(stateSet.states.flatMap(state => state.tokens.map(tokenRef => tokenRef.split('.')[0]).filter(Boolean)));
+    for (const groupId of groupIds) {
+      const group = findTokenGroup(bundle, groupId);
+      refs.push(reference(projectId, 'token-group', group.id, group.name));
+    }
+  }
+
+  return dedupeReferences(refs).sort(compareReferences);
+}
+
+function resolveTokensForPackets(bundle: BlueprintProjectBundle, packets: BoundaryPacket[]): ResolvedToken[] {
+  const tokenRefs = new Set<string>();
+  for (const packet of packets) {
+    for (const state of statesForPacket(bundle, packet)) {
+      for (const tokenRef of state.tokens) {
+        tokenRefs.add(tokenRef);
+      }
+    }
+  }
+
+  const tokenIndex = createTokenIndex(bundle);
+  return [...tokenRefs].sort().flatMap(tokenRef => {
+    const resolved = tokenIndex.get(tokenRef);
+    return resolved ? [resolved] : [];
+  });
+}
+
+function statesForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): PrimitiveState[] {
+  const localId = localIdFromPacket(packet);
+  if (packet.kind === 'primitive') {
+    return findPrimitive(bundle, localId).stateSets.flatMap(stateSet => stateSet.states);
+  }
+  if (packet.kind === 'state-set') {
+    return findStateSet(bundle, localId).stateSet.states;
+  }
+  return [];
+}
+
+function createTokenIndex(bundle: BlueprintProjectBundle): Map<string, ResolvedToken> {
+  const tokenIndex = new Map<string, ResolvedToken>();
+  for (const group of bundle.tokens.tokenGroups) {
+    for (const token of group.tokens) {
+      tokenIndex.set(`${group.id}.${token.id}`, resolvedToken(group.id, token));
+    }
+  }
+  return tokenIndex;
+}
+
+function resolvedToken(groupId: string, token: DesignToken): ResolvedToken {
+  return {
+    id: `${groupId}.${token.id}`,
+    groupId,
+    tokenId: token.id,
+    name: token.name,
+    type: token.type,
+    value: token.value,
+    description: token.description,
+    styleRef: token.styleRef
+  };
 }
 
 function tokenGroupPacket(bundle: BlueprintProjectBundle, group: TokenGroup): BoundaryPacket<TokenGroup> {
   return packet(bundle, 'token-group', group.id, group, {
     sourceFiles: [bundle.sourceFiles.tokens],
     styleRefs: group.styleRefs,
+    styleEvidence: styleEvidenceFor(group.styleRefs),
     uses: [],
     usedBy: usedBy(bundle, 'token-group', group.id),
     notes: group.notes,
@@ -164,6 +330,7 @@ function primitivePacket(bundle: BlueprintProjectBundle, primitive: PrimitiveDef
   return packet(bundle, 'primitive', primitive.id, primitive, {
     sourceFiles: [bundle.sourceFiles.primitives],
     styleRefs: primitive.styleRefs,
+    styleEvidence: styleEvidenceFor(primitive.styleRefs, primitive.styleEvidence),
     uses: primitive.tokenGroupIds.map(tokenGroupId => {
       const group = findTokenGroup(bundle, tokenGroupId);
       return reference(bundle.manifest.project.id, 'token-group', group.id, group.name);
@@ -183,6 +350,7 @@ function stateSetPacket(
   return packet(bundle, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet, {
     sourceFiles: [bundle.sourceFiles.primitives],
     styleRefs: stateSet.styleRefs,
+    styleEvidence: styleEvidenceFor(stateSet.styleRefs, stateSet.styleEvidence),
     uses: [],
     usedBy: usedBy(bundle, 'state-set', `${primitive.id}/${stateSet.id}`),
     notes: stateSet.states.flatMap(state => state.notes),
@@ -195,6 +363,7 @@ function screenPacket(bundle: BlueprintProjectBundle, screen: ScreenDefinition):
   return packet(bundle, 'screen', screen.id, screen, {
     sourceFiles: [bundle.sourceFiles.manifest, bundle.sourceFiles.screens, bundle.sourceFiles.primitives, bundle.sourceFiles.tokens],
     styleRefs: screen.styleRefs,
+    styleEvidence: styleEvidenceFor(screen.styleRefs, screen.styleEvidence),
     uses: dedupeReferences(screen.sections.flatMap(section => dependenciesToReferences(bundle, section.uses))),
     usedBy: usedBy(bundle, 'screen', screen.id),
     notes: [...screen.notes, ...screen.sections.flatMap(section => section.notes)],
@@ -211,6 +380,10 @@ function sectionPacket(
   return packet(bundle, 'section', `${screen.id}/${section.id}`, section, {
     sourceFiles: [bundle.sourceFiles.screens],
     styleRefs: [...screen.styleRefs, ...section.styleRefs],
+    styleEvidence: styleEvidenceFor([...screen.styleRefs, ...section.styleRefs], [
+      ...(screen.styleEvidence ?? []),
+      ...(section.styleEvidence ?? [])
+    ]),
     uses: dependenciesToReferences(bundle, section.uses),
     usedBy: [reference(bundle.manifest.project.id, 'screen', screen.id, screen.name)],
     notes: section.notes,
@@ -227,6 +400,7 @@ function packet<TData>(
   options: {
     sourceFiles: string[];
     styleRefs: string[];
+    styleEvidence: StyleEvidence[];
     uses: BoundaryReference[];
     usedBy: BoundaryReference[];
     notes: string[];
@@ -241,6 +415,7 @@ function packet<TData>(
     sourceFiles: options.sourceFiles,
     data,
     styleRefs: options.styleRefs,
+    styleEvidence: options.styleEvidence,
     dependencies: {
       uses: options.uses,
       usedBy: options.usedBy
@@ -249,6 +424,35 @@ function packet<TData>(
     prototypeOnly: options.prototypeOnly,
     implementationHints: options.implementationHints
   };
+}
+
+function styleEvidenceFor(styleRefs: string[], evidence: StyleEvidence[] = []): StyleEvidence[] {
+  const byRef = new Map(evidence.map(item => [item.styleRef, item]));
+  return styleRefs.map(styleRef => byRef.get(styleRef) ?? {
+    styleRef,
+    status: 'unresolved',
+    notes: ['No explicit style evidence has been recorded for this style reference.']
+  });
+}
+
+function referenceForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): BoundaryReference {
+  const ref = listBoundaryReferences(bundle).find(item => item.id === packet.id);
+  if (!ref) {
+    throw new Error(`No boundary reference found for packet "${packet.id}".`);
+  }
+  return ref;
+}
+
+function selectorFromReference(ref: BoundaryReference): string {
+  return `${ref.kind}:${ref.localId}`;
+}
+
+function localIdFromPacket(packet: BoundaryPacket): string {
+  return packet.id.slice(`${packet.projectId}/${packet.kind}/`.length);
+}
+
+function compareReferences(left: BoundaryReference, right: BoundaryReference): number {
+  return left.id.localeCompare(right.id);
 }
 
 function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: BoundaryDependency[]): BoundaryReference[] {

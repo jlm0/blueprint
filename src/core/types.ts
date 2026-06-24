@@ -4,6 +4,7 @@ export type BoardKind = 'primitives' | 'screens';
 
 export interface BlueprintManifest {
   schemaVersion: string;
+  handoffContractVersion?: string;
   project: ProjectManifest;
   defaultBoardId: string;
   boards: BoardDefinition[];
@@ -75,9 +76,11 @@ export interface PrimitiveDefinition {
   description: string;
   tokenGroupIds: string[];
   styleRefs: string[];
+  styleEvidence?: StyleEvidence[];
   notes: string[];
   prototypeOnly: boolean;
   implementationHints: string[];
+  implementationTargets?: ImplementationTarget[];
   stateSets: PrimitiveStateSet[];
 }
 
@@ -86,6 +89,7 @@ export interface PrimitiveStateSet {
   name: string;
   description: string;
   styleRefs: string[];
+  styleEvidence?: StyleEvidence[];
   states: PrimitiveState[];
 }
 
@@ -110,9 +114,12 @@ export interface ScreenDefinition {
   description: string;
   framePresetId: string;
   styleRefs: string[];
+  styleEvidence?: StyleEvidence[];
   notes: string[];
   prototypeOnly: boolean;
   implementationHints: string[];
+  productionRelationship?: ProductionRelationship;
+  implementationTargets?: ImplementationTarget[];
   sections: ScreenSection[];
 }
 
@@ -121,16 +128,70 @@ export interface ScreenSection {
   name: string;
   description: string;
   styleRefs: string[];
+  styleEvidence?: StyleEvidence[];
   uses: BoundaryDependency[];
   prototypeOnly: boolean;
   notes: string[];
   implementationHints: string[];
+  implementationTargets?: ImplementationTarget[];
 }
 
 export interface BoundaryDependency {
   kind: 'token-group' | 'primitive' | 'state-set' | 'screen' | 'section';
   id: string;
   reason: string;
+  binding?: CompositionBinding;
+}
+
+export type ProductionRelationshipKind =
+  | 'new-route'
+  | 'state-of-existing-screen'
+  | 'variant-of-existing-screen'
+  | 'section-replacement'
+  | 'embedded-flow';
+
+export interface ProductionRelationship {
+  kind: ProductionRelationshipKind;
+  routePath?: string;
+  targetScreenId?: string;
+  replacedSectionId?: string;
+  notes?: string[];
+}
+
+export interface CompositionBinding {
+  slot?: string;
+  state?: string;
+  variant?: string;
+  prop?: string;
+  copy?: string;
+  data?: string;
+  layout?: string;
+  accessibility?: string;
+}
+
+export interface ImplementationTarget {
+  platform: string;
+  framework: string;
+  candidatePath: string;
+  symbolName: string;
+  operationIntent: string;
+  propMapping: Record<string, string>;
+  stateMapping: Record<string, string>;
+  tokenAdapter: string;
+  testPaths: string[];
+  storyPaths: string[];
+  unresolvedDecisions: string[];
+}
+
+export type StyleEvidenceStatus = 'source' | 'linked-artifact-pending' | 'unresolved';
+
+export interface StyleEvidence {
+  styleRef: string;
+  status: StyleEvidenceStatus;
+  sourceAnchor?: string;
+  artifactRef?: string;
+  renderedSnippet?: string;
+  notes?: string[];
 }
 
 export interface BlueprintProjectBundle {
@@ -167,6 +228,7 @@ export interface BoundaryPacket<TData = unknown> {
   sourceFiles: string[];
   data: TData;
   styleRefs: string[];
+  styleEvidence: StyleEvidence[];
   dependencies: {
     uses: BoundaryReference[];
     usedBy: BoundaryReference[];
@@ -174,6 +236,50 @@ export interface BoundaryPacket<TData = unknown> {
   notes: string[];
   prototypeOnly: boolean;
   implementationHints: string[];
+}
+
+export type ExtractionMode = 'focused' | 'deep';
+
+export interface ExtractionOptions {
+  mode?: ExtractionMode;
+}
+
+export interface ResolvedToken {
+  id: string;
+  groupId: string;
+  tokenId: string;
+  name: string;
+  type: DesignToken['type'];
+  value: string;
+  description: string;
+  styleRef: string;
+}
+
+export interface TraversalCycle {
+  from: string;
+  to: string;
+  path: string[];
+  reason: string;
+}
+
+export interface DeepHandoffPacket<TData = unknown> extends BoundaryPacket<TData> {
+  extraction: {
+    mode: 'deep';
+    selected: BoundaryReference;
+    includedBoundaryIds: string[];
+    cycles: TraversalCycle[];
+    unsupportedReferences: string[];
+  };
+  boundaries: BoundaryPacket[];
+  resolvedTokens: ResolvedToken[];
+}
+
+export type ExtractionPacket = BoundaryPacket | DeepHandoffPacket;
+
+export type ValidationMode = 'baseline' | 'strict';
+
+export interface ValidationOptions {
+  mode?: ValidationMode;
 }
 
 export interface ValidationResult {

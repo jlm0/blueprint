@@ -334,10 +334,21 @@ button {
   gap: 15px;
 }
 
+.tspec > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.tspec [class^='t-'] {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .tlabel,
 .mx-label,
-.screen-eyebrow,
-.section-kicker {
+.screen-eyebrow {
   color: var(--accent);
   font-size: 10px;
   font-weight: 900;
@@ -349,7 +360,7 @@ button {
 .t-h1 {
   font-size: 30px;
   font-weight: 850;
-  line-height: 1;
+  line-height: 1.05;
   text-transform: uppercase;
 }
 
@@ -407,6 +418,10 @@ button {
   align-items: center;
 }
 
+.button-state-matrix .mx-row {
+  grid-template-columns: 104px repeat(3, 112px);
+}
+
 .input-state-matrix .mx-row {
   grid-template-columns: 80px repeat(5, 160px);
 }
@@ -444,6 +459,24 @@ button {
 
 .btn svg {
   flex: none;
+}
+
+.btn-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.button-state-matrix .mx-row:not(.icon-row) .btn {
+  width: 100%;
+  min-width: 0;
+}
+
+.button-state-matrix .icon-row .btn {
+  justify-self: center;
 }
 
 .btn-primary {
@@ -492,7 +525,7 @@ button {
 }
 
 .btn.is-loading .btn-label {
-  opacity: 0.28;
+  opacity: 0.52;
 }
 
 .btn.is-disabled,
@@ -530,12 +563,22 @@ button {
 }
 
 .loading-dot {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
+  position: static;
+  flex: none;
+  width: 4px;
+  height: 4px;
+  margin-right: 14px;
+  border: 0;
   border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    7px 0 0 currentColor,
+    14px 0 0 currentColor;
+  opacity: 0.75;
+}
+
+.btn-icon.is-loading .btn-label {
+  display: none;
 }
 
 .inp {
@@ -610,7 +653,7 @@ button {
   background: var(--surface-4);
 }
 
-.sw .thumb {
+.sw-thumb {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -618,13 +661,14 @@ button {
   height: 18px;
   border-radius: 999px;
   background: var(--fg);
+  transform: none;
 }
 
 .sw.on {
   background: var(--primary);
 }
 
-.sw.on .thumb {
+.sw.on .sw-thumb {
   left: 23px;
   background: var(--primary-fg);
 }
@@ -1221,7 +1265,8 @@ button {
 
 .screen-template-body {
   position: absolute;
-  inset: 59px 0 0;
+  inset: 59px 0 24px;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.012);
 }
 

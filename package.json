@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "blueprint": "./dist/cli/cli.js"
+  },
+  "exports": {
+    ".": "./dist/cli/index.js",
+    "./schema/blueprint-project.schema.json": "./schema/blueprint-project.schema.json"
+  },
+  "files": [
+    "dist/cli",
+    "docs",
+    "schema",
+    "starter",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
@@ -12,7 +26,9 @@
     "query": "tsx src/scripts/query.ts",
     "extract:artifacts": "tsx src/scripts/create-extraction-artifacts.ts",
     "smoke:browser": "tsx src/scripts/browser-smoke.ts",
-    "build": "vite build",
+    "build:site": "vite build",
+    "build:cli": "vite build --config vite.cli.config.ts && chmod +x dist/cli/cli.js",
+    "build": "npm run build:site && npm run build:cli",
     "qa": "npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
   },
   "dependencies": {

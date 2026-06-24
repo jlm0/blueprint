@@ -8,11 +8,48 @@
       "description": "A patient home screen built from starter primitives.",
       "framePresetId": "phone-ios",
       "styleRefs": ["screen.home", ".nova-care-home"],
+      "styleEvidence": [
+        {
+          "styleRef": "screen.home",
+          "status": "source",
+          "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/screens.json#home"
+        },
+        {
+          "styleRef": ".nova-care-home",
+          "status": "linked-artifact-pending",
+          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/home.json"
+        }
+      ],
       "notes": ["This screen demonstrates a production-intended composition with one prototype-only section."],
       "prototypeOnly": false,
       "implementationHints": [
         "Build as a scrollable mobile screen with safe-area padding from the frame preset.",
         "Keep the prototype-only insight lab behind a product decision."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/care",
+        "notes": ["Represents the default signed-in patient care home route."]
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "react",
+          "candidatePath": "src/screens/CareHome.tsx",
+          "symbolName": "CareHome",
+          "operationIntent": "create-new-route",
+          "propMapping": {
+            "patientSummary": "summary",
+            "nextAction": "primaryAction"
+          },
+          "stateMapping": {
+            "default": "route=/care"
+          },
+          "tokenAdapter": "theme.tokens",
+          "testPaths": ["src/screens/CareHome.test.tsx"],
+          "storyPaths": ["src/screens/CareHome.stories.tsx"],
+          "unresolvedDecisions": []
+        }
       ],
       "sections": [
         {
@@ -20,42 +57,128 @@
           "name": "Today Summary",
           "description": "Shows current care-plan context and status.",
           "styleRefs": ["screen.home.summary"],
+          "styleEvidence": [
+            {
+              "styleRef": "screen.home.summary",
+              "status": "source",
+              "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/screens.json#home.summary"
+            }
+          ],
           "uses": [
             {
               "kind": "primitive",
               "id": "info-card",
-              "reason": "Primary content container"
+              "reason": "Primary content container",
+              "binding": {
+                "slot": "primaryContent",
+                "state": "compact",
+                "copy": "Today summary headline and care-plan details",
+                "data": "patient.carePlanSummary",
+                "layout": "Top section card with compact density"
+              }
             },
             {
               "kind": "primitive",
               "id": "status-pill",
-              "reason": "Displays current appointment state"
+              "reason": "Displays current appointment state",
+              "binding": {
+                "slot": "summaryStatus",
+                "state": "ready",
+                "copy": "Appointment readiness label",
+                "data": "patient.appointmentStatus",
+                "accessibility": "Expose status text without relying on color alone."
+              }
             }
           ],
           "prototypeOnly": false,
           "notes": ["Agent extraction should include the card and status dependencies."],
-          "implementationHints": ["Use concise summary copy and avoid more than two nested cards."]
+          "implementationHints": ["Use concise summary copy and avoid more than two nested cards."],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "react",
+              "candidatePath": "src/screens/CareHomeSummary.tsx",
+              "symbolName": "CareHomeSummary",
+              "operationIntent": "create-section-component",
+              "propMapping": {
+                "summary": "patientSummary",
+                "status": "appointmentStatus"
+              },
+              "stateMapping": {
+                "compact": "InfoCard density"
+              },
+              "tokenAdapter": "theme.tokens",
+              "testPaths": ["src/screens/CareHomeSummary.test.tsx"],
+              "storyPaths": ["src/screens/CareHomeSummary.stories.tsx"],
+              "unresolvedDecisions": []
+            }
+          ]
         },
         {
           "id": "next-action",
           "name": "Next Action",
           "description": "Primary patient action for the day.",
           "styleRefs": ["screen.home.next-action"],
+          "styleEvidence": [
+            {
+              "styleRef": "screen.home.next-action",
+              "status": "source",
+              "sourceAnchor": "fixtures/app-owned/nova-care/design/blueprint/screens.json#home.next-action"
+            }
+          ],
           "uses": [
             {
               "kind": "primitive",
               "id": "action-button",
-              "reason": "Main command"
+              "reason": "Main command",
+              "binding": {
+                "slot": "primaryContent",
+                "state": "compact",
+                "prop": "intent",
+                "copy": "Next care task call-to-action",
+                "data": "patient.nextAction",
+                "layout": "Full-width mobile command row"
+              }
             },
             {
               "kind": "state-set",
               "id": "action-button/intent",
-              "reason": "Uses primary and secondary action states"
+              "reason": "Uses primary and secondary action states",
+              "binding": {
+                "slot": "primaryContent",
+                "variant": "primary",
+                "prop": "intent",
+                "copy": "Primary and secondary labels",
+                "data": "patient.nextAction.priority",
+                "layout": "Primary action first, secondary action below when present",
+                "accessibility": "Primary and secondary commands remain keyboard reachable."
+              }
             }
           ],
           "prototypeOnly": false,
           "notes": ["This section is the cleanest screen-to-primitive extraction proof."],
-          "implementationHints": ["Map the high-emphasis command to the target app's primary button."]
+          "implementationHints": ["Map the high-emphasis command to the target app's primary button."],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "react",
+              "candidatePath": "src/screens/CareHomeNextAction.tsx",
+              "symbolName": "CareHomeNextAction",
+              "operationIntent": "create-section-component",
+              "propMapping": {
+                "action": "nextAction",
+                "intent": "actionPriority"
+              },
+              "stateMapping": {
+                "primary": "ActionButton variant",
+                "secondary": "ActionButton variant"
+              },
+              "tokenAdapter": "theme.tokens",
+              "testPaths": ["src/screens/CareHomeNextAction.test.tsx"],
+              "storyPaths": ["src/screens/CareHomeNextAction.stories.tsx"],
+              "unresolvedDecisions": []
+            }
+          ]
         },
         {
           "id": "insight-lab",

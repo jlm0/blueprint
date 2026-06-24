@@ -3,14 +3,21 @@ import type {
   BoardDefinition,
   BoundaryDependency,
   FramePreset,
+  ImplementationTarget,
   PrimitiveDefinition,
   PrimitiveStateSet,
+  ProductionRelationship,
   ScreenDefinition,
+  ScreenSection,
+  StyleEvidence,
+  ValidationOptions,
   TokenGroup,
   ValidationResult
 } from './types';
 
-export function validateProject(bundle: BlueprintProjectBundle): ValidationResult {
+const supportedHandoffContractVersion = '1.0.0';
+
+export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
   const errors: string[] = [];
   const projectId = bundle.manifest.project?.id;
 
@@ -41,6 +48,7 @@ export function validateProject(bundle: BlueprintProjectBundle): ValidationResul
   const primitiveIds = collectIds(errors, 'primitives.primitives', bundle.primitives.primitives, primitive => {
     validatePrimitive(errors, primitive, tokenGroupIds);
   });
+  const tokenIds = collectTokenIds(bundle.tokens.tokenGroups);
 
   const stateSetIds = new Set<string>();
   for (const primitive of bundle.primitives.primitives) {
@@ -50,6 +58,7 @@ export function validateProject(bundle: BlueprintProjectBundle): ValidationResul
         errors.push(`Duplicate state-set id "${localId}".`);
       }
       stateSetIds.add(localId);
+      validateStateTokenReferences(errors, primitive, stateSet, tokenIds);
     }
   }
 
@@ -69,6 +78,10 @@ export function validateProject(bundle: BlueprintProjectBundle): ValidationResul
         });
       }
     }
+  }
+
+  if ((options.mode ?? 'baseline') === 'strict') {
+    validateStrictHandoffReadiness(errors, bundle);
   }
 
   return { ok: errors.length === 0, errors };
@@ -193,6 +206,189 @@ function validateDependency(
   }
 }
 
+function collectTokenIds(groups: TokenGroup[]): Set<string> {
+  const tokenIds = new Set<string>();
+  for (const group of groups ?? []) {
+    for (const token of group.tokens ?? []) {
+      if (group.id && token.id) {
+        tokenIds.add(`${group.id}.${token.id}`);
+      }
+    }
+  }
+  return tokenIds;
+}
+
+function validateStateTokenReferences(
+  errors: string[],
+  primitive: PrimitiveDefinition,
+  stateSet: PrimitiveStateSet,
+  tokenIds: Set<string>
+): void {
+  for (const state of stateSet.states ?? []) {
+    for (const tokenRef of state.tokens ?? []) {
+      if (!tokenIds.has(tokenRef)) {
+        errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokens references missing token "${tokenRef}".`);
+      }
+    }
+  }
+}
+
+function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProjectBundle): void {
+  if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {
+    if (!bundle.manifest.handoffContractVersion) {
+      errors.push(`manifest.handoffContractVersion must be "${supportedHandoffContractVersion}" for strict handoff readiness.`);
+    } else {
+      errors.push(`Unsupported handoff contract version "${bundle.manifest.handoffContractVersion}". Expected "${supportedHandoffContractVersion}".`);
+    }
+  }
+
+  for (const primitive of bundle.primitives.primitives ?? []) {
+    if (primitive.prototypeOnly) {
+      continue;
+    }
+
+    validateImplementationTargets(errors, `primitive.${primitive.id}.implementationTargets`, primitive.implementationTargets);
+    validateStyleEvidence(errors, `primitive.${primitive.id}.styleEvidence`, primitive.styleRefs, primitive.styleEvidence);
+
+    for (const stateSet of primitive.stateSets ?? []) {
+      if ((stateSet.states ?? []).every(state => state.prototypeOnly)) {
+        continue;
+      }
+      validateStyleEvidence(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.styleEvidence`, stateSet.styleRefs, stateSet.styleEvidence);
+    }
+  }
+
+  for (const screen of bundle.screens.screens ?? []) {
+    if (screen.prototypeOnly) {
+      continue;
+    }
+
+    validateProductionRelationship(errors, `screen.${screen.id}.productionRelationship`, screen.productionRelationship);
+    validateImplementationTargets(errors, `screen.${screen.id}.implementationTargets`, screen.implementationTargets);
+    validateStyleEvidence(errors, `screen.${screen.id}.styleEvidence`, screen.styleRefs, screen.styleEvidence);
+
+    for (const section of screen.sections ?? []) {
+      if (section.prototypeOnly) {
+        continue;
+      }
+
+      validateImplementationTargets(errors, `screen.${screen.id}.section.${section.id}.implementationTargets`, section.implementationTargets);
+      validateStyleEvidence(errors, `screen.${screen.id}.section.${section.id}.styleEvidence`, section.styleRefs, section.styleEvidence);
+      validateCompositionBindings(errors, screen, section);
+    }
+  }
+}
+
+function validateProductionRelationship(errors: string[], label: string, relationship: ProductionRelationship | undefined): void {
+  if (!relationship) {
+    errors.push(`${label} is required for strict handoff readiness.`);
+    return;
+  }
+
+  requireString(errors, `${label}.kind`, relationship.kind);
+  if (relationship.kind === 'new-route') {
+    requireString(errors, `${label}.routePath`, relationship.routePath);
+  }
+  if (
+    (relationship.kind === 'state-of-existing-screen' || relationship.kind === 'variant-of-existing-screen') &&
+    !relationship.targetScreenId
+  ) {
+    errors.push(`${label}.targetScreenId is required for ${relationship.kind}.`);
+  }
+}
+
+function validateImplementationTargets(
+  errors: string[],
+  label: string,
+  targets: ImplementationTarget[] | undefined
+): void {
+  if (!Array.isArray(targets) || targets.length === 0) {
+    errors.push(`${label} must include at least one target for strict handoff readiness.`);
+    return;
+  }
+
+  targets.forEach((target, index) => {
+    const item = `${label}.${index}`;
+    requireString(errors, `${item}.platform`, target.platform);
+    requireString(errors, `${item}.framework`, target.framework);
+    requireString(errors, `${item}.candidatePath`, target.candidatePath);
+    requireString(errors, `${item}.symbolName`, target.symbolName);
+    requireString(errors, `${item}.operationIntent`, target.operationIntent);
+    requireObject(errors, `${item}.propMapping`, target.propMapping);
+    requireObject(errors, `${item}.stateMapping`, target.stateMapping);
+    requireString(errors, `${item}.tokenAdapter`, target.tokenAdapter);
+    requireArray(errors, `${item}.testPaths`, target.testPaths);
+    requireArray(errors, `${item}.storyPaths`, target.storyPaths);
+    requireArray(errors, `${item}.unresolvedDecisions`, target.unresolvedDecisions);
+    if ((target.unresolvedDecisions ?? []).length > 0) {
+      errors.push(`${item}.unresolvedDecisions must be empty for strict handoff readiness.`);
+    }
+  });
+}
+
+function validateStyleEvidence(
+  errors: string[],
+  label: string,
+  styleRefs: string[] | undefined,
+  evidence: StyleEvidence[] | undefined
+): void {
+  const refs = styleRefs ?? [];
+  if (refs.length === 0) {
+    return;
+  }
+
+  if (!Array.isArray(evidence)) {
+    errors.push(`${label} must include explicit evidence for ${refs.length} style refs.`);
+    return;
+  }
+
+  const byRef = new Map(evidence.map(item => [item.styleRef, item]));
+  for (const styleRef of refs) {
+    const item = byRef.get(styleRef);
+    if (!item) {
+      errors.push(`${label} is missing evidence for style ref "${styleRef}".`);
+      continue;
+    }
+    if (item.status !== 'source' && item.status !== 'linked-artifact-pending' && item.status !== 'unresolved') {
+      errors.push(`${label}.${styleRef}.status "${String(item.status)}" is not supported.`);
+    }
+    if (item.status === 'source') {
+      requireString(errors, `${label}.${styleRef}.sourceAnchor`, item.sourceAnchor);
+    }
+    if (item.status === 'linked-artifact-pending') {
+      requireString(errors, `${label}.${styleRef}.artifactRef`, item.artifactRef);
+    }
+    if (item.status === 'unresolved') {
+      errors.push(`${label}.${styleRef} style evidence is unresolved.`);
+    }
+  }
+}
+
+function validateCompositionBindings(errors: string[], screen: ScreenDefinition, section: ScreenSection): void {
+  for (const dependency of section.uses ?? []) {
+    const label = `screen.${screen.id}.section.${section.id}.uses.${dependency.kind}.${dependency.id}.binding`;
+    if (!dependency.binding) {
+      errors.push(`${label} is required for strict handoff readiness.`);
+      continue;
+    }
+
+    requireString(errors, `${label}.slot`, dependency.binding.slot);
+    const hasBindingDetail = [
+      dependency.binding.state,
+      dependency.binding.variant,
+      dependency.binding.prop,
+      dependency.binding.copy,
+      dependency.binding.data,
+      dependency.binding.layout,
+      dependency.binding.accessibility
+    ].some(value => typeof value === 'string' && value.length > 0);
+
+    if (!hasBindingDetail) {
+      errors.push(`${label} must describe at least one state, variant, prop, copy, data, layout, or accessibility binding.`);
+    }
+  }
+}
+
 function collectIds<T extends { id: string }>(
   errors: string[],
   label: string,
@@ -231,5 +427,11 @@ function requireNumber(errors: string[], label: string, value: unknown): void {
 function requireArray(errors: string[], label: string, value: unknown): void {
   if (!Array.isArray(value)) {
     errors.push(`${label} must be an array.`);
+  }
+}
+
+function requireObject(errors: string[], label: string, value: unknown): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    errors.push(`${label} must be an object.`);
   }
 }
