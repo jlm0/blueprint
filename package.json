@@ -12,6 +12,7 @@
   },
   "files": [
     "dist/cli",
+    "dist/site",
     "docs",
     "schema",
     "starter",

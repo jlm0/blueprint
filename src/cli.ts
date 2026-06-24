@@ -3,6 +3,9 @@ import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { boundaryId, parseBoundarySelector } from './core/address';
 import { loadProjectFromFs } from './core/load';
 import { validateProject } from './core/validate';
 import {
@@ -16,9 +19,14 @@ import {
 } from './core/query';
 import type { ValidationMode } from './core/types';
 
-type Command = 'init' | 'validate' | 'index' | 'query' | 'extract';
+type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture';
 type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
 type ExtractMode = 'focused' | 'deep';
+
+interface CaptureServer {
+  url: string;
+  close: () => Promise<void>;
+}
 
 interface Args {
   command?: Command;
@@ -35,6 +43,7 @@ interface Args {
 }
 
 const packageRoot = findPackageRoot();
+const runtimeImport = new Function('specifier', 'return import(specifier)') as <T>(specifier: string) => Promise<T>;
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
@@ -65,6 +74,11 @@ async function main(): Promise<void> {
 
   if (args.command === 'extract') {
     await commandExtract(args);
+    return;
+  }
+
+  if (args.command === 'capture') {
+    await commandCapture(args);
     return;
   }
 }
@@ -184,6 +198,79 @@ async function commandExtract(args: Args): Promise<void> {
   await writeOutput(packet, undefined);
 }
 
+async function commandCapture(args: Args): Promise<void> {
+  const project = requireArg(args.project, '--project');
+  const boundary = requireArg(args.boundary, '--boundary');
+  const out = requireArg(args.out, '--out');
+  const selector = parseBoundarySelector(boundary);
+  if (selector.kind !== 'screen') {
+    throw new Error(`blueprint capture currently supports screen boundaries. Received ${selector.kind}:${selector.id}.`);
+  }
+
+  const bundle = await loadProjectFromFs(project);
+  showBoundary(bundle, selector);
+  const selectedScreen = bundle.screens.screens.find(screen => screen.id === selector.id);
+  if (!selectedScreen) {
+    throw new Error(`Screen not found: ${selector.id}.`);
+  }
+  const renderBundle = {
+    ...bundle,
+    screens: {
+      ...bundle.screens,
+      screens: [selectedScreen, ...bundle.screens.screens.filter(screen => screen.id !== selector.id)]
+    }
+  };
+  const resolvedOut = path.resolve(out);
+  await mkdir(path.dirname(resolvedOut), { recursive: true });
+
+  const fullBoundaryId = boundaryId(bundle.manifest.project.id, 'screen', selector.id);
+  const captureServer = await startCaptureServer();
+  let browser: Awaited<ReturnType<(typeof import('playwright'))['chromium']['launch']>> | undefined;
+
+  try {
+    const { chromium } = await runtimeImport<typeof import('playwright')>('playwright');
+    browser = await chromium.launch();
+    const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
+        configurable: true,
+        value: projectBundle
+      });
+    }, renderBundle);
+
+    await page.goto(`${captureServer.url}?board=screens`);
+    const frame = page.locator(`[data-boundary-id="${cssAttr(fullBoundaryId)}"]`).first();
+    await frame.waitFor({ state: 'visible', timeout: 10000 });
+    const save = frame.locator('.frame-save').first();
+    await save.waitFor({ state: 'visible', timeout: 5000 });
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
+    await save.click();
+    const download = await downloadPromise;
+    await download.saveAs(resolvedOut);
+
+    await writeOutput(
+      {
+        command: 'capture',
+        project: normalize(path.resolve(project)),
+        projectId: bundle.manifest.project.id,
+        boundary: fullBoundaryId,
+        out: normalize(resolvedOut),
+        mediaType: 'image/png',
+        source: {
+          board: 'screens',
+          captureTarget: 'screen-frame',
+          method: 'browser-rendered-frame-save'
+        }
+      },
+      undefined
+    );
+  } finally {
+    await browser?.close();
+    await captureServer.close();
+  }
+}
+
 async function rewriteStarterProject(destination: string, projectId: string, name: string): Promise<void> {
   const manifestPath = path.join(destination, 'manifest.json');
   const tokensPath = path.join(destination, 'tokens.json');
@@ -285,7 +372,7 @@ function parseArgs(argv: string[]): Args {
 }
 
 function isCommand(value: string | undefined): value is Command {
-  return value === 'init' || value === 'validate' || value === 'index' || value === 'query' || value === 'extract';
+  return value === 'init' || value === 'validate' || value === 'index' || value === 'query' || value === 'extract' || value === 'capture';
 }
 
 function requireArg(value: string | undefined, name: string): string {
@@ -333,8 +420,109 @@ function findPackageRoot(): string {
   return process.cwd();
 }
 
+async function startCaptureServer(): Promise<CaptureServer> {
+  if (existsSync(path.join(packageRoot, 'src', 'app', 'main.ts'))) {
+    const { createServer } = await runtimeImport<typeof import('vite')>('vite');
+    const server = await createServer({
+      root: packageRoot,
+      logLevel: 'error',
+      server: {
+        host: '127.0.0.1',
+        port: 0
+      }
+    });
+    await server.listen();
+    const address = server.httpServer?.address();
+    const port = typeof address === 'object' && address ? address.port : 5173;
+    return {
+      url: `http://127.0.0.1:${port}`,
+      close: async () => {
+        await server.close();
+      }
+    };
+  }
+
+  const siteRoot = path.join(packageRoot, 'dist', 'site');
+  if (!existsSync(path.join(siteRoot, 'index.html'))) {
+    throw new Error('Blueprint capture requires the app source or a built dist/site. Run from the Blueprint repo or run `npm run build:site` first.');
+  }
+
+  return startStaticSiteServer(siteRoot);
+}
+
+async function startStaticSiteServer(siteRoot: string): Promise<CaptureServer> {
+  const server = createHttpServer(async (request, response) => {
+    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const pathname = decodeURIComponent(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
+    const filePath = path.resolve(siteRoot, `.${pathname}`);
+    if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
+      response.writeHead(403);
+      response.end('Forbidden');
+      return;
+    }
+
+    try {
+      const body = await readFile(filePath);
+      response.writeHead(200, { 'Content-Type': contentType(filePath) });
+      response.end(body);
+    } catch {
+      response.writeHead(404);
+      response.end('Not found');
+    }
+  });
+
+  await listen(server);
+  const address = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () =>
+      new Promise((resolve, reject) => {
+        server.close(error => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      })
+  };
+}
+
+function listen(server: HttpServer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve();
+    });
+  });
+}
+
+function contentType(filePath: string): string {
+  if (filePath.endsWith('.html')) {
+    return 'text/html; charset=utf-8';
+  }
+  if (filePath.endsWith('.js')) {
+    return 'text/javascript; charset=utf-8';
+  }
+  if (filePath.endsWith('.css')) {
+    return 'text/css; charset=utf-8';
+  }
+  if (filePath.endsWith('.png')) {
+    return 'image/png';
+  }
+  if (filePath.endsWith('.svg')) {
+    return 'image/svg+xml';
+  }
+  return 'application/octet-stream';
+}
+
 function normalize(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
+}
+
+function cssAttr(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 function helpText(): string {
@@ -346,6 +534,7 @@ Commands:
   index --project <path> [--out file]
   query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
   extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
+  capture --project <path> --boundary screen:id --out file.png
 `;
 }
 

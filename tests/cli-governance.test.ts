@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -168,6 +168,82 @@ describe('Blueprint CLI and template governance', () => {
     });
   });
 
+  it('captures a visible screen boundary as a PNG through the CLI', async () => {
+    await withTempDir(async tempDir => {
+      const out = path.join(tempDir, 'home.png');
+      const capture = run('node', [
+        cliPath,
+        'capture',
+        '--project',
+        novaRoot,
+        '--boundary',
+        'screen:home',
+        '--out',
+        out
+      ]);
+
+      assert.equal(capture.status, 0, capture.stderr);
+      const summary = parseJson(capture.stdout);
+      assert.equal(summary.command, 'capture');
+      assert.equal(summary.boundary, 'nova-care/screen/home');
+      assert.equal(summary.out, normalize(out));
+      assert.equal(summary.mediaType, 'image/png');
+      assert.equal(summary.source.captureTarget, 'screen-frame');
+
+      const png = await readFile(out);
+      assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+      assert.equal(png.readUInt32BE(16), 786);
+      assert.equal(png.readUInt32BE(20), 1704);
+
+      const projectCopy = path.join(tempDir, 'project-copy');
+      await cp(novaRoot, projectCopy, { recursive: true });
+      const screensPath = path.join(projectCopy, 'screens.json');
+      const screens = JSON.parse(await readFile(screensPath, 'utf8'));
+      screens.screens.push({
+        ...screens.screens[0],
+        id: 'settings',
+        name: 'Settings',
+        description: 'Settings capture target'
+      });
+      await writeFile(screensPath, `${JSON.stringify(screens, null, 2)}\n`, 'utf8');
+
+      const settingsOut = path.join(tempDir, 'settings.png');
+      const settingsCapture = run('node', [
+        cliPath,
+        'capture',
+        '--project',
+        projectCopy,
+        '--boundary',
+        'screen:settings',
+        '--out',
+        settingsOut
+      ]);
+
+      assert.equal(settingsCapture.status, 0, settingsCapture.stderr);
+      assert.equal(parseJson(settingsCapture.stdout).boundary, 'nova-care/screen/settings');
+      const settingsPng = await readFile(settingsOut);
+      assert.equal(settingsPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    });
+  });
+
+  it('fails capture honestly for boundaries without a canonical screen PNG target', async () => {
+    await withTempDir(async tempDir => {
+      const result = run('node', [
+        cliPath,
+        'capture',
+        '--project',
+        novaRoot,
+        '--boundary',
+        'primitive:action-button',
+        '--out',
+        path.join(tempDir, 'button.png')
+      ]);
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /currently supports screen boundaries/);
+    });
+  });
+
   it('ships schema artifacts aligned with the structured contract and template AGENTS governance', async () => {
     assert.equal(existsSync('schema/blueprint-project.schema.json'), true);
     const schema = JSON.parse(await readFile('schema/blueprint-project.schema.json', 'utf8'));
@@ -184,7 +260,7 @@ describe('Blueprint CLI and template governance', () => {
     assert.match(agents, /raw .*fallback/i);
 
     const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/starter-scaffold.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;
-    for (const term of ['blueprint init', 'blueprint validate', 'blueprint index', 'blueprint query', 'blueprint extract', 'schema/blueprint-project.schema.json', 'AGENTS.md', 'single-project']) {
+    for (const term of ['blueprint init', 'blueprint validate', 'blueprint index', 'blueprint query', 'blueprint extract', 'blueprint capture', 'schema/blueprint-project.schema.json', 'AGENTS.md', 'single-project']) {
       assert.match(docs, new RegExp(escapeRegExp(term)));
     }
   });
