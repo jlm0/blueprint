@@ -61,10 +61,10 @@ npm run qa
 
 ## Local CLI
 
-Blueprint also exposes a local package/bin surface for app-owned sidecars. Build it with:
+Blueprint also exposes a local package/bin surface for app-owned sidecars. Build the CLI and static site with:
 
 ```text
-npm run build:cli
+npm run build
 ```
 
 Then use the generated `blueprint` command shape from an app repo or local package link:
@@ -73,13 +73,14 @@ Then use the generated `blueprint` command shape from an app repo or local packa
 blueprint init --project-id my-app --name "My App" --out design/blueprint
 blueprint validate --project design/blueprint
 blueprint validate --project design/blueprint --mode readiness
+blueprint serve --project design/blueprint
 blueprint index --project design/blueprint
 blueprint query --project design/blueprint --type show --boundary screen:home
 blueprint extract --project design/blueprint --boundary screen:home --out packet.json
 blueprint capture --project design/blueprint --boundary screen:home --out home.png
 ```
 
-The CLI is single-project by design: every command takes one explicit app-owned project path. `init` fails on non-empty destinations unless `--force` is provided, and force mode overwrites Blueprint starter files in place rather than deleting the destination directory. `validate` defaults to baseline validation; `validate --mode strict` checks the hard production handoff contract; and `validate --mode readiness` returns a tiered report that distinguishes ready, pending, unresolved, and blocked states. `index` is backed by structured boundary references, and `extract` writes focused packets by default with `--mode deep` available when the handoff contract API is present. `capture` is browser-backed and writes a PNG for a visible screen boundary so agents can attach the reviewed screen image without manually driving the canvas. Schema artifacts are shipped under `schema/blueprint-project.schema.json`, and copied starter projects include `AGENTS.md` governance that keeps future agents on the sidecar-first workflow.
+The CLI is single-project by design: every command takes one explicit app-owned project path. `init` fails on non-empty destinations unless `--force` is provided, and force mode overwrites Blueprint starter files in place rather than deleting the destination directory. `validate` defaults to baseline validation; `validate --mode strict` checks the hard production handoff contract; and `validate --mode readiness` returns a tiered report that distinguishes ready, pending, unresolved, and blocked states. `serve` starts a local-only visual canvas at `http://127.0.0.1:4173/` by default, or an explicit `--port`, using built `dist/site` assets and the requested project bundle. It re-reads the app-owned JSON files on browser reload or refetch, preserves the last good bundle during transient malformed or baseline-invalid edits, returns an actionable error page when the first load is invalid, and never becomes a central project manager. `index` is backed by structured boundary references, and `extract` writes focused packets by default with `--mode deep` available when the handoff contract API is present. `capture` is browser-backed and writes a PNG for a visible screen boundary so agents can attach the reviewed screen image without manually driving the canvas. Schema artifacts are shipped under `schema/blueprint-project.schema.json`, and copied starter projects include `AGENTS.md` governance that keeps future agents on the sidecar-first workflow.
 
 `npm run extract:artifacts` writes canonical primitive and screen packets under `.blueprint-artifacts/extraction-query/` by default. `npm run smoke:browser` renders the dark Blueprint canvas, verifies the Primitives board is driven by starter, Nova Care, and Atlas Pay sidecar data, verifies the Screens board keeps its reusable empty phone placeholder, proves visible-boundary synchronization, review-loop affordances, no-dashboard constraints, and single-project rendering, then writes screenshots, review manifests, and canvas-side style evidence under `.blueprint-artifacts/browser-smoke/` by default. Set `BLUEPRINT_ARTIFACT_ROOT=<path>` to place either command's evidence under a caller-provided artifact root.
 

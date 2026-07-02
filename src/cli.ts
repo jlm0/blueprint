@@ -19,7 +19,7 @@ import {
 } from './core/query';
 import type { ValidationMode } from './core/types';
 
-type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture';
+type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture' | 'serve';
 type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
 type ExtractMode = 'focused' | 'deep';
 type CliValidationMode = ValidationMode | 'readiness';
@@ -27,6 +27,10 @@ type CliValidationMode = ValidationMode | 'readiness';
 interface CaptureServer {
   url: string;
   close: () => Promise<void>;
+}
+
+interface ServeServer extends CaptureServer {
+  port: number;
 }
 
 interface Args {
@@ -39,6 +43,7 @@ interface Args {
   screen?: string;
   type?: QueryType;
   mode?: string;
+  port?: string;
   force: boolean;
   help: boolean;
 }
@@ -82,6 +87,11 @@ async function main(): Promise<void> {
     await commandCapture(args);
     return;
   }
+
+  if (args.command === 'serve') {
+    await commandServe(args);
+    return;
+  }
 }
 
 async function commandInit(args: Args): Promise<void> {
@@ -118,6 +128,7 @@ async function commandInit(args: Args): Promise<void> {
       validation,
       nextCommands: [
         `blueprint validate --project ${normalize(destination)}`,
+        `blueprint serve --project ${normalize(destination)}`,
         `blueprint index --project ${normalize(destination)}`,
         `blueprint query --project ${normalize(destination)} --type show --boundary screen:home`,
         `blueprint extract --project ${normalize(destination)} --boundary screen:home --out packet.json`
@@ -294,6 +305,17 @@ async function commandCapture(args: Args): Promise<void> {
   }
 }
 
+async function commandServe(args: Args): Promise<void> {
+  const project = requireArg(args.project, '--project');
+  const port = servePort(args.port);
+  const projectRoot = path.resolve(project);
+  assertBlueprintProjectPath(projectRoot);
+
+  const server = await startServeServer(projectRoot, port);
+  process.stdout.write(`Blueprint serve ready: ${server.url}\n`);
+  await waitForShutdown(server);
+}
+
 async function rewriteStarterProject(destination: string, projectId: string, name: string): Promise<void> {
   const manifestPath = path.join(destination, 'manifest.json');
   const tokensPath = path.join(destination, 'tokens.json');
@@ -337,6 +359,18 @@ async function writeOutput(value: unknown, out?: string, options: { printOutSumm
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function assertBlueprintProjectPath(projectRoot: string): void {
+  if (!existsSync(projectRoot)) {
+    throw new Error(`Blueprint project path not found: ${normalize(projectRoot)}.`);
+  }
+  for (const fileName of ['manifest.json', 'tokens.json', 'primitives.json', 'screens.json']) {
+    const filePath = path.join(projectRoot, fileName);
+    if (!existsSync(filePath)) {
+      throw new Error(`Missing Blueprint project file: ${normalize(filePath)}.`);
+    }
+  }
 }
 
 function parseArgs(argv: string[]): Args {
@@ -386,6 +420,8 @@ function parseArgs(argv: string[]): Args {
       args.type = value as QueryType;
     } else if (key === '--mode') {
       args.mode = value;
+    } else if (key === '--port') {
+      args.port = value;
     } else {
       throw new Error(`Unknown argument ${key}.`);
     }
@@ -395,7 +431,7 @@ function parseArgs(argv: string[]): Args {
 }
 
 function isCommand(value: string | undefined): value is Command {
-  return value === 'init' || value === 'validate' || value === 'index' || value === 'query' || value === 'extract' || value === 'capture';
+  return value === 'init' || value === 'validate' || value === 'index' || value === 'query' || value === 'extract' || value === 'capture' || value === 'serve';
 }
 
 function requireArg(value: string | undefined, name: string): string {
@@ -433,6 +469,17 @@ function extractMode(value: string | undefined): ExtractMode {
     return 'deep';
   }
   throw new Error('--mode must be "focused" or "deep".');
+}
+
+function servePort(value: string | undefined): number {
+  if (!value) {
+    return 4173;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
+    throw new Error('--port must be an integer between 0 and 65535.');
+  }
+  return parsed;
 }
 
 function findPackageRoot(): string {
@@ -476,10 +523,122 @@ async function startCaptureServer(): Promise<CaptureServer> {
   return startStaticSiteServer(siteRoot);
 }
 
+async function startServeServer(projectRoot: string, port: number): Promise<ServeServer> {
+  const siteRoot = path.join(packageRoot, 'dist', 'site');
+  const indexPath = path.join(siteRoot, 'index.html');
+  if (!existsSync(indexPath)) {
+    throw new Error('Blueprint serve requires built site assets at dist/site. Run `npm run build` first.');
+  }
+  const indexHtml = await readFile(indexPath, 'utf8');
+  if (!indexHtml.includes('<script type="module"')) {
+    throw new Error('Blueprint serve could not find the built module script in dist/site/index.html. Re-run `npm run build` and try again.');
+  }
+
+  let lastGoodBundle: Awaited<ReturnType<typeof loadProjectFromFs>> | undefined;
+  let lastLoadError: string | undefined;
+
+  const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string }> => {
+    try {
+      const bundle = await loadProjectFromFs(projectRoot);
+      const validation = validateProject(bundle);
+      if (!validation.ok) {
+        throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+      }
+      lastGoodBundle = bundle;
+      lastLoadError = undefined;
+      return { bundle };
+    } catch (error) {
+      lastLoadError = error instanceof Error ? error.message : String(error);
+      return { bundle: lastGoodBundle, error: lastLoadError };
+    }
+  };
+
+  const server = createHttpServer(async (request, response) => {
+    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const pathname = decodeRequestPathname(requestUrl);
+    if (!pathname) {
+      response.writeHead(400);
+      response.end('Bad request');
+      return;
+    }
+
+    if (pathname === '/index.html') {
+      const snapshot = await readBundleSnapshot();
+      response.setHeader('Cache-Control', 'no-store');
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      if (!snapshot.bundle) {
+        response.writeHead(200);
+        response.end(createServeErrorHtml(lastLoadError ?? 'Unable to load Blueprint project.'));
+        return;
+      }
+      response.writeHead(200);
+      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error));
+      return;
+    }
+
+    const filePath = path.resolve(siteRoot, `.${pathname}`);
+    if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
+      response.writeHead(403);
+      response.end('Forbidden');
+      return;
+    }
+
+    try {
+      const body = await readFile(filePath);
+      response.writeHead(200, {
+        'Cache-Control': 'no-store',
+        'Content-Type': contentType(filePath)
+      });
+      response.end(body);
+    } catch {
+      response.writeHead(404);
+      response.end('Not found');
+    }
+  });
+
+  await listen(server, port);
+  const address = server.address() as AddressInfo;
+  return {
+    port: address.port,
+    url: `http://127.0.0.1:${address.port}/`,
+    close: () => closeHttpServer(server)
+  };
+}
+
+function injectProjectBundle(indexHtml: string, bundle: Awaited<ReturnType<typeof loadProjectFromFs>>, loadError: string | undefined): string {
+  const injection = [
+    '<script>',
+    `window.__BLUEPRINT_PROJECT_BUNDLE__=${serializeForInlineScript(bundle)};`,
+    loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript({ message: loadError })};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
+    '</script>'
+  ].join('');
+  return indexHtml.replace('<script type="module"', () => `${injection}<script type="module"`);
+}
+
+function serializeForInlineScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003C')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function createServeErrorHtml(message: string): string {
+  return `<!doctype html><html><head><meta charset="UTF-8"><title>Blueprint serve error</title></head><body><main id="blueprint-serve-error"><h1>Blueprint project error</h1><pre>${escapeHtml(message)}</pre></main></body></html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 async function startStaticSiteServer(siteRoot: string): Promise<CaptureServer> {
   const server = createHttpServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
-    const pathname = decodeURIComponent(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
+    const pathname = decodeRequestPathname(requestUrl);
+    if (!pathname) {
+      response.writeHead(400);
+      response.end('Bad request');
+      return;
+    }
     const filePath = path.resolve(siteRoot, `.${pathname}`);
     if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
       response.writeHead(403);
@@ -501,26 +660,56 @@ async function startStaticSiteServer(siteRoot: string): Promise<CaptureServer> {
   const address = server.address() as AddressInfo;
   return {
     url: `http://127.0.0.1:${address.port}`,
-    close: () =>
-      new Promise((resolve, reject) => {
-        server.close(error => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve();
-        });
-      })
+    close: () => closeHttpServer(server)
   };
 }
 
-function listen(server: HttpServer): Promise<void> {
+function decodeRequestPathname(requestUrl: URL): string | undefined {
+  try {
+    return decodeURIComponent(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
+  } catch {
+    return undefined;
+  }
+}
+
+function listen(server: HttpServer, port = 0): Promise<void> {
   return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      server.off('error', reject);
+    const onError = (error: NodeJS.ErrnoException): void => {
+      if (error.code === 'EADDRINUSE') {
+        reject(new Error(`EADDRINUSE: port ${port} is already in use for blueprint serve.`));
+        return;
+      }
+      reject(error);
+    };
+    server.once('error', onError);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', onError);
       resolve();
     });
+  });
+}
+
+function closeHttpServer(server: HttpServer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close(error => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+function waitForShutdown(server: ServeServer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const close = (): void => {
+      process.off('SIGINT', close);
+      process.off('SIGTERM', close);
+      server.close().then(resolve, reject);
+    };
+    process.once('SIGINT', close);
+    process.once('SIGTERM', close);
   });
 }
 
@@ -561,6 +750,7 @@ Commands:
   query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
   extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
   capture --project <path> --boundary screen:id --out file.png
+  serve --project <path> [--port 4173]
 `;
 }
 

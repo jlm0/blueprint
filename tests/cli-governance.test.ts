@@ -4,7 +4,9 @@ import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { request as httpRequest } from 'node:http';
+import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 
 const projectRoot = process.cwd();
 const cliPath = path.join(projectRoot, 'dist/cli/cli.js');
@@ -21,14 +23,17 @@ describe('Blueprint CLI and template governance', () => {
     assert.equal(packageJson.bin?.blueprint, './dist/cli/cli.js');
     assert.ok(packageJson.exports?.['.']);
     assert.ok(packageJson.scripts?.['build:cli']);
+    assert.ok(packageJson.scripts?.['build:site']);
 
-    const build = run('npm', ['run', '--silent', 'build:cli']);
+    const build = run('npm', ['run', '--silent', 'build']);
     assert.equal(build.status, 0, build.stderr || build.stdout);
     assert.equal((await stat(cliPath)).isFile(), true);
+    assert.equal((await stat(path.join(projectRoot, 'dist/site/index.html'))).isFile(), true);
 
     const help = run('node', [cliPath, '--help']);
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /blueprint <command>/);
+    assert.match(help.stdout, /serve --project <path> \[--port 4173\]/);
   });
 
   it('initializes a safe app-owned Blueprint project and rewrites starter identity', async () => {
@@ -246,6 +251,136 @@ describe('Blueprint CLI and template governance', () => {
     });
   });
 
+  it('serves one explicit app-owned project with deterministic local lifecycle behavior', async () => {
+    const projectPath = path.resolve(novaRoot);
+    const port = await getAvailablePort();
+    const server = await startServe(projectPath, ['--port', String(port)]);
+
+    try {
+      assert.equal(server.url, `http://127.0.0.1:${port}/`);
+      assert.match(server.stdout(), new RegExp(`Blueprint serve ready: http://127\\.0\\.0\\.1:${port}/`));
+
+      const response = await fetch(server.url);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      const html = await response.text();
+      const injectionIndex = html.indexOf('window.__BLUEPRINT_PROJECT_BUNDLE__');
+      const moduleIndex = html.indexOf('type="module"');
+      assert.ok(injectionIndex >= 0, 'expected served HTML to inject an app-owned project bundle');
+      assert.ok(moduleIndex > injectionIndex, 'expected the bundle injection script before the built module script');
+      assert.equal(await requestStatus(port, '/%zz'), 400);
+      assert.equal(server.isRunning(), true, 'malformed request paths should not stop the long-lived serve process');
+
+      const { chromium } = await import('playwright');
+      const browser = await chromium.launch();
+      try {
+        const page = await browser.newPage();
+        await page.goto(server.url);
+        const projectId = await page.evaluate(() => {
+          type ServedWindow = Window & {
+            __BLUEPRINT_PROJECT_BUNDLE__?: { manifest?: { project?: { id?: string; name?: string } } };
+          };
+          return (window as ServedWindow).__BLUEPRINT_PROJECT_BUNDLE__?.manifest?.project?.id;
+        });
+        assert.equal(projectId, 'nova-care');
+        assert.doesNotMatch(await page.locator('body').innerText(), /Starter App/);
+      } finally {
+        await browser.close();
+      }
+    } finally {
+      await server.close();
+    }
+
+    const occupied = await occupyPort(port);
+    try {
+      const result = run('node', [cliPath, 'serve', '--project', projectPath, '--port', String(port)], { timeoutMs: 10000 });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, new RegExp(`EADDRINUSE.*${port}|${port}.*EADDRINUSE`));
+    } finally {
+      await closeNetServer(occupied);
+    }
+
+    const defaultPort = await occupyPort(4173).catch(() => undefined);
+    try {
+      const result = run('node', [cliPath, 'serve', '--project', projectPath], { timeoutMs: 10000 });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /4173/);
+      assert.match(result.stderr, /EADDRINUSE|already in use/i);
+    } finally {
+      if (defaultPort) {
+        await closeNetServer(defaultPort);
+      }
+    }
+
+    const invalid = run('node', [cliPath, 'serve', '--project', path.join(projectRoot, 'does-not-exist'), '--port', String(await getAvailablePort())], { timeoutMs: 10000 });
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, /Blueprint project path not found|Missing Blueprint project file|does-not-exist/i);
+  });
+
+  it('serves from the built package surface and refreshes or recovers as project files change', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'app-owned', 'design', 'blueprint');
+      await cp(novaRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.name = 'Serve Copy';
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+      const port = await getAvailablePort();
+      const server = await startServe(projectCopy, ['--port', String(port)], tempDir);
+
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(server.url);
+          assert.equal(await servedProjectName(page), 'Serve Copy');
+
+          const refreshedProjectName = "Serve Refreshed </script> \u2028 Save $$$ and $' Name";
+          manifest.project.name = refreshedProjectName;
+          await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          const refreshedHtml = await (await fetch(server.url)).text();
+          assert.equal(refreshedHtml.includes('Serve Refreshed </script>'), false, 'script-breaking project data must be escaped');
+          await page.reload();
+          assert.equal(await servedProjectName(page), refreshedProjectName);
+
+          await writeFile(manifestPath, '{ "project": ', 'utf8');
+          await page.reload();
+          assert.equal(await servedProjectName(page), refreshedProjectName);
+          assert.equal(server.isRunning(), true, 'serve process should stay alive while project JSON is malformed');
+
+          manifest.project.name = 'Serve Recovered';
+          await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          await page.reload();
+          assert.equal(await servedProjectName(page), 'Serve Recovered');
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it('keeps serve alive with an actionable error for initially invalid project content', async () => {
+    const invalidProject = path.resolve('fixtures/invalid/missing-section/design/blueprint');
+    const port = await getAvailablePort();
+    const server = await startServe(invalidProject, ['--port', String(port)]);
+
+    try {
+      const response = await fetch(server.url);
+      assert.equal(response.status, 200);
+      const html = await response.text();
+      assert.match(html, /Blueprint project error/);
+      assert.match(html, /screen\.home\.section\.id must be a non-empty string/);
+      assert.equal(server.isRunning(), true, 'serve process should stay alive when initial project content is baseline-invalid');
+    } finally {
+      await server.close();
+    }
+  });
+
   it('fails capture honestly for boundaries without a canonical screen PNG target', async () => {
     await withTempDir(async tempDir => {
       const result = run('node', [
@@ -280,9 +415,12 @@ describe('Blueprint CLI and template governance', () => {
     assert.match(agents, /raw .*fallback/i);
 
     const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/starter-scaffold.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;
-    for (const term of ['blueprint init', 'blueprint validate', 'blueprint index', 'blueprint query', 'blueprint extract', 'blueprint capture', 'schema/blueprint-project.schema.json', 'AGENTS.md', 'single-project']) {
+    for (const term of ['blueprint init', 'blueprint validate', 'blueprint serve', 'blueprint index', 'blueprint query', 'blueprint extract', 'blueprint capture', 'schema/blueprint-project.schema.json', 'AGENTS.md', 'single-project']) {
       assert.match(docs, new RegExp(escapeRegExp(term)));
     }
+    assert.match(docs, /init[\s\S]+validate[\s\S]+serve[\s\S]+query[\s\S]+extract[\s\S]+capture/i);
+    assert.match(docs, /never becomes a central project manager|not .*central registry|not .*centralized/i);
+    assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);
   });
 });
 
@@ -347,17 +485,167 @@ function resolveStyleEvidence(value: unknown, sourcePath: string): void {
   }
 }
 
-function run(command: string, args: string[]): { status: number | null; stdout: string; stderr: string } {
+function run(command: string, args: string[], options: { timeoutMs?: number } = {}): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync(command, args, {
     cwd: projectRoot,
     encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1' }
+    env: { ...process.env, NO_COLOR: '1' },
+    killSignal: 'SIGKILL',
+    timeout: options.timeoutMs ?? 60000
   });
   return {
     status: result.status,
     stdout: result.stdout,
     stderr: result.stderr
   };
+}
+
+async function startServe(projectPath: string, extraArgs: string[], cwd = projectRoot): Promise<{
+  url: string;
+  stdout: () => string;
+  stderr: () => string;
+  isRunning: () => boolean;
+  close: () => Promise<void>;
+}> {
+  const child = spawn('node', [cliPath, 'serve', '--project', projectPath, ...extraArgs], {
+    cwd,
+    env: { ...process.env, NO_COLOR: '1' },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let stdout = '';
+  let stderr = '';
+  const readyPattern = /Blueprint serve ready: (http:\/\/127\.0\.0\.1:\d+\/)/;
+
+  child.stdout.on('data', chunk => {
+    stdout += chunk.toString();
+  });
+  child.stderr.on('data', chunk => {
+    stderr += chunk.toString();
+  });
+
+  const url = await new Promise<string>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`Timed out waiting for serve readiness.\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    }, 15000);
+
+    const inspect = (): void => {
+      const match = stdout.match(readyPattern);
+      if (match?.[1]) {
+        clearTimeout(timeout);
+        cleanup();
+        resolve(match[1]);
+      }
+    };
+    const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+      clearTimeout(timeout);
+      cleanup();
+      reject(new Error(`Serve exited before readiness with code ${code ?? 'null'} signal ${signal ?? 'null'}.\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    };
+    const cleanup = (): void => {
+      child.stdout.off('data', inspect);
+      child.off('exit', onExit);
+    };
+
+    child.stdout.on('data', inspect);
+    child.once('exit', onExit);
+    inspect();
+  });
+
+  return {
+    url,
+    stdout: () => stdout,
+    stderr: () => stderr,
+    isRunning: () => child.exitCode === null && child.signalCode === null,
+    close: () => stopServe(child, () => stderr)
+  };
+}
+
+async function stopServe(child: ChildProcess, stderr: () => string): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+  child.kill('SIGINT');
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`Serve did not shut down after SIGINT.\nstderr:\n${stderr()}`));
+    }, 5000);
+    child.once('exit', code => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        reject(new Error(`Serve exited with code ${code ?? 'null'} after SIGINT.\nstderr:\n${stderr()}`));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+async function getAvailablePort(): Promise<number> {
+  const server = await occupyPort(0);
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Expected an ephemeral TCP port.');
+  }
+  const port = address.port;
+  await closeNetServer(server);
+  return port;
+}
+
+function occupyPort(port: number): Promise<NetServer> {
+  return new Promise((resolve, reject) => {
+    const server = createNetServer();
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve(server);
+    });
+  });
+}
+
+function closeNetServer(server: NetServer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close(error => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+function requestStatus(port: number, target: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(
+      {
+        host: '127.0.0.1',
+        method: 'GET',
+        path: target,
+        port
+      },
+      response => {
+        response.resume();
+        response.on('end', () => {
+          resolve(response.statusCode ?? 0);
+        });
+      }
+    );
+    request.once('error', reject);
+    request.end();
+  });
+}
+
+async function servedProjectName(page: {
+  evaluate: <T>(fn: () => T) => Promise<T>;
+}): Promise<string | undefined> {
+  return page.evaluate(() => {
+    type ServedWindow = Window & {
+      __BLUEPRINT_PROJECT_BUNDLE__?: { manifest?: { project?: { name?: string } } };
+    };
+    return (window as ServedWindow).__BLUEPRINT_PROJECT_BUNDLE__?.manifest?.project?.name;
+  });
 }
 
 function parseJson(stdout: string): any {
