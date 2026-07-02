@@ -56,12 +56,14 @@ if (!app) {
 const project = loadConfiguredProject();
 const shell = el('div');
 shell.id = 'app-shell';
+shell.className = 'bp-chrome-shell';
 
-const switcher = el('nav', 'board-switcher');
+const switcher = el('nav', 'board-switcher bp-chrome-board-switcher');
 switcher.setAttribute('aria-label', 'Blueprint boards');
 
 const viewport = el('main');
 viewport.id = 'viewport';
+viewport.className = 'bp-chrome-viewport';
 viewport.setAttribute('aria-label', 'Blueprint canvas');
 
 const world = el('div');
@@ -183,7 +185,7 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     subtitle: `${bundle.tokens.tokenGroups.length} app-owned groups`,
     x: 70,
     y: 300,
-    accent: 'var(--accent-token)'
+    accent: 'var(--bp-sample-accent-token)'
   });
   bundle.tokens.tokenGroups.forEach((group, index) => {
     addTokenGroupCard(root, controller, bundle, tokenIndex, group, {
@@ -577,29 +579,29 @@ function familyLabel(family: string): string {
 
 function familyAccent(family: string): string {
   const accents: Record<string, string> = {
-    token: 'var(--accent-token)',
-    button: 'var(--accent-action)',
-    input: 'var(--accent-input)',
-    checkbox: 'var(--accent-input)',
-    switch: 'var(--accent-input)',
-    slider: 'var(--accent-input)',
-    surface: 'var(--accent-surface)',
-    card: 'var(--accent-surface)',
-    media: 'var(--accent-surface)',
-    navigation: 'var(--accent-surface)',
-    separator: 'var(--accent-surface)',
-    list: 'var(--accent-row)',
-    row: 'var(--accent-row)',
-    loading: 'var(--accent-feedback)',
-    badge: 'var(--accent-feedback)',
-    icon: 'var(--accent-feedback)',
-    skeleton: 'var(--accent-feedback)',
-    dialog: 'var(--accent-overlay)',
-    menu: 'var(--accent-overlay)',
-    sheet: 'var(--accent-overlay)',
-    generic: 'var(--fg)'
+    token: 'var(--bp-sample-accent-token)',
+    button: 'var(--bp-sample-accent-action)',
+    input: 'var(--bp-sample-accent-input)',
+    checkbox: 'var(--bp-sample-accent-input)',
+    switch: 'var(--bp-sample-accent-input)',
+    slider: 'var(--bp-sample-accent-input)',
+    surface: 'var(--bp-sample-accent-surface)',
+    card: 'var(--bp-sample-accent-surface)',
+    media: 'var(--bp-sample-accent-surface)',
+    navigation: 'var(--bp-sample-accent-surface)',
+    separator: 'var(--bp-sample-accent-surface)',
+    list: 'var(--bp-sample-accent-row)',
+    row: 'var(--bp-sample-accent-row)',
+    loading: 'var(--bp-sample-accent-feedback)',
+    badge: 'var(--bp-sample-accent-feedback)',
+    icon: 'var(--bp-sample-accent-feedback)',
+    skeleton: 'var(--bp-sample-accent-feedback)',
+    dialog: 'var(--bp-sample-accent-overlay)',
+    menu: 'var(--bp-sample-accent-overlay)',
+    sheet: 'var(--bp-sample-accent-overlay)',
+    generic: 'var(--bp-sample-fg)'
   };
-  return accents[family] ?? 'var(--fg)';
+  return accents[family] ?? 'var(--bp-sample-fg)';
 }
 
 function familyWidth(family: string): number {
@@ -698,7 +700,7 @@ function addGroupHeading(
   controller: CanvasController,
   options: { title: string; subtitle: string; x: number; y: number; accent: string }
 ): HTMLElement {
-  const heading = el('div', 'group-head');
+  const heading = el('div', 'group-head bp-chrome-group-head');
   heading.style.left = `${options.x}px`;
   heading.style.top = `${options.y}px`;
   heading.style.setProperty('--head-accent', options.accent);
@@ -716,8 +718,8 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   frame.dataset.screenId = screen.id;
   frame.dataset.boundarySummary = screen.description;
 
-  const head = el('div', 'frame-head');
-  const chip = el('button', 'frame-chip') as HTMLButtonElement;
+  const head = el('div', 'frame-head bp-chrome-frame-head');
+  const chip = el('button', 'frame-chip bp-chrome-frame-chip') as HTMLButtonElement;
   chip.type = 'button';
   chip.title = 'Copy screen boundary id';
   chip.dataset.boundaryAction = 'copy-id';
@@ -737,8 +739,8 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
       }
     }, 900);
   });
-  const shot = createIconButton('frame-shot', 'Copy screen as PNG', cameraIcon());
-  const save = createIconButton('frame-save', 'Save screen as PNG', downloadIcon());
+  const shot = createIconButton('frame-shot bp-chrome-frame-tool bp-chrome-frame-shot', 'Copy screen as PNG', cameraIcon());
+  const save = createIconButton('frame-save bp-chrome-frame-tool bp-chrome-frame-save', 'Save screen as PNG', downloadIcon());
   head.append(chip, shot, save);
 
   const screenEl = el('div', 'screen screen-template');

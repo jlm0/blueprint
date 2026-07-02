@@ -2,7 +2,19 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const runtimeRoots = ['src/app', 'src/core', 'src/index.ts', 'index.html', 'package.json'];
-const forbiddenRuntimeTerms = ['reference', 'reference-app', 'packages/ui', 'central project manager', 'centralized project manager'];
+const forbiddenRuntimeTerms = [
+  'reference',
+  'reference-app',
+  'packages/ui',
+  'dashboard',
+  'inspector',
+  'marketing hero',
+  'hero page',
+  'figma clone',
+  'project manager',
+  'central project manager',
+  'centralized project manager'
+];
 const forbiddenRuntimePackages = [
   'react',
   'react-dom',
