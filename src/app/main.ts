@@ -9,6 +9,7 @@ import {
 import type {
   BlueprintProjectBundle,
   BoardDefinition,
+  BoundaryDependency,
   BoundaryKind,
   DesignToken,
   PrimitiveDefinition,
@@ -679,8 +680,12 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
       fallbackHeight: 852
     });
   const controller = configure();
-  const screen = bundle.screens.screens[0];
-  root.append(createPrototypeFrame(bundle, screen, 90, 160));
+  const tokenIndex = createTokenIndex(bundle);
+  bundle.screens.screens.forEach((screen, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    root.append(createPrototypeFrame(bundle, tokenIndex, screen, 90 + column * 520, 160 + row * 980));
+  });
 
   return {
     configure,
@@ -703,7 +708,7 @@ function addGroupHeading(
   return heading;
 }
 
-function createPrototypeFrame(bundle: BlueprintProjectBundle, screen: ScreenDefinition, x: number, y: number): HTMLElement {
+function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, screen: ScreenDefinition, x: number, y: number): HTMLElement {
   const frame = el('article', 'frame');
   frame.style.left = `${x}px`;
   frame.style.top = `${y}px`;
@@ -738,11 +743,155 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, screen: ScreenDefi
 
   const screenEl = el('div', 'screen screen-template');
   const body = el('div', 'screen-template-body');
+  body.dataset.screenId = screen.id;
+  for (const section of screen.sections) {
+    body.append(createScreenSectionPrototype(bundle, tokenIndex, screen, section));
+  }
   screenEl.append(createStatusBar(), body, el('div', 'home-indicator'));
   wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
 
   frame.append(head, screenEl);
   return frame;
+}
+
+function createScreenSectionPrototype(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  screen: ScreenDefinition,
+  section: ScreenDefinition['sections'][number]
+): HTMLElement {
+  const sectionEl = el('section', 'screen-section');
+  setBoundary(sectionEl, 'section', `${screen.id}/${section.id}`, bundle.manifest.project.id, section.name);
+  sectionEl.dataset.screenId = screen.id;
+  sectionEl.dataset.prototypeOnly = String(section.prototypeOnly);
+
+  const dependencies = section.uses.map(dependency => createScreenDependencyView(bundle, tokenIndex, section, dependency));
+  const primaryDependency = dependencies[0];
+  if (primaryDependency) {
+    sectionEl.dataset.screenDependencyFamily = primaryDependency.family;
+    sectionEl.style.setProperty('--section-accent', familyAccent(primaryDependency.family));
+  } else {
+    sectionEl.style.setProperty('--section-accent', familyAccent('generic'));
+  }
+
+  const heading = el('div', 'screen-section-head');
+  const title = el('span', 'screen-section-title', section.name);
+  heading.append(title);
+  if (section.prototypeOnly) {
+    heading.append(el('span', 'screen-section-flag', 'prototype only'));
+  }
+  sectionEl.append(heading);
+
+  const body = el('div', 'screen-section-body');
+  for (const dependency of dependencies) {
+    body.append(dependency.node);
+  }
+  if (dependencies.length === 0) {
+    body.append(el('p', 'screen-section-copy', fallbackSectionContent(section)));
+  }
+  sectionEl.append(body);
+
+  return sectionEl;
+}
+
+function createScreenDependencyView(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  section: ScreenDefinition['sections'][number],
+  dependency: BoundaryDependency
+): { node: HTMLElement; family: string } {
+  const resolved = resolveScreenDependency(bundle, dependency);
+  const family = resolved.primitive ? inferPrimitiveFamily(resolved.primitive) : 'generic';
+  const node = el('article', `screen-dependency screen-dependency-${family}`);
+  node.dataset.screenUses = `${dependency.kind}:${dependency.id}`;
+  node.dataset.prototypeFamily = family;
+  node.style.setProperty('--dependency-accent', familyAccent(family));
+
+  if (resolved.primitive) {
+    const state = resolved.state ?? resolved.primitive.stateSets.flatMap(stateSet => stateSet.states)[0];
+    const color = state ? firstStateToken(tokenIndex, state, 'color') ?? firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'color') : firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'color');
+    const radius = state ? firstStateToken(tokenIndex, state, 'radius') ?? firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'radius') : firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'radius');
+
+    if (color) {
+      setTokenHook(node, color, 'screen-dependency-background');
+      node.style.backgroundColor = color.token.value;
+    }
+    if (radius) {
+      setTokenHook(node, radius, 'screen-dependency-radius');
+      node.style.borderRadius = radius.token.value;
+    }
+
+    node.dataset.prototypePrimitive = resolved.primitive.id;
+    if (state) {
+      node.dataset.prototypeState = state.id;
+    }
+    node.append(createScreenPrototypeContent(family, resolveScreenPrototypeCopy(section, dependency, state), dependency));
+    return { node, family };
+  }
+
+  node.append(createScreenPrototypeContent(family, dependency.binding?.copy ?? fallbackSectionContent(section), dependency));
+  return { node, family };
+}
+
+function createScreenPrototypeContent(family: string, copy: string, dependency: BoundaryDependency): HTMLElement {
+  let node: HTMLElement;
+  if (family === 'button') {
+    node = el('span', 'screen-prototype-button-label', copy);
+  } else if (family === 'badge') {
+    node = el('span', 'screen-prototype-pill-label', copy);
+  } else {
+    node = el('p', 'screen-section-copy', copy);
+  }
+
+  if (dependency.binding?.data) {
+    node.dataset.dataRef = dependency.binding.data;
+  }
+  return node;
+}
+
+function resolveScreenPrototypeCopy(
+  section: ScreenDefinition['sections'][number],
+  dependency: BoundaryDependency,
+  state?: PrimitiveState
+): string {
+  if (dependency.binding?.copy && dependency.binding.copy.trim().length > 0 && !isMetadataCopy(dependency.binding.copy)) {
+    return dependency.binding.copy;
+  }
+  if (state && dependency.kind === 'primitive' && dependency.binding?.state) {
+    return state.name;
+  }
+  if (state && dependency.kind === 'state-set') {
+    return state.name;
+  }
+  return fallbackSectionContent(section);
+}
+
+function fallbackSectionContent(section: ScreenDefinition['sections'][number]): string {
+  return section.prototypeOnly ? `${section.name} placeholder` : section.name;
+}
+
+function isMetadataCopy(copy: string): boolean {
+  return /\b(label|labels|description|primitive|variant|state|schema)\b/i.test(copy);
+}
+
+function resolveScreenDependency(
+  bundle: BlueprintProjectBundle,
+  dependency: BoundaryDependency
+): { primitive?: PrimitiveDefinition; state?: PrimitiveState } {
+  if (dependency.kind === 'primitive') {
+    const primitive = bundle.primitives.primitives.find(candidate => candidate.id === dependency.id);
+    return { primitive };
+  }
+
+  if (dependency.kind === 'state-set') {
+    const [primitiveId, stateSetId] = dependency.id.split('/');
+    const primitive = bundle.primitives.primitives.find(candidate => candidate.id === primitiveId);
+    const stateSet = primitive?.stateSets.find(candidate => candidate.id === stateSetId);
+    const state = stateSet?.states.find(candidate => candidate.id === dependency.binding?.variant || candidate.id === dependency.binding?.state) ?? stateSet?.states[0];
+    return { primitive, state };
+  }
+
+  return {};
 }
 
 function createStatusBar(): HTMLElement {
@@ -876,7 +1025,7 @@ function refreshCanvasReviewState(boardId: BoardId): void {
 
   const records = collectVisibleBoundaryRecords(state.root, boardId);
   const boundarySync = validateVisibleBoundaryRecords(project, records);
-  const screenId = records.find(record => record.kind === 'screen')?.screenId;
+  const screenId = boardId === 'screens' ? undefined : records.find(record => record.kind === 'screen')?.screenId;
   window.__BLUEPRINT_REVIEW__ = {
     projectId: project.manifest.project.id,
     boundarySync,

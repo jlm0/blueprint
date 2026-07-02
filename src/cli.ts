@@ -275,6 +275,19 @@ async function commandCapture(args: Args): Promise<void> {
     await page.goto(`${captureServer.url}?board=screens`);
     const frame = page.locator(`[data-boundary-id="${cssAttr(fullBoundaryId)}"]`).first();
     await frame.waitFor({ state: 'visible', timeout: 10000 });
+    const expectedSectionBoundaries = selectedScreen.sections
+      .map(section => boundaryId(bundle.manifest.project.id, 'section', `${selectedScreen.id}/${section.id}`))
+      .sort();
+    const visibleSectionBoundaries = (await frame.locator('[data-boundary-kind="section"][data-boundary-id]').evaluateAll(elements =>
+      elements
+        .map(element => (element as HTMLElement).dataset.boundaryId ?? '')
+        .filter(Boolean)
+        .sort()
+    )) as string[];
+    const missingSectionBoundaries = expectedSectionBoundaries.filter(id => !visibleSectionBoundaries.includes(id));
+    if (missingSectionBoundaries.length > 0) {
+      throw new Error(`Screen capture pre-download DOM assertion failed. Missing visible section boundaries: ${missingSectionBoundaries.join(', ')}`);
+    }
     const save = frame.locator('.frame-save').first();
     await save.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -294,7 +307,9 @@ async function commandCapture(args: Args): Promise<void> {
         source: {
           board: 'screens',
           captureTarget: 'screen-frame',
-          method: 'browser-rendered-frame-save'
+          method: 'browser-rendered-frame-save',
+          preDownloadDomAssertion: 'passed',
+          visibleSectionBoundaries
         }
       },
       undefined

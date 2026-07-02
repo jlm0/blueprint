@@ -37,7 +37,8 @@ async function main(): Promise<void> {
     await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
     await assertDashboardChromeRemoved(page);
     await assertDarkBlueprintCanvas(page);
-    await assertDataDrivenPrimitiveBoard(page, await loadProjectFromFs('starter/design/blueprint'));
+    const starterBundle = await loadProjectFromFs('starter/design/blueprint');
+    await assertDataDrivenPrimitiveBoard(page, starterBundle);
     await assertPrimitiveCanvasPlacement(page);
     await assertVisibleBoundarySynchronization(page, 'primitives');
     await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-primitives-desktop.png'), fullPage: true });
@@ -60,19 +61,20 @@ async function main(): Promise<void> {
 
     await page.locator('[data-board="screens"]').click();
     await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
-    await assertReferenceScreenBoard(page);
+    await assertReferenceScreenBoard(page, starterBundle);
     await assertPhoneFrame(page);
-    await assertScreenPlaceholderEmpty(page);
+    await assertScreenCompositionRendered(page, starterBundle);
     await assertVisibleBoundarySynchronization(page, 'screens');
+    const starterScreensScreenshot = path.join(screenshotRoot, 'blueprint-screens-desktop.png');
+    await page.screenshot({ path: starterScreensScreenshot, fullPage: true });
+    await writeScreenReviewArtifacts(page, starterBundle.manifest.project.id, 'screens', starterScreensScreenshot);
     await assertBoundaryAffordances(page);
-    await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-screens-desktop.png'), fullPage: true });
-    await writeReviewArtifacts(page);
     await assertFrameTools(page);
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await mobile.goto(`${url}?board=screens`);
     await mobile.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
-    await assertScreenPlaceholderEmpty(mobile);
+    await assertScreenCompositionRendered(mobile, starterBundle);
     await mobile.screenshot({ path: path.join(screenshotRoot, 'blueprint-screens-mobile.png'), fullPage: true });
 
     const appOwned = await loadProjectFromFs('fixtures/app-owned/nova-care/design/blueprint');
@@ -85,8 +87,11 @@ async function main(): Promise<void> {
     }, appOwned);
     await configured.goto(`${url}?board=screens`);
     await configured.waitForSelector('.board-screens .frame[data-boundary-id="nova-care/screen/home"]', { timeout: 10000 });
-    await assertScreenPlaceholderEmpty(configured);
+    await assertScreenCompositionRendered(configured, appOwned);
     await assertNoProjectManagerChrome(configured);
+    const novaScreensScreenshot = path.join(screenshotRoot, 'nova-care-screens.png');
+    await configured.screenshot({ path: novaScreensScreenshot, fullPage: true });
+    await writeScreenReviewArtifacts(configured, appOwned.manifest.project.id, 'nova-care-screens', novaScreensScreenshot);
 
     console.log(`Browser smoke passed at ${url}. Screenshots written to ${screenshotRoot}.`);
   } finally {
@@ -246,6 +251,22 @@ async function collectPrimitiveBoundaryRecords(page: import('playwright').Page):
   ) as Promise<VisibleBoundaryRecord[]>;
 }
 
+async function collectScreenBoundaryRecords(page: import('playwright').Page): Promise<VisibleBoundaryRecord[]> {
+  return page.locator('.board-screens [data-boundary-id][data-boundary-kind]').evaluateAll(elements =>
+    elements.map(element => {
+      const node = element as HTMLElement;
+      return {
+        id: node.dataset.boundaryId ?? '',
+        kind: node.dataset.boundaryKind ?? 'project',
+        board: 'screens',
+        label: node.dataset.boundaryLabel ?? node.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? '',
+        screenId: node.dataset.screenId,
+        renderedSnippet: node.outerHTML.slice(0, 900)
+      };
+    })
+  ) as Promise<VisibleBoundaryRecord[]>;
+}
+
 async function writePrimitiveReviewArtifacts(
   page: import('playwright').Page,
   projectId: string,
@@ -330,45 +351,78 @@ async function assertPrimitiveCanvasPlacement(page: import('playwright').Page): 
   }
 }
 
-async function assertReferenceScreenBoard(page: import('playwright').Page): Promise<void> {
+async function assertReferenceScreenBoard(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
   const frames = await page.locator('.board-screens .frame').count();
-  if (frames !== 1) {
-    throw new Error(`Default Screens board should render one reusable baseline phone frame, received ${frames}.`);
+  if (frames !== bundle.screens.screens.length) {
+    throw new Error(`${bundle.manifest.project.id} Screens board should render every structured screen, received ${frames}.`);
   }
 
   const labels = await page.locator('.board-screens .frame-chip .frame-name').evaluateAll(elements =>
     elements.map(element => element.textContent?.trim()).filter(Boolean)
   );
-  const expected = ['HOME · Home'];
+  const expected = bundle.screens.screens.map(screen => `${screen.id.toUpperCase()} · ${screen.name}`);
 
   if (labels.join(',') !== expected.join(',')) {
     throw new Error(`Screen frame labels drifted from the reference canvas shape, received: ${labels.join(',')}`);
   }
-
-  const sampleContent = await page
-    .locator('.board-screens .phone-section, .board-screens .mood-scale, .board-screens .appointment-card, .board-screens .insight-card, .board-screens .bottom-sheet')
-    .count();
-  if (sampleContent !== 0) {
-    throw new Error('Default template screen should be the empty baseline frame, not populated sample app content.');
-  }
 }
 
-async function assertScreenPlaceholderEmpty(page: import('playwright').Page): Promise<void> {
-  const projectedSections = await page.locator('.board-screens .screen-section-projection').count();
-  if (projectedSections !== 0) {
-    throw new Error(`Default template screen should stay visually empty; received ${projectedSections} rendered section projections.`);
+async function assertScreenCompositionRendered(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
+  const rejectedProjectionCount = await page.locator('.board-screens .screen-section-projection').count();
+  if (rejectedProjectionCount !== 0) {
+    throw new Error(`Screens board must not reintroduce rejected metadata-card section projections; received ${rejectedProjectionCount}.`);
   }
 
-  const bodyChildCount = await page.locator('.board-screens .screen-template-body').first().evaluate(element => element.children.length);
-  if (bodyChildCount !== 0) {
-    throw new Error(`Default template screen body should stay empty, received ${bodyChildCount} child nodes.`);
+  const records = await collectScreenBoundaryRecords(page);
+  const sync = validateVisibleBoundaryRecords(bundle, records);
+  if (!sync.ok) {
+    throw new Error(`Screens board visible boundaries do not match ${bundle.manifest.project.id} structured data:\n${sync.errors.join('\n')}`);
   }
 
-  const fullAppContent = await page
-    .locator('.board-screens .mood-scale, .board-screens .appointment-card, .board-screens .insight-card, .board-screens .bottom-sheet')
-    .count();
-  if (fullAppContent !== 0) {
-    throw new Error('Default template screen should stay empty and avoid full app content rendering.');
+  const expectedScreenIds = bundle.screens.screens.map(screen => `${bundle.manifest.project.id}/screen/${screen.id}`).sort();
+  const visibleScreenIds = records.filter(record => record.kind === 'screen').map(record => record.id).sort();
+  if (visibleScreenIds.join(',') !== expectedScreenIds.join(',')) {
+    throw new Error(`${bundle.manifest.project.id} Screens board missing screen frames: expected ${expectedScreenIds.join(',')}, received ${visibleScreenIds.join(',')}`);
+  }
+
+  const expectedSectionIds = bundle.screens.screens
+    .flatMap(screen => screen.sections.map(section => `${bundle.manifest.project.id}/section/${screen.id}/${section.id}`))
+    .sort();
+  const visibleSectionIds = records.filter(record => record.kind === 'section').map(record => record.id).sort();
+  if (visibleSectionIds.join(',') !== expectedSectionIds.join(',')) {
+    throw new Error(`${bundle.manifest.project.id} Screens board missing rendered section boundaries: expected ${expectedSectionIds.join(',')}, received ${visibleSectionIds.join(',')}`);
+  }
+
+  const invalidSectionContexts = await page.locator('.board-screens [data-boundary-kind="section"]').evaluateAll(elements =>
+    elements
+      .map(element => {
+        const node = element as HTMLElement;
+        const frame = node.closest<HTMLElement>('.frame');
+        return {
+          id: node.dataset.boundaryId ?? '',
+          screenId: node.dataset.screenId ?? '',
+          frameScreenId: frame?.dataset.screenId ?? '',
+          text: node.textContent?.trim().replace(/\s+/g, ' ') ?? ''
+        };
+      })
+      .filter(record => record.screenId.length === 0 || record.frameScreenId.length === 0 || record.screenId !== record.frameScreenId || record.text.length === 0)
+  );
+  if (invalidSectionContexts.length > 0) {
+    throw new Error(`Rendered sections should have visible content and stay inside their owning frame: ${JSON.stringify(invalidSectionContexts)}`);
+  }
+
+  const metadataRelapses = await page.locator('.board-screens .screen-template-body').evaluateAll((elements, projectBundle) => {
+    const bundle = projectBundle as BlueprintProjectBundle;
+    const primitiveNames = bundle.primitives.primitives.map(primitive => primitive.name).filter(Boolean);
+    const primitiveDescriptions = bundle.primitives.primitives.map(primitive => primitive.description).filter(Boolean);
+    const forbidden = [...primitiveNames, ...primitiveDescriptions].filter(Boolean);
+    return elements.flatMap(element => {
+      const text = (element as HTMLElement).innerText;
+      return forbidden.filter(term => term.length > 0 && text.includes(term));
+    });
+  }, bundle);
+  if (metadataRelapses.length > 0) {
+    throw new Error(`Screens board should render prototype content, not primitive metadata labels/descriptions: ${[...new Set(metadataRelapses)].join(', ')}`);
   }
 }
 
@@ -404,22 +458,21 @@ async function assertBoundaryAffordances(page: import('playwright').Page): Promi
   await page.locator('.board-screens .frame-chip.copied').waitFor({ timeout: 5000 });
 }
 
-async function writeReviewArtifacts(page: import('playwright').Page): Promise<void> {
+async function writeScreenReviewArtifacts(page: import('playwright').Page, projectId: string, slug: string, screenshotPath: string): Promise<void> {
   const manifest = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.manifest);
   const styleEvidence = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.styleEvidence);
 
   if (!manifest || !styleEvidence) {
     throw new Error('Canvas should expose review manifest and style evidence artifacts.');
   }
-  if (manifest.projectId !== 'starter-app' || manifest.boundaries.length < 1) {
+  if (manifest.projectId !== projectId || manifest.boundaries.length < 1) {
     throw new Error(`Review manifest should include project and visible boundary metadata, received ${JSON.stringify(manifest)}`);
   }
-  if (styleEvidence.projectId !== 'starter-app' || styleEvidence.boundaries.length < 1) {
+  if (styleEvidence.projectId !== projectId || styleEvidence.boundaries.length < 1) {
     throw new Error(`Style evidence should include boundary-scoped canvas evidence, received ${JSON.stringify(styleEvidence)}`);
   }
 
   const { writeFile } = await import('node:fs/promises');
-  const screenshotPath = path.join(screenshotRoot, 'blueprint-screens-desktop.png');
   const capturedManifest = {
     ...manifest,
     screenshot: {
@@ -442,8 +495,8 @@ async function writeReviewArtifacts(page: import('playwright').Page): Promise<vo
     }))
   };
 
-  await writeFile(path.join(reviewManifestRoot, 'screens-review-manifest.json'), `${JSON.stringify(capturedManifest, null, 2)}\n`, 'utf8');
-  await writeFile(path.join(styleEvidenceRoot, 'screens-style-evidence.json'), `${JSON.stringify(capturedStyleEvidence, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(reviewManifestRoot, `${slug}-review-manifest.json`), `${JSON.stringify(capturedManifest, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(styleEvidenceRoot, `${slug}-style-evidence.json`), `${JSON.stringify(capturedStyleEvidence, null, 2)}\n`, 'utf8');
 }
 
 async function assertNoProjectManagerChrome(page: import('playwright').Page): Promise<void> {

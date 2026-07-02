@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { request as httpRequest } from 'node:http';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
+import { createHash } from 'node:crypto';
 
 const projectRoot = process.cwd();
 const cliPath = path.join(projectRoot, 'dist/cli/cli.js');
@@ -219,6 +220,17 @@ describe('Blueprint CLI and template governance', () => {
       assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
       assert.equal(png.readUInt32BE(16), 786);
       assert.equal(png.readUInt32BE(20), 1704);
+      const blankBaseline = await readFile('tests/baselines/nova-care-home-blank-screen-baseline.png');
+      const pngHash = createHash('sha256').update(png).digest('hex');
+      const blankBaselineHash = createHash('sha256').update(blankBaseline).digest('hex');
+      assert.equal(blankBaselineHash, '937732ba22b5d745bd60f8015ba6f1ca9e27db4b4518701ab0cd708fcf123bbf');
+      assert.notEqual(pngHash, blankBaselineHash, 'screen capture should differ from the preserved blank-frame baseline');
+      assert.equal(summary.source.preDownloadDomAssertion, 'passed');
+      assert.deepEqual(
+        summary.source.visibleSectionBoundaries?.sort(),
+        ['nova-care/section/home/insight-lab', 'nova-care/section/home/next-action', 'nova-care/section/home/summary'],
+        'capture should mechanically prove section boundaries were visible before saving'
+      );
 
       const projectCopy = path.join(tempDir, 'project-copy');
       await cp(novaRoot, projectCopy, { recursive: true });
