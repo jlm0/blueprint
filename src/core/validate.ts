@@ -6,6 +6,8 @@ import type {
   ImplementationTarget,
   PrimitiveDefinition,
   PrimitiveStateSet,
+  ReadinessItem,
+  ReadinessReport,
   ProductionRelationship,
   ScreenDefinition,
   ScreenSection,
@@ -14,6 +16,8 @@ import type {
   TokenGroup,
   ValidationResult
 } from './types';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const supportedHandoffContractVersion = '1.0.0';
 
@@ -65,6 +69,21 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
     validateScreen(errors, screen, framePresetIds, primitiveIds, stateSetIds);
   });
+  const sectionIds = new Set(
+    bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
+  );
+
+  for (const primitive of bundle.primitives.primitives) {
+    for (const dependency of primitive.uses ?? []) {
+      validateDependency(errors, `primitive.${primitive.id}.uses`, dependency, {
+        tokenGroupIds,
+        primitiveIds,
+        stateSetIds,
+        screenIds,
+        sectionIds
+      });
+    }
+  }
 
   for (const screen of bundle.screens.screens) {
     for (const section of screen.sections ?? []) {
@@ -74,7 +93,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
           primitiveIds,
           stateSetIds,
           screenIds,
-          sectionIds: new Set(screen.sections.map(item => `${screen.id}/${item.id}`))
+          sectionIds
         });
       }
     }
@@ -85,6 +104,219 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
+  const items: ReadinessItem[] = [];
+
+  for (const primitive of bundle.primitives.primitives ?? []) {
+    if (primitive.prototypeOnly) {
+      continue;
+    }
+
+    recordImplementationTargetReadiness(items, `primitive.${primitive.id}.implementationTargets`, primitive.implementationTargets);
+    recordStyleEvidenceReadiness(
+      items,
+      bundle,
+      `primitive.${primitive.id}.styleEvidence`,
+      primitive.styleRefs,
+      primitive.styleEvidence
+    );
+
+    for (const stateSet of primitive.stateSets ?? []) {
+      if ((stateSet.states ?? []).every(state => state.prototypeOnly)) {
+        continue;
+      }
+      recordStyleEvidenceReadiness(
+        items,
+        bundle,
+        `primitive.${primitive.id}.stateSet.${stateSet.id}.styleEvidence`,
+        stateSet.styleRefs,
+        stateSet.styleEvidence
+      );
+    }
+  }
+
+  for (const screen of bundle.screens.screens ?? []) {
+    if (screen.prototypeOnly) {
+      continue;
+    }
+
+    recordImplementationTargetReadiness(items, `screen.${screen.id}.implementationTargets`, screen.implementationTargets);
+    recordStyleEvidenceReadiness(items, bundle, `screen.${screen.id}.styleEvidence`, screen.styleRefs, screen.styleEvidence);
+
+    for (const section of screen.sections ?? []) {
+      if (section.prototypeOnly) {
+        continue;
+      }
+
+      recordImplementationTargetReadiness(
+        items,
+        `screen.${screen.id}.section.${section.id}.implementationTargets`,
+        section.implementationTargets
+      );
+      recordStyleEvidenceReadiness(
+        items,
+        bundle,
+        `screen.${screen.id}.section.${section.id}.styleEvidence`,
+        section.styleRefs,
+        section.styleEvidence
+      );
+    }
+  }
+
+  const blockers = items.filter(item => item.severity === 'blocker');
+  let tier: ReadinessReport['tier'] = 'ready';
+  if (blockers.length > 0) {
+    tier = 'blocked';
+  } else if (items.some(item => item.severity === 'unresolved')) {
+    tier = 'unresolved';
+  } else if (items.some(item => item.severity === 'pending')) {
+    tier = 'pending';
+  }
+
+  return {
+    projectId: bundle.manifest.project.id,
+    tier,
+    items,
+    blockers
+  };
+}
+
+function recordImplementationTargetReadiness(
+  items: ReadinessItem[],
+  label: string,
+  targets: ImplementationTarget[] | undefined
+): void {
+  if (!Array.isArray(targets) || targets.length === 0) {
+    items.push({
+      path: label,
+      severity: 'blocker',
+      source: 'synthesized-missing',
+      message: 'Production handoff is missing implementation target metadata.'
+    });
+    return;
+  }
+
+  targets.forEach((target, index) => {
+    const unresolved = target.unresolvedDecisions ?? [];
+    if (unresolved.length === 0) {
+      return;
+    }
+    items.push({
+      path: `${label}.${index}.unresolvedDecisions`,
+      severity: 'unresolved',
+      source: 'declared',
+      message: unresolved.join(' ')
+    });
+  });
+}
+
+function recordStyleEvidenceReadiness(
+  items: ReadinessItem[],
+  bundle: BlueprintProjectBundle,
+  label: string,
+  styleRefs: string[] | undefined,
+  evidence: StyleEvidence[] | undefined
+): void {
+  const refs = styleRefs ?? [];
+  if (refs.length === 0) {
+    return;
+  }
+
+  if (!Array.isArray(evidence)) {
+    for (const styleRef of refs) {
+      items.push({
+        path: label,
+        severity: 'blocker',
+        source: 'synthesized-missing',
+        message: `No explicit style evidence has been recorded for "${styleRef}".`
+      });
+    }
+    return;
+  }
+
+  const byRef = new Map(evidence.map(item => [item.styleRef, item]));
+  for (const styleRef of refs) {
+    const item = byRef.get(styleRef);
+    if (!item) {
+      items.push({
+        path: label,
+        severity: 'blocker',
+        source: 'synthesized-missing',
+        message: `Style evidence is missing for "${styleRef}".`
+      });
+      continue;
+    }
+
+    const status = String(item.status);
+    if (status === 'source') {
+      items.push({
+        path: label,
+        severity: 'ready',
+        source: 'resolved',
+        message: `Style evidence for "${styleRef}" is linked to source.`
+      });
+      continue;
+    }
+
+    if (status === 'unresolved') {
+      items.push({
+        path: label,
+        severity: 'unresolved',
+        source: 'declared',
+        message: evidenceMessage(item, `Style evidence for "${styleRef}" is unresolved.`)
+      });
+      continue;
+    }
+
+    if (status === 'linked-artifact-pending') {
+      const artifactRef = item.artifactRef;
+      const artifactExists = artifactRef ? existsSync(resolveArtifactRef(bundle, artifactRef)) : false;
+      if (artifactExists) {
+        items.push({
+          path: label,
+          severity: 'pending',
+          source: 'declared',
+          message: `Style evidence for "${styleRef}" is linked to a pending review artifact.`,
+          artifactRef,
+          artifactExists
+        });
+        continue;
+      }
+
+      items.push({
+        path: label,
+        severity: 'blocker',
+        source: 'declared-missing-artifact',
+        message: artifactRef
+          ? `Style evidence artifact for "${styleRef}" does not exist.`
+          : `Style evidence artifact for "${styleRef}" is not declared.`,
+        artifactRef,
+        artifactExists
+      });
+      continue;
+    }
+
+    items.push({
+      path: label,
+      severity: 'blocker',
+      source: 'declared',
+      message: `Style evidence for "${styleRef}" has unsupported status "${status}".`
+    });
+  }
+}
+
+function resolveArtifactRef(bundle: BlueprintProjectBundle, artifactRef: string): string {
+  if (path.isAbsolute(artifactRef)) {
+    return artifactRef;
+  }
+  return path.resolve(bundle.sourceRoot, artifactRef);
+}
+
+function evidenceMessage(item: StyleEvidence, fallback: string): string {
+  const message = item.notes?.join(' ').trim();
+  return message && message.length > 0 ? message : fallback;
 }
 
 function validateBoard(errors: string[], board: BoardDefinition): void {
@@ -228,6 +460,20 @@ function validateStateTokenReferences(
     for (const tokenRef of state.tokens ?? []) {
       if (!tokenIds.has(tokenRef)) {
         errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokens references missing token "${tokenRef}".`);
+      }
+    }
+    if (state.tokenRoles) {
+      requireObject(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles`, state.tokenRoles);
+      for (const [tokenRef, role] of Object.entries(state.tokenRoles)) {
+        if (!tokenIds.has(tokenRef)) {
+          errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references missing token "${tokenRef}".`);
+        }
+        if (!state.tokens.includes(tokenRef)) {
+          errors.push(
+            `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references token "${tokenRef}" that is not listed in state tokens.`
+          );
+        }
+        requireString(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles.${tokenRef}`, role);
       }
     }
   }

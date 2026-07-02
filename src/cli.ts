@@ -7,7 +7,7 @@ import { createServer as createHttpServer, type Server as HttpServer } from 'nod
 import type { AddressInfo } from 'node:net';
 import { boundaryId, parseBoundarySelector } from './core/address';
 import { loadProjectFromFs } from './core/load';
-import { validateProject } from './core/validate';
+import { createReadinessReport, validateProject } from './core/validate';
 import {
   createExtractionPacket,
   listBoundaryReferences,
@@ -22,6 +22,7 @@ import type { ValidationMode } from './core/types';
 type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture';
 type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
 type ExtractMode = 'focused' | 'deep';
+type CliValidationMode = ValidationMode | 'readiness';
 
 interface CaptureServer {
   url: string;
@@ -130,6 +131,28 @@ async function commandValidate(args: Args): Promise<void> {
   const project = requireArg(args.project, '--project');
   const mode = validationMode(args.mode);
   const bundle = await loadProjectFromFs(project);
+  if (mode === 'readiness') {
+    const baseline = validateProject(bundle);
+    const readiness = createReadinessReport(bundle);
+    const ok = baseline.ok && readiness.tier !== 'blocked';
+    await writeOutput(
+      {
+        command: 'validate',
+        project: normalize(path.resolve(project)),
+        projectId: bundle.manifest.project.id,
+        mode,
+        ok,
+        errors: baseline.errors,
+        readiness
+      },
+      args.out
+    );
+    if (!ok) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   const result = validateProject(bundle, { mode });
   await writeOutput(
     {
@@ -389,14 +412,17 @@ function requireQueryType(value: string | undefined): QueryType {
   throw new Error('--type must be one of show, uses, used-by, sections, prototype-only.');
 }
 
-function validationMode(value: string | undefined): ValidationMode {
+function validationMode(value: string | undefined): CliValidationMode {
   if (!value || value === 'baseline') {
     return 'baseline';
   }
   if (value === 'strict') {
     return 'strict';
   }
-  throw new Error('--mode must be "baseline" or "strict".');
+  if (value === 'readiness') {
+    return 'readiness';
+  }
+  throw new Error('--mode must be "baseline", "strict", or "readiness".');
 }
 
 function extractMode(value: string | undefined): ExtractMode {

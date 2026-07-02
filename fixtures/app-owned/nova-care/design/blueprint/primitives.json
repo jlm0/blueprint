@@ -67,6 +67,10 @@
               "id": "primary",
               "name": "Primary",
               "tokens": ["color.accent", "color.surface", "space.cluster", "shape.radius-control"],
+              "tokenRoles": {
+                "color.accent": "background",
+                "color.surface": "foreground"
+              },
               "prototypeOnly": false,
               "notes": ["Used for the next-best patient action."],
               "implementationHints": ["Use as the default high-emphasis action."]

@@ -132,6 +132,10 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "tokenGroupIds": { "$ref": "#/$defs/stringArray" },
+        "uses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/boundaryDependency" }
+        },
         "styleRefs": { "$ref": "#/$defs/stringArray" },
         "styleEvidence": {
           "type": "array",
@@ -175,6 +179,10 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "tokens": { "$ref": "#/$defs/stringArray" },
+        "tokenRoles": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
         "prototypeOnly": { "type": "boolean" },
         "notes": { "$ref": "#/$defs/stringArray" },
         "implementationHints": { "$ref": "#/$defs/stringArray" }
@@ -313,6 +321,58 @@
         "artifactRef": { "type": "string" },
         "renderedSnippet": { "type": "string" },
         "notes": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "readinessReport": {
+      "type": "object",
+      "required": ["projectId", "tier", "items", "blockers"],
+      "properties": {
+        "projectId": { "type": "string" },
+        "tier": { "enum": ["ready", "pending", "unresolved", "blocked"] },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/readinessItem" }
+        },
+        "blockers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/readinessItem" }
+        }
+      }
+    },
+    "readinessItem": {
+      "type": "object",
+      "required": ["path", "severity", "source", "message"],
+      "properties": {
+        "path": { "type": "string" },
+        "severity": { "enum": ["ready", "pending", "unresolved", "blocker"] },
+        "source": { "enum": ["resolved", "declared", "declared-missing-artifact", "synthesized-missing"] },
+        "message": { "type": "string" },
+        "artifactRef": { "type": "string" },
+        "artifactExists": { "type": "boolean" }
+      }
+    },
+    "deepHandoffPacket": {
+      "type": "object",
+      "required": ["extraction", "boundaries", "resolvedTokens", "tokenUsage"],
+      "properties": {
+        "extraction": { "type": "object" },
+        "boundaries": { "type": "array" },
+        "resolvedTokens": { "type": "array" },
+        "tokenUsage": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tokenUsage" }
+        }
+      }
+    },
+    "tokenUsage": {
+      "type": "object",
+      "required": ["tokenId", "role", "boundaryId", "boundaryKind", "styleRef"],
+      "properties": {
+        "tokenId": { "type": "string" },
+        "role": { "type": "string" },
+        "boundaryId": { "type": "string" },
+        "boundaryKind": { "enum": ["project", "board", "token-group", "primitive", "state-set", "screen", "section"] },
+        "styleRef": { "type": "string" }
       }
     },
     "stringArray": {

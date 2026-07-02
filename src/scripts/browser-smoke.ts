@@ -3,8 +3,12 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { loadProjectFromFs } from '../core/load';
+import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../core/review';
+import type { BlueprintProjectBundle } from '../core/types';
 
-const artifactRoot = '.agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts';
+const artifactRoot =
+  process.env.BLUEPRINT_ARTIFACT_ROOT ??
+  '.blueprint-artifacts/browser-smoke';
 const screenshotRoot = path.join(artifactRoot, 'screenshots');
 const reviewManifestRoot = path.join(artifactRoot, 'review-manifests');
 const styleEvidenceRoot = path.join(artifactRoot, 'style-evidence');
@@ -33,10 +37,11 @@ async function main(): Promise<void> {
     await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
     await assertDashboardChromeRemoved(page);
     await assertDarkBlueprintCanvas(page);
-    await assertReferencePrimitiveBoard(page);
+    await assertDataDrivenPrimitiveBoard(page, await loadProjectFromFs('starter/design/blueprint'));
     await assertPrimitiveCanvasPlacement(page);
     await assertVisibleBoundarySynchronization(page, 'primitives');
     await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-primitives-desktop.png'), fullPage: true });
+    await assertProofFixturePrimitiveBoards(browser, url);
 
     const beforeWheel = await readWorldTransform(page);
     await dispatchWheel(page, { deltaX: 0, deltaY: 160, ctrlKey: false, metaKey: false });
@@ -135,270 +140,149 @@ async function assertDarkBlueprintCanvas(page: import('playwright').Page): Promi
   }
 }
 
-async function assertReferencePrimitiveBoard(page: import('playwright').Page): Promise<void> {
-  const headings = await page.locator('.board-primitives .group-head h1').evaluateAll(elements =>
-    elements.map(element => element.textContent?.trim()).filter(Boolean)
-  );
-  const expected = ['Tokens', 'Text', 'Actions', 'Inputs', 'Surfaces', 'Rows', 'Feedback', 'Overlays'];
-
-  if (headings.join(',') !== expected.join(',')) {
-    throw new Error(`Primitive board should use reference-style groups, received: ${headings.join(',')}`);
-  }
-
-  if (headings.some(heading => /^state sets?$/i.test(heading ?? ''))) {
-    throw new Error('Primitive state sets should stay embedded in samples, not render as a visible canvas group.');
-  }
-
-  const specCount = await page.locator('.board-primitives .spec').count();
-  if (specCount < 24) {
-    throw new Error(`Primitive board should render the generalized reference primitive gallery, received only ${specCount} spec cards.`);
-  }
-
-  const requiredSpecLabels = [
-    'COLOR · brand and semantic',
-    'TEXT · all variants',
-    'BUTTON · variant x state matrix',
-    'INPUT · variant x state matrix',
-    'SURFACE · nested 2-8',
-    'LIST · grouped items + dividers',
-    'BADGE · variants',
-    'BOTTOM SHEET · nav + content + footer'
+async function assertProofFixturePrimitiveBoards(browser: import('playwright').Browser, url: string): Promise<void> {
+  const proofRoots = [
+    'starter/design/blueprint',
+    'fixtures/app-owned/nova-care/design/blueprint',
+    'fixtures/app-owned/atlas-pay/design/blueprint'
   ];
-  const labels = await page.locator('.board-primitives .spec-chip').evaluateAll(elements =>
-    elements.map(element => element.textContent?.trim()).filter(Boolean)
+
+  for (const projectRoot of proofRoots) {
+    const bundle = await loadProjectFromFs(projectRoot);
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
+        configurable: true,
+        value: projectBundle
+      });
+    }, bundle);
+    await page.goto(`${url}?board=primitives`);
+    await page.waitForSelector('.board-primitives [data-boundary-id][data-boundary-kind]', { timeout: 10000 });
+    await assertDataDrivenPrimitiveBoard(page, bundle);
+    const screenshotPath = path.join(screenshotRoot, `${bundle.manifest.project.id}-primitives.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await writePrimitiveReviewArtifacts(page, bundle.manifest.project.id, screenshotPath);
+    await page.close();
+  }
+}
+
+async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
+  const records = await collectPrimitiveBoundaryRecords(page);
+  const sync = validateVisibleBoundaryRecords(bundle, records);
+  if (!sync.ok) {
+    throw new Error(`Primitive board visible boundaries do not match ${bundle.manifest.project.id} structured data:\n${sync.errors.join('\n')}`);
+  }
+
+  const expectedBoundaryIds = [
+    ...bundle.tokens.tokenGroups.map(group => `${bundle.manifest.project.id}/token-group/${group.id}`),
+    ...bundle.primitives.primitives.flatMap(primitive => [
+      `${bundle.manifest.project.id}/primitive/${primitive.id}`,
+      ...primitive.stateSets.map(stateSet => `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`)
+    ])
+  ];
+  const visibleBoundaryIds = records.map(record => record.id);
+  const missingBoundaries = expectedBoundaryIds.filter(id => !visibleBoundaryIds.includes(id));
+  if (missingBoundaries.length > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive board is missing app-owned boundaries: ${missingBoundaries.join(', ')}`);
+  }
+
+  const duplicateBoundaries = visibleBoundaryIds.filter((id, index) => visibleBoundaryIds.indexOf(id) !== index);
+  if (duplicateBoundaries.length > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive board rendered duplicate boundaries: ${[...new Set(duplicateBoundaries)].join(', ')}`);
+  }
+
+  const primitiveIds = new Set(bundle.primitives.primitives.map(primitive => primitive.id));
+  const visiblePrimitiveIds = records
+    .filter(record => record.kind === 'primitive')
+    .map(record => record.id.split('/').slice(2).join('/'));
+  const stale = visiblePrimitiveIds.filter(id => !primitiveIds.has(id));
+  if (stale.length > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive board rendered stale demo-only primitives: ${stale.join(', ')}`);
+  }
+
+  const primitiveCards = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
+    elements.map(element => ({
+      id: (element as HTMLElement).dataset.boundaryId ?? '',
+      family: (element as HTMLElement).dataset.primitiveFamily ?? '',
+      text: element.textContent?.trim() ?? ''
+    }))
   );
-  for (const label of requiredSpecLabels) {
-    if (!labels.includes(label)) {
-      throw new Error(`Primitive board is missing generalized reference spec "${label}".`);
+  const missingFamily = primitiveCards.filter(card => card.family.length === 0);
+  if (missingFamily.length > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive cards should name renderer families: ${JSON.stringify(missingFamily)}`);
+  }
+  const families = new Set(primitiveCards.map(card => card.family));
+  if (families.size < Math.min(2, bundle.primitives.primitives.length) || ![...families].some(family => family !== 'generic')) {
+    throw new Error(`${bundle.manifest.project.id} primitive board should prove bounded family templates, received: ${[...families].join(', ')}`);
+  }
+
+  for (const primitive of bundle.primitives.primitives) {
+    for (const stateSet of primitive.stateSets) {
+      const stateSetBoundary = `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`;
+      for (const state of stateSet.states) {
+        const count = await page
+          .locator(`[data-boundary-id="${stateSetBoundary}"] [data-primitive-state-id="${state.id}"]`)
+          .count();
+        if (count !== 1) {
+          throw new Error(`${bundle.manifest.project.id} primitive board missing state sample ${primitive.id}/${stateSet.id}/${state.id}`);
+        }
+      }
     }
   }
-
-  const buttonRows = await page.locator('.button-state-matrix .mx-row').count();
-  if (buttonRows < 12) {
-    throw new Error(`Button primitive should show variant x state rows, received ${buttonRows}.`);
-  }
-  const primitiveActionChrome = await page
-    .locator('.board-primitives .boundary-actions, .board-primitives [data-boundary-action="copy-extract-command"]')
-    .count();
-  if (primitiveActionChrome !== 0) {
-    throw new Error(`Primitive cards should not render copy/extract action chrome, received ${primitiveActionChrome} controls.`);
-  }
-  await assertButtonMatrixLayout(page);
-  await assertTextVariantLayout(page);
-
-  const inputRows = await page.locator('.input-state-matrix .mx-row').count();
-  if (inputRows < 6) {
-    throw new Error(`Input primitive should show variant x state rows, received ${inputRows}.`);
-  }
-  await assertCheckboxLayout(page);
-  await assertSwitchThumbLayout(page);
-  await assertSliderThumbLayout(page);
 }
 
-async function assertButtonMatrixLayout(page: import('playwright').Page): Promise<void> {
-  const report = await page.locator('.button-state-matrix').evaluate(root => {
-    const matrix = root as HTMLElement;
-    const loadingDots = [...matrix.querySelectorAll<HTMLElement>('.loading-dot')].map(dot => {
-      const computed = window.getComputedStyle(dot);
-      const rect = dot.getBoundingClientRect();
-      const parentRect = dot.parentElement?.getBoundingClientRect();
+async function collectPrimitiveBoundaryRecords(page: import('playwright').Page): Promise<VisibleBoundaryRecord[]> {
+  return page.locator('.board-primitives [data-boundary-id][data-boundary-kind]').evaluateAll(elements =>
+    elements.map(element => {
+      const node = element as HTMLElement;
       return {
-        position: computed.position,
-        width: rect.width,
-        height: rect.height,
-        parentWidth: parentRect?.width ?? 0
+        id: node.dataset.boundaryId ?? '',
+        kind: node.dataset.boundaryKind ?? 'project',
+        board: 'primitives',
+        label: node.dataset.boundaryLabel ?? node.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? '',
+        renderedSnippet: node.outerHTML.slice(0, 900)
       };
-    });
-
-    const buttonOverflow = [...matrix.querySelectorAll<HTMLElement>('.mx-row:not(.icon-row) .btn')].map(button => ({
-      label: button.textContent?.trim() ?? button.className,
-      className: button.className,
-      scrollWidth: button.scrollWidth,
-      clientWidth: button.clientWidth,
-      row: button.closest('.mx-row')?.textContent?.trim().replace(/\s+/g, ' ') ?? ''
-    })).filter(button => button.scrollWidth > button.clientWidth + 1);
-
-    const gradientButtons = [...matrix.querySelectorAll<HTMLElement>('.mx-row .btn-gradient')].map(button => {
-      const label = button.querySelector<HTMLElement>('.btn-label');
-      const rect = button.getBoundingClientRect();
-      const labelRect = label?.getBoundingClientRect();
-      return {
-        text: button.textContent?.trim() ?? '',
-        buttonWidth: rect.width,
-        labelWidth: labelRect?.width ?? 0,
-        labelFits: label ? labelRect!.left >= rect.left - 0.5 && labelRect!.right <= rect.right + 0.5 : false
-      };
-    });
-
-    const rowLabelOverflow = [...matrix.querySelectorAll<HTMLElement>('.mx-label')].map(label => ({
-      text: label.textContent?.trim() ?? '',
-      scrollWidth: label.scrollWidth,
-      clientWidth: label.clientWidth
-    })).filter(label => label.scrollWidth > label.clientWidth + 1);
-
-    return {
-      loadingDots,
-      buttonOverflow,
-      gradientButtons,
-      rowLabelOverflow
-    };
-  });
-
-  const absoluteDots = report.loadingDots.filter(dot => dot.position === 'absolute');
-  if (absoluteDots.length > 0) {
-    throw new Error(`Loading indicators should not overlay button labels: ${JSON.stringify(absoluteDots)}`);
-  }
-
-  if (report.buttonOverflow.length > 0) {
-    throw new Error(`Button matrix content should fit inside every button: ${JSON.stringify(report.buttonOverflow)}`);
-  }
-
-  if (report.rowLabelOverflow.length > 0) {
-    throw new Error(`Button matrix row labels should fit inside their label column: ${JSON.stringify(report.rowLabelOverflow)}`);
-  }
-
-  if (report.gradientButtons.length !== 3 || !report.gradientButtons.every(button => button.labelFits && button.labelWidth < button.buttonWidth)) {
-    throw new Error(`Gradient buttons should keep icon/text content inside their row cells: ${JSON.stringify(report.gradientButtons)}`);
-  }
+    })
+  ) as Promise<VisibleBoundaryRecord[]>;
 }
 
-async function assertTextVariantLayout(page: import('playwright').Page): Promise<void> {
-  const overflow = await page.locator('.tspec [class^="t-"]').evaluateAll(elements =>
-    elements
-      .map(element => {
-        const node = element as HTMLElement;
-        return {
-          className: node.className,
-          text: node.textContent?.trim() ?? '',
-          scrollWidth: node.scrollWidth,
-          clientWidth: node.clientWidth
-        };
-      })
-      .filter(node => node.scrollWidth > node.clientWidth + 1)
-  );
+async function writePrimitiveReviewArtifacts(
+  page: import('playwright').Page,
+  projectId: string,
+  screenshotPath: string
+): Promise<void> {
+  const manifest = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.manifest);
+  const styleEvidence = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.styleEvidence);
 
-  if (overflow.length > 0) {
-    throw new Error(`Text primitive samples should wrap within their card: ${JSON.stringify(overflow)}`);
-  }
-}
-
-async function assertCheckboxLayout(page: import('playwright').Page): Promise<void> {
-  const report = await page.locator('.cbx').evaluateAll(elements => elements.map((element, index) => {
-    const checkbox = element as HTMLElement;
-    const icon = checkbox.querySelector<SVGElement>('svg');
-    const boxRect = checkbox.getBoundingClientRect();
-    const iconRect = icon?.getBoundingClientRect();
-    return {
-      index,
-      className: checkbox.className,
-      width: boxRect.width,
-      height: boxRect.height,
-      iconInside: Boolean(
-        iconRect &&
-          iconRect.left >= boxRect.left - 0.5 &&
-          iconRect.right <= boxRect.right + 0.5 &&
-          iconRect.top >= boxRect.top - 0.5 &&
-          iconRect.bottom <= boxRect.bottom + 0.5
-      )
-    };
-  }));
-
-  const broken = report.filter(item => Math.abs(item.width - item.height) > 0.5 || !item.iconInside);
-  if (broken.length > 0) {
-    throw new Error(`Checkbox primitives should keep check icons centered inside square boxes: ${JSON.stringify(broken)}`);
-  }
-}
-
-async function assertSwitchThumbLayout(page: import('playwright').Page): Promise<void> {
-  const report = await page.locator('.sw').evaluateAll(elements => elements.map((element, index) => {
-    const switchEl = element as HTMLElement;
-    const thumb = switchEl.querySelector<HTMLElement>('.sw-thumb');
-    const trackRect = switchEl.getBoundingClientRect();
-    const thumbRect = thumb?.getBoundingClientRect();
-    const thumbStyle = thumb ? window.getComputedStyle(thumb) : null;
-    const trackStyle = window.getComputedStyle(switchEl);
-    return {
-      index,
-      className: switchEl.className,
-      trackWidth: trackRect.width,
-      trackHeight: trackRect.height,
-      thumbWidth: thumbRect?.width ?? 0,
-      thumbHeight: thumbRect?.height ?? 0,
-      thumbPosition: thumbStyle?.position ?? '',
-      thumbTransform: thumbStyle?.transform ?? '',
-      trackPosition: trackStyle.position,
-      inside: Boolean(
-        thumbRect &&
-          thumbRect.left >= trackRect.left - 0.5 &&
-          thumbRect.right <= trackRect.right + 0.5 &&
-          thumbRect.top >= trackRect.top - 0.5 &&
-          thumbRect.bottom <= trackRect.bottom + 0.5
-      )
-    };
-  }));
-
-  const broken = report.filter(item => !item.inside || item.thumbPosition !== 'absolute' || item.thumbTransform !== 'none');
-  if (broken.length > 0) {
-    throw new Error(`Switch thumbs should stay inside their tracks without slider transforms: ${JSON.stringify(broken)}`);
+  if (!manifest || !styleEvidence) {
+    throw new Error(`Primitive board should expose review artifacts for ${projectId}.`);
   }
 
-  const genericThumbs = await page.locator('.sw > .thumb').count();
-  if (genericThumbs !== 0) {
-    throw new Error(`Switch controls should not use generic slider thumb class, received ${genericThumbs}.`);
-  }
-}
+  const { writeFile } = await import('node:fs/promises');
+  const capturedManifest = {
+    ...manifest,
+    screenshot: {
+      status: 'captured',
+      path: screenshotPath
+    },
+    boundaries: manifest.boundaries.map(boundary => ({
+      ...boundary,
+      screenshot: {
+        status: 'captured',
+        path: screenshotPath
+      }
+    }))
+  };
+  const capturedStyleEvidence = {
+    ...styleEvidence,
+    boundaries: styleEvidence.boundaries.map(boundary => ({
+      ...boundary,
+      screenshotPath
+    }))
+  };
 
-async function assertSliderThumbLayout(page: import('playwright').Page): Promise<void> {
-  const report = await page.locator('.slider').evaluateAll(elements => elements.map((element, index) => {
-    const slider = element as HTMLElement;
-    const thumb = slider.querySelector<HTMLElement>('.thumb');
-    const track = slider.querySelector<HTMLElement>('.track');
-    const fill = slider.querySelector<HTMLElement>('.fill');
-    const sliderRect = slider.getBoundingClientRect();
-    const thumbRect = thumb?.getBoundingClientRect();
-    const trackRect = track?.getBoundingClientRect();
-    const fillRect = fill?.getBoundingClientRect();
-    const thumbStyle = thumb ? window.getComputedStyle(thumb) : null;
-    return {
-      index,
-      className: slider.className,
-      thumbPosition: thumbStyle?.position ?? '',
-      thumbTransform: thumbStyle?.transform ?? '',
-      thumbInside: Boolean(
-        thumbRect &&
-          thumbRect.left >= sliderRect.left - 0.5 &&
-          thumbRect.right <= sliderRect.right + 0.5 &&
-          thumbRect.top >= sliderRect.top - 0.5 &&
-          thumbRect.bottom <= sliderRect.bottom + 0.5
-      ),
-      trackInside: Boolean(
-        trackRect &&
-          trackRect.left >= sliderRect.left - 0.5 &&
-          trackRect.right <= sliderRect.right + 0.5 &&
-          trackRect.top >= sliderRect.top - 0.5 &&
-          trackRect.bottom <= sliderRect.bottom + 0.5
-      ),
-      fillInside: Boolean(
-        fillRect &&
-          fillRect.left >= sliderRect.left - 0.5 &&
-          fillRect.right <= sliderRect.right + 0.5 &&
-          fillRect.top >= sliderRect.top - 0.5 &&
-          fillRect.bottom <= sliderRect.bottom + 0.5
-      )
-    };
-  }));
-
-  const broken = report.filter(
-    item =>
-      !item.thumbInside ||
-      !item.trackInside ||
-      !item.fillInside ||
-      item.thumbPosition !== 'absolute' ||
-      item.thumbTransform === 'none'
-  );
-  if (broken.length > 0) {
-    throw new Error(`Slider primitives should keep track, fill, and thumb geometry inside each slider: ${JSON.stringify(broken)}`);
-  }
+  await writeFile(path.join(reviewManifestRoot, `${projectId}-primitives-review-manifest.json`), `${JSON.stringify(capturedManifest, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(styleEvidenceRoot, `${projectId}-primitives-style-evidence.json`), `${JSON.stringify(capturedStyleEvidence, null, 2)}\n`, 'utf8');
 }
 
 async function assertPrimitiveCanvasPlacement(page: import('playwright').Page): Promise<void> {

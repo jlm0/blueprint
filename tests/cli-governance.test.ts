@@ -123,6 +123,26 @@ describe('Blueprint CLI and template governance', () => {
     assert.equal(strict.status, 0, strict.stderr);
     assert.equal(parseJson(strict.stdout).mode, 'strict');
 
+    const readinessRoot = await createResolvedReadinessProject();
+    const readiness = run('node', [cliPath, 'validate', '--project', readinessRoot, '--mode', 'readiness']);
+    assert.equal(readiness.status, 0, readiness.stderr);
+    const readinessOutput = parseJson(readiness.stdout);
+    assert.equal(readinessOutput.mode, 'readiness');
+    assert.equal(readinessOutput.ok, true);
+    assert.equal(readinessOutput.readiness.tier, 'ready');
+    assert.deepEqual(readinessOutput.readiness.blockers, []);
+
+    const blockedReadiness = run('node', [cliPath, 'validate', '--project', novaRoot, '--mode', 'readiness']);
+    assert.equal(blockedReadiness.status, 1);
+    const blockedOutput = parseJson(blockedReadiness.stdout);
+    assert.equal(blockedOutput.mode, 'readiness');
+    assert.equal(blockedOutput.ok, false);
+    assert.equal(blockedOutput.readiness.tier, 'blocked');
+    assert.ok(
+      blockedOutput.readiness.blockers.some((item: { source: string }) => item.source === 'declared-missing-artifact'),
+      'readiness mode should expose missing linked artifact evidence as blockers'
+    );
+
     const index = run('node', [cliPath, 'index', '--project', novaRoot]);
     assert.equal(index.status, 0, index.stderr);
     assert.ok(parseJson(index.stdout).results.some((item: { id: string }) => item.id === 'nova-care/screen/home'));
@@ -272,6 +292,58 @@ async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
     await fn(dir);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function createResolvedReadinessProject(): Promise<string> {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'blueprint-cli-readiness-'));
+  const out = path.join(tempDir, 'design', 'blueprint');
+  await cp(novaRoot, out, { recursive: true });
+  const primitivesPath = path.join(out, 'primitives.json');
+  const screensPath = path.join(out, 'screens.json');
+  const primitives = JSON.parse(await readFile(primitivesPath, 'utf8'));
+  const screens = JSON.parse(await readFile(screensPath, 'utf8'));
+
+  resolveStyleEvidence(primitives, primitivesPath);
+  resolveStyleEvidence(screens, screensPath);
+
+  await writeFile(primitivesPath, `${JSON.stringify(primitives, null, 2)}\n`, 'utf8');
+  await writeFile(screensPath, `${JSON.stringify(screens, null, 2)}\n`, 'utf8');
+  return out;
+}
+
+function resolveStyleEvidence(value: unknown, sourcePath: string): void {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      resolveStyleEvidence(item, sourcePath);
+    }
+    return;
+  }
+
+  const record = value as {
+    id?: string;
+    styleRefs?: string[];
+    styleEvidence?: Array<{
+      styleRef: string;
+      status: string;
+      sourceAnchor?: string;
+      artifactRef?: string;
+      notes?: string[];
+    }>;
+  };
+  if (Array.isArray(record.styleRefs)) {
+    record.styleEvidence = record.styleRefs.map(styleRef => ({
+      styleRef,
+      status: 'source',
+      sourceAnchor: `${normalize(sourcePath)}#${record.id ?? styleRef}`
+    }));
+  }
+
+  for (const child of Object.values(record)) {
+    resolveStyleEvidence(child, sourcePath);
   }
 }
 

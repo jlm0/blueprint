@@ -9,8 +9,14 @@ export type {
   ExtractionOptions,
   ExtractionPacket,
   PrimitiveDefinition,
+  ReadinessItem,
+  ReadinessReport,
+  ReadinessSeverity,
+  ReadinessSource,
+  ReadinessTier,
   ResolvedToken,
   ScreenDefinition,
+  TokenUsage,
   TokenGroup,
   ValidationOptions,
   ValidationResult
@@ -29,7 +35,7 @@ export type {
 export { boundaryId, parseBoundarySelector } from './core/address';
 export { createProjectBundle } from './core/bundle';
 export { loadProjectFromFs } from './core/load';
-export { validateProject } from './core/validate';
+export { createReadinessReport, validateProject } from './core/validate';
 export {
   createExtractionPacket,
   listBoundaryReferences,

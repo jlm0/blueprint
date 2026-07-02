@@ -6,7 +6,17 @@ import {
   createReviewManifest,
   validateVisibleBoundaryRecords
 } from '../core/review';
-import type { BlueprintProjectBundle, BoardDefinition, BoundaryKind, ScreenDefinition } from '../core/types';
+import type {
+  BlueprintProjectBundle,
+  BoardDefinition,
+  BoundaryKind,
+  DesignToken,
+  PrimitiveDefinition,
+  PrimitiveState,
+  PrimitiveStateSet,
+  ScreenDefinition,
+  TokenGroup
+} from '../core/types';
 import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
@@ -35,17 +45,6 @@ interface BoardContext {
   root: HTMLElement;
   canvas: CanvasController;
   project: BlueprintProjectBundle;
-}
-
-interface PrimitiveSpecOptions {
-  label: string;
-  x: number;
-  y: number;
-  width: number;
-  accent: string;
-  boundary: [BoundaryKind, string, string];
-  html: string;
-  note?: string;
 }
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -176,304 +175,40 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     fallbackHeight: 220
   });
   const projectId = bundle.manifest.project.id;
-  const tone = {
-    tokens: 'var(--accent-token)',
-    text: 'var(--accent-text)',
-    actions: 'var(--accent-action)',
-    inputs: 'var(--accent-input)',
-    surfaces: 'var(--accent-surface)',
-    rows: 'var(--accent-row)',
-    feedback: 'var(--accent-feedback)',
-    overlays: 'var(--accent-overlay)'
-  };
-
-  addGroupHeading(root, controller, { title: 'Tokens', subtitle: 'replace these roles per app theme', x: 70, y: 300, accent: tone.tokens });
-  addPrimitiveSpec(root, controller, {
-    label: 'COLOR · brand and semantic',
-    x: 70,
-    y: 380,
-    width: 560,
-    accent: tone.tokens,
-    boundary: ['token-group', 'color', projectId],
-    html: colorSwatches(),
-    note: 'These are default Blueprint roles, not a product palette. A new app changes token values and the primitive samples inherit them.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'COLOR · surface ladder 1-8',
-    x: 70,
-    y: 880,
-    width: 560,
-    accent: tone.tokens,
-    boundary: ['token-group', 'color', projectId],
-    html: surfaceLadder(),
-    note: 'The ladder gives every card, row, menu, and sheet a predictable nesting level without baking in one app style.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'RADIUS scale',
-    x: 70,
-    y: 1330,
-    width: 560,
-    accent: tone.tokens,
-    boundary: ['token-group', 'shape', projectId],
-    html: radiusScale(),
-    note: 'Use this as the starter geometry scale, then tune values for the app theme.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'TYPE roles',
-    x: 70,
-    y: 1560,
-    width: 560,
-    accent: tone.text,
-    boundary: ['token-group', 'typography', projectId],
-    html: typeRoles(),
-    note: 'Type roles are named for function, not for the reference app fonts.'
-  });
-
-  addGroupHeading(root, controller, { title: 'Text', subtitle: 'typographic variants', x: 750, y: 300, accent: tone.text });
-  addPrimitiveSpec(root, controller, {
-    label: 'TEXT · all variants',
-    x: 750,
-    y: 380,
-    width: 560,
-    accent: tone.text,
-    boundary: ['token-group', 'typography', projectId],
-    html: textVariants(),
-    note: 'Every app can change the typeface and scale while preserving stable variant names for agents and implementation.'
-  });
+  const tokenIndex = createTokenIndex(bundle);
 
   addGroupHeading(root, controller, {
-    title: 'Actions',
-    subtitle: 'button variants x normal / loading / disabled',
-    x: 1430,
+    title: 'Tokens',
+    subtitle: `${bundle.tokens.tokenGroups.length} app-owned groups`,
+    x: 70,
     y: 300,
-    accent: tone.actions
+    accent: 'var(--accent-token)'
   });
-  addPrimitiveSpec(root, controller, {
-    label: 'BUTTON · variant x state matrix',
-    x: 1430,
-    y: 380,
-    width: 500,
-    accent: tone.actions,
-    boundary: ['primitive', 'button', projectId],
-    html: buttonMatrix(),
-    note: 'Button is the baseline command primitive. Apps should change token values and variant mapping, not reinvent the state surface.'
+  bundle.tokens.tokenGroups.forEach((group, index) => {
+    addTokenGroupCard(root, controller, bundle, tokenIndex, group, {
+      x: 70,
+      y: 380 + index * 250,
+      width: 460
+    });
   });
 
-  addGroupHeading(root, controller, { title: 'Inputs', subtitle: 'fields, checkbox, switch, otp, slider', x: 1990, y: 300, accent: tone.inputs });
-  addPrimitiveSpec(root, controller, {
-    label: 'INPUT · variant x state matrix',
-    x: 1990,
-    y: 380,
-    width: 960,
-    accent: tone.inputs,
-    boundary: ['primitive', 'input', projectId],
-    html: inputMatrix(),
-    note: 'Input variants and states stay explicit so agents can translate focus, invalid, and disabled behavior without reading the canvas.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'CHECKBOX · states',
-    x: 1990,
-    y: 800,
-    width: 700,
-    accent: tone.inputs,
-    boundary: ['primitive', 'checkbox', projectId],
-    html: checkboxStates(),
-    note: 'The live example toggles locally; the structured matrix defines the states an app owns.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'SWITCH · states',
-    x: 1990,
-    y: 990,
-    width: 700,
-    accent: tone.inputs,
-    boundary: ['primitive', 'switch', projectId],
-    html: switchStates(),
-    note: 'Switch uses the same on/off/disabled matrix as the reference primitive system, generalized to tokens.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'OTP INPUT GRID',
-    x: 1990,
-    y: 1180,
-    width: 360,
-    accent: tone.inputs,
-    boundary: ['primitive', 'otp-input', projectId],
-    html: otpGrid(),
-    note: 'A fixed-cell input specimen proves dense control sizing and focus treatment.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'SLIDER · size x tone',
-    x: 1990,
-    y: 1380,
-    width: 360,
-    accent: tone.inputs,
-    boundary: ['primitive', 'slider', projectId],
-    html: sliderSamples(),
-    note: 'Track height, thumb size, tone, and disabled behavior are visible because they often drift during app implementation.'
-  });
-
-  addGroupHeading(root, controller, { title: 'Surfaces', subtitle: 'surface, card, media, nav, separator', x: 3090, y: 300, accent: tone.surfaces });
-  addPrimitiveSpec(root, controller, {
-    label: 'SURFACE · nested 2-8',
-    x: 3090,
-    y: 380,
-    width: 460,
-    accent: tone.surfaces,
-    boundary: ['primitive', 'surface', projectId],
-    html: surfaceNest(2),
-    note: 'The base canvas is level 1; anything sitting on it starts at level 2 and steps up as it nests.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'CARD · default / flat / elevated',
-    x: 3090,
-    y: 1110,
-    width: 430,
-    accent: tone.surfaces,
-    boundary: ['primitive', 'card', projectId],
-    html: cardVariants(),
-    note: 'Cards are generic content containers. The treatment changes, but the card role remains stable.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'MEDIA CARD · cover / nested',
-    x: 3090,
-    y: 1540,
-    width: 430,
-    accent: tone.surfaces,
-    boundary: ['primitive', 'media-card', projectId],
-    html: mediaCards(),
-    note: 'Media cards prove clipping, inset rhythm, overlay text, and nested radius behavior.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'NAVBAR · slot compositions',
-    x: 3610,
-    y: 455,
-    width: 430,
-    accent: tone.surfaces,
-    boundary: ['primitive', 'nav-bar', projectId],
-    html: navBarSamples(),
-    note: 'The slot model preserves center alignment while allowing left and right controls to vary.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'BACK BUTTON + SEPARATOR',
-    x: 3610,
-    y: 880,
-    width: 430,
-    accent: tone.surfaces,
-    boundary: ['primitive', 'back-button', projectId],
-    html: backAndSeparator(),
-    note: 'Small navigation pieces still need explicit primitive treatment because they repeat everywhere.'
-  });
-
-  addGroupHeading(root, controller, { title: 'Rows', subtitle: 'list, row layout, pressable groups', x: 4190, y: 300, accent: tone.rows });
-  addPrimitiveSpec(root, controller, {
-    label: 'LIST · grouped items + dividers',
-    x: 4190,
-    y: 380,
-    width: 400,
-    accent: tone.rows,
-    boundary: ['primitive', 'list', projectId],
-    html: groupedList(),
-    note: 'List owns grouping and dividers; each row still exposes leading, body, and trailing slots.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'PRESSABLE ROW · standalone',
-    x: 4190,
-    y: 800,
-    width: 400,
-    accent: tone.rows,
-    boundary: ['primitive', 'pressable-row', projectId],
-    html: pressableRow(),
-    note: 'Standalone rows own their own surface and tap target.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'PRESSABLE SURFACE · group shapes',
-    x: 4190,
-    y: 1000,
-    width: 400,
-    accent: tone.rows,
-    boundary: ['primitive', 'pressable-row', projectId],
-    html: groupedRows(),
-    note: 'Group-first, group-middle, and group-last shapes let apps build row stacks without a wrapper card.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'ROW LAYOUT · slots only',
-    x: 4190,
-    y: 1330,
-    width: 400,
-    accent: tone.rows,
-    boundary: ['primitive', 'row-layout', projectId],
-    html: rowLayoutOnly(),
-    note: 'The bare row layout gives agents a targetable composition primitive with no surface assumptions.'
-  });
-
-  addGroupHeading(root, controller, { title: 'Feedback', subtitle: 'loading, badge, icon, skeleton', x: 4770, y: 300, accent: tone.feedback });
-  addPrimitiveSpec(root, controller, {
-    label: 'LOADING MARK',
-    x: 4770,
-    y: 380,
-    width: 400,
-    accent: tone.feedback,
-    boundary: ['primitive', 'loading-mark', projectId],
-    html: loadingMarks(),
-    note: 'The reference-specific mark becomes a generic loading primitive that inherits app colors.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'BADGE · variants',
-    x: 4770,
-    y: 840,
-    width: 400,
-    accent: tone.feedback,
-    boundary: ['primitive', 'badge', projectId],
-    html: badges(),
-    note: 'Badge variants are small, but they carry important semantic and density behavior.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'ICON + SKELETON',
-    x: 4770,
-    y: 1040,
-    width: 400,
-    accent: tone.feedback,
-    boundary: ['primitive', 'skeleton', projectId],
-    html: iconAndSkeleton(),
-    note: 'Icon and skeleton primitives are kept visible because they often become one-off app code otherwise.'
-  });
-
-  addGroupHeading(root, controller, { title: 'Overlays', subtitle: 'dialog, menu, sheet', x: 5350, y: 300, accent: tone.overlays });
-  addPrimitiveSpec(root, controller, {
-    label: 'ALERT DIALOG · neutral / destructive',
-    x: 5350,
-    y: 380,
-    width: 380,
-    accent: tone.overlays,
-    boundary: ['primitive', 'alert-dialog', projectId],
-    html: alertDialogs(),
-    note: 'Dialog intent changes the action, not the whole panel treatment.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'CONTEXT MENU · open state',
-    x: 5350,
-    y: 960,
-    width: 380,
-    accent: tone.overlays,
-    boundary: ['primitive', 'context-menu', projectId],
-    html: contextMenu(),
-    note: 'The open-state menu is rendered so row spacing, indicators, shortcuts, and destructive items can be inspected.'
-  });
-  addPrimitiveSpec(root, controller, {
-    label: 'BOTTOM SHEET · nav + content + footer',
-    x: 5810,
-    y: 455,
-    width: 420,
-    accent: tone.overlays,
-    boundary: ['primitive', 'bottom-sheet', projectId],
-    html: bottomSheet(),
-    note: 'Sheet is modeled as composed primitives: handle, navbar, body, and footer action slot.'
-  });
-
-  root.addEventListener('click', event => {
-    const live = (event.target as HTMLElement).closest<HTMLElement>('.cbx.live, .sw.live');
-    if (live) {
-      live.classList.toggle('on');
-    }
+  const groupedPrimitives = groupPrimitivesByFamily(bundle.primitives.primitives);
+  groupedPrimitives.forEach((group, index) => {
+    const x = 650 + index * 520;
+    addGroupHeading(root, controller, {
+      title: familyLabel(group.family),
+      subtitle: `${group.primitives.length} ${group.family} ${group.primitives.length === 1 ? 'primitive' : 'primitives'}`,
+      x,
+      y: 300,
+      accent: familyAccent(group.family)
+    });
+    group.primitives.forEach((primitive, primitiveIndex) => {
+      addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, group.family, {
+        x,
+        y: 380 + primitiveIndex * 280,
+        width: familyWidth(group.family)
+      });
+    });
   });
 
   if (document.fonts?.ready) {
@@ -488,6 +223,452 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     configure,
     fit: () => controller.fitTo(layout.reflow())
   };
+}
+
+interface TokenRecord {
+  ref: string;
+  group: TokenGroup;
+  token: DesignToken;
+}
+
+interface TokenIndex {
+  byRef: Map<string, TokenRecord>;
+  byGroup: Map<string, TokenGroup>;
+}
+
+interface PositionedCard {
+  x: number;
+  y: number;
+  width: number;
+}
+
+interface FamilyGroup {
+  family: string;
+  primitives: PrimitiveDefinition[];
+}
+
+const FAMILY_ORDER = [
+  'button',
+  'input',
+  'checkbox',
+  'switch',
+  'slider',
+  'surface',
+  'card',
+  'media',
+  'navigation',
+  'separator',
+  'list',
+  'row',
+  'loading',
+  'badge',
+  'icon',
+  'skeleton',
+  'dialog',
+  'menu',
+  'sheet',
+  'generic'
+];
+
+function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
+  const byRef = new Map<string, TokenRecord>();
+  const byGroup = new Map<string, TokenGroup>();
+  for (const group of bundle.tokens.tokenGroups) {
+    byGroup.set(group.id, group);
+    for (const token of group.tokens) {
+      byRef.set(`${group.id}.${token.id}`, {
+        ref: `${group.id}.${token.id}`,
+        group,
+        token
+      });
+    }
+  }
+  return { byRef, byGroup };
+}
+
+function addTokenGroupCard(
+  root: HTMLElement,
+  controller: CanvasController,
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  group: TokenGroup,
+  position: PositionedCard
+): HTMLElement {
+  const card = createSpecCard({
+    label: `TOKEN · ${group.name}`,
+    x: position.x,
+    y: position.y,
+    width: position.width,
+    accent: familyAccent('token'),
+    boundary: ['token-group', group.id, bundle.manifest.project.id]
+  });
+  card.dataset.boundarySummary = group.description;
+  card.dataset.tokenGroup = group.id;
+
+  const body = appendSpecBody(card);
+  const header = el('div', 'generated-card-head');
+  header.append(el('strong', '', group.name), el('span', '', group.description));
+  body.append(header);
+
+  const grid = el('div', 'token-grid');
+  for (const token of group.tokens) {
+    grid.append(createTokenRow(tokenIndex, group, token));
+  }
+  body.append(grid);
+
+  if (group.notes.length > 0) {
+    body.append(el('p', 'spec-note', group.notes[0] ?? ''));
+  }
+
+  root.append(card);
+  controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
+  return card;
+}
+
+function createTokenRow(tokenIndex: TokenIndex, group: TokenGroup, token: DesignToken): HTMLElement {
+  const row = el('div', `token-row token-row-${token.type}`);
+  row.dataset.tokenType = token.type;
+  const tokenRef = `${group.id}.${token.id}`;
+  setTokenHook(row, tokenIndex.byRef.get(tokenRef), `${token.type}-token-row`);
+
+  const sample = el('span', 'token-sample');
+  applyTokenPreview(sample, token);
+  const meta = el('span', 'token-meta');
+  meta.append(el('b', '', token.name), el('span', '', `${tokenRef} · ${token.value}`));
+  row.append(sample, meta);
+  return row;
+}
+
+function addPrimitiveDefinitionCard(
+  root: HTMLElement,
+  controller: CanvasController,
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  primitive: PrimitiveDefinition,
+  family: string,
+  position: PositionedCard
+): HTMLElement {
+  const card = createSpecCard({
+    label: primitive.name,
+    x: position.x,
+    y: position.y,
+    width: position.width,
+    accent: familyAccent(family),
+    boundary: ['primitive', primitive.id, bundle.manifest.project.id]
+  });
+  card.dataset.boundarySummary = primitive.description;
+  card.dataset.primitiveFamily = family;
+
+  const body = appendSpecBody(card);
+  const header = el('div', 'generated-card-head primitive-generated-head');
+  const title = el('strong', '', primitive.name);
+  const typography = firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'typography', 'body');
+  if (typography) {
+    setTokenHook(title, typography, 'primitive-title-type');
+    title.style.font = typography.token.value;
+  }
+  header.append(title, el('span', '', primitive.description));
+  body.append(header);
+
+  const meta = el('div', 'primitive-meta-row');
+  meta.append(el('span', 'family-pill', family), el('span', '', `${primitive.stateSets.length} state ${primitive.stateSets.length === 1 ? 'set' : 'sets'}`));
+  body.append(meta);
+
+  if (primitive.stateSets.length === 0) {
+    body.append(createGenericPrimitiveSample(primitive, tokenIndex, family));
+  } else {
+    for (const stateSet of primitive.stateSets) {
+      body.append(createStateSetSection(bundle, tokenIndex, primitive, stateSet, family));
+    }
+  }
+
+  if (primitive.notes.length > 0) {
+    body.append(el('p', 'spec-note', primitive.notes[0] ?? ''));
+  }
+
+  root.append(card);
+  controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
+  return card;
+}
+
+function createStateSetSection(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  primitive: PrimitiveDefinition,
+  stateSet: PrimitiveStateSet,
+  family: string
+): HTMLElement {
+  const section = el('section', 'primitive-state-set');
+  setBoundary(section, 'state-set', `${primitive.id}/${stateSet.id}`, bundle.manifest.project.id, stateSet.name);
+  section.dataset.boundarySummary = stateSet.description;
+
+  const heading = el('div', 'state-set-heading');
+  heading.append(el('b', '', stateSet.name), el('span', '', stateSet.description));
+  section.append(heading);
+
+  const grid = el('div', 'state-sample-grid');
+  for (const state of stateSet.states) {
+    grid.append(createPrimitiveStateSample(tokenIndex, primitive, state, family));
+  }
+  section.append(grid);
+  return section;
+}
+
+function createPrimitiveStateSample(
+  tokenIndex: TokenIndex,
+  primitive: PrimitiveDefinition,
+  state: PrimitiveState,
+  family: string
+): HTMLElement {
+  const sample = el('div', `primitive-sample primitive-sample-${family}`);
+  sample.dataset.primitiveSample = family;
+  sample.dataset.primitiveStateId = state.id;
+  sample.dataset.prototypeOnly = String(state.prototypeOnly);
+
+  const color = firstStateToken(tokenIndex, state, 'color') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'color');
+  const space = firstStateToken(tokenIndex, state, 'space') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'space');
+  const radius = firstStateToken(tokenIndex, state, 'radius') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'radius');
+  const shadow = firstStateToken(tokenIndex, state, 'shadow') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'shadow');
+  const motion = firstStateToken(tokenIndex, state, 'motion') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'motion');
+
+  if (color) {
+    setTokenHook(sample, color, 'sample-background');
+    sample.style.backgroundColor = color.token.value;
+  }
+  if (shadow) {
+    sample.style.boxShadow = shadow.token.value;
+  }
+  if (motion) {
+    sample.style.transition = `transform ${motion.token.value}`;
+  }
+
+  const label = el('span', 'primitive-sample-label', state.name);
+  sample.append(label);
+
+  if (space) {
+    const probe = el('span', 'token-probe token-probe-space', 'space');
+    setTokenHook(probe, space, 'sample-padding-inline');
+    probe.style.paddingLeft = space.token.value;
+    probe.style.paddingRight = space.token.value;
+    sample.append(probe);
+  }
+
+  if (radius) {
+    const probe = el('span', 'token-probe token-probe-radius', 'radius');
+    setTokenHook(probe, radius, 'sample-radius');
+    probe.style.borderRadius = radius.token.value;
+    sample.append(probe);
+  }
+
+  if (shadow) {
+    const probe = el('span', 'token-probe token-probe-shadow', 'shadow');
+    setTokenHook(probe, shadow, 'sample-shadow');
+    probe.style.boxShadow = shadow.token.value;
+    sample.append(probe);
+  }
+
+  if (motion) {
+    const probe = el('span', 'token-probe token-probe-motion', 'motion');
+    setTokenHook(probe, motion, 'sample-motion');
+    probe.style.transition = `transform ${motion.token.value}`;
+    sample.append(probe);
+  }
+
+  if (state.prototypeOnly) {
+    sample.append(el('span', 'prototype-flag', 'prototype'));
+  }
+
+  return sample;
+}
+
+function createGenericPrimitiveSample(primitive: PrimitiveDefinition, tokenIndex: TokenIndex, family: string): HTMLElement {
+  const state: PrimitiveState = {
+    id: 'default',
+    name: primitive.name,
+    tokens: primitive.tokenGroupIds.flatMap(groupId => tokenIndex.byGroup.get(groupId)?.tokens[0]?.id ? [`${groupId}.${tokenIndex.byGroup.get(groupId)?.tokens[0]?.id}`] : []),
+    prototypeOnly: primitive.prototypeOnly,
+    notes: [],
+    implementationHints: []
+  };
+  return createPrimitiveStateSample(tokenIndex, primitive, state, family);
+}
+
+function groupPrimitivesByFamily(primitives: PrimitiveDefinition[]): FamilyGroup[] {
+  const groups = new Map<string, PrimitiveDefinition[]>();
+  for (const primitive of primitives) {
+    const family = inferPrimitiveFamily(primitive);
+    const current = groups.get(family) ?? [];
+    current.push(primitive);
+    groups.set(family, current);
+  }
+  return [...groups.entries()]
+    .map(([family, items]) => ({ family, primitives: items }))
+    .sort((a, b) => familySortIndex(a.family) - familySortIndex(b.family) || a.family.localeCompare(b.family));
+}
+
+function inferPrimitiveFamily(primitive: PrimitiveDefinition): string {
+  const terms = primitiveFamilyTerms(primitive);
+  if (hasFamilyTerm(terms, 'button')) return 'button';
+  if (hasFamilyTerm(terms, 'otp', 'input')) return 'input';
+  if (hasFamilyTerm(terms, 'checkbox')) return 'checkbox';
+  if (hasFamilyTerm(terms, 'switch')) return 'switch';
+  if (hasFamilyTerm(terms, 'slider')) return 'slider';
+  if (hasFamilyTerm(terms, 'surface')) return 'surface';
+  if (hasFamilyTerm(terms, 'media')) return 'media';
+  if (hasFamilyTerm(terms, 'card')) return 'card';
+  if (hasFamilyTerm(terms, 'nav', 'navbar', 'navigation', 'back')) return 'navigation';
+  if (hasFamilyTerm(terms, 'separator')) return 'separator';
+  if (hasFamilyTerm(terms, 'list')) return 'list';
+  if (hasFamilyTerm(terms, 'row')) return 'row';
+  if (hasFamilyTerm(terms, 'loading')) return 'loading';
+  if (hasFamilyTerm(terms, 'badge', 'pill')) return 'badge';
+  if (hasFamilyTerm(terms, 'icon')) return 'icon';
+  if (hasFamilyTerm(terms, 'skeleton')) return 'skeleton';
+  if (hasFamilyTerm(terms, 'dialog')) return 'dialog';
+  if (hasFamilyTerm(terms, 'menu')) return 'menu';
+  if (hasFamilyTerm(terms, 'sheet')) return 'sheet';
+  return 'generic';
+}
+
+function primitiveFamilyTerms(primitive: PrimitiveDefinition): Set<string> {
+  return new Set(
+    `${primitive.id} ${primitive.name}`
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+  );
+}
+
+function hasFamilyTerm(terms: Set<string>, ...candidates: string[]): boolean {
+  return candidates.some(candidate => terms.has(candidate));
+}
+
+function familySortIndex(family: string): number {
+  const index = FAMILY_ORDER.indexOf(family);
+  return index === -1 ? FAMILY_ORDER.length : index;
+}
+
+function familyLabel(family: string): string {
+  const labels: Record<string, string> = {
+    button: 'Actions',
+    input: 'Inputs',
+    checkbox: 'Checks',
+    switch: 'Switches',
+    slider: 'Ranges',
+    surface: 'Surfaces',
+    card: 'Cards',
+    media: 'Media',
+    navigation: 'Navigation',
+    separator: 'Separators',
+    list: 'Lists',
+    row: 'Rows',
+    loading: 'Loading',
+    badge: 'Badges',
+    icon: 'Icons',
+    skeleton: 'Skeletons',
+    dialog: 'Dialogs',
+    menu: 'Menus',
+    sheet: 'Sheets',
+    generic: 'Generic'
+  };
+  return labels[family] ?? family;
+}
+
+function familyAccent(family: string): string {
+  const accents: Record<string, string> = {
+    token: 'var(--accent-token)',
+    button: 'var(--accent-action)',
+    input: 'var(--accent-input)',
+    checkbox: 'var(--accent-input)',
+    switch: 'var(--accent-input)',
+    slider: 'var(--accent-input)',
+    surface: 'var(--accent-surface)',
+    card: 'var(--accent-surface)',
+    media: 'var(--accent-surface)',
+    navigation: 'var(--accent-surface)',
+    separator: 'var(--accent-surface)',
+    list: 'var(--accent-row)',
+    row: 'var(--accent-row)',
+    loading: 'var(--accent-feedback)',
+    badge: 'var(--accent-feedback)',
+    icon: 'var(--accent-feedback)',
+    skeleton: 'var(--accent-feedback)',
+    dialog: 'var(--accent-overlay)',
+    menu: 'var(--accent-overlay)',
+    sheet: 'var(--accent-overlay)',
+    generic: 'var(--fg)'
+  };
+  return accents[family] ?? 'var(--fg)';
+}
+
+function familyWidth(family: string): number {
+  if (family === 'button' || family === 'input') return 460;
+  if (family === 'row' || family === 'list') return 430;
+  return 400;
+}
+
+function firstStateToken(tokenIndex: TokenIndex, state: PrimitiveState, type: DesignToken['type']): TokenRecord | undefined {
+  return state.tokens.map(tokenRef => tokenIndex.byRef.get(tokenRef)).find(record => record?.token.type === type);
+}
+
+function firstTokenFromGroups(
+  tokenIndex: TokenIndex,
+  groupIds: string[],
+  type: DesignToken['type'],
+  preferredTokenId?: string
+): TokenRecord | undefined {
+  for (const groupId of groupIds) {
+    const group = tokenIndex.byGroup.get(groupId);
+    if (!group) {
+      continue;
+    }
+    const token = group.tokens.find(candidate => candidate.type === type && (!preferredTokenId || candidate.id === preferredTokenId));
+    if (token) {
+      return tokenIndex.byRef.get(`${group.id}.${token.id}`);
+    }
+  }
+  for (const groupId of groupIds) {
+    const group = tokenIndex.byGroup.get(groupId);
+    const token = group?.tokens.find(candidate => candidate.type === type);
+    if (group && token) {
+      return tokenIndex.byRef.get(`${group.id}.${token.id}`);
+    }
+  }
+  return undefined;
+}
+
+function setTokenHook(element: HTMLElement, record: TokenRecord | undefined, templateHook: string): void {
+  if (!record) {
+    return;
+  }
+  element.dataset.tokenRole = record.ref;
+  element.dataset.templateHook = templateHook;
+  element.dataset.tokenType = record.token.type;
+  element.dataset.tokenStyleRef = record.token.styleRef;
+}
+
+function applyTokenPreview(element: HTMLElement, token: DesignToken): void {
+  switch (token.type) {
+    case 'color':
+      element.style.background = token.value;
+      break;
+    case 'space':
+      element.style.width = token.value;
+      break;
+    case 'radius':
+      element.style.borderRadius = token.value;
+      break;
+    case 'typography':
+      element.style.font = token.value;
+      element.textContent = 'Aa';
+      break;
+    case 'shadow':
+      element.style.boxShadow = token.value;
+      break;
+    case 'motion':
+      element.textContent = 'ms';
+      break;
+  }
 }
 
 function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
@@ -520,28 +701,6 @@ function addGroupHeading(
   root.append(heading);
   controller.makeDraggable(heading, heading);
   return heading;
-}
-
-function addPrimitiveSpec(root: HTMLElement, controller: CanvasController, options: PrimitiveSpecOptions): HTMLElement {
-  const card = createSpecCard({
-    label: options.label,
-    x: options.x,
-    y: options.y,
-    width: options.width,
-    accent: options.accent,
-    boundary: options.boundary
-  });
-  if (options.note) {
-    card.dataset.boundarySummary = options.note;
-  }
-  const body = appendSpecBody(card);
-  body.innerHTML = options.html;
-  if (options.note) {
-    body.append(el('p', 'spec-note', options.note));
-  }
-  root.append(card);
-  controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
-  return card;
 }
 
 function createPrototypeFrame(bundle: BlueprintProjectBundle, screen: ScreenDefinition, x: number, y: number): HTMLElement {
@@ -623,244 +782,6 @@ function appendSpecBody(card: HTMLElement): HTMLElement {
   return body;
 }
 
-function colorSwatches(): string {
-  const swatches = [
-    ['primary', 'default command role', 'var(--primary)'],
-    ['primary-foreground', 'text on primary', 'var(--primary-fg)'],
-    ['secondary', 'supporting command role', 'var(--secondary)'],
-    ['accent', 'focus and accent role', 'var(--accent)'],
-    ['destructive', 'negative action', 'var(--destructive)'],
-    ['success', 'positive state', 'var(--success)'],
-    ['warning', 'attention state', 'var(--warning)'],
-    ['foreground', 'primary text', 'var(--fg)'],
-    ['muted-foreground', 'secondary text', 'var(--muted-fg)'],
-    ['border', 'default border', 'var(--border)'],
-    ['background', 'canvas base', 'var(--canvas-bg)']
-  ];
-  return `<div class="swatches">${swatches
-    .map(([name, detail, value]) => `<div class="swatch-row"><div class="chip" style="background:${value}"></div><div class="meta"><b>${name}</b><span>${detail}</span></div></div>`)
-    .join('')}</div>`;
-}
-
-function surfaceLadder(): string {
-  return `<div class="ladder">${Array.from({ length: 8 }, (_, index) => {
-    const level = index + 1;
-    return `<div class="rung" style="background:var(--surface-${level})"><b>surface-${level}</b><span>level ${level}</span></div>`;
-  }).join('')}</div>`;
-}
-
-function radiusScale(): string {
-  const radii = [
-    ['sm', '6px', 'var(--r-sm)'],
-    ['md', '9px', 'var(--r-md)'],
-    ['lg', '14px', 'var(--r-lg)'],
-    ['xl', '18px', 'var(--r-xl)'],
-    ['2xl', '24px', 'var(--r-2xl)'],
-    ['full', '999px', '999px']
-  ];
-  return `<div class="radii">${radii
-    .map(([name, value, cssValue]) => `<div class="radius-item"><div class="box" style="border-radius:${cssValue}"></div><b>rounded-${name}</b><span>${value}</span></div>`)
-    .join('')}</div>`;
-}
-
-function typeRoles(): string {
-  const faces = [
-    ['Display', 'headlines, hero labels, high-emphasis titles'],
-    ['Interface', 'body, controls, rows, cards, sheets'],
-    ['Mono Label', 'caption, badge, code, metadata'],
-    ['Numeral', 'OTP, counters, index marks']
-  ];
-  return `<div class="faces">${faces.map(([name, detail]) => `<div class="face"><b>${name}</b><span>${detail}</span></div>`).join('')}</div>`;
-}
-
-const TEXT_VARIANTS = ['display', 'h1', 'h2', 'h3', 'h4', 'p', 'large', 'lead', 'base', 'small', 'muted', 'tiny', 'label', 'caption', 'blockquote', 'code'];
-
-function textVariants(): string {
-  return `<div class="tspec">${TEXT_VARIANTS.map(
-    variant => `<div><div class="tlabel">${variant}</div><div class="t-${variant}">Blueprint primitive text sample</div></div>`
-  ).join('')}</div>`;
-}
-
-const BUTTON_VARIANTS = ['primary', 'secondary', 'tonal', 'outline', 'ghost', 'destructive', 'accent', 'success', 'gradient', 'link'];
-
-function buttonMatrix(): string {
-  return `<div class="mx button-state-matrix">
-    <div class="mx-row"><div class="mx-label">Type</div><div class="mx-h">Normal</div><div class="mx-h">Loading</div><div class="mx-h">Disabled</div></div>
-    ${BUTTON_VARIANTS.map(
-      variant => `<div class="mx-row"><div class="mx-label">${variant}</div>${buttonCell(variant, '')}${buttonCell(variant, 'loading')}${buttonCell(variant, 'disabled')}</div>`
-    ).join('')}
-    <div class="mx-row icon-row"><div class="mx-label">icon</div><button class="btn btn-primary btn-icon">${icon('home', 20)}</button><button class="btn btn-secondary btn-icon is-loading"><span class="btn-label">${icon('settings', 20)}</span><span class="loading-dot"></span></button><button class="btn btn-secondary btn-icon is-disabled">${icon('settings', 20)}</button></div>
-  </div>`;
-}
-
-function buttonCell(variant: string, state: string): string {
-  const stateClass = state ? ` is-${state}` : '';
-  const loading = state === 'loading' ? '<span class="loading-dot"></span>' : '';
-  const sparkle = variant === 'gradient' ? `${icon('sparkles', 14)}` : '';
-  return `<button class="btn btn-${variant}${stateClass}"><span class="btn-label">${sparkle}Action</span>${loading}</button>`;
-}
-
-const INPUT_VARIANTS = ['default', 'filled', 'ghost', 'outline', 'underline'];
-const INPUT_STATES: Array<[string, string, string, boolean]> = [
-  ['Empty', '', 'Placeholder', true],
-  ['Value', '', 'Field value', false],
-  ['Focused', 'is-focused', 'Focused', false],
-  ['Invalid', 'is-invalid', 'Invalid', false],
-  ['Disabled', 'is-disabled', 'Disabled', false]
-];
-
-function inputMatrix(): string {
-  return `<div class="mx input-state-matrix">
-    <div class="mx-row"><div class="mx-label">Type</div>${INPUT_STATES.map(([label]) => `<div class="mx-h input-h">${label}</div>`).join('')}</div>
-    ${INPUT_VARIANTS.map(
-      variant => `<div class="mx-row"><div class="mx-label">${variant}</div>${INPUT_STATES.map(([, stateClass, text, placeholder]) => `<div class="inp inp-${variant} ${stateClass}">${placeholder ? `<span class="ph">${text}</span>` : text}</div>`).join('')}</div>`
-    ).join('')}
-  </div>`;
-}
-
-function checkboxStates(): string {
-  return `<div class="mx compact-state-matrix"><div class="mx-row"><div class="mx-label wide">Type</div>${['Off', 'On', 'Disabled', 'Disabled On', 'Live'].map(label => `<div class="mx-h">${label}</div>`).join('')}</div>
-    <div class="mx-row"><div class="mx-label wide">Default</div><div class="mx-c">${checkbox('')}</div><div class="mx-c">${checkbox('on')}</div><div class="mx-c">${checkbox('is-disabled')}</div><div class="mx-c">${checkbox('is-disabled on')}</div><div class="mx-c">${checkbox('on live')}</div></div></div>`;
-}
-
-function switchStates(): string {
-  return `<div class="mx compact-state-matrix"><div class="mx-row"><div class="mx-label wide">Type</div>${['Off', 'On', 'Disabled', 'Disabled On', 'Live'].map(label => `<div class="mx-h">${label}</div>`).join('')}</div>
-    <div class="mx-row"><div class="mx-label wide">Default</div><div class="mx-c">${switcherControl('')}</div><div class="mx-c">${switcherControl('on')}</div><div class="mx-c">${switcherControl('is-disabled')}</div><div class="mx-c">${switcherControl('is-disabled on')}</div><div class="mx-c">${switcherControl('on live')}</div></div></div>`;
-}
-
-function checkbox(state: string): string {
-  return `<div class="cbx ${state}">${icon('check', 14)}</div>`;
-}
-
-function switcherControl(state: string): string {
-  return `<div class="sw ${state}"><div class="sw-thumb"></div></div>`;
-}
-
-function otpGrid(): string {
-  return `<div class="otp"><div class="cell filled">2</div><div class="cell filled">4</div><div class="cell focused"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>`;
-}
-
-function sliderSamples(): string {
-  return `<div class="slider-stack">${sliderRow('Primary', 38, 4, 18, '')}${sliderRow('Secondary small', 62, 3, 16, 'secondary')}${sliderRow('Contrast large', 24, 6, 20, 'contrast')}${sliderRow('Disabled', 38, 4, 18, 'disabled')}</div>`;
-}
-
-function sliderRow(label: string, pct: number, trackH: number, thumbSize: number, tone: string): string {
-  return `<div class="slider-row"><div class="tlabel">${label}</div><div class="slider ${tone}"><div class="track" style="height:${trackH}px"></div><div class="fill" style="width:${pct}%;height:${trackH}px"></div><div class="thumb" style="left:${pct}%;width:${thumbSize}px;height:${thumbSize}px"></div></div></div>`;
-}
-
-function surfaceNest(level: number): string {
-  const inner = level < 8 ? surfaceNest(level + 1) : '';
-  return `<div class="surf" style="background:var(--surface-${level})"><div class="surf-head"><b>Surface ${level}</b><span>+1</span></div>${inner}</div>`;
-}
-
-function cardVariants(): string {
-  return `<div class="card-stack">
-    <div class="card"><div class="card-h"><div class="card-title">Default Card</div><div class="card-desc">Passive surface with frame only.</div></div><div class="card-c"><div class="t-small">Used for settings, summaries, and grouped content.</div></div><div class="card-f"><button class="btn btn-primary">Action</button></div></div>
-    <div class="card flat"><div class="card-h"><div class="card-title">Flat Card</div><div class="card-desc">Quiet nested surface.</div></div></div>
-    <div class="card elevated status-accent"><div class="card-h"><div class="card-title">Elevated Status</div><div class="card-desc">Semantic frame color.</div></div><div class="card-c"><span class="badge badge-accent">accent</span></div></div>
-  </div>`;
-}
-
-function mediaCards(): string {
-  return `<div class="card-stack">
-    <div class="card media-cover"><div class="media"></div><span class="badge media-flag">0:24</span><div class="media-scrim"><div class="card-title">Media Cover</div><div class="card-desc">Full-bleed media with overlay content.</div></div></div>
-    <div class="card media-nested"><div class="media-inset"><div class="media"></div></div><div class="card-h"><div class="card-title">Nested Media</div><div class="card-desc">Inset media on a stable gutter.</div></div><div class="card-f"><span class="badge badge-tonal">media</span><button class="btn btn-primary">Open</button></div></div>
-  </div>`;
-}
-
-function navBarSamples(): string {
-  return `<div class="sample-stack">
-    <div class="navbar"><div class="side">${backButton('md')}</div><div class="center"><div class="title">Navigation Bar</div></div><div class="side right">${smallIconButton('bell')}</div></div>
-    <div class="navbar"><div class="side">${backButton('md')}</div><div class="center"><div class="title">Back Only</div></div><div class="side"></div></div>
-    <div class="navbar"><div class="side"></div><div class="center"><div class="title">Right Action</div></div><div class="side right">${smallIconButton('search')}</div></div>
-    <div class="navbar"><div class="side">${backButton('md')}</div><div class="center"><div class="title">A Very Long Navigation Title</div></div><div class="side right">${smallIconButton('search')}${smallIconButton('moreHorizontal')}</div></div>
-    <div class="navbar"><div class="side"></div><div class="center"><span class="badge badge-tonal">Custom center</span></div><div class="side right"><div class="circle-surface">A</div></div></div>
-  </div>`;
-}
-
-function backAndSeparator(): string {
-  return `<div class="sample-stack centered"><div class="inline-sample">${backButton('md')}${backButton('sm')}${backButton('md', true)}</div><div class="separator"></div></div>`;
-}
-
-function groupedList(): string {
-  return `<div class="list">
-    ${listRow('Default list item', 'Trailing chevron', icon('music2', 14), icon('chevronRight', 20))}
-    <div class="sep-subtle"></div>
-    ${listRow('Item with trailing', 'Custom trailing content', icon('share2', 14), '<span class="badge badge-secondary">New</span>')}
-    <div class="sep-subtle"></div>
-    ${listRow('Static item', 'No press behavior', icon('music2', 14), '<span class="badge badge-outline">Info</span>')}
-  </div>`;
-}
-
-function pressableRow(): string {
-  return `<div class="prow">${listRow('Standalone pressable row', 'Owns its surface', icon('music2', 20), icon('chevronRight', 20), 'iconbox')}</div>`;
-}
-
-function groupedRows(): string {
-  return `<div class="group-rows">${['first', 'middle', 'last'].map((shape, index) => `<div class="prow ${shape}">${listRow(`Grouped pressable row ${index + 1}`, `group${shape}`, icon('music2', 18), icon('chevronRight', 18), 'iconbox small')}</div>`).join('')}</div>`;
-}
-
-function rowLayoutOnly(): string {
-  return `<div class="lrow bare"><div class="iconbox small">${icon('share2', 16)}</div><div class="body"><b>Row layout only</b><span>No surface, no press</span></div><div class="trail"><span class="t-small">Slot</span></div></div>`;
-}
-
-function listRow(title: string, detail: string, leading: string, trailing: string, leadingClass = 'lead-circle'): string {
-  return `<div class="lrow"><div class="${leadingClass}">${leading}</div><div class="body"><b>${title}</b><span>${detail}</span></div><div class="trail">${trailing}</div></div>`;
-}
-
-function loadingMarks(): string {
-  return `<div class="loading-stack"><div class="loading-panel"><span class="load-mark"><i></i><i></i><i></i></span></div><div class="loading-row primary"><span>Primary loading</span><span class="load-mark small"><i></i><i></i><i></i></span></div><div class="loading-row surface"><span>Surface loading</span><span class="load-mark small"><i></i><i></i><i></i></span></div></div>`;
-}
-
-function badges(): string {
-  return `<div class="badge-wrap">${['default', 'secondary', 'tonal', 'accent', 'destructive', 'success', 'outline'].map(variant => `<span class="badge badge-${variant}">${variant}</span>`).join('')}</div>`;
-}
-
-function iconAndSkeleton(): string {
-  return `<div class="sample-stack"><div class="inline-sample">${icon('heart', 22)}${icon('sparkles', 22)}<span class="emoji">Aa</span></div><div class="skeleton-stack"><div class="skel w66"></div><div class="skel block"></div><div class="skel-card"><div class="skel w50"></div><div class="skel block small"></div></div></div></div>`;
-}
-
-function alertDialogs(): string {
-  return `<div class="dialog-stack"><div class="dialog"><div><div class="d-title">AlertDialog title</div><div class="d-desc">Current alert dialog surface, title, description, and actions.</div></div><div class="d-foot"><button class="btn btn-secondary">Cancel</button><button class="btn btn-primary">Continue</button></div></div><div class="dialog"><div><div class="d-title">Delete item?</div><div class="d-desc">Destructive intent keeps the dialog surface neutral.</div></div><div class="d-foot"><button class="btn btn-secondary">Cancel</button><button class="btn btn-destructive">Delete</button></div></div></div>`;
-}
-
-function contextMenu(): string {
-  return `<div class="menu-wrap"><button class="btn btn-secondary">${icon('moreHorizontal', 18)}Context menu</button><div class="menu"><div class="m-label">ContextMenu label</div><div class="m-item">Default item<span class="shortcut">Cmd K</span></div><div class="m-item inset"><span class="indicator">${icon('check', 14)}</span>Checkbox item</div><div class="m-sep"></div><div class="m-item inset"><span class="indicator"><span class="rdot"></span></span>Soft motion</div><div class="m-item inset">Firm motion</div><div class="m-sep"></div><div class="m-item">Sub menu<span class="chev">${icon('chevronRight', 16)}</span></div><div class="m-sep"></div><div class="m-item destructive">Destructive item</div></div></div>`;
-}
-
-function bottomSheet(): string {
-  return `<div class="sheet-sample"><div class="handle"></div><div class="sheet-nav">${navBarSamples().replace('sample-stack', 'sheet-stack')}</div><div class="s-body"><div class="t-muted">Content slot with stable inset rhythm.</div><div class="s-input">BottomSheetTextInput</div></div><div class="s-foot"><button class="btn btn-primary">Continue</button></div></div>`;
-}
-
-function backButton(size: 'sm' | 'md', disabled = false): string {
-  const className = size === 'sm' ? 'btn btn-secondary btn-round sm' : 'btn btn-secondary btn-round';
-  return `<button class="${className} ${disabled ? 'is-disabled' : ''}">${icon('arrowLeft', size === 'sm' ? 18 : 20)}</button>`;
-}
-
-function smallIconButton(name: string): string {
-  return `<button class="btn btn-secondary btn-icon-sm">${icon(name, 18)}</button>`;
-}
-
-const ICON_PATHS: Record<string, string> = {
-  home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
-  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
-  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
-  sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>',
-  camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
-  check: '<path d="M20 6 9 17l-5-5"/>',
-  arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
-  chevronRight: '<path d="m9 18 6-6-6-6"/>',
-  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
-  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-  moreHorizontal: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
-  music2: '<circle cx="8" cy="18" r="4"/><path d="M12 18V2l7 4"/>',
-  share2: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/>'
-};
-
-function icon(name: string, size: number): string {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] ?? ''}</svg>`;
-}
-
 function createIconButton(className: string, title: string, iconMarkup: string): HTMLButtonElement {
   const button = el('button', className) as HTMLButtonElement;
   button.type = 'button';
@@ -940,7 +861,7 @@ function flashCaptureButton(button: HTMLButtonElement, result: 'done' | 'fail'):
 }
 
 function cameraIcon(): string {
-  return icon('camera', 15);
+  return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
 }
 
 function downloadIcon(): string {

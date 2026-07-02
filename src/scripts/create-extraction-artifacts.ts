@@ -10,7 +10,9 @@ import {
   showBoundary
 } from '../core/query';
 
-const artifactRoot = '.agent-workstream/2026-06-23-01-blueprint-platform-foundation/artifacts';
+const artifactRoot =
+  process.env.BLUEPRINT_ARTIFACT_ROOT ??
+  '.blueprint-artifacts/extraction-query';
 const projectRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 
 async function main(): Promise<void> {

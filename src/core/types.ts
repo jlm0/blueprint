@@ -75,6 +75,7 @@ export interface PrimitiveDefinition {
   name: string;
   description: string;
   tokenGroupIds: string[];
+  uses?: BoundaryDependency[];
   styleRefs: string[];
   styleEvidence?: StyleEvidence[];
   notes: string[];
@@ -97,6 +98,7 @@ export interface PrimitiveState {
   id: string;
   name: string;
   tokens: string[];
+  tokenRoles?: Record<string, string>;
   prototypeOnly: boolean;
   notes: string[];
   implementationHints: string[];
@@ -255,6 +257,14 @@ export interface ResolvedToken {
   styleRef: string;
 }
 
+export interface TokenUsage {
+  tokenId: string;
+  role: string;
+  boundaryId: string;
+  boundaryKind: BoundaryKind;
+  styleRef: string;
+}
+
 export interface TraversalCycle {
   from: string;
   to: string;
@@ -272,6 +282,7 @@ export interface DeepHandoffPacket<TData = unknown> extends BoundaryPacket<TData
   };
   boundaries: BoundaryPacket[];
   resolvedTokens: ResolvedToken[];
+  tokenUsage: TokenUsage[];
 }
 
 export type ExtractionPacket = BoundaryPacket | DeepHandoffPacket;
@@ -285,6 +296,28 @@ export interface ValidationOptions {
 export interface ValidationResult {
   ok: boolean;
   errors: string[];
+}
+
+export type ReadinessTier = 'ready' | 'pending' | 'unresolved' | 'blocked';
+
+export type ReadinessSeverity = 'ready' | 'pending' | 'unresolved' | 'blocker';
+
+export type ReadinessSource = 'resolved' | 'declared' | 'declared-missing-artifact' | 'synthesized-missing';
+
+export interface ReadinessItem {
+  path: string;
+  severity: ReadinessSeverity;
+  source: ReadinessSource;
+  message: string;
+  artifactRef?: string;
+  artifactExists?: boolean;
+}
+
+export interface ReadinessReport {
+  projectId: string;
+  tier: ReadinessTier;
+  items: ReadinessItem[];
+  blockers: ReadinessItem[];
 }
 
 export interface QueryResult {

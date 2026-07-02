@@ -18,6 +18,7 @@ import type {
   ScreenDefinition,
   ScreenSection,
   StyleEvidence,
+  TokenUsage,
   TokenGroup,
   TraversalCycle
 } from './types';
@@ -229,7 +230,8 @@ function createDeepHandoffPacket(bundle: BlueprintProjectBundle, selectorInput: 
       unsupportedReferences
     },
     boundaries,
-    resolvedTokens: resolveTokensForPackets(bundle, boundaries)
+    resolvedTokens: resolveTokensForPackets(bundle, boundaries),
+    tokenUsage: resolveTokenUsageForPackets(bundle, boundaries)
   };
 }
 
@@ -276,6 +278,50 @@ function resolveTokensForPackets(bundle: BlueprintProjectBundle, packets: Bounda
   return [...tokenRefs].sort().flatMap(tokenRef => {
     const resolved = tokenIndex.get(tokenRef);
     return resolved ? [resolved] : [];
+  });
+}
+
+function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: BoundaryPacket[]): TokenUsage[] {
+  const includedBoundaryIds = new Set(packets.map(packet => packet.id));
+  const projectId = bundle.manifest.project.id;
+  const tokenIndex = createTokenIndex(bundle);
+  const usage: TokenUsage[] = [];
+
+  for (const primitive of bundle.primitives.primitives) {
+    const primitiveBoundaryId = boundaryId(projectId, 'primitive', primitive.id);
+    const primitiveIncluded =
+      includedBoundaryIds.has(primitiveBoundaryId) ||
+      primitive.stateSets.some(stateSet => includedBoundaryIds.has(boundaryId(projectId, 'state-set', `${primitive.id}/${stateSet.id}`)));
+    if (!primitiveIncluded) {
+      continue;
+    }
+
+    for (const stateSet of primitive.stateSets) {
+      for (const state of stateSet.states) {
+        for (const [tokenId, role] of Object.entries(state.tokenRoles ?? {})) {
+          const token = tokenIndex.get(tokenId);
+          if (!token || !state.tokens.includes(tokenId)) {
+            continue;
+          }
+          usage.push({
+            tokenId,
+            role,
+            boundaryId: primitiveBoundaryId,
+            boundaryKind: 'primitive',
+            styleRef: token.styleRef
+          });
+        }
+      }
+    }
+  }
+
+  return usage.sort((left, right) => {
+    const boundarySort = left.boundaryId.localeCompare(right.boundaryId);
+    if (boundarySort !== 0) {
+      return boundarySort;
+    }
+    const tokenSort = left.tokenId.localeCompare(right.tokenId);
+    return tokenSort !== 0 ? tokenSort : left.role.localeCompare(right.role);
   });
 }
 
@@ -331,10 +377,13 @@ function primitivePacket(bundle: BlueprintProjectBundle, primitive: PrimitiveDef
     sourceFiles: [bundle.sourceFiles.primitives],
     styleRefs: primitive.styleRefs,
     styleEvidence: styleEvidenceFor(primitive.styleRefs, primitive.styleEvidence),
-    uses: primitive.tokenGroupIds.map(tokenGroupId => {
-      const group = findTokenGroup(bundle, tokenGroupId);
-      return reference(bundle.manifest.project.id, 'token-group', group.id, group.name);
-    }),
+    uses: [
+      ...primitive.tokenGroupIds.map(tokenGroupId => {
+        const group = findTokenGroup(bundle, tokenGroupId);
+        return reference(bundle.manifest.project.id, 'token-group', group.id, group.name);
+      }),
+      ...dependenciesToReferences(bundle, primitive.uses ?? [])
+    ],
     usedBy: usedBy(bundle, 'primitive', primitive.id),
     notes: primitive.notes,
     prototypeOnly: primitive.prototypeOnly,
@@ -495,6 +544,13 @@ function usedBy(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: str
       if (primitive.tokenGroupIds.includes(localId)) {
         refs.push(reference(projectId, 'primitive', primitive.id, primitive.name));
       }
+    }
+  }
+
+  for (const primitive of bundle.primitives.primitives) {
+    const hasDependency = (primitive.uses ?? []).some(dependency => dependency.kind === kind && dependency.id === localId);
+    if (hasDependency) {
+      refs.push(reference(projectId, 'primitive', primitive.id, primitive.name));
     }
   }
 
