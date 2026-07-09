@@ -12,6 +12,7 @@ import type {
   BoundaryDependency,
   BoundaryKind,
   DesignToken,
+  FramePreset,
   PrimitiveDefinition,
   PrimitiveState,
   PrimitiveStateSet,
@@ -250,6 +251,26 @@ interface FamilyGroup {
   primitives: PrimitiveDefinition[];
 }
 
+interface PrimitiveRenderContext {
+  bundle: BlueprintProjectBundle;
+  tokenIndex: TokenIndex;
+  primitive: PrimitiveDefinition;
+  family: string;
+}
+
+interface TokenApplicationOptions {
+  colorHook?: string;
+  colorProperty?: 'background' | 'border' | 'text';
+  colorFromStateOnly?: boolean;
+  spaceHook?: string;
+  radiusHook?: string;
+  typographyHook?: string;
+  shadowHook?: string;
+  shadowFromStateOnly?: boolean;
+  foregroundFallbackFromGroups?: boolean;
+  motionHook?: string;
+}
+
 const FAMILY_ORDER = [
   'button',
   'input',
@@ -363,58 +384,1112 @@ function addPrimitiveDefinitionCard(
   card.dataset.primitiveFamily = family;
 
   const body = appendSpecBody(card);
-  const header = el('div', 'generated-card-head primitive-generated-head');
-  const title = el('strong', '', primitive.name);
-  const typography = firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'typography', 'body');
-  if (typography) {
-    setTokenHook(title, typography, 'primitive-title-type');
-    title.style.font = typography.token.value;
-  }
-  header.append(title, el('span', '', primitive.description));
-  body.append(header);
-
-  const meta = el('div', 'primitive-meta-row');
-  meta.append(el('span', 'family-pill', family), el('span', '', `${primitive.stateSets.length} state ${primitive.stateSets.length === 1 ? 'set' : 'sets'}`));
-  body.append(meta);
-
-  if (primitive.stateSets.length === 0) {
-    body.append(createGenericPrimitiveSample(primitive, tokenIndex, family));
-  } else {
-    for (const stateSet of primitive.stateSets) {
-      body.append(createStateSetSection(bundle, tokenIndex, primitive, stateSet, family));
-    }
-  }
-
-  if (primitive.notes.length > 0) {
-    body.append(el('p', 'spec-note', primitive.notes[0] ?? ''));
-  }
+  body.classList.add('primitive-specimen-body');
+  body.append(renderPrimitiveSpecimen({ bundle, tokenIndex, primitive, family }));
 
   root.append(card);
   controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
   return card;
 }
 
-function createStateSetSection(
-  bundle: BlueprintProjectBundle,
-  tokenIndex: TokenIndex,
-  primitive: PrimitiveDefinition,
-  stateSet: PrimitiveStateSet,
-  family: string
-): HTMLElement {
-  const section = el('section', 'primitive-state-set');
-  setBoundary(section, 'state-set', `${primitive.id}/${stateSet.id}`, bundle.manifest.project.id, stateSet.name);
-  section.dataset.boundarySummary = stateSet.description;
+const primitiveFamilyRenderers: Record<string, (context: PrimitiveRenderContext) => HTMLElement> = {
+  button: renderButtonPrimitive,
+  input: renderInputPrimitive,
+  checkbox: renderCheckboxPrimitive,
+  switch: renderSwitchPrimitive,
+  slider: renderSliderPrimitive,
+  surface: renderSurfacePrimitive,
+  card: renderCardPrimitive,
+  media: renderMediaPrimitive,
+  navigation: renderNavigationPrimitive,
+  separator: renderSeparatorPrimitive,
+  list: renderListPrimitive,
+  row: renderRowPrimitive,
+  loading: renderLoadingPrimitive,
+  badge: renderBadgePrimitive,
+  icon: renderIconPrimitive,
+  skeleton: renderSkeletonPrimitive,
+  dialog: renderDialogPrimitive,
+  menu: renderMenuPrimitive,
+  sheet: renderSheetPrimitive
+};
 
-  const heading = el('div', 'state-set-heading');
-  heading.append(el('b', '', stateSet.name), el('span', '', stateSet.description));
-  section.append(heading);
+function renderPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
+  return primitiveFamilyRenderers[context.family]?.(context) ?? renderGenericPrimitiveCard(context);
+}
+
+function renderVisualStateSets(
+  context: PrimitiveRenderContext,
+  renderStateSet: (stateSet: PrimitiveStateSet) => HTMLElement
+): HTMLElement {
+  const root = el('div', `primitive-visual primitive-visual-${context.family}`);
+  root.dataset.primitiveRenderer = context.family;
+
+  if (context.primitive.stateSets.length === 0) {
+    root.append(renderStateSetContentWithoutBoundary(renderStateSet, syntheticDefaultStateSet(context)));
+    return root;
+  }
+
+  for (const stateSet of context.primitive.stateSets) {
+    root.append(createVisualStateSetSection(context, stateSet, renderStateSet(stateSet)));
+  }
+  return root;
+}
+
+function createVisualStateSetSection(context: PrimitiveRenderContext, stateSet: PrimitiveStateSet, content: HTMLElement): HTMLElement {
+  const section = el('section', 'primitive-state-set visual-state-set');
+  setBoundary(section, 'state-set', `${context.primitive.id}/${stateSet.id}`, context.bundle.manifest.project.id, stateSet.name);
+  section.dataset.boundarySummary = stateSet.description;
+  section.append(el('div', 'visual-state-caption', stateSet.name), content);
+  return section;
+}
+
+function renderStateSetContentWithoutBoundary(
+  renderStateSet: (stateSet: PrimitiveStateSet) => HTMLElement,
+  stateSet: PrimitiveStateSet
+): HTMLElement {
+  const wrapper = el('div', 'visual-state-set visual-state-set-unbound');
+  wrapper.append(renderStateSet(stateSet));
+  return wrapper;
+}
+
+function createButtonStateStrip(context: PrimitiveRenderContext, stateSet: PrimitiveStateSet): HTMLElement {
+  const grid = el('div', 'state-specimen-grid button-specimen-grid');
+  for (const state of stateSet.states) {
+    grid.append(createButtonSpecimen(context, state, state.name));
+  }
+  return grid;
+}
+
+function createButtonStateMatrix(
+  context: PrimitiveRenderContext,
+  variantSet: PrimitiveStateSet,
+  interactionSet: PrimitiveStateSet
+): HTMLElement {
+  const matrix = el('div', 'mx button-state-matrix visual-state-matrix');
+  matrix.append(createMatrixHeader('Type', interactionSet.states.map(state => state.name)));
+
+  for (const variant of variantSet.states) {
+    const row = el('div', 'mx-row');
+    row.dataset.primitiveStateId = variant.id;
+    row.dataset.prototypeOnly = String(variant.prototypeOnly);
+    row.append(el('div', 'mx-label', variant.name));
+    for (const interaction of interactionSet.states) {
+      const cell = el('div', 'mx-c');
+      cell.append(createButtonMatrixCell(context, variant, interaction));
+      row.append(cell);
+    }
+    matrix.append(row);
+  }
+
+  return matrix;
+}
+
+function createButtonMatrixCell(context: PrimitiveRenderContext, variant: PrimitiveState, interaction: PrimitiveState): HTMLButtonElement {
+  const mergedState = mergeVisualStates(variant, interaction);
+  const button = createButtonSpecimen(context, mergedState, 'Action');
+  delete button.dataset.primitiveStateId;
+  delete button.dataset.prototypeOnly;
+  button.disabled = isDisabledState(interaction);
+  if (variant.id.includes('gradient')) {
+    const label = button.querySelector<HTMLElement>('.btn-label');
+    if (label) {
+      label.insertAdjacentHTML('afterbegin', sampleIcon('sparkles'));
+    }
+  }
+  return button;
+}
+
+function createInputStateStrip(context: PrimitiveRenderContext, stateSet: PrimitiveStateSet): HTMLElement {
+  const grid = el('div', 'state-specimen-grid input-specimen-grid');
+  for (const state of stateSet.states) {
+    grid.append(createInputSpecimen(context, state, inputStateText(state), true));
+  }
+  return grid;
+}
+
+function createInputStateMatrix(
+  context: PrimitiveRenderContext,
+  variantSet: PrimitiveStateSet,
+  interactionSet: PrimitiveStateSet
+): HTMLElement {
+  const matrix = el('div', 'mx input-state-matrix visual-state-matrix');
+  matrix.append(createMatrixHeader('Type', interactionSet.states.map(state => state.name)));
+
+  for (const variant of variantSet.states) {
+    const row = el('div', 'mx-row');
+    row.dataset.primitiveStateId = variant.id;
+    row.dataset.prototypeOnly = String(variant.prototypeOnly);
+    row.append(el('div', 'mx-label', variant.name));
+    for (const interaction of interactionSet.states) {
+      const cell = el('div', 'mx-c');
+      const sample = createInputSpecimen(context, mergeVisualStates(variant, interaction), inputStateText(interaction), false);
+      cell.append(sample);
+      row.append(cell);
+    }
+    matrix.append(row);
+  }
+
+  return matrix;
+}
+
+function createMatrixHeader(label: string, columns: string[]): HTMLElement {
+  const row = el('div', 'mx-row mx-head-row');
+  row.append(el('div', 'mx-label', label));
+  for (const column of columns) {
+    row.append(el('div', 'mx-h', column));
+  }
+  return row;
+}
+
+function createInputSpecimen(
+  context: PrimitiveRenderContext,
+  state: PrimitiveState,
+  text: string,
+  includeStateMarker: boolean
+): HTMLElement {
+  const sample = el('div', `inp ${inputStateClass(state)}`);
+  if (includeStateMarker) {
+    sample.dataset.primitiveStateId = state.id;
+    sample.dataset.prototypeOnly = String(state.prototypeOnly);
+  }
+  const label = inputPlaceholderState(state) ? el('span', 'ph', text) : document.createTextNode(text);
+  sample.append(label);
+  applyPrimitiveTokenStyles(sample, context, state, {
+    colorHook: 'input-border-color',
+    colorProperty: 'border',
+    spaceHook: 'input-padding-inline',
+    radiusHook: 'input-radius',
+    typographyHook: 'input-type',
+    motionHook: 'input-motion'
+  });
+  return sample;
+}
+
+function createSurfaceLadder(context: PrimitiveRenderContext, stateSet: PrimitiveStateSet): HTMLElement {
+  const stateByLevel = new Map<number, PrimitiveState>();
+  for (const state of stateSet.states) {
+    const level = Number.parseInt(state.id, 10);
+    if (Number.isFinite(level)) {
+      stateByLevel.set(level, state);
+    }
+  }
+
+  const root = el('div', 'surface-ladder-specimen');
+  const maxLevel = Math.max(5, ...stateByLevel.keys());
+  root.append(createSurfaceLevel(context, stateSet, stateByLevel, 1, maxLevel));
+
+  const comparison = el('div', 'surface-card-comparison');
+  comparison.append(createSurfaceCardExample(context, stateSet, stateByLevel, 2), createSurfaceCardExample(context, stateSet, stateByLevel, maxLevel));
+  root.append(comparison);
+  return root;
+}
+
+function createSurfaceLevel(
+  context: PrimitiveRenderContext,
+  stateSet: PrimitiveStateSet,
+  stateByLevel: Map<number, PrimitiveState>,
+  level: number,
+  maxLevel: number
+): HTMLElement {
+  const surface = el('div', 'surf surface-level');
+  surface.dataset.surfaceLevel = String(level);
+  surface.style.setProperty('--surface-level-bg', surfaceLevelColor(context, stateSet, stateByLevel, level));
+  const state = stateByLevel.get(level);
+  if (state) {
+    surface.dataset.primitiveStateId = state.id;
+    surface.dataset.prototypeOnly = String(state.prototypeOnly);
+    applyPrimitiveTokenStyles(surface, context, state, {
+      colorHook: 'surface-fill',
+      colorProperty: 'background',
+      radiusHook: 'surface-radius',
+      shadowHook: 'surface-shadow'
+    });
+  }
+  surface.append(createSurfaceHead(level));
+  if (level < maxLevel) {
+    surface.append(createSurfaceLevel(context, stateSet, stateByLevel, level + 1, maxLevel));
+  }
+  return surface;
+}
+
+function createSurfaceHead(level: number): HTMLElement {
+  const head = el('div', 'surf-head');
+  head.append(el('b', '', `Surface ${level}`), el('span', '', level === 1 ? 'base' : '+1'));
+  return head;
+}
+
+function createSurfaceCardExample(
+  context: PrimitiveRenderContext,
+  stateSet: PrimitiveStateSet,
+  stateByLevel: Map<number, PrimitiveState>,
+  level: number
+): HTMLElement {
+  const card = el('article', 'card surface-card-example');
+  card.style.setProperty('--surface-level-bg', surfaceLevelColor(context, stateSet, stateByLevel, level));
+  card.append(el('strong', '', `Card on +${Math.max(1, level - 1)}`), el('p', '', `Same card, surface ${level}`));
+  return card;
+}
+
+function surfaceLevelColor(
+  context: PrimitiveRenderContext,
+  stateSet: PrimitiveStateSet,
+  stateByLevel: Map<number, PrimitiveState>,
+  level: number
+): string {
+  const state = stateByLevel.get(level) ?? stateSet.states[stateSet.states.length - 1];
+  const token = state ? firstStateToken(context.tokenIndex, state, 'color') : undefined;
+  if (token) {
+    const whiteMix = Math.min(28, Math.max(0, (level - 1) * 5));
+    return `color-mix(in srgb, ${token.token.value} ${100 - whiteMix}%, white ${whiteMix}%)`;
+  }
+  return `var(--bp-sample-surface-${Math.min(8, Math.max(1, level))})`;
+}
+
+function renderButtonPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  if (primitiveHasTerm(context.primitive, 'back')) {
+    return renderVisualStateSets(context, stateSet => {
+      const grid = el('div', 'state-specimen-grid back-button-specimen-grid');
+      for (const state of stateSet.states) {
+        grid.append(createBackButtonSpecimen(context, state));
+      }
+      return grid;
+    });
+  }
+
+  const variantSet = context.primitive.stateSets.find(isCommandVariantStateSet);
+  const interactionSet = context.primitive.stateSets.find(isInteractionStateSet);
+  if (variantSet && interactionSet && variantSet.states.length > 1 && interactionSet.states.length > 1) {
+    const root = el('div', `primitive-visual primitive-visual-${context.family}`);
+    root.dataset.primitiveRenderer = context.family;
+    for (const stateSet of context.primitive.stateSets) {
+      const content =
+        stateSet === variantSet
+          ? createButtonStateMatrix(context, variantSet, interactionSet)
+          : createButtonStateStrip(context, stateSet);
+      root.append(createVisualStateSetSection(context, stateSet, content));
+    }
+    return root;
+  }
+
+  return renderVisualStateSets(context, stateSet => createButtonStateStrip(context, stateSet));
+}
+
+function renderInputPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  if (primitiveHasTerm(context.primitive, 'otp')) {
+    return renderOtpPrimitive(context);
+  }
+
+  const variantSet = context.primitive.stateSets.find(isInputVariantStateSet);
+  const interactionSet = context.primitive.stateSets.find(isInteractionStateSet);
+  if (variantSet && interactionSet && variantSet.states.length > 1 && interactionSet.states.length > 1) {
+    const root = el('div', `primitive-visual primitive-visual-${context.family}`);
+    root.dataset.primitiveRenderer = context.family;
+    for (const stateSet of context.primitive.stateSets) {
+      const content =
+        stateSet === variantSet
+          ? createInputStateMatrix(context, variantSet, interactionSet)
+          : createInputStateStrip(context, stateSet);
+      root.append(createVisualStateSetSection(context, stateSet, content));
+    }
+    return root;
+  }
+
+  return renderVisualStateSets(context, stateSet => createInputStateStrip(context, stateSet));
+}
+
+function renderOtpPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid otp-specimen-grid');
+    for (const state of stateSet.states) {
+      const sample = el('div', 'otp');
+      sample.dataset.primitiveStateId = state.id;
+      sample.dataset.prototypeOnly = String(state.prototypeOnly);
+      for (let index = 0; index < 6; index += 1) {
+        const cell = el('span', `cell ${state.id === 'focused' && index === 2 ? 'is-focused' : ''}`, state.id === 'filled' ? String((index + 1) % 10) : '');
+        sample.append(cell);
+      }
+      applyPrimitiveTokenStyles(sample, context, state, {
+        colorHook: 'otp-accent',
+        colorProperty: 'border',
+        spaceHook: 'otp-gap',
+        radiusHook: 'otp-cell-radius',
+        typographyHook: 'otp-type',
+        motionHook: 'otp-motion'
+      });
+      grid.append(sample);
+    }
+    return grid;
+  });
+}
+
+function renderCheckboxPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderChoicePrimitive(context, 'checkbox');
+}
+
+function renderSwitchPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderChoicePrimitive(context, 'switch');
+}
+
+function renderChoicePrimitive(context: PrimitiveRenderContext, kind: 'checkbox' | 'switch'): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', `state-specimen-grid ${kind}-specimen-grid`);
+    for (const state of stateSet.states) {
+      const sample = el('div', 'choice-specimen');
+      const control = kind === 'checkbox' ? el('span', `cbx ${stateOnClass(state)} ${disabledClass(state)}`) : el('span', `sw ${stateOnClass(state)} ${disabledClass(state)}`);
+      control.dataset.primitiveStateId = state.id;
+      control.dataset.prototypeOnly = String(state.prototypeOnly);
+      if (kind === 'switch') {
+        control.append(el('span', 'sw-thumb'));
+      }
+      applyPrimitiveTokenStyles(control, context, state, {
+        colorHook: `${kind}-accent`,
+        colorProperty: 'background',
+        radiusHook: `${kind}-radius`,
+        motionHook: `${kind}-motion`
+      });
+      sample.append(control, el('span', 'choice-label', state.name));
+      grid.append(sample);
+    }
+    return grid;
+  });
+}
+
+function renderSliderPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const stack = el('div', 'slider-samples');
+    stateSet.states.forEach((state, index) => {
+      const row = el('div', 'slider-row');
+      row.dataset.primitiveStateId = state.id;
+      row.dataset.prototypeOnly = String(state.prototypeOnly);
+      row.append(el('span', 'slider-label', state.name));
+      const slider = el('span', `slider ${disabledClass(state)}`);
+      const track = el('span', 'track');
+      const fill = el('span', 'fill');
+      const percentage = Math.max(18, Math.min(88, 34 + index * 16));
+      fill.style.width = `${percentage}%`;
+      const thumb = el('span', 'thumb');
+      thumb.style.left = `${percentage}%`;
+      slider.append(track, fill, thumb);
+      applyPrimitiveTokenStyles(fill, context, state, {
+        colorHook: 'slider-fill',
+        colorProperty: 'background',
+        motionHook: 'slider-motion'
+      });
+      applyPrimitiveTokenStyles(thumb, context, state, {
+        radiusHook: 'slider-thumb-radius'
+      });
+      row.append(slider);
+      stack.append(row);
+    });
+    return stack;
+  });
+}
+
+function renderSurfacePrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => createSurfaceLadder(context, stateSet));
+}
+
+function renderCardPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid card-specimen-grid');
+    for (const state of stateSet.states) {
+      grid.append(createCardSpecimen(context, state, state.name));
+    }
+    return grid;
+  });
+}
+
+function renderMediaPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid media-specimen-grid');
+    for (const state of stateSet.states) {
+      const sample = el('article', 'media');
+      sample.dataset.primitiveStateId = state.id;
+      sample.dataset.prototypeOnly = String(state.prototypeOnly);
+      sample.append(el('div', 'media-img'), el('div', 'media-body', state.name));
+      applyPrimitiveTokenStyles(sample, context, state, {
+        colorHook: 'media-surface',
+        colorProperty: 'background',
+        radiusHook: 'media-radius',
+        shadowHook: 'media-shadow'
+      });
+      grid.append(sample);
+    }
+    return grid;
+  });
+}
+
+function renderNavigationPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  if (primitiveHasTerm(context.primitive, 'back')) {
+    return renderVisualStateSets(context, stateSet => {
+      const grid = el('div', 'state-specimen-grid back-button-specimen-grid');
+      for (const state of stateSet.states) {
+        grid.append(createBackButtonSpecimen(context, state));
+      }
+      return grid;
+    });
+  }
+
+  return renderVisualStateSets(context, stateSet => {
+    const stack = el('div', 'navigation-specimen-stack');
+    for (const state of stateSet.states) {
+      const nav = createNavigationSpecimen(state, state.name);
+      nav.dataset.primitiveStateId = state.id;
+      nav.dataset.prototypeOnly = String(state.prototypeOnly);
+      applyPrimitiveTokenStyles(nav, context, state, {
+        colorHook: 'navigation-surface',
+        colorProperty: 'background',
+        radiusHook: 'navigation-radius',
+        shadowHook: 'navigation-shadow'
+      });
+      stack.append(nav);
+    }
+    return stack;
+  });
+}
+
+function renderSeparatorPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const stack = el('div', 'separator-specimen-stack');
+    for (const state of stateSet.states) {
+      const row = el('div', 'separator-specimen');
+      row.dataset.primitiveStateId = state.id;
+      row.dataset.prototypeOnly = String(state.prototypeOnly);
+      row.append(el('span', 'separator-label', state.name));
+      const line = el('span', `separator ${state.id}`);
+      applyPrimitiveTokenStyles(line, context, state, {
+        colorHook: 'separator-color',
+        colorProperty: 'background'
+      });
+      row.append(line);
+      stack.append(row);
+    }
+    return stack;
+  });
+}
+
+function renderListPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid list-specimen-grid');
+    for (const state of stateSet.states) {
+      const list = el('div', 'list');
+      list.dataset.primitiveStateId = state.id;
+      list.dataset.prototypeOnly = String(state.prototypeOnly);
+      list.append(createListRow('Inbox', '12'), createListRow(state.name, 'New'), createListRow('Archive', ''));
+      applyPrimitiveTokenStyles(list, context, state, {
+        colorHook: 'list-surface',
+        colorProperty: 'background',
+        radiusHook: 'list-radius',
+        shadowHook: 'list-shadow'
+      });
+      grid.append(list);
+    }
+    return grid;
+  });
+}
+
+function renderRowPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const stack = el('div', 'row-specimen-stack');
+    for (const state of stateSet.states) {
+      const row = createListRow(state.name, 'Detail');
+      row.dataset.primitiveStateId = state.id;
+      row.dataset.prototypeOnly = String(state.prototypeOnly);
+      applyPrimitiveTokenStyles(row, context, state, {
+        colorHook: 'row-surface',
+        colorProperty: 'background',
+        spaceHook: 'row-padding-inline',
+        radiusHook: 'row-radius'
+      });
+      stack.append(row);
+    }
+    return stack;
+  });
+}
+
+function renderLoadingPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid loading-specimen-grid');
+    for (const state of stateSet.states) {
+      const panel = el('div', 'loading-panel');
+      panel.dataset.primitiveStateId = state.id;
+      panel.dataset.prototypeOnly = String(state.prototypeOnly);
+      panel.append(el('span', 'loading-dot'), el('span', 'loading-dot'), el('span', 'loading-dot'));
+      applyPrimitiveTokenStyles(panel, context, state, {
+        colorHook: 'loading-surface',
+        colorProperty: 'background',
+        radiusHook: 'loading-radius',
+        motionHook: 'loading-motion'
+      });
+      grid.append(panel);
+    }
+    return grid;
+  });
+}
+
+function renderBadgePrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid badge-specimen-grid');
+    for (const state of stateSet.states) {
+      const badge = el('span', `badge ${badgeClass(state)}`, state.name);
+      badge.dataset.primitiveStateId = state.id;
+      badge.dataset.prototypeOnly = String(state.prototypeOnly);
+      applyPrimitiveTokenStyles(badge, context, state, {
+        colorHook: 'badge-fill',
+        colorProperty: 'background'
+      });
+      grid.append(badge);
+    }
+    return grid;
+  });
+}
+
+function renderIconPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid icon-specimen-grid');
+    for (const state of stateSet.states) {
+      const sample = el('span', 'icon-sample');
+      sample.dataset.primitiveStateId = state.id;
+      sample.dataset.prototypeOnly = String(state.prototypeOnly);
+      sample.innerHTML = sampleIcon('sparkles');
+      applyPrimitiveTokenStyles(sample, context, state, {
+        colorHook: 'icon-color',
+        colorProperty: 'text'
+      });
+      grid.append(sample);
+    }
+    return grid;
+  });
+}
+
+function renderSkeletonPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid skeleton-specimen-grid');
+    for (const state of stateSet.states) {
+      const skeleton = el('div', 'skel');
+      skeleton.dataset.primitiveStateId = state.id;
+      skeleton.dataset.prototypeOnly = String(state.prototypeOnly);
+      skeleton.append(el('span', 'skel-line'), el('span', 'skel-line short'), el('span', 'skel-block'));
+      applyPrimitiveTokenStyles(skeleton, context, state, {
+        colorHook: 'skeleton-surface',
+        colorProperty: 'background',
+        radiusHook: 'skeleton-radius',
+        motionHook: 'skeleton-motion'
+      });
+      grid.append(skeleton);
+    }
+    return grid;
+  });
+}
+
+function renderDialogPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const grid = el('div', 'state-specimen-grid dialog-specimen-grid');
+    for (const state of stateSet.states) {
+      const dialog = el('div', 'dialog');
+      dialog.dataset.primitiveStateId = state.id;
+      dialog.dataset.prototypeOnly = String(state.prototypeOnly);
+      dialog.append(el('b', '', state.name), el('p', '', 'Message body'), el('div', 'dialog-actions'));
+      const action = createButtonSpecimen(context, state, state.id.includes('destructive') ? 'Delete' : 'Cancel');
+      delete action.dataset.primitiveStateId;
+      delete action.dataset.prototypeOnly;
+      dialog.querySelector('.dialog-actions')?.append(action);
+      applyPrimitiveTokenStyles(dialog, context, state, {
+        colorHook: 'dialog-surface',
+        colorProperty: 'background',
+        radiusHook: 'dialog-radius',
+        shadowHook: 'dialog-shadow'
+      });
+      grid.append(dialog);
+    }
+    return grid;
+  });
+}
+
+function renderMenuPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const menu = el('div', 'menu');
+    for (const state of stateSet.states) {
+      const item = el('div', `m-item ${state.id.includes('destructive') ? 'destructive' : ''}`);
+      item.dataset.primitiveStateId = state.id;
+      item.dataset.prototypeOnly = String(state.prototypeOnly);
+      item.append(el('span', '', state.name), state.id.includes('checked') ? el('span', '', '✓') : el('span', '', ''));
+      applyPrimitiveTokenStyles(item, context, state, {
+        colorHook: 'menu-item-color',
+        colorProperty: state.id.includes('destructive') ? 'text' : 'background',
+        radiusHook: 'menu-item-radius'
+      });
+      menu.append(item);
+    }
+    return menu;
+  });
+}
+
+function renderSheetPrimitive(context: PrimitiveRenderContext): HTMLElement {
+  return renderVisualStateSets(context, stateSet => {
+    const sheet = el('div', 'sheet-sample');
+    for (const state of stateSet.states) {
+      const slot = el('div', `sheet-slot sheet-slot-${cssClassName(state.id)}`, state.name);
+      slot.dataset.primitiveStateId = state.id;
+      slot.dataset.prototypeOnly = String(state.prototypeOnly);
+      applyPrimitiveTokenStyles(slot, context, state, {
+        colorHook: 'sheet-slot-surface',
+        colorProperty: 'background',
+        radiusHook: 'sheet-slot-radius'
+      });
+      sheet.append(slot);
+    }
+    return sheet;
+  });
+}
+
+function renderGenericPrimitiveCard(context: PrimitiveRenderContext): HTMLElement {
+  const root = el('div', 'primitive-visual primitive-visual-generic');
+  root.dataset.primitiveRenderer = 'generic';
+
+  if (context.primitive.stateSets.length === 0) {
+    root.append(createGenericPrimitiveSample(context.primitive, context.tokenIndex, context.family));
+    return root;
+  }
+
+  for (const stateSet of context.primitive.stateSets) {
+    root.append(createGenericStateSetSection(context, stateSet));
+  }
+  return root;
+}
+
+function createGenericStateSetSection(context: PrimitiveRenderContext, stateSet: PrimitiveStateSet): HTMLElement {
+  const section = el('section', 'primitive-state-set visual-state-set generic-state-set');
+  setBoundary(section, 'state-set', `${context.primitive.id}/${stateSet.id}`, context.bundle.manifest.project.id, stateSet.name);
+  section.dataset.boundarySummary = stateSet.description;
+  section.append(el('div', 'visual-state-caption', stateSet.name));
 
   const grid = el('div', 'state-sample-grid');
   for (const state of stateSet.states) {
-    grid.append(createPrimitiveStateSample(tokenIndex, primitive, state, family));
+    grid.append(createPrimitiveStateSample(context.tokenIndex, context.primitive, state, context.family));
   }
   section.append(grid);
   return section;
+}
+
+function createButtonSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, label: string): HTMLButtonElement {
+  const button = el('button', `btn ${buttonClass(state)} ${buttonStateClass(state)}`) as HTMLButtonElement;
+  button.type = 'button';
+  button.dataset.primitiveStateId = state.id;
+  button.dataset.prototypeOnly = String(state.prototypeOnly);
+  button.disabled = isDisabledState(state);
+  button.append(el('span', 'btn-label', label));
+  if (isLoadingState(state)) {
+    button.append(el('span', 'loading-dot'));
+  }
+  applyPrimitiveTokenStyles(button, context, state, {
+    colorHook: 'button-background',
+    colorProperty: 'background',
+    spaceHook: 'button-padding-inline',
+    radiusHook: 'button-radius',
+    typographyHook: 'button-type',
+    motionHook: 'button-motion'
+  });
+  return button;
+}
+
+function createBackButtonSpecimen(context: PrimitiveRenderContext, state: PrimitiveState): HTMLButtonElement {
+  const button = el('button', `btn btn-secondary btn-round ${buttonStateClass(state)}`) as HTMLButtonElement;
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Back');
+  button.dataset.primitiveStateId = state.id;
+  button.dataset.prototypeOnly = String(state.prototypeOnly);
+  button.disabled = isDisabledState(state);
+  button.innerHTML = sampleIcon('chevron-left');
+  if (state.id.includes('sm') || state.id.includes('small')) {
+    button.classList.add('sm');
+  }
+  applyPrimitiveTokenStyles(button, context, state, {
+    colorHook: 'back-button-background',
+    colorProperty: 'background',
+    colorFromStateOnly: true,
+    radiusHook: 'back-button-radius',
+    motionHook: 'back-button-motion'
+  });
+  return button;
+}
+
+function createSmallIconButton(iconName: keyof typeof ICON_PATHS): HTMLElement {
+  const button = el('button', 'btn btn-secondary btn-icon-sm') as HTMLButtonElement;
+  button.type = 'button';
+  button.setAttribute('aria-label', iconName);
+  button.innerHTML = sampleIcon(iconName);
+  return button;
+}
+
+function createNavigationSpecimen(state: PrimitiveState, title: string): HTMLElement {
+  const nav = el('div', 'navbar');
+  const left = el('div', 'side');
+  const center = el('div', 'center');
+  const right = el('div', 'side right');
+  if (navigationShowsLeft(state)) {
+    left.append(createSmallIconButton('chevron-left'));
+  }
+  center.append(el('div', 'title', title));
+  if (navigationShowsRight(state)) {
+    right.append(createSmallIconButton('more-horizontal'));
+  }
+  nav.append(left, center, right);
+  return nav;
+}
+
+function navigationShowsLeft(state: PrimitiveState): boolean {
+  const id = state.id.toLowerCase();
+  return !id.includes('right-only') && !id.includes('center-only');
+}
+
+function navigationShowsRight(state: PrimitiveState): boolean {
+  const id = state.id.toLowerCase();
+  return !id.includes('back-only') && !id.includes('left-only');
+}
+
+function createListRow(title: string, meta: string): HTMLElement {
+  const row = el('div', 'lrow');
+  row.append(el('span', 'row-avatar'), el('span', 'row-title', title), el('span', 'row-meta', meta));
+  return row;
+}
+
+function createCardSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, title: string): HTMLElement {
+  const card = el('article', `card ${cardClass(state)}`);
+  card.dataset.primitiveStateId = state.id;
+  card.dataset.prototypeOnly = String(state.prototypeOnly);
+  card.append(el('div', 'card-kicker', title), el('strong', '', 'Card title'), el('p', '', 'Supporting content'));
+  applyPrimitiveTokenStyles(card, context, state, {
+    colorHook: 'card-surface',
+    colorProperty: cardClass(state).includes('status-accent') ? 'border' : 'background',
+    spaceHook: 'card-padding-inline',
+    radiusHook: 'card-radius',
+    typographyHook: 'card-type',
+    shadowHook: 'card-shadow',
+    shadowFromStateOnly: true,
+    foregroundFallbackFromGroups: true,
+    motionHook: 'card-motion'
+  });
+  return card;
+}
+
+function createScreenCardSpecimen(
+  context: PrimitiveRenderContext,
+  state: PrimitiveState,
+  copy: string,
+  keywords: Set<string> = new Set()
+): HTMLElement {
+  const card = el('article', `card ${cardClass(state)} screen-card-specimen`);
+  card.dataset.primitiveStateId = state.id;
+  card.dataset.prototypeOnly = String(state.prototypeOnly);
+  if (keywords.has('text') || keywords.has('eyebrow')) {
+    card.classList.add('card-text');
+  }
+  appendScreenCardContent(card, copy, keywords);
+  applyPrimitiveTokenStyles(card, context, state, {
+    colorHook: 'screen-card-surface',
+    colorProperty: cardClass(state).includes('status-accent') ? 'border' : 'background',
+    spaceHook: 'screen-card-padding-inline',
+    radiusHook: 'screen-card-radius',
+    typographyHook: 'screen-card-type',
+    shadowHook: 'screen-card-shadow',
+    shadowFromStateOnly: true,
+    foregroundFallbackFromGroups: true,
+    motionHook: 'screen-card-motion'
+  });
+  return card;
+}
+
+function appendScreenCardContent(card: HTMLElement, copy: string, keywords: Set<string>): void {
+  const parts = splitCopyParts(copy);
+
+  if (keywords.has('stat')) {
+    card.classList.add('card-stat');
+    card.append(el('span', 'card-kicker', parts[0] ?? copy));
+    card.append(el('strong', 'card-stat-value', parts[1] ?? ''));
+    if (parts[2]) {
+      card.append(el('p', 'card-body', parts[2]));
+    }
+    return;
+  }
+
+  if (keywords.has('eyebrow')) {
+    card.append(el('span', 'card-kicker', parts.join(' · ') || copy));
+    return;
+  }
+
+  if (keywords.has('quote')) {
+    card.classList.add('card-quote');
+    card.append(el('p', 'card-quote-text', parts[0] ?? copy));
+    if (parts[1]) {
+      card.append(el('span', 'card-kicker', parts[1]));
+    }
+    return;
+  }
+
+  const display = keywords.has('display');
+  let kicker: string | undefined;
+  let title: string | undefined;
+  let body: string | undefined;
+  if (parts.length >= 3) {
+    [kicker, title, body] = parts;
+  } else if (parts.length === 2) {
+    if (display) {
+      [kicker, title] = parts;
+    } else {
+      [title, body] = parts;
+    }
+  } else {
+    title = parts[0] ?? copy;
+  }
+
+  if (kicker) {
+    card.append(el('span', 'card-kicker', kicker));
+  }
+  const titleEl = el('strong', 'card-title', title ?? '');
+  if (display) {
+    titleEl.classList.add('card-display-title');
+  }
+  card.append(titleEl);
+  if (body) {
+    card.append(el('p', 'card-body', body));
+  }
+}
+
+function createScreenMediaSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, copy: string): HTMLElement {
+  const media = el('article', 'media screen-media-specimen');
+  media.dataset.primitiveStateId = state.id;
+  media.dataset.prototypeOnly = String(state.prototypeOnly);
+  const parts = splitCopyParts(copy);
+  media.append(el('div', 'media-img'));
+  const body = el('div', 'media-body');
+  body.append(el('strong', '', parts[0] ?? copy));
+  if (parts[1]) {
+    body.append(el('span', 'media-caption', parts[1]));
+  }
+  media.append(body);
+  applyPrimitiveTokenStyles(media, context, state, {
+    colorHook: 'screen-media-surface',
+    colorProperty: 'background',
+    radiusHook: 'screen-media-radius',
+    shadowHook: 'screen-media-shadow'
+  });
+  return media;
+}
+
+function splitCopyParts(copy: string): string[] {
+  return copy
+    .split('|')
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
+}
+
+const SECTION_LAYOUT_KEYWORDS = new Set([
+  'row',
+  'spread',
+  'center',
+  'end',
+  'grid-2',
+  'grid-3',
+  'grid-4',
+  'hero',
+  'narrow',
+  'wide',
+  'footer'
+]);
+
+const DEPENDENCY_LAYOUT_KEYWORDS = new Set(['grow', 'fit', 'span-2', 'stat', 'text', 'eyebrow', 'display', 'quote']);
+
+function layoutTerms(layout: string | undefined): string[] {
+  if (!layout) {
+    return [];
+  }
+  return layout
+    .toLowerCase()
+    .split(/[^a-z0-9-]+/)
+    .filter(Boolean);
+}
+
+function sectionLayoutClasses(section: ScreenDefinition['sections'][number]): string[] {
+  const keywords = new Set<string>();
+  for (const dependency of section.uses) {
+    for (const term of layoutTerms(dependency.binding?.layout)) {
+      if (SECTION_LAYOUT_KEYWORDS.has(term)) {
+        keywords.add(term);
+      }
+    }
+  }
+  return [...keywords].map(keyword => `layout-${keyword}`);
+}
+
+function dependencyLayoutKeywords(dependency: BoundaryDependency): Set<string> {
+  const keywords = new Set<string>();
+  for (const term of layoutTerms(dependency.binding?.layout)) {
+    if (DEPENDENCY_LAYOUT_KEYWORDS.has(term)) {
+      keywords.add(term);
+    }
+  }
+  return keywords;
+}
+
+function applyScreenCanvasTokens(target: HTMLElement, tokenIndex: TokenIndex): void {
+  const records = [...tokenIndex.byRef.values()];
+  const pick = (type: DesignToken['type'], preferred: string[]): TokenRecord | undefined => {
+    const pool = records.filter(record => record.token.type === type);
+    for (const id of preferred) {
+      const hit = pool.find(record => record.token.id === id) ?? pool.find(record => record.token.id.includes(id));
+      if (hit) {
+        return hit;
+      }
+    }
+    return pool[0];
+  };
+  const assign = (name: string, record: TokenRecord | undefined): void => {
+    if (record) {
+      target.style.setProperty(name, record.token.value);
+    }
+  };
+
+  assign('--proto-bg', pick('color', ['background', 'canvas', 'bg']));
+  assign('--proto-surface', pick('color', ['surface', 'panel', 'card']));
+  assign('--proto-fg', pick('color', ['foreground', 'text', 'ink']));
+  assign('--proto-muted', pick('color', ['muted', 'subtle', 'tertiary', 'secondary']));
+  assign('--proto-type-display', pick('typography', ['display', 'headline', 'title']));
+  assign('--proto-type-body', pick('typography', ['body', 'text']));
+  assign('--proto-type-label', pick('typography', ['label', 'caption', 'eyebrow']));
+  assign('--proto-section-gap', pick('space', ['section', 'stack', 'gap']));
+  assign('--proto-radius', pick('radius', ['radius-lg', 'lg', 'panel', 'radius-md', 'md']));
+  assign('--proto-shadow', pick('shadow', ['panel', 'card']));
+}
+
+function applyPrimitiveTokenStyles(
+  target: HTMLElement,
+  context: PrimitiveRenderContext,
+  state: PrimitiveState,
+  options: TokenApplicationOptions
+): void {
+  const color =
+    stateTokenForColorProperty(context.tokenIndex, state, options.colorProperty ?? 'background') ??
+    firstStateToken(context.tokenIndex, state, 'color') ??
+    (options.colorFromStateOnly ? undefined : firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'color'));
+  const foregroundColor =
+    stateTokenForColorRole(context.tokenIndex, state, ['foreground', 'text', 'label']) ??
+    (options.foregroundFallbackFromGroups ? preferredColorTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, ['foreground', 'ink', 'text', 'fg']) : undefined);
+  const space = firstStateToken(context.tokenIndex, state, 'space') ?? firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'space');
+  const radius = firstStateToken(context.tokenIndex, state, 'radius') ?? firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'radius');
+  const typography = firstStateToken(context.tokenIndex, state, 'typography') ?? firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'typography', 'body');
+  const shadow = firstStateToken(context.tokenIndex, state, 'shadow') ?? (options.shadowFromStateOnly ? undefined : firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'shadow'));
+  const motion = firstStateToken(context.tokenIndex, state, 'motion') ?? firstTokenFromGroups(context.tokenIndex, context.primitive.tokenGroupIds, 'motion');
+
+  if (color && options.colorHook) {
+    applyColorVariable(target, color.token.value, options.colorProperty ?? 'background');
+    appendAgentTokenHook(target, color, options.colorHook, hook => applyColorStyle(hook, color.token.value, options.colorProperty ?? 'background'));
+  }
+  if (foregroundColor && options.colorHook && options.colorProperty !== 'text') {
+    target.style.setProperty('--specimen-fg', foregroundColor.token.value);
+    appendAgentTokenHook(target, foregroundColor, `${options.colorHook}-foreground`, hook => applyColorStyle(hook, foregroundColor.token.value, 'text'));
+  }
+  if (space && options.spaceHook) {
+    target.style.setProperty('--specimen-padding-inline', space.token.value);
+    appendAgentTokenHook(target, space, options.spaceHook, hook => {
+      hook.style.paddingLeft = space.token.value;
+      hook.style.paddingRight = space.token.value;
+    });
+  }
+  if (radius && options.radiusHook) {
+    target.style.setProperty('--specimen-radius', radius.token.value);
+    appendAgentTokenHook(target, radius, options.radiusHook, hook => {
+      hook.style.borderRadius = radius.token.value;
+    });
+  }
+  if (typography && options.typographyHook) {
+    target.style.setProperty('--specimen-font', typography.token.value);
+    appendAgentTokenHook(target, typography, options.typographyHook, hook => {
+      hook.style.font = typography.token.value;
+    });
+  }
+  if (shadow && options.shadowHook) {
+    target.style.setProperty('--specimen-shadow', shadow.token.value);
+    appendAgentTokenHook(target, shadow, options.shadowHook, hook => {
+      hook.style.boxShadow = shadow.token.value;
+    });
+  }
+  if (motion && options.motionHook) {
+    target.style.setProperty('--specimen-motion', motion.token.value);
+    appendAgentTokenHook(target, motion, options.motionHook, hook => {
+      hook.style.transition = `transform ${motion.token.value}`;
+    });
+  }
+}
+
+function appendAgentTokenHook(target: HTMLElement, record: TokenRecord, templateHook: string, applyStyle: (hook: HTMLElement) => void): void {
+  const hook = el('span', 'agent-token-hook');
+  hook.setAttribute('aria-hidden', 'true');
+  setTokenHook(hook, record, templateHook);
+  applyStyle(hook);
+  target.append(hook);
+}
+
+function applyColorStyle(target: HTMLElement, value: string, property: 'background' | 'border' | 'text'): void {
+  if (property === 'border') {
+    target.style.borderColor = value;
+  } else if (property === 'text') {
+    target.style.color = value;
+  } else {
+    target.style.backgroundColor = value;
+  }
+}
+
+function applyColorVariable(target: HTMLElement, value: string, property: 'background' | 'border' | 'text'): void {
+  if (property === 'border') {
+    target.style.setProperty('--specimen-border', value);
+  } else if (property === 'text') {
+    target.style.setProperty('--specimen-fg', value);
+  } else {
+    target.style.setProperty('--specimen-bg', value);
+  }
+}
+
+function stateTokenForColorProperty(
+  tokenIndex: TokenIndex,
+  state: PrimitiveState,
+  property: 'background' | 'border' | 'text'
+): TokenRecord | undefined {
+  if (property === 'border') {
+    return stateTokenForColorRole(tokenIndex, state, ['border', 'stroke', 'outline']);
+  }
+  if (property === 'text') {
+    return stateTokenForColorRole(tokenIndex, state, ['foreground', 'text', 'label']);
+  }
+  return stateTokenForColorRole(tokenIndex, state, ['background', 'surface', 'fill']);
+}
+
+function stateTokenForColorRole(tokenIndex: TokenIndex, state: PrimitiveState, roles: string[]): TokenRecord | undefined {
+  const normalizedRoles = new Set(roles.map(role => role.toLowerCase()));
+  for (const [tokenRef, role] of Object.entries(state.tokenRoles ?? {})) {
+    if (!normalizedRoles.has(role.toLowerCase())) {
+      continue;
+    }
+    const record = tokenIndex.byRef.get(tokenRef);
+    if (record?.token.type === 'color') {
+      return record;
+    }
+  }
+  return undefined;
+}
+
+function preferredColorTokenFromGroups(tokenIndex: TokenIndex, groupIds: string[], preferredTokenIds: string[]): TokenRecord | undefined {
+  for (const preferredTokenId of preferredTokenIds) {
+    for (const groupId of groupIds) {
+      const group = tokenIndex.byGroup.get(groupId);
+      const token = group?.tokens.find(candidate => candidate.type === 'color' && candidate.id === preferredTokenId);
+      if (group && token) {
+        return tokenIndex.byRef.get(`${group.id}.${token.id}`);
+      }
+    }
+  }
+  return undefined;
 }
 
 function createPrimitiveStateSample(
@@ -435,47 +1510,38 @@ function createPrimitiveStateSample(
   const motion = firstStateToken(tokenIndex, state, 'motion') ?? firstTokenFromGroups(tokenIndex, primitive.tokenGroupIds, 'motion');
 
   if (color) {
-    setTokenHook(sample, color, 'sample-background');
-    sample.style.backgroundColor = color.token.value;
+    applyColorStyle(sample, color.token.value, 'background');
+    appendAgentTokenHook(sample, color, 'generic-sample-background', hook => applyColorStyle(hook, color.token.value, 'background'));
+  }
+  if (space) {
+    sample.style.paddingLeft = space.token.value;
+    sample.style.paddingRight = space.token.value;
+    appendAgentTokenHook(sample, space, 'generic-sample-padding-inline', hook => {
+      hook.style.paddingLeft = space.token.value;
+      hook.style.paddingRight = space.token.value;
+    });
+  }
+  if (radius) {
+    sample.style.borderRadius = radius.token.value;
+    appendAgentTokenHook(sample, radius, 'generic-sample-radius', hook => {
+      hook.style.borderRadius = radius.token.value;
+    });
   }
   if (shadow) {
     sample.style.boxShadow = shadow.token.value;
+    appendAgentTokenHook(sample, shadow, 'generic-sample-shadow', hook => {
+      hook.style.boxShadow = shadow.token.value;
+    });
   }
   if (motion) {
     sample.style.transition = `transform ${motion.token.value}`;
+    appendAgentTokenHook(sample, motion, 'generic-sample-motion', hook => {
+      hook.style.transition = `transform ${motion.token.value}`;
+    });
   }
 
   const label = el('span', 'primitive-sample-label', state.name);
   sample.append(label);
-
-  if (space) {
-    const probe = el('span', 'token-probe token-probe-space', 'space');
-    setTokenHook(probe, space, 'sample-padding-inline');
-    probe.style.paddingLeft = space.token.value;
-    probe.style.paddingRight = space.token.value;
-    sample.append(probe);
-  }
-
-  if (radius) {
-    const probe = el('span', 'token-probe token-probe-radius', 'radius');
-    setTokenHook(probe, radius, 'sample-radius');
-    probe.style.borderRadius = radius.token.value;
-    sample.append(probe);
-  }
-
-  if (shadow) {
-    const probe = el('span', 'token-probe token-probe-shadow', 'shadow');
-    setTokenHook(probe, shadow, 'sample-shadow');
-    probe.style.boxShadow = shadow.token.value;
-    sample.append(probe);
-  }
-
-  if (motion) {
-    const probe = el('span', 'token-probe token-probe-motion', 'motion');
-    setTokenHook(probe, motion, 'sample-motion');
-    probe.style.transition = `transform ${motion.token.value}`;
-    sample.append(probe);
-  }
 
   if (state.prototypeOnly) {
     sample.append(el('span', 'prototype-flag', 'prototype'));
@@ -485,15 +1551,153 @@ function createPrimitiveStateSample(
 }
 
 function createGenericPrimitiveSample(primitive: PrimitiveDefinition, tokenIndex: TokenIndex, family: string): HTMLElement {
-  const state: PrimitiveState = {
+  const state = syntheticDefaultState(primitive, tokenIndex);
+  return createPrimitiveStateSample(tokenIndex, primitive, state, family);
+}
+
+function syntheticDefaultStateSet(context: PrimitiveRenderContext): PrimitiveStateSet {
+  return {
+    id: 'default',
+    name: context.primitive.name,
+    description: context.primitive.description,
+    styleRefs: context.primitive.styleRefs,
+    states: [syntheticDefaultState(context.primitive, context.tokenIndex)]
+  };
+}
+
+function syntheticDefaultState(primitive: PrimitiveDefinition, tokenIndex: TokenIndex): PrimitiveState {
+  return {
     id: 'default',
     name: primitive.name,
-    tokens: primitive.tokenGroupIds.flatMap(groupId => tokenIndex.byGroup.get(groupId)?.tokens[0]?.id ? [`${groupId}.${tokenIndex.byGroup.get(groupId)?.tokens[0]?.id}`] : []),
+    tokens: primitive.tokenGroupIds.flatMap(groupId => {
+      const token = tokenIndex.byGroup.get(groupId)?.tokens[0];
+      return token ? [`${groupId}.${token.id}`] : [];
+    }),
     prototypeOnly: primitive.prototypeOnly,
     notes: [],
     implementationHints: []
   };
-  return createPrimitiveStateSample(tokenIndex, primitive, state, family);
+}
+
+function primitiveHasTerm(primitive: PrimitiveDefinition, term: string): boolean {
+  return primitiveFamilyTerms(primitive).has(term);
+}
+
+function isCommandVariantStateSet(stateSet: PrimitiveStateSet): boolean {
+  const haystack = `${stateSet.id} ${stateSet.name} ${stateSet.description}`.toLowerCase();
+  return /\b(variant|intent|decision)\b/.test(haystack);
+}
+
+function isInputVariantStateSet(stateSet: PrimitiveStateSet): boolean {
+  const haystack = `${stateSet.id} ${stateSet.name} ${stateSet.description}`.toLowerCase();
+  return /\b(variant|frame|fill)\b/.test(haystack);
+}
+
+function isInteractionStateSet(stateSet: PrimitiveStateSet): boolean {
+  const haystack = `${stateSet.id} ${stateSet.name} ${stateSet.description}`.toLowerCase();
+  return /\b(interaction|state|lifecycle)\b/.test(haystack);
+}
+
+function mergeVisualStates(primary: PrimitiveState, secondary: PrimitiveState): PrimitiveState {
+  return {
+    id: `${primary.id}-${secondary.id}`,
+    name: `${primary.name} ${secondary.name}`,
+    tokens: uniqueStrings([...(primary.tokens ?? []), ...(secondary.tokens ?? [])]),
+    tokenRoles: { ...(primary.tokenRoles ?? {}), ...(secondary.tokenRoles ?? {}) },
+    prototypeOnly: primary.prototypeOnly || secondary.prototypeOnly,
+    notes: [...(primary.notes ?? []), ...(secondary.notes ?? [])],
+    implementationHints: [...(primary.implementationHints ?? []), ...(secondary.implementationHints ?? [])]
+  };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function inputStateClass(state: PrimitiveState): string {
+  const id = cssClassName(state.id);
+  const classes = [`inp-${id}`];
+  if (id.includes('filled')) classes.push('inp-filled');
+  if (id.includes('ghost')) classes.push('inp-ghost');
+  if (id.includes('outline')) classes.push('inp-outline');
+  if (id.includes('underline')) classes.push('inp-underline');
+  if (state.id.includes('focus')) classes.push('is-focused');
+  if (state.id.includes('invalid') || state.id.includes('error')) classes.push('is-invalid');
+  if (isDisabledState(state)) classes.push('is-disabled');
+  return classes.join(' ');
+}
+
+function inputStateText(state: PrimitiveState): string {
+  if (state.id === 'empty') return 'Placeholder';
+  if (state.id === 'value') return 'Entered value';
+  if (state.id.includes('invalid')) return 'Needs attention';
+  if (state.id.includes('disabled')) return 'Disabled';
+  return state.name;
+}
+
+function inputPlaceholderState(state: PrimitiveState): boolean {
+  return state.id.includes('empty') || state.name.toLowerCase().includes('empty');
+}
+
+function buttonClass(state: PrimitiveState): string {
+  const id = state.id.toLowerCase();
+  if (id.includes('secondary')) return 'btn-secondary';
+  if (id.includes('tonal') || id.includes('draft') || id.includes('hold') || id.includes('attention')) return 'btn-tonal';
+  if (id.includes('outline')) return 'btn-outline';
+  if (id.includes('ghost')) return 'btn-ghost';
+  if (id.includes('link')) return 'btn-link';
+  if (id.includes('destructive') || id.includes('danger') || id.includes('risk')) return 'btn-destructive';
+  if (id.includes('accent')) return 'btn-accent';
+  if (id.includes('success') || id.includes('approve') || id.includes('ready')) return 'btn-success';
+  if (id.includes('gradient')) return 'btn-gradient';
+  return 'btn-primary';
+}
+
+function buttonStateClass(state: PrimitiveState): string {
+  const classes: string[] = [];
+  if (isLoadingState(state)) classes.push('is-loading');
+  if (isDisabledState(state)) classes.push('is-disabled');
+  return classes.join(' ');
+}
+
+function stateOnClass(state: PrimitiveState): string {
+  return state.id.includes('on') || state.id.includes('checked') ? 'on' : '';
+}
+
+function disabledClass(state: PrimitiveState): string {
+  return isDisabledState(state) ? 'is-disabled' : '';
+}
+
+function isDisabledState(state: PrimitiveState): boolean {
+  return state.id.includes('disabled');
+}
+
+function isLoadingState(state: PrimitiveState): boolean {
+  return state.id.includes('loading');
+}
+
+function badgeClass(state: PrimitiveState): string {
+  const id = state.id.toLowerCase();
+  if (id.includes('secondary')) return 'badge-secondary';
+  if (id.includes('tonal')) return 'badge-tonal';
+  if (id.includes('accent')) return 'badge-accent';
+  if (id.includes('destructive') || id.includes('danger')) return 'badge-destructive';
+  if (id.includes('success') || id.includes('ready')) return 'badge-success';
+  if (id.includes('outline')) return 'badge-outline';
+  return 'badge-default';
+}
+
+function cardClass(state: PrimitiveState): string {
+  const id = state.id.toLowerCase();
+  const classes: string[] = [];
+  if (id.includes('flat')) classes.push('flat');
+  if (id.includes('elevated') || id.includes('raised') || id.includes('compact') || id.includes('expanded')) classes.push('elevated');
+  if (id.includes('status') || id.includes('accent')) classes.push('status-accent');
+  return classes.join(' ');
+}
+
+function cssClassName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'default';
 }
 
 function groupPrimitivesByFamily(primitives: PrimitiveDefinition[]): FamilyGroup[] {
@@ -605,7 +1809,7 @@ function familyAccent(family: string): string {
 }
 
 function familyWidth(family: string): number {
-  if (family === 'button' || family === 'input') return 460;
+  if (family === 'button' || family === 'input') return 960;
   if (family === 'row' || family === 'list') return 430;
   return 400;
 }
@@ -675,23 +1879,80 @@ function applyTokenPreview(element: HTMLElement, token: DesignToken): void {
 }
 
 function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
+  const frameLayouts = layoutScreenFrames(bundle);
+  const fallbackWidth = Math.max(393, ...frameLayouts.map(layout => layout.preset.width));
+  const fallbackHeight = Math.max(852, ...frameLayouts.map(layout => layout.preset.height));
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.15,
-      fallbackWidth: 393,
-      fallbackHeight: 852
+      fallbackWidth,
+      fallbackHeight
     });
   const controller = configure();
   const tokenIndex = createTokenIndex(bundle);
-  bundle.screens.screens.forEach((screen, index) => {
-    const column = index % 3;
-    const row = Math.floor(index / 3);
-    root.append(createPrototypeFrame(bundle, tokenIndex, screen, 90 + column * 520, 160 + row * 980));
+  frameLayouts.forEach(layout => {
+    root.append(createPrototypeFrame(bundle, tokenIndex, layout.screen, layout.preset, layout.x, layout.y));
   });
 
   return {
     configure,
     fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame')])
+  };
+}
+
+function layoutScreenFrames(bundle: BlueprintProjectBundle): Array<{ screen: ScreenDefinition; preset: FramePreset; x: number; y: number }> {
+  const startX = 90;
+  const startY = 160;
+  const gapX = 80;
+  const gapY = 140;
+  const maxRowWidth = 1600;
+  let x = startX;
+  let y = startY;
+  let rowWidth = 0;
+  let rowHeight = 0;
+  const layouts: Array<{ screen: ScreenDefinition; preset: FramePreset; x: number; y: number }> = [];
+
+  for (const screen of bundle.screens.screens) {
+    const preset = resolveFramePreset(bundle, screen);
+    const nextWidth = rowWidth === 0 ? preset.width : rowWidth + gapX + preset.width;
+    if (rowWidth > 0 && nextWidth > maxRowWidth) {
+      x = startX;
+      y += rowHeight + gapY;
+      rowWidth = 0;
+      rowHeight = 0;
+    }
+
+    layouts.push({ screen, preset, x, y });
+    x += preset.width + gapX;
+    rowWidth = rowWidth === 0 ? preset.width : rowWidth + gapX + preset.width;
+    rowHeight = Math.max(rowHeight, preset.height);
+  }
+
+  return layouts;
+}
+
+function resolveFramePreset(bundle: BlueprintProjectBundle, screen: ScreenDefinition): FramePreset {
+  return (
+    bundle.manifest.framePresets.find(preset => preset.id === screen.framePresetId) ??
+    bundle.manifest.framePresets.find(preset => preset.type === 'mobile') ??
+    bundle.manifest.framePresets[0] ??
+    defaultMobileFramePreset()
+  );
+}
+
+function defaultMobileFramePreset(): FramePreset {
+  return {
+    id: 'phone',
+    name: 'Phone',
+    type: 'mobile',
+    width: 393,
+    height: 852,
+    safeArea: {
+      top: 59,
+      right: 20,
+      bottom: 34,
+      left: 20
+    }
   };
 }
 
@@ -710,12 +1971,22 @@ function addGroupHeading(
   return heading;
 }
 
-function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, screen: ScreenDefinition, x: number, y: number): HTMLElement {
+function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, screen: ScreenDefinition, preset: FramePreset, x: number, y: number): HTMLElement {
   const frame = el('article', 'frame');
   frame.style.left = `${x}px`;
   frame.style.top = `${y}px`;
+  frame.style.setProperty('--frame-width', `${preset.width}px`);
+  frame.style.setProperty('--frame-height', `${preset.height}px`);
+  frame.style.setProperty('--frame-safe-top', `${preset.safeArea.top}px`);
+  frame.style.setProperty('--frame-safe-right', `${preset.safeArea.right}px`);
+  frame.style.setProperty('--frame-safe-bottom', `${preset.safeArea.bottom}px`);
+  frame.style.setProperty('--frame-safe-left', `${preset.safeArea.left}px`);
+  frame.style.setProperty('--frame-body-top', `${bodyTopInset(preset)}px`);
+  frame.style.setProperty('--frame-body-bottom', `${bodyBottomInset(preset)}px`);
   setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id, screen.name);
   frame.dataset.screenId = screen.id;
+  frame.dataset.frameType = preset.type;
+  frame.dataset.framePresetId = preset.id;
   frame.dataset.boundarySummary = screen.description;
 
   const head = el('div', 'frame-head bp-chrome-frame-head');
@@ -743,17 +2014,37 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   const save = createIconButton('frame-save bp-chrome-frame-tool bp-chrome-frame-save', 'Save screen as PNG', downloadIcon());
   head.append(chip, shot, save);
 
-  const screenEl = el('div', 'screen screen-template');
+  const screenEl = el('div', `screen screen-template screen-template-${preset.type}`);
+  screenEl.dataset.frameType = preset.type;
   const body = el('div', 'screen-template-body');
   body.dataset.screenId = screen.id;
+  applyScreenCanvasTokens(body, tokenIndex);
   for (const section of screen.sections) {
     body.append(createScreenSectionPrototype(bundle, tokenIndex, screen, section));
   }
-  screenEl.append(createStatusBar(), body, el('div', 'home-indicator'));
+  if (preset.type === 'mobile') {
+    screenEl.append(createStatusBar(), body, el('div', 'home-indicator'));
+  } else {
+    screenEl.append(createBrowserBar(screen), body);
+  }
   wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
 
   frame.append(head, screenEl);
   return frame;
+}
+
+function bodyTopInset(preset: FramePreset): number {
+  if (preset.type === 'desktop') {
+    return Math.max(preset.safeArea.top, 48);
+  }
+  return preset.safeArea.top;
+}
+
+function bodyBottomInset(preset: FramePreset): number {
+  if (preset.type === 'desktop') {
+    return preset.safeArea.bottom;
+  }
+  return 24;
 }
 
 function createScreenSectionPrototype(
@@ -776,15 +2067,12 @@ function createScreenSectionPrototype(
     sectionEl.style.setProperty('--section-accent', familyAccent('generic'));
   }
 
-  const heading = el('div', 'screen-section-head');
-  const title = el('span', 'screen-section-title', section.name);
-  heading.append(title);
-  if (section.prototypeOnly) {
-    heading.append(el('span', 'screen-section-flag', 'prototype only'));
-  }
-  sectionEl.append(heading);
+  sectionEl.title = section.name;
 
   const body = el('div', 'screen-section-body');
+  for (const layoutClass of sectionLayoutClasses(section)) {
+    body.classList.add(layoutClass);
+  }
   for (const dependency of dependencies) {
     body.append(dependency.node);
   }
@@ -808,34 +2096,177 @@ function createScreenDependencyView(
   node.dataset.screenUses = `${dependency.kind}:${dependency.id}`;
   node.dataset.prototypeFamily = family;
   node.style.setProperty('--dependency-accent', familyAccent(family));
+  const keywords = dependencyLayoutKeywords(dependency);
+  for (const keyword of keywords) {
+    node.classList.add(`dep-${keyword}`);
+  }
 
   if (resolved.primitive) {
     const state = resolved.state ?? resolved.primitive.stateSets.flatMap(stateSet => stateSet.states)[0];
-    const color = state ? firstStateToken(tokenIndex, state, 'color') ?? firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'color') : firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'color');
-    const radius = state ? firstStateToken(tokenIndex, state, 'radius') ?? firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'radius') : firstTokenFromGroups(tokenIndex, resolved.primitive.tokenGroupIds, 'radius');
-
-    if (color) {
-      setTokenHook(node, color, 'screen-dependency-background');
-      node.style.backgroundColor = color.token.value;
-    }
-    if (radius) {
-      setTokenHook(node, radius, 'screen-dependency-radius');
-      node.style.borderRadius = radius.token.value;
-    }
-
+    const copy = resolveScreenPrototypeCopy(section, dependency);
     node.dataset.prototypePrimitive = resolved.primitive.id;
     if (state) {
       node.dataset.prototypeState = state.id;
     }
-    node.append(createScreenPrototypeContent(family, resolveScreenPrototypeCopy(section, dependency, state), dependency));
+    node.append(createScreenDependencySpecimen({ bundle, tokenIndex, primitive: resolved.primitive, family }, state, copy, dependency, keywords));
     return { node, family };
   }
 
-  node.append(createScreenPrototypeContent(family, dependency.binding?.copy ?? fallbackSectionContent(section), dependency));
+  node.append(createScreenPrototypeFallback(family, dependency.binding?.copy ?? fallbackSectionContent(section), dependency));
   return { node, family };
 }
 
-function createScreenPrototypeContent(family: string, copy: string, dependency: BoundaryDependency): HTMLElement {
+function createScreenDependencySpecimen(
+  context: PrimitiveRenderContext,
+  state: PrimitiveState | undefined,
+  copy: string,
+  dependency: BoundaryDependency,
+  keywords: Set<string> = new Set()
+): HTMLElement {
+  const effectiveState = state ?? syntheticDefaultState(context.primitive, context.tokenIndex);
+  let node: HTMLElement;
+
+  if (context.family === 'button' && primitiveHasTerm(context.primitive, 'back')) {
+    node = createBackButtonSpecimen(context, effectiveState);
+  } else if (context.family === 'button') {
+    node = createButtonSpecimen(context, effectiveState, copy);
+    node.classList.add('screen-button-specimen');
+  } else if (context.family === 'badge') {
+    node = el('span', `badge ${badgeClass(effectiveState)}`, copy);
+    node.dataset.primitiveStateId = effectiveState.id;
+    applyPrimitiveTokenStyles(node, context, effectiveState, {
+      colorHook: 'screen-badge-fill',
+      colorProperty: 'background'
+    });
+  } else if (context.family === 'card' || context.family === 'surface') {
+    node = createScreenCardSpecimen(context, effectiveState, copy, keywords);
+  } else if (context.family === 'media') {
+    node = createScreenMediaSpecimen(context, effectiveState, copy);
+  } else if (context.family === 'row' || context.family === 'list') {
+    const parts = splitCopyParts(copy);
+    node = createListRow(parts[0] ?? copy, parts[1] ?? '');
+    node.dataset.primitiveStateId = effectiveState.id;
+    applyPrimitiveTokenStyles(node, context, effectiveState, {
+      colorHook: 'screen-row-surface',
+      colorProperty: 'background',
+      spaceHook: 'screen-row-padding-inline',
+      radiusHook: 'screen-row-radius'
+    });
+  } else if (context.family === 'input') {
+    node = el('div', `inp screen-input-specimen ${inputStateClass(effectiveState)}`);
+    node.dataset.primitiveStateId = effectiveState.id;
+    node.append(el('span', 'inp-text', copy));
+    applyPrimitiveTokenStyles(node, context, effectiveState, {
+      colorHook: 'screen-input-border',
+      colorProperty: 'border',
+      spaceHook: 'screen-input-padding-inline',
+      radiusHook: 'screen-input-radius',
+      typographyHook: 'screen-input-type'
+    });
+  } else if (context.family === 'checkbox' || context.family === 'switch') {
+    node = createScreenChoiceSpecimen(context, effectiveState, copy);
+  } else if (context.family === 'slider') {
+    node = createScreenSliderSpecimen(context, effectiveState, copy);
+  } else if (context.family === 'navigation') {
+    node = primitiveHasTerm(context.primitive, 'back')
+      ? createBackButtonSpecimen(context, effectiveState)
+      : createScreenNavigationSpecimen(context, effectiveState, splitCopyParts(copy)[0] ?? copy);
+  } else if (context.family === 'separator') {
+    node = createScreenSeparatorSpecimen(context, effectiveState, dependency.binding?.copy?.trim() ? copy : '');
+  } else if (context.family === 'loading') {
+    node = createScreenLoadingSpecimen(context, effectiveState);
+  } else if (context.family === 'dialog' || context.family === 'menu' || context.family === 'sheet' || context.family === 'skeleton' || context.family === 'icon') {
+    node = createScreenCardSpecimen(context, effectiveState, copy, keywords);
+  } else {
+    node = createScreenPrototypeFallback(context.family, copy, dependency);
+  }
+
+  if (dependency.binding?.data) {
+    node.dataset.dataRef = dependency.binding.data;
+  }
+  return node;
+}
+
+function createScreenChoiceSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, copy: string): HTMLElement {
+  const sample = el('div', 'choice-specimen screen-choice-specimen');
+  const isSwitch = context.family === 'switch';
+  const control = isSwitch ? el('span', `sw ${stateOnClass(state)} ${disabledClass(state)}`) : el('span', `cbx ${stateOnClass(state)} ${disabledClass(state)}`);
+  control.dataset.primitiveStateId = state.id;
+  if (isSwitch) {
+    control.append(el('span', 'sw-thumb'));
+  }
+  applyPrimitiveTokenStyles(control, context, state, {
+    colorHook: `screen-${context.family}-accent`,
+    colorProperty: 'background',
+    radiusHook: `screen-${context.family}-radius`,
+    motionHook: `screen-${context.family}-motion`
+  });
+  sample.append(control, el('span', 'choice-label', copy));
+  return sample;
+}
+
+function createScreenSliderSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, copy: string): HTMLElement {
+  const row = el('div', 'slider-row screen-slider-specimen');
+  row.dataset.primitiveStateId = state.id;
+  row.append(el('span', 'slider-label', copy));
+  const slider = el('span', `slider ${disabledClass(state)}`);
+  const track = el('span', 'track');
+  const fill = el('span', 'fill');
+  fill.style.width = isDisabledState(state) ? '42%' : '66%';
+  const thumb = el('span', 'thumb');
+  thumb.style.left = fill.style.width;
+  slider.append(track, fill, thumb);
+  applyPrimitiveTokenStyles(fill, context, state, {
+    colorHook: 'screen-slider-fill',
+    colorProperty: 'background',
+    motionHook: 'screen-slider-motion'
+  });
+  row.append(slider);
+  return row;
+}
+
+function createScreenNavigationSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, copy: string): HTMLElement {
+  const nav = createNavigationSpecimen(state, copy);
+  nav.classList.add('screen-navigation-specimen');
+  nav.dataset.primitiveStateId = state.id;
+  applyPrimitiveTokenStyles(nav, context, state, {
+    colorHook: 'screen-navigation-surface',
+    colorProperty: 'background',
+    radiusHook: 'screen-navigation-radius',
+    shadowHook: 'screen-navigation-shadow'
+  });
+  return nav;
+}
+
+function createScreenSeparatorSpecimen(context: PrimitiveRenderContext, state: PrimitiveState, copy: string): HTMLElement {
+  const sample = el('div', 'separator-specimen screen-separator-specimen');
+  sample.dataset.primitiveStateId = state.id;
+  if (copy) {
+    sample.append(el('span', 'separator-label', copy));
+  }
+  const line = el('span', `separator ${state.id}`);
+  applyPrimitiveTokenStyles(line, context, state, {
+    colorHook: 'screen-separator-color',
+    colorProperty: 'background'
+  });
+  sample.append(line);
+  return sample;
+}
+
+function createScreenLoadingSpecimen(context: PrimitiveRenderContext, state: PrimitiveState): HTMLElement {
+  const panel = el('div', 'loading-panel screen-loading-specimen');
+  panel.dataset.primitiveStateId = state.id;
+  panel.append(el('span', 'loading-dot'), el('span', 'loading-dot'), el('span', 'loading-dot'));
+  applyPrimitiveTokenStyles(panel, context, state, {
+    colorHook: 'screen-loading-surface',
+    colorProperty: 'background',
+    radiusHook: 'screen-loading-radius',
+    motionHook: 'screen-loading-motion'
+  });
+  return panel;
+}
+
+function createScreenPrototypeFallback(family: string, copy: string, dependency: BoundaryDependency): HTMLElement {
   let node: HTMLElement;
   if (family === 'button') {
     node = el('span', 'screen-prototype-button-label', copy);
@@ -853,27 +2284,17 @@ function createScreenPrototypeContent(family: string, copy: string, dependency: 
 
 function resolveScreenPrototypeCopy(
   section: ScreenDefinition['sections'][number],
-  dependency: BoundaryDependency,
-  state?: PrimitiveState
+  dependency: BoundaryDependency
 ): string {
-  if (dependency.binding?.copy && dependency.binding.copy.trim().length > 0 && !isMetadataCopy(dependency.binding.copy)) {
-    return dependency.binding.copy;
-  }
-  if (state && dependency.kind === 'primitive' && dependency.binding?.state) {
-    return state.name;
-  }
-  if (state && dependency.kind === 'state-set') {
-    return state.name;
+  const copy = dependency.binding?.copy?.trim();
+  if (copy) {
+    return copy;
   }
   return fallbackSectionContent(section);
 }
 
 function fallbackSectionContent(section: ScreenDefinition['sections'][number]): string {
   return section.prototypeOnly ? `${section.name} placeholder` : section.name;
-}
-
-function isMetadataCopy(copy: string): boolean {
-  return /\b(label|labels|description|primitive|variant|state|schema)\b/i.test(copy);
 }
 
 function resolveScreenDependency(
@@ -902,6 +2323,16 @@ function createStatusBar(): HTMLElement {
   icons.append(el('span', 'signal'), el('span', 'wifi'), el('span', 'battery'));
   status.append(el('span', 'time', '9:41'), icons);
   return status;
+}
+
+function createBrowserBar(screen: ScreenDefinition): HTMLElement {
+  const bar = el('div', 'browser-bar');
+  const controls = el('span', 'browser-controls');
+  controls.append(el('span', 'browser-dot close'), el('span', 'browser-dot minimize'), el('span', 'browser-dot maximize'));
+  const address = el('span', 'browser-address', screen.productionRelationship?.routePath ?? screen.name);
+  const title = el('span', 'browser-title', screen.name);
+  bar.append(controls, address, title);
+  return bar;
 }
 
 function createSpecCard(options: {
@@ -1009,6 +2440,16 @@ function flashCaptureButton(button: HTMLButtonElement, result: 'done' | 'fail'):
   button.classList.remove('busy');
   button.classList.add(result);
   window.setTimeout(() => button.classList.remove(result), 1200);
+}
+
+const ICON_PATHS = {
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  'more-horizontal': '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  sparkles: '<path d="M9.9 2.8 8.2 7.4 3.6 9.1l4.6 1.7 1.7 4.6 1.7-4.6 4.6-1.7-4.6-1.7-1.7-4.6Z"/><path d="m18.6 13.5-.8 2.1-2.1.8 2.1.8.8 2.1.8-2.1 2.1-.8-2.1-.8-.8-2.1Z"/>'
+} as const;
+
+function sampleIcon(name: keyof typeof ICON_PATHS): string {
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
 }
 
 function cameraIcon(): string {

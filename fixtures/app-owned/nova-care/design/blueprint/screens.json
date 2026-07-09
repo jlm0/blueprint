@@ -84,7 +84,7 @@
               "binding": {
                 "slot": "summaryStatus",
                 "state": "ready",
-                "copy": "Appointment readiness label",
+                "copy": "Appointment readiness",
                 "data": "patient.appointmentStatus",
                 "accessibility": "Expose status text without relying on color alone."
               }
@@ -148,7 +148,7 @@
                 "slot": "primaryContent",
                 "variant": "primary",
                 "prop": "intent",
-                "copy": "Primary and secondary labels",
+                "copy": "Care task priority",
                 "data": "patient.nextAction.priority",
                 "layout": "Primary action first, secondary action below when present",
                 "accessibility": "Primary and secondary commands remain keyboard reachable."

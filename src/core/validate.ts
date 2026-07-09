@@ -328,8 +328,18 @@ function validateBoard(errors: string[], board: BoardDefinition): void {
 function validateFramePreset(errors: string[], framePreset: FramePreset): void {
   requireString(errors, 'framePreset.id', framePreset.id);
   requireString(errors, `framePreset.${framePreset.id}.name`, framePreset.name);
+  if (framePreset.type !== 'mobile' && framePreset.type !== 'desktop') {
+    errors.push(`framePreset.${framePreset.id}.type must be "mobile" or "desktop".`);
+  }
   requireNumber(errors, `framePreset.${framePreset.id}.width`, framePreset.width);
   requireNumber(errors, `framePreset.${framePreset.id}.height`, framePreset.height);
+  requirePositiveNumber(errors, `framePreset.${framePreset.id}.width`, framePreset.width);
+  requirePositiveNumber(errors, `framePreset.${framePreset.id}.height`, framePreset.height);
+  requireObject(errors, `framePreset.${framePreset.id}.safeArea`, framePreset.safeArea);
+  requireNumber(errors, `framePreset.${framePreset.id}.safeArea.top`, framePreset.safeArea?.top);
+  requireNumber(errors, `framePreset.${framePreset.id}.safeArea.right`, framePreset.safeArea?.right);
+  requireNumber(errors, `framePreset.${framePreset.id}.safeArea.bottom`, framePreset.safeArea?.bottom);
+  requireNumber(errors, `framePreset.${framePreset.id}.safeArea.left`, framePreset.safeArea?.left);
 }
 
 function validateTokenGroup(errors: string[], group: TokenGroup): void {
@@ -354,6 +364,10 @@ function validatePrimitive(errors: string[], primitive: PrimitiveDefinition, tok
   requireString(errors, 'primitive.id', primitive.id);
   requireString(errors, `primitive.${primitive.id}.name`, primitive.name);
   requireArray(errors, `primitive.${primitive.id}.tokenGroupIds`, primitive.tokenGroupIds);
+  requireArray(errors, `primitive.${primitive.id}.styleRefs`, primitive.styleRefs);
+  requireArray(errors, `primitive.${primitive.id}.notes`, primitive.notes);
+  requireBoolean(errors, `primitive.${primitive.id}.prototypeOnly`, primitive.prototypeOnly);
+  requireArray(errors, `primitive.${primitive.id}.implementationHints`, primitive.implementationHints);
   requireArray(errors, `primitive.${primitive.id}.stateSets`, primitive.stateSets);
 
   for (const tokenGroupId of primitive.tokenGroupIds ?? []) {
@@ -368,12 +382,16 @@ function validatePrimitive(errors: string[], primitive: PrimitiveDefinition, tok
 function validateStateSet(errors: string[], primitive: PrimitiveDefinition, stateSet: PrimitiveStateSet): void {
   requireString(errors, `primitive.${primitive.id}.stateSet.id`, stateSet.id);
   requireString(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.name`, stateSet.name);
+  requireArray(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.styleRefs`, stateSet.styleRefs);
   requireArray(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.states`, stateSet.states);
 
   collectIds(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.states`, stateSet.states, state => {
     requireString(errors, `stateSet.${stateSet.id}.state.id`, state.id);
     requireString(errors, `stateSet.${stateSet.id}.state.${state.id}.name`, state.name);
     requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.tokens`, state.tokens);
+    requireBoolean(errors, `stateSet.${stateSet.id}.state.${state.id}.prototypeOnly`, state.prototypeOnly);
+    requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.notes`, state.notes);
+    requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.implementationHints`, state.implementationHints);
   });
 }
 
@@ -468,7 +486,7 @@ function validateStateTokenReferences(
         if (!tokenIds.has(tokenRef)) {
           errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references missing token "${tokenRef}".`);
         }
-        if (!state.tokens.includes(tokenRef)) {
+        if (!(state.tokens ?? []).includes(tokenRef)) {
           errors.push(
             `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references token "${tokenRef}" that is not listed in state tokens.`
           );
@@ -667,6 +685,18 @@ function requireString(errors: string[], label: string, value: unknown): void {
 function requireNumber(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     errors.push(`${label} must be a finite number.`);
+  }
+}
+
+function requirePositiveNumber(errors: string[], label: string, value: unknown): void {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    errors.push(`${label} must be a positive number.`);
+  }
+}
+
+function requireBoolean(errors: string[], label: string, value: unknown): void {
+  if (typeof value !== 'boolean') {
+    errors.push(`${label} must be a boolean.`);
   }
 }
 

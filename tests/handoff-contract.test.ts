@@ -54,6 +54,7 @@ describe('Blueprint production handoff contract', () => {
 
     const stateSet = extract(bundle, 'state-set:action-button/intent', { mode: 'deep' });
     assert.equal(stateSet.extraction.selected.id, 'nova-care/state-set/action-button/intent');
+    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'nova-care/primitive/action-button'));
     assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'nova-care/token-group/color'));
   });
 

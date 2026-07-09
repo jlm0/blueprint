@@ -35,6 +35,32 @@
         "bottom": 34,
         "left": 20
       }
+    },
+    {
+      "id": "desktop-web",
+      "name": "Desktop Web",
+      "type": "desktop",
+      "width": 1440,
+      "height": 900,
+      "safeArea": {
+        "top": 48,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-web-page",
+      "name": "Desktop Web Full Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 1760,
+      "safeArea": {
+        "top": 48,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
     }
   ]
 }

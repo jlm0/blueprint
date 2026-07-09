@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createExtractionPacket, queryPrototypeOnly, querySections, queryUsedBy, queryUses, showBoundary } from '../src/core/query';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateProject } from '../src/core/validate';
-import type { BoundaryPacket, PrimitiveDefinition, ScreenDefinition } from '../src/core/types';
+import type { BoundaryPacket, PrimitiveDefinition, PrimitiveState, ScreenDefinition } from '../src/core/types';
 
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
@@ -46,6 +46,38 @@ describe('Blueprint schema contract', () => {
     assert.ok(screen.dependencies.uses.some(ref => ref.kind === 'primitive'));
     assert.ok(screen.notes.length > 0);
     assert.ok(screen.implementationHints.length > 0);
+  });
+
+  it('rejects primitive states missing required canvas metadata before serve can crash', async () => {
+    const bundle = await loadProjectFromFs(novaRoot);
+    const broken = structuredClone(bundle);
+    const state = broken.primitives.primitives[0]?.stateSets[0]?.states[0];
+    assert.ok(state);
+
+    delete (state as Partial<PrimitiveState>).notes;
+    delete (state as Partial<PrimitiveState>).implementationHints;
+    delete (state as Partial<PrimitiveState>).prototypeOnly;
+
+    const result = validateProject(broken);
+    assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), /state\..*\.notes must be an array/);
+    assert.match(result.errors.join('\n'), /state\..*\.implementationHints must be an array/);
+    assert.match(result.errors.join('\n'), /state\..*\.prototypeOnly must be a boolean/);
+  });
+
+  it('keeps frame presets scoped to mobile and desktop prototype modes', async () => {
+    const bundle = await loadProjectFromFs(novaRoot);
+    const broken = structuredClone(bundle);
+    const preset = broken.manifest.framePresets[0];
+    assert.ok(preset);
+
+    (preset as { type: string }).type = 'tablet';
+    preset.width = 0;
+
+    const result = validateProject(broken);
+    assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), /framePreset\..*\.type must be "mobile" or "desktop"/);
+    assert.match(result.errors.join('\n'), /framePreset\..*\.width must be a positive number/);
   });
 });
 

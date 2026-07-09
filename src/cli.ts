@@ -24,6 +24,8 @@ type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
 type ExtractMode = 'focused' | 'deep';
 type CliValidationMode = ValidationMode | 'readiness';
 
+const defaultProjectPath = 'design/blueprint';
+
 interface CaptureServer {
   url: string;
   close: () => Promise<void>;
@@ -321,7 +323,7 @@ async function commandCapture(args: Args): Promise<void> {
 }
 
 async function commandServe(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
+  const project = args.project ?? defaultProjectPath;
   const port = servePort(args.port);
   const projectRoot = path.resolve(project);
   assertBlueprintProjectPath(projectRoot);
@@ -765,7 +767,7 @@ Commands:
   query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
   extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
   capture --project <path> --boundary screen:id --out file.png
-  serve --project <path> [--port 4173]
+  serve [--project design/blueprint] [--port 4173]
 `;
 }
 

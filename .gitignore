@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 coverage/
+.blueprint-artifacts/
 .env
 .env.*
 !.env.example

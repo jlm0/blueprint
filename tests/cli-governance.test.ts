@@ -34,7 +34,7 @@ describe('Blueprint CLI and template governance', () => {
     const help = run('node', [cliPath, '--help']);
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /blueprint <command>/);
-    assert.match(help.stdout, /serve --project <path> \[--port 4173\]/);
+    assert.match(help.stdout, /serve \[--project design\/blueprint\] \[--port 4173\]/);
   });
 
   it('initializes a safe app-owned Blueprint project and rewrites starter identity', async () => {
@@ -329,6 +329,39 @@ describe('Blueprint CLI and template governance', () => {
     assert.match(invalid.stderr, /Blueprint project path not found|Missing Blueprint project file|does-not-exist/i);
   });
 
+  it('serves design/blueprint by default from an app repo root', async () => {
+    await withTempDir(async tempDir => {
+      const appRoot = path.join(tempDir, 'app-root');
+      const sidecarRoot = path.join(appRoot, 'design', 'blueprint');
+      await mkdir(path.dirname(sidecarRoot), { recursive: true });
+      await cp(novaRoot, sidecarRoot, { recursive: true });
+
+      const manifestPath = path.join(sidecarRoot, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.name = 'Default Serve App';
+      manifest.project.sourceRoot = normalize(sidecarRoot);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+      const port = await getAvailablePort();
+      const server = await startServe(undefined, ['--port', String(port)], appRoot);
+
+      try {
+        assert.equal(server.url, `http://127.0.0.1:${port}/`);
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(server.url);
+          assert.equal(await servedProjectName(page), 'Default Serve App');
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
   it('serves from the built package surface and refreshes or recovers as project files change', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'app-owned', 'design', 'blueprint');
@@ -512,14 +545,15 @@ function run(command: string, args: string[], options: { timeoutMs?: number } = 
   };
 }
 
-async function startServe(projectPath: string, extraArgs: string[], cwd = projectRoot): Promise<{
+async function startServe(projectPath: string | undefined, extraArgs: string[], cwd = projectRoot): Promise<{
   url: string;
   stdout: () => string;
   stderr: () => string;
   isRunning: () => boolean;
   close: () => Promise<void>;
 }> {
-  const child = spawn('node', [cliPath, 'serve', '--project', projectPath, ...extraArgs], {
+  const serveArgs = projectPath ? [cliPath, 'serve', '--project', projectPath, ...extraArgs] : [cliPath, 'serve', ...extraArgs];
+  const child = spawn('node', serveArgs, {
     cwd,
     env: { ...process.env, NO_COLOR: '1' },
     stdio: ['ignore', 'pipe', 'pipe']

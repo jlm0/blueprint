@@ -74,6 +74,7 @@ async function main(): Promise<void> {
     await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
     await assertReferenceScreenBoard(page, starterBundle);
     await assertPhoneFrame(page);
+    await assertDesktopFrame(page, starterBundle);
     await assertScreenCompositionRendered(page, starterBundle);
     await assertVisibleBoundarySynchronization(page, 'screens');
     const starterScreensScreenshot = path.join(screenshotRoot, 'blueprint-screens-desktop.png');
@@ -362,6 +363,18 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
   if (families.size < Math.min(2, bundle.primitives.primitives.length) || ![...families].some(family => family !== 'generic')) {
     throw new Error(`${bundle.manifest.project.id} primitive board should prove bounded family templates, received: ${[...families].join(', ')}`);
   }
+  const visibleProbeCount = await page.locator('.board-primitives [data-boundary-kind="primitive"] .token-probe').count();
+  if (visibleProbeCount > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive board should not render visible token probe chips on human-facing primitive cards.`);
+  }
+  const visibleMetadataCount = await page.locator('.board-primitives [data-boundary-kind="primitive"] .generated-card-head, .board-primitives [data-boundary-kind="primitive"] .primitive-meta-row').count();
+  if (visibleMetadataCount > 0) {
+    throw new Error(`${bundle.manifest.project.id} primitive board should not render metadata headers as human-facing primitive card content.`);
+  }
+  const genericFixtureCount = await page.locator('.board-primitives [data-boundary-kind="primitive"][data-primitive-family="generic"]').count();
+  if (genericFixtureCount > 0) {
+    throw new Error(`${bundle.manifest.project.id} shipped primitives should not route through the generic fallback renderer.`);
+  }
 
   for (const primitive of bundle.primitives.primitives) {
     for (const stateSet of primitive.stateSets) {
@@ -490,6 +503,19 @@ async function assertPrimitiveCanvasPlacement(page: import('playwright').Page): 
   );
   if (overflow.length > 0) {
     throw new Error(`Primitive sample content should fit within its card: ${overflow.join(', ')}`);
+  }
+
+  const stateOverflow = await page.locator('.board-primitives [data-primitive-state-id]').evaluateAll(elements =>
+    elements
+      .filter(element => element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1)
+      .map(element => {
+        const state = (element as HTMLElement).dataset.primitiveStateId ?? 'unknown-state';
+        const primitive = element.closest<HTMLElement>('[data-boundary-kind="primitive"]')?.dataset.boundaryId ?? 'unknown-primitive';
+        return `${primitive}/${state}`;
+      })
+  );
+  if (stateOverflow.length > 0) {
+    throw new Error(`Primitive state samples should not overflow their visible boxes: ${stateOverflow.join(', ')}`);
   }
 }
 
@@ -650,7 +676,8 @@ async function assertNoProjectManagerChrome(page: import('playwright').Page): Pr
 }
 
 async function assertPhoneFrame(page: import('playwright').Page): Promise<void> {
-  const size = await page.locator('.screen').first().evaluate(element => {
+  const frame = page.locator('.frame[data-frame-type="mobile"]').first();
+  const size = await frame.locator('.screen').evaluate(element => {
     const computed = window.getComputedStyle(element);
     return {
       width: parseFloat(computed.width),
@@ -662,8 +689,39 @@ async function assertPhoneFrame(page: import('playwright').Page): Promise<void> 
     throw new Error(`Expected reference phone screen to be 393x852, received ${size.width}x${size.height}.`);
   }
 
-  await page.locator('.status-bar').first().waitFor({ timeout: 5000 });
-  await page.locator('.home-indicator').first().waitFor({ timeout: 5000 });
+  await frame.locator('.status-bar').waitFor({ timeout: 5000 });
+  await frame.locator('.home-indicator').waitFor({ timeout: 5000 });
+  const browserBars = await frame.locator('.browser-bar').count();
+  if (browserBars !== 0) {
+    throw new Error(`Mobile frame should not render browser chrome; received ${browserBars} browser bars.`);
+  }
+}
+
+async function assertDesktopFrame(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
+  const frame = page.locator('.frame[data-frame-type="desktop"]').first();
+  await frame.waitFor({ timeout: 5000 });
+  const presetId = await frame.getAttribute('data-frame-preset-id');
+  const preset = bundle.manifest.framePresets.find(candidate => candidate.id === presetId);
+  if (!preset || preset.type !== 'desktop') {
+    throw new Error(`Expected rendered desktop frame to reference a declared desktop preset, received ${presetId ?? 'none'}.`);
+  }
+  const size = await frame.locator('.screen').evaluate(element => {
+    const computed = window.getComputedStyle(element);
+    return {
+      width: parseFloat(computed.width),
+      height: parseFloat(computed.height)
+    };
+  });
+
+  if (Math.abs(size.width - preset.width) > 0.5 || Math.abs(size.height - preset.height) > 0.5) {
+    throw new Error(`Expected reference desktop screen to match ${preset.id} at ${preset.width}x${preset.height}, received ${size.width}x${size.height}.`);
+  }
+
+  await frame.locator('.browser-bar').waitFor({ timeout: 5000 });
+  const phoneChrome = await frame.locator('.status-bar, .home-indicator').count();
+  if (phoneChrome !== 0) {
+    throw new Error(`Desktop frame should not render phone chrome; received ${phoneChrome} phone chrome nodes.`);
+  }
 }
 
 async function assertFrameTools(page: import('playwright').Page): Promise<void> {

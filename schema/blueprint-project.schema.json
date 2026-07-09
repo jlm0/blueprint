@@ -58,7 +58,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "type": { "enum": ["mobile", "tablet", "desktop", "custom"] },
+        "type": { "enum": ["mobile", "desktop"] },
         "width": { "type": "number" },
         "height": { "type": "number" },
         "safeArea": {

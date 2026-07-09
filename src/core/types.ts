@@ -29,7 +29,7 @@ export interface BoardDefinition {
 export interface FramePreset {
   id: string;
   name: string;
-  type: 'mobile' | 'tablet' | 'desktop' | 'custom';
+  type: 'mobile' | 'desktop';
   width: number;
   height: number;
   safeArea: {

@@ -76,6 +76,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         assert.equal(await fallback.count(), 1, `${primitiveId} should still render one generic card`);
         assert.equal(await fallback.getAttribute('data-primitive-family'), 'generic', `${primitiveId} should not match family names by substring`);
         assert.ok((await fallback.locator('[data-primitive-sample="generic"]').count()) >= 1);
+        assert.equal(await fallback.locator('.token-probe, .generated-card-head, .primitive-meta-row').count(), 0);
       }
       assert.equal(await page.locator(boundarySelector('nova-care/primitive/action-button')).getAttribute('data-primitive-family'), 'button');
     } finally {
@@ -120,6 +121,209 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('renders known primitive families as human-facing visual specimens rather than token probe cards', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    const page = await openPrimitiveBoard(bundle);
+
+    try {
+      const visualExpectations = [
+        { primitiveId: 'button', selector: '.btn', minimum: 12 },
+        { primitiveId: 'input', selector: '.inp', minimum: 10 },
+        { primitiveId: 'checkbox', selector: '.cbx', minimum: 4 },
+        { primitiveId: 'switch', selector: '.sw', minimum: 4 },
+        { primitiveId: 'slider', selector: '.slider', minimum: 4 },
+        { primitiveId: 'back-button', selector: '.btn-round', minimum: 3 }
+      ];
+
+      for (const item of visualExpectations) {
+        const card = page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', item.primitiveId)));
+        assert.equal(await card.count(), 1, `${item.primitiveId} primitive card should render once`);
+        assert.ok(
+          (await card.locator(item.selector).count()) >= item.minimum,
+          `${item.primitiveId} should expose actual ${item.selector} visual specimens`
+        );
+        assert.equal(
+          await card.locator('.generated-card-head, .primitive-meta-row, .token-probe').count(),
+          0,
+          `${item.primitiveId} should not show metadata headers or token probe chips in the human canvas`
+        );
+        const text = await card.innerText();
+        assert.doesNotMatch(text, /\b(?:RADIUS|SHADOW|state set)\b/i, `${item.primitiveId} should not foreground token/debug labels`);
+      }
+
+      const backText = await page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', 'back-button'))).innerText();
+      assert.doesNotMatch(
+        backText,
+        /Navigation back command primitive/i,
+        'Back button card should show back-button states, not the primitive schema description'
+      );
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('keeps shipped primitive boards free of generic metadata/probe renderers', async () => {
+    const fixtures = [
+      await loadProjectFromFs(starterRoot),
+      await loadProjectFromFs(novaRoot),
+      await loadProjectFromFs(atlasRoot)
+    ];
+
+    for (const bundle of fixtures) {
+      const page = await openPrimitiveBoard(bundle);
+      try {
+        assert.equal(
+          await page.locator('.board-primitives [data-boundary-kind="primitive"] .token-probe').count(),
+          0,
+          `${bundle.manifest.project.id} should not show visible token probe chips on primitive cards`
+        );
+        assert.equal(
+          await page.locator('.board-primitives [data-boundary-kind="primitive"] .generated-card-head, .board-primitives [data-boundary-kind="primitive"] .primitive-meta-row').count(),
+          0,
+          `${bundle.manifest.project.id} should not show primitive metadata headers as human canvas content`
+        );
+        assert.equal(
+          await page.locator('.board-primitives [data-boundary-kind="primitive"][data-primitive-family="generic"]').count(),
+          0,
+          `${bundle.manifest.project.id} should not send shipped primitives through the generic fallback`
+        );
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
+  it('preserves human-facing primitive semantics for matrices, slots, surfaces, cards, and compact controls', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    const page = await openPrimitiveBoard(bundle);
+    const projectId = bundle.manifest.project.id;
+
+    try {
+      const buttonCard = page.locator(boundarySelector(boundaryId(projectId, 'primitive', 'button')));
+      assert.equal(await buttonCard.locator('.button-state-matrix').count(), 1, 'button should render a variant x interaction matrix');
+      assert.equal(await buttonCard.locator('.button-state-matrix .mx-c .btn').count(), 30, 'button matrix should show every variant x interaction cell');
+
+      const inputCard = page.locator(boundarySelector(boundaryId(projectId, 'primitive', 'input')));
+      assert.equal(await inputCard.locator('.input-state-matrix').count(), 1, 'input should render a variant x lifecycle matrix');
+      assert.equal(await inputCard.locator('.input-state-matrix .mx-c .inp').count(), 25, 'input matrix should show every variant x lifecycle cell');
+
+      const backButtons = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .btn-round`)
+        .evaluateAll(elements =>
+          elements.map(element => {
+            const node = element as HTMLElement;
+            return {
+              text: node.textContent?.trim() ?? '',
+              width: node.clientWidth,
+              height: node.clientHeight,
+              overflowX: node.scrollWidth - node.clientWidth,
+              overflowY: node.scrollHeight - node.clientHeight,
+              isSmall: node.classList.contains('sm')
+            };
+          })
+        );
+      assert.equal(backButtons.length, 3, 'back button should show medium, small, and disabled icon controls');
+      assert.ok(backButtons.every(button => button.text.length === 0), 'back buttons should be icon-only visual controls');
+      assert.ok(backButtons.every(button => Math.abs(button.width - button.height) <= 1), 'back buttons should stay round');
+      assert.ok(backButtons.every(button => button.overflowX <= 1 && button.overflowY <= 1), 'back buttons should not overflow');
+      assert.ok(backButtons.some(button => button.isSmall && button.width < 44), 'small back button should be visibly smaller than medium');
+
+      const navigationSlots = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'nav-bar'))} .navbar`)
+        .evaluateAll(elements =>
+          elements.map(element =>
+            [...element.children]
+              .filter(child => !(child as HTMLElement).classList.contains('agent-token-hook'))
+              .map(child => (child as HTMLElement).className)
+          )
+        );
+      assert.equal(navigationSlots.length, 3, 'navigation should render every declared slot composition');
+      assert.ok(
+        navigationSlots.every(classes => classes.length === 3 && classes[0] === 'side' && classes[1] === 'center' && classes[2] === 'side right'),
+        `navigation bars should keep left, center, and right slots: ${JSON.stringify(navigationSlots)}`
+      );
+
+      const surfaceEvidence = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .surface-level`)
+        .evaluateAll(elements =>
+          elements.map(element => {
+            const node = element as HTMLElement;
+            return {
+              level: node.dataset.surfaceLevel ?? '',
+              background: window.getComputedStyle(node).backgroundColor,
+              nested: node.querySelectorAll('.surface-level').length
+            };
+          })
+        );
+      assert.ok(surfaceEvidence.length >= 5, 'surface should render an additive nested ladder through at least +5');
+      assert.ok(surfaceEvidence[0]?.nested && surfaceEvidence[0].nested >= 4, 'surface ladder should be recursively nested');
+      assert.notEqual(surfaceEvidence[0]?.background, surfaceEvidence.at(-1)?.background, 'surface levels should visibly change as they stack');
+      const surfaceCardBackgrounds = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .surface-card-example`)
+        .evaluateAll(elements => elements.map(element => window.getComputedStyle(element).backgroundColor));
+      assert.equal(surfaceCardBackgrounds.length, 2, 'surface should compare the same card across two surface levels');
+      assert.notEqual(surfaceCardBackgrounds[0], surfaceCardBackgrounds[1], 'card-on-surface comparison should visibly change across levels');
+
+      const cardEvidence = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'card'))} .card[data-primitive-state-id]`)
+        .evaluateAll(elements =>
+          elements.map(element => {
+            const node = element as HTMLElement;
+            const style = window.getComputedStyle(node);
+            return {
+              state: node.dataset.primitiveStateId ?? '',
+              classes: node.className,
+              borderColor: style.borderColor,
+              boxShadow: style.boxShadow
+            };
+          })
+        );
+      assert.ok(cardEvidence.some(card => card.state === 'flat' && card.classes.includes('flat')), 'flat card state should use flat card styling');
+      assert.ok(cardEvidence.some(card => card.state === 'elevated' && card.boxShadow !== 'none'), 'elevated card should visibly use shadow');
+      assert.ok(cardEvidence.some(card => card.state === 'status-accent' && card.classes.includes('status-accent')), 'status card should use accent frame styling');
+
+      const badgeOverflow = await page
+        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'badge'))} .badge`)
+        .evaluateAll(elements =>
+          elements
+            .map(element => {
+              const node = element as HTMLElement;
+              return {
+                label: node.textContent?.trim() ?? '',
+                overflowX: node.scrollWidth - node.clientWidth,
+                overflowY: node.scrollHeight - node.clientHeight,
+                borderRadius: window.getComputedStyle(node).borderTopLeftRadius
+              };
+            })
+            .filter(item => item.overflowX > 1 || item.overflowY > 1 || item.borderRadius === '0px')
+        );
+      assert.deepEqual(badgeOverflow, [], 'badges should remain non-overflowing pill labels');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('uses app-owned foreground tokens when card surfaces resolve to light app colors', async () => {
+    const bundle = await loadProjectFromFs(novaRoot);
+    const page = await openPrimitiveBoard(bundle);
+
+    try {
+      const infoCardText = await page
+        .locator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', 'info-card'))} .card[data-primitive-state-id="compact"] strong`)
+        .evaluate(element => {
+          const style = window.getComputedStyle(element);
+          return {
+            color: style.color,
+            background: window.getComputedStyle(element.closest('.card') as Element).backgroundColor
+          };
+        });
+      assert.equal(infoCardText.background, 'rgb(251, 252, 248)', 'Nova info card should use its app-owned light surface token');
+      assert.equal(infoCardText.color, 'rgb(25, 33, 29)', 'Nova info card text should use the app-owned ink token on light surfaces');
+    } finally {
+      await page.close();
+    }
+  });
+
   it('maps token mutations into primitive samples through named token roles and template hooks', async () => {
     const cases = [
       {
@@ -131,7 +335,9 @@ describe('Blueprint data-driven primitives canvas', () => {
         mutatedValue: '#ff00aa',
         cssProperty: 'background-color',
         baseExpected: 'rgb(62, 124, 97)',
-        mutatedExpected: 'rgb(255, 0, 170)'
+        mutatedExpected: 'rgb(255, 0, 170)',
+        visibleSelector: '.btn[data-primitive-state-id="primary"]',
+        visibleCssProperty: 'background-color'
       },
       {
         root: novaRoot,
@@ -208,6 +414,12 @@ describe('Blueprint data-driven primitives canvas', () => {
           baseStyle.value,
           `${item.tokenRef} should change ${item.cssProperty} through ${mutatedStyle.templateHook}`
         );
+        if ('visibleSelector' in item && item.visibleSelector && 'visibleCssProperty' in item && item.visibleCssProperty) {
+          const baseVisibleStyle = await readVisibleStyle(basePage, item.boundary, item.visibleSelector, item.visibleCssProperty);
+          const mutatedVisibleStyle = await readVisibleStyle(mutatedPage, item.boundary, item.visibleSelector, item.visibleCssProperty);
+          assert.equal(baseVisibleStyle, item.baseExpected, `${item.tokenRef} should drive visible ${item.visibleCssProperty} before mutation`);
+          assert.equal(mutatedVisibleStyle, item.mutatedExpected, `${item.tokenRef} should drive visible ${item.visibleCssProperty} after mutation`);
+        }
       } finally {
         await basePage.close();
         await mutatedPage.close();
@@ -309,6 +521,53 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('renders desktop web frames and mobile frames from frame presets on the same canvas', async () => {
+    const bundle = withDesktopScreen(await loadProjectFromFs(novaRoot));
+    const page = await openScreensBoard(bundle);
+
+    try {
+      const mobileFrame = page.locator(boundarySelector('nova-care/screen/home'));
+      const desktopFrame = page.locator(boundarySelector('nova-care/screen/web-dashboard'));
+      await mobileFrame.waitFor({ state: 'visible', timeout: 5000 });
+      await desktopFrame.waitFor({ state: 'visible', timeout: 5000 });
+
+      assert.equal(await mobileFrame.getAttribute('data-frame-type'), 'mobile');
+      assert.equal(await mobileFrame.getAttribute('data-frame-preset-id'), 'phone-ios');
+      assert.equal(await desktopFrame.getAttribute('data-frame-type'), 'desktop');
+      assert.equal(await desktopFrame.getAttribute('data-frame-preset-id'), 'desktop-web');
+
+      const mobileSize = await mobileFrame.locator('.screen').evaluate(element => {
+        const computed = window.getComputedStyle(element);
+        return {
+          width: parseFloat(computed.width),
+          height: parseFloat(computed.height)
+        };
+      });
+      const desktopSize = await desktopFrame.locator('.screen').evaluate(element => {
+        const computed = window.getComputedStyle(element);
+        return {
+          width: parseFloat(computed.width),
+          height: parseFloat(computed.height)
+        };
+      });
+      assert.deepEqual(mobileSize, { width: 393, height: 852 });
+      assert.deepEqual(desktopSize, { width: 1440, height: 900 });
+
+      assert.equal(await mobileFrame.locator('.status-bar').count(), 1, 'mobile frame should keep phone status chrome');
+      assert.equal(await mobileFrame.locator('.home-indicator').count(), 1, 'mobile frame should keep phone home indicator');
+      assert.equal(await mobileFrame.locator('.browser-bar').count(), 0, 'mobile frame should not render browser chrome');
+      assert.equal(await desktopFrame.locator('.status-bar').count(), 0, 'desktop frame should not render phone status chrome');
+      assert.equal(await desktopFrame.locator('.home-indicator').count(), 0, 'desktop frame should not render phone home indicator');
+      assert.equal(await desktopFrame.locator('.browser-bar').count(), 1, 'desktop frame should render browser chrome');
+      assert.equal((await desktopFrame.locator('.browser-address').textContent())?.trim(), '/web-dashboard');
+
+      const collisions = await frameCollisions(page);
+      assert.deepEqual(collisions, [], `Mixed mobile and desktop screen frames should not overlap:\n${collisions.join('\n')}`);
+    } finally {
+      await page.close();
+    }
+  });
+
   it('keeps all-screens review evidence tied to rendered section boundaries without a false top-level screen context', async () => {
     const bundle = await loadProjectFromFs(novaRoot);
     const page = await openScreensBoard(bundle);
@@ -356,22 +615,74 @@ describe('Blueprint data-driven primitives canvas', () => {
     const starterPage = await openScreensBoard(starterBundle);
 
     try {
-      const novaText = await novaPage.locator('.board-screens .screen-template-body').innerText();
+      const novaText = await novaPage.locator('.board-screens .screen-template-body').first().innerText();
       assert.match(novaText, /Today summary headline and care-plan details/);
       assert.match(novaText, /Next care task call-to-action/);
       assert.doesNotMatch(
         novaText,
-        /\b(?:Info Card|Action Button|Status Pill|COMPACT|PRIMARY|READY)\b/,
+        /\b(?:Info Card|Action Button|Status Pill|compact|primary|ready)\b/i,
         'Phone body should not foreground primitive implementation names or variant chips as primary prototype content'
       );
 
-      const starterText = await starterPage.locator('.board-screens .screen-template-body').innerText();
+      const starterText = await starterPage.locator('.board-screens .screen-template-body').first().innerText();
       assert.match(starterText, /Primary Action|Continue/);
       assert.doesNotMatch(
         starterText,
         /Baseline command primitive with explicit variants and normal\/loading\/disabled states/,
         'Starter screen should not render primitive schema descriptions as phone-body content'
       );
+    } finally {
+      await novaPage.close();
+      await starterPage.close();
+    }
+  });
+
+  it('composes screen frames from the same visual primitive vocabulary used on the primitives canvas', async () => {
+    const novaBundle = await loadProjectFromFs(novaRoot);
+    const novaPage = await openScreensBoard(novaBundle);
+    const starterBundle = await loadProjectFromFs(starterRoot);
+    const starterPage = await openScreensBoard(starterBundle);
+
+    try {
+      assert.ok(
+        (await novaPage.locator('.screen-dependency-button .btn').count()) >= 1,
+        'Nova screen button dependencies should render as actual button specimens'
+      );
+      assert.ok(
+        (await novaPage.locator('.screen-dependency-card .card').count()) >= 1,
+        'Nova screen card dependencies should render as actual card specimens'
+      );
+      assert.ok(
+        (await novaPage.locator('.screen-dependency-badge .badge').count()) >= 1,
+        'Nova screen badge dependencies should render as actual badge specimens'
+      );
+      assert.ok(
+        (await starterPage.locator('.screen-dependency-button .btn').count()) >= 1,
+        'Starter screen button dependencies should render as actual button specimens'
+      );
+      assert.equal(
+        await starterPage.locator('.screen-dependency-button .screen-prototype-button-label').count(),
+        0,
+        'Screens should not fall back to generic button label spans when a visual button renderer exists'
+      );
+
+      const switchBundle = mutateSectionDependency(starterBundle, 'home', 'primary-action', 0, 'switch');
+      const switchPage = await openScreensBoard(switchBundle);
+      const sliderBundle = mutateSectionDependency(starterBundle, 'home', 'primary-action', 0, 'slider');
+      const sliderPage = await openScreensBoard(sliderBundle);
+      try {
+        assert.ok(
+          (await switchPage.locator('.screen-dependency-switch .sw').count()) >= 1,
+          'Switch screen dependencies should render as actual switch specimens'
+        );
+        assert.ok(
+          (await sliderPage.locator('.screen-dependency-slider .slider').count()) >= 1,
+          'Slider screen dependencies should render as actual slider specimens'
+        );
+      } finally {
+        await switchPage.close();
+        await sliderPage.close();
+      }
     } finally {
       await novaPage.close();
       await starterPage.close();
@@ -509,11 +820,14 @@ async function assertFamilyCoverage(page: Page, bundle: BlueprintProjectBundle):
   const families = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
     elements.map(element => ({
       id: (element as HTMLElement).dataset.boundaryId ?? '',
-      family: (element as HTMLElement).dataset.primitiveFamily ?? ''
+      family: (element as HTMLElement).dataset.primitiveFamily ?? '',
+      renderer: (element as HTMLElement).querySelector<HTMLElement>('.primitive-visual')?.dataset.primitiveRenderer ?? ''
     }))
   );
   const missingFamily = families.filter(item => item.family.length === 0);
   assert.deepEqual(missingFamily, [], `${bundle.manifest.project.id} primitive cards should name their renderer family`);
+  const missingRenderer = families.filter(item => item.family !== 'generic' && item.renderer !== item.family);
+  assert.deepEqual(missingRenderer, [], `${bundle.manifest.project.id} known primitive cards should use their visual family renderer`);
 
   const distinctFamilies = new Set(families.map(item => item.family));
   const minimumFamilies = Math.min(2, bundle.primitives.primitives.length);
@@ -551,6 +865,14 @@ async function readTokenHookStyle(
   const hook = hooks.find(item => item.value.trim().length > 0);
   assert.ok(hook, `token hook for ${tokenRole} should expose computed ${cssProperty}`);
   return hook;
+}
+
+async function readVisibleStyle(page: Page, primitiveBoundaryId: string, selector: string, cssProperty: string): Promise<string> {
+  const value = await page
+    .locator(`${boundarySelector(primitiveBoundaryId)} ${selector}`)
+    .evaluate((element, property) => window.getComputedStyle(element).getPropertyValue(property as string), cssProperty);
+  assert.ok(value.trim().length > 0, `visible ${selector} should expose computed ${cssProperty}`);
+  return value;
 }
 
 function mutateToken(bundle: BlueprintProjectBundle, groupId: string, tokenId: string, value: string): BlueprintProjectBundle {
@@ -601,6 +923,41 @@ function withAdditionalScreen(bundle: BlueprintProjectBundle): BlueprintProjectB
   second.name = 'Settings';
   second.description = 'Second proof screen for placement and section rendering.';
   cloned.screens.screens = [first, second];
+  return cloned;
+}
+
+function withDesktopScreen(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
+  const cloned = cloneBundle(bundle);
+  const first = cloned.screens.screens[0];
+  if (!first) {
+    throw new Error('Expected at least one screen fixture.');
+  }
+  cloned.manifest.framePresets = [
+    ...cloned.manifest.framePresets,
+    {
+      id: 'desktop-web',
+      name: 'Desktop Web',
+      type: 'desktop',
+      width: 1440,
+      height: 900,
+      safeArea: {
+        top: 48,
+        right: 0,
+        bottom: 0,
+        left: 0
+      }
+    }
+  ];
+  const desktop = JSON.parse(JSON.stringify(first)) as ScreenDefinition;
+  desktop.id = 'web-dashboard';
+  desktop.name = 'Web Dashboard';
+  desktop.description = 'Desktop web proof screen for browser-frame rendering.';
+  desktop.framePresetId = 'desktop-web';
+  desktop.productionRelationship = {
+    kind: 'new-route',
+    routePath: '/web-dashboard'
+  };
+  cloned.screens.screens = [first, desktop];
   return cloned;
 }
 

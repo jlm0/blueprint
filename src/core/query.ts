@@ -253,7 +253,8 @@ function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: Bounda
   }
 
   if (packet.kind === 'state-set') {
-    const { stateSet } = findStateSet(bundle, localId);
+    const { primitive, stateSet } = findStateSet(bundle, localId);
+    refs.push(reference(projectId, 'primitive', primitive.id, primitive.name));
     const groupIds = new Set(stateSet.states.flatMap(state => state.tokens.map(tokenRef => tokenRef.split('.')[0]).filter(Boolean)));
     for (const groupId of groupIds) {
       const group = findTokenGroup(bundle, groupId);
@@ -402,9 +403,9 @@ function stateSetPacket(
     styleEvidence: styleEvidenceFor(stateSet.styleRefs, stateSet.styleEvidence),
     uses: [],
     usedBy: usedBy(bundle, 'state-set', `${primitive.id}/${stateSet.id}`),
-    notes: stateSet.states.flatMap(state => state.notes),
+    notes: stateSet.states.flatMap(state => state.notes ?? []),
     prototypeOnly: stateSet.states.every(state => state.prototypeOnly),
-    implementationHints: stateSet.states.flatMap(state => state.implementationHints)
+    implementationHints: stateSet.states.flatMap(state => state.implementationHints ?? [])
   });
 }
 
