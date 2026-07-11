@@ -568,6 +568,31 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('keeps the starter screens board at two empty base frames', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    const page = await openScreensBoard(bundle);
+
+    try {
+      assert.deepEqual(
+        bundle.screens.screens.map(screen => ({ id: screen.id, preset: screen.framePresetId, sections: screen.sections.length })),
+        [
+          { id: 'home', preset: 'phone', sections: 0 },
+          { id: 'web-home', preset: 'desktop-web', sections: 0 }
+        ]
+      );
+
+      const frames = page.locator('.board-screens .frame');
+      assert.equal(await frames.count(), 2);
+      assert.equal(await frames.nth(0).getAttribute('data-frame-type'), 'mobile');
+      assert.equal(await frames.nth(1).getAttribute('data-frame-type'), 'desktop');
+      assert.equal(await frames.locator('[data-boundary-kind="section"]').count(), 0);
+      assert.equal((await frames.nth(0).locator('.screen-template-body').innerText()).trim(), '');
+      assert.equal((await frames.nth(1).locator('.screen-template-body').innerText()).trim(), '');
+    } finally {
+      await page.close();
+    }
+  });
+
   it('keeps all-screens review evidence tied to rendered section boundaries without a false top-level screen context', async () => {
     const bundle = await loadProjectFromFs(novaRoot);
     const page = await openScreensBoard(bundle);
@@ -611,8 +636,6 @@ describe('Blueprint data-driven primitives canvas', () => {
   it('renders screen composition as prototype content rather than primary metadata labels', async () => {
     const novaBundle = await loadProjectFromFs(novaRoot);
     const novaPage = await openScreensBoard(novaBundle);
-    const starterBundle = await loadProjectFromFs(starterRoot);
-    const starterPage = await openScreensBoard(starterBundle);
 
     try {
       const novaText = await novaPage.locator('.board-screens .screen-template-body').first().innerText();
@@ -624,16 +647,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         'Phone body should not foreground primitive implementation names or variant chips as primary prototype content'
       );
 
-      const starterText = await starterPage.locator('.board-screens .screen-template-body').first().innerText();
-      assert.match(starterText, /Primary Action|Continue/);
-      assert.doesNotMatch(
-        starterText,
-        /Baseline command primitive with explicit variants and normal\/loading\/disabled states/,
-        'Starter screen should not render primitive schema descriptions as phone-body content'
-      );
     } finally {
       await novaPage.close();
-      await starterPage.close();
     }
   });
 
@@ -641,7 +656,7 @@ describe('Blueprint data-driven primitives canvas', () => {
     const novaBundle = await loadProjectFromFs(novaRoot);
     const novaPage = await openScreensBoard(novaBundle);
     const starterBundle = await loadProjectFromFs(starterRoot);
-    const starterPage = await openScreensBoard(starterBundle);
+    const interactionPage = await openScreensBoard(withStarterInteractionProof(starterBundle));
 
     try {
       assert.ok(
@@ -656,36 +671,22 @@ describe('Blueprint data-driven primitives canvas', () => {
         (await novaPage.locator('.screen-dependency-badge .badge').count()) >= 1,
         'Nova screen badge dependencies should render as actual badge specimens'
       );
-      assert.ok(
-        (await starterPage.locator('.screen-dependency-button .btn').count()) >= 1,
-        'Starter screen button dependencies should render as actual button specimens'
-      );
       assert.equal(
-        await starterPage.locator('.screen-dependency-button .screen-prototype-button-label').count(),
+        await novaPage.locator('.screen-dependency-button .screen-prototype-button-label').count(),
         0,
         'Screens should not fall back to generic button label spans when a visual button renderer exists'
       );
-
-      const switchBundle = mutateSectionDependency(starterBundle, 'home', 'primary-action', 0, 'switch');
-      const switchPage = await openScreensBoard(switchBundle);
-      const sliderBundle = mutateSectionDependency(starterBundle, 'home', 'primary-action', 0, 'slider');
-      const sliderPage = await openScreensBoard(sliderBundle);
-      try {
-        assert.ok(
-          (await switchPage.locator('.screen-dependency-switch .sw').count()) >= 1,
-          'Switch screen dependencies should render as actual switch specimens'
-        );
-        assert.ok(
-          (await sliderPage.locator('.screen-dependency-slider .slider').count()) >= 1,
-          'Slider screen dependencies should render as actual slider specimens'
-        );
-      } finally {
-        await switchPage.close();
-        await sliderPage.close();
-      }
+      assert.ok(
+        (await interactionPage.locator('.screen-dependency-switch .sw').count()) >= 1,
+        'Switch screen dependencies should render as actual switch specimens'
+      );
+      assert.ok(
+        (await interactionPage.locator('.screen-dependency-slider .slider').count()) >= 1,
+        'Slider screen dependencies should render as actual slider specimens'
+      );
     } finally {
       await novaPage.close();
-      await starterPage.close();
+      await interactionPage.close();
     }
   });
 
@@ -923,6 +924,30 @@ function withAdditionalScreen(bundle: BlueprintProjectBundle): BlueprintProjectB
   second.name = 'Settings';
   second.description = 'Second proof screen for placement and section rendering.';
   cloned.screens.screens = [first, second];
+  return cloned;
+}
+
+function withStarterInteractionProof(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
+  const cloned = cloneBundle(bundle);
+  const first = cloned.screens.screens[0];
+  if (!first) {
+    throw new Error('Expected at least one starter screen.');
+  }
+  first.sections = [
+    {
+      id: 'interaction-proof',
+      name: 'Interaction Proof',
+      description: 'Test-only composition for generic interactive primitive rendering.',
+      styleRefs: [],
+      uses: [
+        { kind: 'primitive', id: 'switch', reason: 'Switch renderer coverage', binding: { copy: 'Enabled', layout: 'row' } },
+        { kind: 'primitive', id: 'slider', reason: 'Slider renderer coverage', binding: { copy: 'Level', layout: 'row' } }
+      ],
+      prototypeOnly: true,
+      notes: [],
+      implementationHints: []
+    }
+  ];
   return cloned;
 }
 

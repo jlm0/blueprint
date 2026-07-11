@@ -86,7 +86,7 @@ async function main(): Promise<void> {
     await assertAppSampleStyleStability(page, 'starter-screens', async () => {
       await page.locator('.board-screens .frame-shot').first().focus();
       await page.locator('.board-screens .frame-save').first().focus();
-    });
+    }, 1);
 
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await mobile.goto(`${url}?board=screens`);
@@ -873,11 +873,12 @@ async function assertNoViewportTextOverlap(page: import('playwright').Page, slug
 async function assertAppSampleStyleStability(
   page: import('playwright').Page,
   slug: string,
-  interact: () => Promise<void>
+  interact: () => Promise<void>,
+  minimumSamples = 2
 ): Promise<void> {
   const before = await collectAppSampleStyleSnapshot(page);
-  if (before.samples.length < 2) {
-    throw new Error(`Expected at least two app-sample style probes for ${slug}, received ${before.samples.length}.`);
+  if (before.samples.length < minimumSamples) {
+    throw new Error(`Expected at least ${minimumSamples} app-sample style probes for ${slug}, received ${before.samples.length}.`);
   }
 
   await writeFile(path.join(chromeEvidenceRoot, `${slug}-baseline.json`), `${JSON.stringify(before, null, 2)}\n`, 'utf8');

@@ -34,6 +34,7 @@ describe('Blueprint CLI and template governance', () => {
     const help = run('node', [cliPath, '--help']);
     assert.equal(help.status, 0, help.stderr);
     assert.match(help.stdout, /blueprint <command>/);
+    assert.match(help.stdout, /--mode baseline\|readiness\|strict/);
     assert.match(help.stdout, /serve \[--project design\/blueprint\] \[--port 4173\]/);
   });
 
@@ -70,6 +71,17 @@ describe('Blueprint CLI and template governance', () => {
       assert.equal(tokens.projectId, 'app-a');
       assert.equal(primitives.projectId, 'app-a');
       assert.equal(screens.projectId, 'app-a');
+      assert.deepEqual(
+        screens.screens.map((screen: { id: string; framePresetId: string; sections: unknown[] }) => ({
+          id: screen.id,
+          framePresetId: screen.framePresetId,
+          sectionCount: screen.sections.length
+        })),
+        [
+          { id: 'home', framePresetId: 'phone', sectionCount: 0 },
+          { id: 'web-home', framePresetId: 'desktop-web', sectionCount: 0 }
+        ]
+      );
 
       const structured = JSON.stringify({ manifest, tokens, primitives, screens });
       assert.equal(structured.includes('starter-app'), false);

@@ -19,7 +19,7 @@
       "id": "screens",
       "kind": "screens",
       "name": "Screens",
-      "description": "App-owned reference-shaped mobile screens and sections."
+      "description": "App-owned mobile and desktop frames with structured screen sections."
     }
   ],
   "framePresets": [

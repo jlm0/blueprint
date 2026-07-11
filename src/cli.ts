@@ -762,7 +762,7 @@ function helpText(): string {
 
 Commands:
   init --project-id <id> --name <name> --out <design/blueprint> [--force]
-  validate --project <path> [--mode baseline|strict] [--out file]
+  validate --project <path> [--mode baseline|readiness|strict] [--out file]
   index --project <path> [--out file]
   query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
   extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
