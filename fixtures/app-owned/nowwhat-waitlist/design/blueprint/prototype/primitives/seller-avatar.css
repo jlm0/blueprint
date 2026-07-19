@@ -1,0 +1,17 @@
+[data-blueprint-primitive="seller-avatar"] {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--nw-color-background);
+  border-radius: var(--nw-radius-full);
+  color: var(--nw-color-text-secondary);
+  background: var(--nw-color-amber-soft);
+  font: 600 10px/1 var(--nw-font-mono);
+}
+
+[data-blueprint-primitive="seller-avatar"][data-blueprint-variant="rose"] { background: var(--nw-color-error-soft); }
+[data-blueprint-primitive="seller-avatar"][data-blueprint-variant="purple"] { background: var(--nw-color-primary-soft); }
+[data-blueprint-primitive="seller-avatar"][data-blueprint-variant="sage"] { background: var(--nw-color-success-soft); }
+[data-blueprint-primitive="seller-avatar"][data-blueprint-variant="sand"] { background: color-mix(in oklch, var(--nw-color-amber-soft) 72%, var(--nw-color-surface-1)); }

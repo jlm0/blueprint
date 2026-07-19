@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0.0",
+  "handoffContractVersion": "1.0.0",
+  "project": {
+    "id": "high-fidelity-red",
+    "name": "High Fidelity Red Contract",
+    "description": "Red-only proof fixture for token-grounded browser-native composition.",
+    "owner": "Blueprint workstream red phase",
+    "sourceRoot": "fixtures/red/high-fidelity-prototype/design/blueprint"
+  },
+  "defaultBoardId": "screens",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "Canonical app-owned primitive implementations."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "Browser-native high-fidelity screen prototypes."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "desktop-reference",
+      "name": "Desktop reference",
+      "type": "desktop",
+      "width": 1280,
+      "height": 800,
+      "safeArea": { "top": 0, "right": 0, "bottom": 0, "left": 0 }
+    },
+    {
+      "id": "phone-review",
+      "name": "Phone review",
+      "type": "mobile",
+      "width": 390,
+      "height": 844,
+      "safeArea": { "top": 47, "right": 0, "bottom": 34, "left": 0 }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": ["prototype/assets"],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

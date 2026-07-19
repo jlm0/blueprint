@@ -1,0 +1,188 @@
+[data-blueprint-screen="pricing"] {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---------- Page head ---------- */
+
+.phead {
+  display: grid;
+  justify-items: center;
+  padding-top: 104px;
+}
+
+.billing {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 36px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: calc(var(--app-radius-md) + 4px);
+  background: color-mix(in srgb, var(--app-color-foreground) 3%, transparent);
+}
+
+.billing [data-blueprint-primitive="button"] {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+/* ---------- Tiers ---------- */
+
+.tiers {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding-top: 84px;
+}
+
+.tiers > [data-blueprint-component="pricing-card"] {
+  transition:
+    transform var(--app-motion-state),
+    box-shadow var(--app-motion-state);
+}
+
+.tiers > [data-blueprint-component="pricing-card"]:hover {
+  transform: translateY(-4px);
+}
+
+.tiers > [data-blueprint-component="pricing-card"].pricing-card--featured {
+  margin-top: -12px;
+  margin-bottom: -12px;
+}
+
+/* ---------- Includes ---------- */
+
+.includes {
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+  padding-top: 100px;
+}
+
+.includes__label {
+  color: color-mix(in srgb, var(--app-color-muted) 78%, transparent);
+  font: var(--app-type-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.includes__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 40px;
+}
+
+.includes__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: color-mix(in srgb, var(--app-color-foreground) 88%, transparent);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.includes__item [data-blueprint-primitive="icon"] {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Enterprise band ---------- */
+
+.ent {
+  padding-top: 64px;
+}
+
+.ent__band {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 26px;
+  border: 1px solid color-mix(in srgb, var(--app-color-accent) 22%, transparent);
+  border-radius: var(--app-radius-lg);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--app-color-accent) 8%, var(--app-color-surface)), var(--app-color-surface) 58%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 4%, transparent);
+}
+
+.ent__icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--app-color-accent) 22%, transparent);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-color-accent) 10%, transparent);
+}
+
+.ent__icon [data-blueprint-primitive="icon"] {
+  width: 19px;
+  height: 19px;
+}
+
+.ent__copy {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ent__copy b {
+  color: var(--app-color-foreground);
+  font: 750 16px/1.25 system-ui;
+  letter-spacing: -0.012em;
+}
+
+.ent__copy span {
+  color: var(--app-color-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.ent__band [data-blueprint-primitive="button"] {
+  flex: none;
+}
+
+/* ---------- FAQ ---------- */
+
+.faq {
+  padding-top: 104px;
+}
+
+.faq__title {
+  margin: 0;
+  color: var(--app-color-foreground);
+  font: 800 28px/1.15 system-ui;
+  letter-spacing: -0.022em;
+  text-align: center;
+}
+
+.faq__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 40px;
+  max-width: 900px;
+  margin: 48px auto 0;
+}
+
+.faq__item h3 {
+  margin: 0;
+  color: var(--app-color-foreground);
+  font: 700 15px/1.35 system-ui;
+  letter-spacing: -0.01em;
+}
+
+.faq__item p {
+  margin: 8px 0 0;
+  color: var(--app-color-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.cta-wrap {
+  margin-top: 104px;
+  margin-bottom: 104px;
+}

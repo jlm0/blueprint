@@ -1,0 +1,937 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "blank-slate-proof",
+  "screens": [
+    {
+      "id": "home",
+      "name": "Harness · Home",
+      "description": "Harness home page: sticky marketing nav, centered hero with beta badge and gradient display headline, live agent-run console mock, proof stats, logo cloud, three capability cards, customer testimonial, closing CTA band, and footer — composed from default tokens and canonical primitives.",
+      "framePresetId": "desktop-web-tall",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/screens/home.css"
+      ],
+      "styleEvidence": [
+        { "styleRef": "prototype/styles/screen-base.css", "status": "source", "sourceAnchor": "prototype/styles/screen-base.css" },
+        { "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }
+      ],
+      "notes": [
+        "The console mock, hero art direction, stats strip, and logo cloud are screen-local composition; every command, chip, and glyph resolves to a canonical primitive or app-owned component.",
+        "The gradient headline and glow artwork are declared local exceptions; all color resolves through default tokens."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the hero headline hierarchy and the console mock proportions; the console is the primary product proof."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/Home",
+          "symbolName": "HomePage",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "hero": "heroContent",
+            "console": "liveRunPreview",
+            "features": "capabilities",
+            "proof": "testimonial"
+          },
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "default Blueprint tokens (starter values)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/home.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/screens/home.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/harness-mark.svg",
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/hero-glow.svg",
+          "prototype/assets/orbit-rings.svg",
+          "prototype/assets/avatar-maya.svg",
+          "prototype/assets/noise.svg"
+        ],
+        "states": ["initial"],
+        "reviewConditions": [
+          { "id": "desktop-full", "framePresetId": "desktop-web-tall", "state": "initial" }
+        ],
+        "renderedUses": [
+          { "kind": "component", "id": "cta-band" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "section-head" },
+          { "kind": "component", "id": "site-footer" },
+          { "kind": "component", "id": "site-nav" },
+          { "kind": "component", "id": "testimonial-card" },
+          { "kind": "primitive", "id": "badge" },
+          { "kind": "primitive", "id": "badge" },
+          { "kind": "primitive", "id": "badge" },
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "button" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "800 62px/1.05 system-ui hero headline", "reason": "Hero display size is unique marketing art direction above the default display role." },
+          { "property": "background", "value": "foreground-to-accent gradient clipped to the headline accent line", "reason": "Gradient display text is hero-only art direction over default tokens." },
+          { "property": "grid-template-columns", "value": "188px minmax(0, 1fr) console rail", "reason": "The console mock rail width is unique to this screen region." },
+          { "property": "max-width", "value": "1080px console mock and 1600px glow artwork", "reason": "Reference-bound artwork and mock dimensions are screen-local composition." },
+          { "property": "animation", "value": "ambient transform/opacity keyframes (live pulse, step shimmer, logo marquee)", "reason": "Ambient motion is layout-stable, script-free art direction unique to this screen's review." }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with brand, primary links, and canonical sign-in and get-started commands.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "idle" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-nav", "reason": "Reusable marketing header shared by all three pages.", "binding": { "slot": "chrome", "state": "initial", "layout": "sticky 64px full-width bar" } }
+          ]
+        },
+        {
+          "id": "hero",
+          "name": "Hero and Console",
+          "description": "Beta badge, gradient display headline, subcopy, canonical hero commands, and the live agent-run console mock with canonical status chips.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeHero",
+              "operationIntent": "create-section",
+              "propMapping": { "console": "liveRunPreview" },
+              "stateMapping": { "initial": "static hero content" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "primitive", "id": "badge", "reason": "Canonical tonal beta eyebrow chip.", "binding": { "slot": "eyebrow", "state": "default", "variant": "tonal", "copy": "Public beta · v0.9" } },
+            { "kind": "primitive", "id": "button", "reason": "Canonical primary hero command.", "binding": { "slot": "primary action", "state": "normal", "variant": "primary", "copy": "Start building" } },
+            { "kind": "primitive", "id": "button", "reason": "Canonical outline demo command.", "binding": { "slot": "secondary action", "state": "normal", "variant": "outline", "copy": "View live demo" } },
+            { "kind": "primitive", "id": "badge", "reason": "Canonical tonal tool-count chip in the console head.", "binding": { "slot": "tool count", "state": "default", "variant": "tonal", "copy": "12 tools" } },
+            { "kind": "primitive", "id": "badge", "reason": "Canonical success run-status chip in the console head.", "binding": { "slot": "run status", "state": "default", "variant": "success", "copy": "Completed" } }
+          ]
+        },
+        {
+          "id": "logos",
+          "name": "Logo Cloud",
+          "description": "Muted customer wordmark row; screen-local SVG marks and type.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeLogoCloud",
+              "operationIntent": "create-section",
+              "propMapping": { "logos": "customerMarks" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": []
+        },
+        {
+          "id": "features",
+          "name": "Capabilities",
+          "description": "Section head and three capability cards composing the canonical eyebrow badge, accent icons, and card panels.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeFeatures",
+              "operationIntent": "create-section",
+              "propMapping": { "cards": "capabilities" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "section-head", "reason": "Reusable centered section opener.", "binding": { "slot": "head", "state": "initial", "copy": "Control plane / Everything between the prompt and production." } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: observe.", "binding": { "slot": "card 1", "state": "initial", "copy": "Observe every run" } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: govern.", "binding": { "slot": "card 2", "state": "initial", "copy": "Govern with policies" } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: evaluate.", "binding": { "slot": "card 3", "state": "initial", "copy": "Evaluate and improve" } }
+          ]
+        },
+        {
+          "id": "proof",
+          "name": "Testimonial",
+          "description": "Centered customer quote with canonical accent mark, avatar, and attribution.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeProof",
+              "operationIntent": "create-section",
+              "propMapping": { "quote": "testimonial" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "testimonial-card", "reason": "Reusable customer quote composition.", "binding": { "slot": "testimonial", "state": "initial", "copy": "Maya Chen, Head of AI · Fathom" } }
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Orbit-ring call-to-action band with canonical primary and outline commands.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "cta-band", "reason": "Reusable closing band shared by all three pages.", "binding": { "slot": "cta", "state": "initial", "copy": "Ship agents you can trust." } }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Reusable marketing footer with brand, certification badge, link columns, and status line.",
+          "styleRefs": ["prototype/screens/home.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/home.css", "status": "source", "sourceAnchor": "prototype/screens/home.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Home",
+              "symbolName": "HomeFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-footer", "reason": "Reusable marketing footer shared by all three pages.", "binding": { "slot": "footer", "state": "initial", "layout": "below content" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "name": "Harness · Platform",
+      "description": "Harness platform page: section head, three alternating capability rows — agents-as-code code window, live waterfall trace, policy panel with canonical switches — a four-card capabilities grid, closing CTA band, and footer.",
+      "framePresetId": "desktop-web-tall",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/screens/platform.css"
+      ],
+      "styleEvidence": [
+        { "styleRef": "prototype/styles/screen-base.css", "status": "source", "sourceAnchor": "prototype/styles/screen-base.css" },
+        { "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }
+      ],
+      "notes": [
+        "The waterfall trace and policy panel are screen-local data composition; the code window, feature cards, section heads, nav, CTA, and footer are reusable components.",
+        "Policy rows use canonical on-state switches; trace and policy chrome stays token-governed."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the alternating two-column rhythm and let the code window, trace, and policy panels carry the proof."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/platform"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/Platform",
+          "symbolName": "PlatformPage",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "define": "agentDefinition",
+            "observe": "tracePreview",
+            "govern": "policyPreview",
+            "capabilities": "capabilityGrid"
+          },
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "default Blueprint tokens (starter values)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/platform.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/screens/platform.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/harness-mark.svg",
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/orbit-rings.svg",
+          "prototype/assets/noise.svg"
+        ],
+        "states": ["initial"],
+        "reviewConditions": [
+          { "id": "desktop-full", "framePresetId": "desktop-web-tall", "state": "initial" }
+        ],
+        "renderedUses": [
+          { "kind": "component", "id": "code-window" },
+          { "kind": "component", "id": "cta-band" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "feature-card" },
+          { "kind": "component", "id": "section-head" },
+          { "kind": "component", "id": "section-head" },
+          { "kind": "component", "id": "site-footer" },
+          { "kind": "component", "id": "site-nav" },
+          { "kind": "primitive", "id": "badge" },
+          { "kind": "primitive", "id": "badge" },
+          { "kind": "primitive", "id": "switch" },
+          { "kind": "primitive", "id": "switch" },
+          { "kind": "primitive", "id": "switch" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "800 30px/1.14 system-ui row titles", "reason": "Row display size sits between the default display and body roles and is screen-local." },
+          { "property": "--x/--w", "value": "per-span waterfall offsets and widths", "reason": "Waterfall bar geometry is trace data, not token-governed spacing." },
+          { "property": "grid-template-columns", "value": "minmax(0, 1fr) minmax(0, 1.08fr) row tracks", "reason": "The alternating row ratio is unique to this screen composition." },
+          { "property": "animation", "value": "ambient transform/opacity keyframes (footer status pulse)", "reason": "Ambient motion is layout-stable, script-free art direction unique to this screen's review." }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with the platform link active.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "platform active" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-nav", "reason": "Reusable marketing header shared by all three pages.", "binding": { "slot": "chrome", "state": "initial", "layout": "sticky 64px full-width bar" } }
+          ]
+        },
+        {
+          "id": "head",
+          "name": "Page Head",
+          "description": "Centered platform eyebrow, display title, and subcopy.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformHead",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "section-head", "reason": "Reusable centered page opener.", "binding": { "slot": "head", "state": "initial", "copy": "Platform / One control plane for the whole agent lifecycle." } }
+          ]
+        },
+        {
+          "id": "define",
+          "name": "Define Row",
+          "description": "Agents-as-code copy with the reusable code window showing a typed agent definition.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformDefine",
+              "operationIntent": "create-section",
+              "propMapping": { "code": "agentDefinition" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "code-window", "reason": "Reusable elevated code panel for the agent definition.", "binding": { "slot": "code", "state": "initial", "layout": "right column", "copy": "agents/support.agent.ts" } }
+          ]
+        },
+        {
+          "id": "observe",
+          "name": "Observe Row",
+          "description": "Live waterfall trace panel with canonical success chip opposite the observability copy.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformObserve",
+              "operationIntent": "create-section",
+              "propMapping": { "trace": "tracePreview" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "primitive", "id": "badge", "reason": "Canonical success live-trace chip in the panel head.", "binding": { "slot": "trace status", "state": "default", "variant": "success", "copy": "Live trace" } }
+          ]
+        },
+        {
+          "id": "govern",
+          "name": "Govern Row",
+          "description": "Policy panel with canonical tonal count chip and three on-state switches opposite the governance copy.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformGovern",
+              "operationIntent": "create-section",
+              "propMapping": { "policies": "policyPreview" },
+              "stateMapping": { "initial": "three policies active" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "primitive", "id": "badge", "reason": "Canonical tonal active-policy count chip.", "binding": { "slot": "policy count", "state": "default", "variant": "tonal", "copy": "3 active" } },
+            { "kind": "primitive", "id": "switch", "reason": "Canonical on-state refund cap toggle.", "binding": { "slot": "refund cap", "state": "on" } },
+            { "kind": "primitive", "id": "switch", "reason": "Canonical on-state PII redaction toggle.", "binding": { "slot": "pii redaction", "state": "on" } },
+            { "kind": "primitive", "id": "switch", "reason": "Canonical on-state human approval toggle.", "binding": { "slot": "human approval", "state": "on" } }
+          ]
+        },
+        {
+          "id": "capabilities",
+          "name": "Capabilities Grid",
+          "description": "Section head and four capability cards covering tracing, evals, tools, and deployments.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformCapabilities",
+              "operationIntent": "create-section",
+              "propMapping": { "cards": "capabilityGrid" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "section-head", "reason": "Reusable centered section opener.", "binding": { "slot": "head", "state": "initial", "copy": "Capabilities / The full lifecycle, covered." } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: tracing.", "binding": { "slot": "card 1", "state": "initial", "copy": "Tracing" } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: evals.", "binding": { "slot": "card 2", "state": "initial", "copy": "Evals" } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: tools.", "binding": { "slot": "card 3", "state": "initial", "copy": "Tools & MCP" } },
+            { "kind": "component", "id": "feature-card", "reason": "Reusable capability panel: deployments.", "binding": { "slot": "card 4", "state": "initial", "copy": "Deployments" } }
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Orbit-ring call-to-action band with canonical primary and outline commands.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "cta-band", "reason": "Reusable closing band shared by all three pages.", "binding": { "slot": "cta", "state": "initial", "copy": "Ship agents you can trust." } }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Reusable marketing footer with brand, certification badge, link columns, and status line.",
+          "styleRefs": ["prototype/screens/platform.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/platform.css", "status": "source", "sourceAnchor": "prototype/screens/platform.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Platform",
+              "symbolName": "PlatformFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-footer", "reason": "Reusable marketing footer shared by all three pages.", "binding": { "slot": "footer", "state": "initial", "layout": "below content" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pricing",
+      "name": "Harness · Pricing",
+      "description": "Harness pricing page: section head with canonical billing toggle buttons, three pricing tiers with the featured Team plan, every-plan-includes strip with canonical icons, enterprise upgrade band, FAQ grid, closing CTA band, and footer.",
+      "framePresetId": "desktop-web-tall",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/screens/pricing.css"
+      ],
+      "styleEvidence": [
+        { "styleRef": "prototype/styles/screen-base.css", "status": "source", "sourceAnchor": "prototype/styles/screen-base.css" },
+        { "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }
+      ],
+      "notes": [
+        "Tiers are reusable pricing-card components; the featured tier promotes its canonical CTA to the primary treatment through the forwarded class.",
+        "The billing toggle, includes strip, and FAQ grid are screen-local composition; icons and buttons stay canonical."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the featured tier visually lifted and the three-tier ratio intact."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/pricing"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/Pricing",
+          "symbolName": "PricingPage",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "tiers": "planTiers",
+            "includes": "planIncludes",
+            "faq": "pricingFaq"
+          },
+          "stateMapping": {
+            "initial": "monthly billing selected"
+          },
+          "tokenAdapter": "default Blueprint tokens (starter values)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/pricing.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/screens/pricing.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/harness-mark.svg",
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/orbit-rings.svg",
+          "prototype/assets/noise.svg"
+        ],
+        "states": ["initial"],
+        "reviewConditions": [
+          { "id": "desktop-full", "framePresetId": "desktop-web-tall", "state": "initial" }
+        ],
+        "renderedUses": [
+          { "kind": "component", "id": "cta-band" },
+          { "kind": "component", "id": "pricing-card" },
+          { "kind": "component", "id": "pricing-card" },
+          { "kind": "component", "id": "pricing-card" },
+          { "kind": "component", "id": "section-head" },
+          { "kind": "component", "id": "site-footer" },
+          { "kind": "component", "id": "site-nav" },
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "icon" },
+          { "kind": "primitive", "id": "icon" },
+          { "kind": "primitive", "id": "icon" },
+          { "kind": "primitive", "id": "icon" },
+          { "kind": "primitive", "id": "icon" }
+        ],
+        "localValueExceptions": [
+          { "property": "margin", "value": "-12px featured tier lift", "reason": "The featured tier's vertical lift is pricing-page art direction." },
+          { "property": "font", "value": "800 28px/1.15 system-ui FAQ title", "reason": "FAQ display size sits between the default display and body roles and is screen-local." },
+          { "property": "animation", "value": "ambient transform/opacity keyframes (footer status pulse)", "reason": "Ambient motion is layout-stable, script-free art direction unique to this screen's review." }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with the pricing link active.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "pricing active" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-nav", "reason": "Reusable marketing header shared by all three pages.", "binding": { "slot": "chrome", "state": "initial", "layout": "sticky 64px full-width bar" } }
+          ]
+        },
+        {
+          "id": "head",
+          "name": "Page Head",
+          "description": "Centered pricing eyebrow, display title, subcopy, and the canonical monthly/annual billing toggle.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingHead",
+              "operationIntent": "create-section",
+              "propMapping": { "billing": "billingPeriod" },
+              "stateMapping": { "initial": "monthly selected" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "section-head", "reason": "Reusable centered page opener.", "binding": { "slot": "head", "state": "initial", "copy": "Pricing / Pricing that scales with your agents." } },
+            { "kind": "primitive", "id": "button", "reason": "Canonical tonal monthly billing selection.", "binding": { "slot": "monthly", "state": "normal", "variant": "tonal", "copy": "Monthly" } },
+            { "kind": "primitive", "id": "button", "reason": "Canonical ghost annual billing option.", "binding": { "slot": "annual", "state": "normal", "variant": "ghost", "copy": "Annual · save 20%" } }
+          ]
+        },
+        {
+          "id": "tiers",
+          "name": "Pricing Tiers",
+          "description": "Three pricing cards with the featured Team tier lifted and promoted to the primary command treatment.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingTiers",
+              "operationIntent": "create-section",
+              "propMapping": { "tiers": "planTiers" },
+              "stateMapping": { "initial": "team featured" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "pricing-card", "reason": "Reusable tier panel: Starter.", "binding": { "slot": "starter", "state": "initial", "copy": "$0 free forever" } },
+            { "kind": "component", "id": "pricing-card", "reason": "Reusable tier panel: Team, featured.", "binding": { "slot": "team", "state": "initial", "variant": "featured", "copy": "$49 per seat / month" } },
+            { "kind": "component", "id": "pricing-card", "reason": "Reusable tier panel: Enterprise.", "binding": { "slot": "enterprise", "state": "initial", "copy": "Custom annual agreement" } }
+          ]
+        },
+        {
+          "id": "includes",
+          "name": "Every Plan Includes",
+          "description": "Four canonical accent icons marking the capabilities included in every tier.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingIncludes",
+              "operationIntent": "create-section",
+              "propMapping": { "items": "planIncludes" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "primitive", "id": "icon", "reason": "Canonical accent traces glyph.", "binding": { "slot": "traces", "state": "default", "variant": "accent" } },
+            { "kind": "primitive", "id": "icon", "reason": "Canonical accent spend-cap glyph.", "binding": { "slot": "spend caps", "state": "default", "variant": "accent" } },
+            { "kind": "primitive", "id": "icon", "reason": "Canonical accent agents glyph.", "binding": { "slot": "agents", "state": "default", "variant": "accent" } },
+            { "kind": "primitive", "id": "icon", "reason": "Canonical accent API glyph.", "binding": { "slot": "api", "state": "default", "variant": "accent" } }
+          ]
+        },
+        {
+          "id": "enterprise",
+          "name": "Enterprise Band",
+          "description": "Slim enterprise upgrade band with canonical accent shield glyph and ghost sales command.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingEnterpriseBand",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "primitive", "id": "icon", "reason": "Canonical accent enterprise shield glyph.", "binding": { "slot": "shield", "state": "default", "variant": "accent" } },
+            { "kind": "primitive", "id": "button", "reason": "Canonical ghost sales command.", "binding": { "slot": "sales", "state": "normal", "variant": "ghost", "copy": "Talk to sales" } }
+          ]
+        },
+        {
+          "id": "faq",
+          "name": "Pricing FAQ",
+          "description": "Six question-and-answer pairs in a two-column grid; screen-local typography.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingFaq",
+              "operationIntent": "create-section",
+              "propMapping": { "items": "pricingFaq" },
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": []
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Orbit-ring call-to-action band with canonical primary and outline commands.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "cta-band", "reason": "Reusable closing band shared by all three pages.", "binding": { "slot": "cta", "state": "initial", "copy": "Start shipping agents today." } }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Reusable marketing footer with brand, certification badge, link columns, and status line.",
+          "styleRefs": ["prototype/screens/pricing.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/pricing.css", "status": "source", "sourceAnchor": "prototype/screens/pricing.css" }],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/Pricing",
+              "symbolName": "PricingFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "static" },
+              "tokenAdapter": "default Blueprint tokens (starter values)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            { "kind": "component", "id": "site-footer", "reason": "Reusable marketing footer shared by all three pages.", "binding": { "slot": "footer", "state": "initial", "layout": "below content" } }
+          ]
+        }
+      ]
+    }
+  ]
+}

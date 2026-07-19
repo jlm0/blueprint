@@ -1,0 +1,115 @@
+/* Row-shaped command: tonal icon chip, two-line body, chevron trailing.
+   Press affordance rides the press motion token; group states reshape corners. */
+[data-blueprint-primitive="pressable-row"] {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-row);
+  box-sizing: border-box;
+  padding: 0 var(--app-space-row);
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  font: var(--app-type-body);
+  cursor: pointer;
+  transition:
+    transform var(--app-motion-press),
+    border-color var(--app-motion-press),
+    background-color var(--app-motion-press),
+    box-shadow var(--app-motion-press);
+}
+
+.pressable-row__leading {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-color-accent);
+  background: color-mix(in srgb, var(--app-color-accent) 13%, transparent);
+}
+
+.pressable-row__leading svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pressable-row__body {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.pressable-row__title {
+  overflow: hidden;
+  font: var(--app-type-body);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pressable-row__subtitle {
+  overflow: hidden;
+  color: var(--app-color-muted);
+  font: var(--app-type-body);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pressable-row__trailing {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-left: auto;
+  color: var(--app-color-muted);
+  transition:
+    color var(--app-motion-press),
+    transform var(--app-motion-press);
+}
+
+[data-blueprint-primitive="pressable-row"]:hover {
+  border-color: color-mix(in srgb, var(--app-color-foreground) 14%, transparent);
+  background: color-mix(in srgb, var(--app-color-foreground) 4%, var(--app-color-surface));
+}
+
+[data-blueprint-primitive="pressable-row"]:hover .pressable-row__trailing {
+  color: var(--app-color-foreground);
+  transform: translateX(2px);
+}
+
+/* Focus halo: canvas-colored gap ring, accent ring, soft outer glow. */
+[data-blueprint-primitive="pressable-row"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--app-color-background),
+    0 0 0 4px color-mix(in srgb, var(--app-color-accent) 70%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--app-color-accent) 16%, transparent);
+}
+
+[data-blueprint-primitive="pressable-row"]:active {
+  transform: scale(0.99);
+}
+
+/* Group shapes: top-rounded head, frameless square middle, bottom-rounded tail. */
+[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-first"] {
+  border-radius: var(--app-radius-lg) var(--app-radius-lg) var(--app-radius-sm) var(--app-radius-sm);
+}
+
+[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-middle"] {
+  border-color: transparent;
+  border-radius: var(--app-radius-sm);
+}
+
+[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-last"] {
+  border-radius: var(--app-radius-sm) var(--app-radius-sm) var(--app-radius-lg) var(--app-radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-blueprint-primitive="pressable-row"],
+  .pressable-row__trailing {
+    transition: none;
+  }
+}

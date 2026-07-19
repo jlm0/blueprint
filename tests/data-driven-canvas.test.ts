@@ -126,29 +126,66 @@ describe('Blueprint data-driven primitives canvas', () => {
     const page = await openPrimitiveBoard(bundle);
 
     try {
-      const visualExpectations = [
-        { primitiveId: 'button', selector: '.btn', minimum: 12 },
-        { primitiveId: 'input', selector: '.inp', minimum: 10 },
-        { primitiveId: 'checkbox', selector: '.cbx', minimum: 4 },
-        { primitiveId: 'switch', selector: '.sw', minimum: 4 },
-        { primitiveId: 'slider', selector: '.slider', minimum: 4 },
-        { primitiveId: 'back-button', selector: '.btn-round', minimum: 3 }
+      const canonicalExpectations = [
+        'button',
+        'input',
+        'checkbox',
+        'switch',
+        'otp-input',
+        'slider',
+        'surface',
+        'card',
+        'media-card',
+        'nav-bar',
+        'back-button',
+        'separator',
+        'list',
+        'pressable-row',
+        'row-layout',
+        'loading-mark',
+        'badge',
+        'icon',
+        'skeleton',
+        'alert-dialog',
+        'context-menu',
+        'bottom-sheet',
+        'text',
+        'radio',
+        'select',
+        'tabs',
+        'toast'
       ];
 
-      for (const item of visualExpectations) {
-        const card = page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', item.primitiveId)));
-        assert.equal(await card.count(), 1, `${item.primitiveId} primitive card should render once`);
-        assert.ok(
-          (await card.locator(item.selector).count()) >= item.minimum,
-          `${item.primitiveId} should expose actual ${item.selector} visual specimens`
-        );
+      for (const primitiveId of canonicalExpectations) {
+        const primitive = bundle.primitives.primitives.find(candidate => candidate.id === primitiveId);
+        assert.ok(primitive?.prototype, `${primitiveId} should declare a canonical starter prototype source`);
+        const card = page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', primitiveId)));
+        assert.equal(await card.count(), 1, `${primitiveId} primitive card should render once`);
         assert.equal(
           await card.locator('.generated-card-head, .primitive-meta-row, .token-probe').count(),
           0,
-          `${item.primitiveId} should not show metadata headers or token probe chips in the human canvas`
+          `${primitiveId} should not show metadata headers or token probe chips in the human canvas`
+        );
+        assert.equal(
+          await card.locator('[data-prototype-render-mode="canonical-app-owned"]').count(),
+          1,
+          `${primitiveId} should render its canonical app-owned specimen`
+        );
+        assert.equal(
+          await card.locator('.canonical-primitive-iframe').count(),
+          primitive.prototype.states.length * Math.max(primitive.prototype.variants.length, 1),
+          `${primitiveId} should render one canonical iframe per declared variant × state combination`
+        );
+        const specimen = page
+          .frameLocator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', primitiveId))} .canonical-primitive-iframe`)
+          .first();
+        assert.equal(
+          await specimen.locator(`[data-blueprint-primitive="${primitiveId}"]`).count(),
+          1,
+          `${primitiveId} canonical specimen should render its governed primitive root`
         );
         const text = await card.innerText();
-        assert.doesNotMatch(text, /\b(?:RADIUS|SHADOW|state set)\b/i, `${item.primitiveId} should not foreground token/debug labels`);
+        assert.doesNotMatch(text, /\b(?:RADIUS|SHADOW|state set)\b/i, `${primitiveId} should not foreground token/debug labels`);
       }
 
       const backText = await page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', 'back-button'))).innerText();
@@ -199,105 +236,202 @@ describe('Blueprint data-driven primitives canvas', () => {
     const projectId = bundle.manifest.project.id;
 
     try {
-      const buttonCard = page.locator(boundarySelector(boundaryId(projectId, 'primitive', 'button')));
-      assert.equal(await buttonCard.locator('.button-state-matrix').count(), 1, 'button should render a variant x interaction matrix');
-      assert.equal(await buttonCard.locator('.button-state-matrix .mx-c .btn').count(), 30, 'button matrix should show every variant x interaction cell');
+      const buttonSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'button'))} .canonical-primitive-iframe`)
+        .nth(0);
+      const buttonStyles = await buttonSpecimen.locator('[data-blueprint-primitive="button"]').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return {
+          fontSize: style.fontSize,
+          borderRadius: style.borderTopLeftRadius,
+          minHeight: style.minHeight,
+          background: style.backgroundColor
+        };
+      });
+      assert.equal(buttonStyles.fontSize, '14px', 'canonical button should use the default typography.body size');
+      assert.equal(buttonStyles.borderRadius, '9px', 'canonical button should use the default shape.radius-md radius');
+      assert.equal(buttonStyles.minHeight, '40px', 'canonical button should keep its control height');
+      assert.equal(buttonStyles.background, 'rgb(232, 237, 245)', 'canonical button should use the default color.primary background');
 
-      const inputCard = page.locator(boundarySelector(boundaryId(projectId, 'primitive', 'input')));
-      assert.equal(await inputCard.locator('.input-state-matrix').count(), 1, 'input should render a variant x lifecycle matrix');
-      assert.equal(await inputCard.locator('.input-state-matrix .mx-c .inp').count(), 25, 'input matrix should show every variant x lifecycle cell');
+      const inputSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'input'))} .canonical-primitive-iframe`)
+        .nth(2);
+      const focusedInputStyles = await inputSpecimen.locator('.input__control').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return { borderColor: style.borderTopColor, boxShadow: style.boxShadow };
+      });
+      assert.equal(focusedInputStyles.borderColor, 'color(srgb 0.541177 0.639216 0.780392 / 0.65)', 'focused input should use the default color.accent focus ring');
+      assert.notEqual(focusedInputStyles.boxShadow, 'none', 'focused input should render a visible focus halo');
 
-      const backButtons = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .btn-round`)
-        .evaluateAll(elements =>
-          elements.map(element => {
+      const backButtonFrames = page.frameLocator(
+        `${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .canonical-primitive-iframe`
+      );
+      const backButtons: Array<{ text: string; width: number; height: number; borderRadius: string; overflowX: number; overflowY: number }> = [];
+      for (let index = 0; index < 3; index += 1) {
+        backButtons.push(
+          await backButtonFrames.nth(index).locator('[data-blueprint-primitive="back-button"]').evaluate(element => {
             const node = element as HTMLElement;
             return {
               text: node.textContent?.trim() ?? '',
               width: node.clientWidth,
               height: node.clientHeight,
+              borderRadius: window.getComputedStyle(node).borderTopLeftRadius,
               overflowX: node.scrollWidth - node.clientWidth,
-              overflowY: node.scrollHeight - node.clientHeight,
-              isSmall: node.classList.contains('sm')
+              overflowY: node.scrollHeight - node.clientHeight
             };
           })
         );
+      }
       assert.equal(backButtons.length, 3, 'back button should show medium, small, and disabled icon controls');
       assert.ok(backButtons.every(button => button.text.length === 0), 'back buttons should be icon-only visual controls');
-      assert.ok(backButtons.every(button => Math.abs(button.width - button.height) <= 1), 'back buttons should stay round');
+      assert.ok(backButtons.every(button => Math.abs(button.width - button.height) <= 1), 'back buttons should stay square');
       assert.ok(backButtons.every(button => button.overflowX <= 1 && button.overflowY <= 1), 'back buttons should not overflow');
-      assert.ok(backButtons.some(button => button.isSmall && button.width < 44), 'small back button should be visibly smaller than medium');
+      assert.ok(backButtons[0] && backButtons[1] && backButtons[1].width < backButtons[0].width, 'small back button should be visibly smaller than medium');
+      assert.equal(backButtons[0]?.borderRadius, '14px', 'medium back button should use the default shape.radius-lg radius');
+      assert.equal(backButtons[1]?.borderRadius, '9px', 'small back button should use the default shape.radius-md radius');
 
-      const navigationSlots = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'nav-bar'))} .navbar`)
-        .evaluateAll(elements =>
-          elements.map(element =>
-            [...element.children]
-              .filter(child => !(child as HTMLElement).classList.contains('agent-token-hook'))
-              .map(child => (child as HTMLElement).className)
-          )
+      const navBarFrames = page.frameLocator(
+        `${boundarySelector(boundaryId(projectId, 'primitive', 'nav-bar'))} .canonical-primitive-iframe`
+      );
+      const navigationSlots: Array<{ slots: string[]; visibleActions: number }> = [];
+      for (let index = 0; index < 3; index += 1) {
+        navigationSlots.push(
+          await navBarFrames.nth(index).locator('[data-blueprint-primitive="nav-bar"]').evaluate(element => ({
+            slots: [...element.children].map(child => (child as HTMLElement).className),
+            visibleActions: [...element.querySelectorAll<HTMLElement>('.nav-bar__action')].filter(
+              action => window.getComputedStyle(action).visibility !== 'hidden'
+            ).length
+          }))
         );
+      }
       assert.equal(navigationSlots.length, 3, 'navigation should render every declared slot composition');
       assert.ok(
-        navigationSlots.every(classes => classes.length === 3 && classes[0] === 'side' && classes[1] === 'center' && classes[2] === 'side right'),
+        navigationSlots.every(
+          nav =>
+            nav.slots.length === 3 &&
+            nav.slots[0] === 'nav-bar__side' &&
+            nav.slots[1] === 'nav-bar__center' &&
+            nav.slots[2] === 'nav-bar__side nav-bar__side--right'
+        ),
         `navigation bars should keep left, center, and right slots: ${JSON.stringify(navigationSlots)}`
       );
+      assert.deepEqual(
+        navigationSlots.map(nav => nav.visibleActions),
+        [2, 1, 1],
+        'navigation slot compositions should toggle the back and right actions'
+      );
 
-      const surfaceEvidence = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .surface-level`)
-        .evaluateAll(elements =>
-          elements.map(element => {
-            const node = element as HTMLElement;
+      const surfaceFrames = page.frameLocator(
+        `${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .canonical-primitive-iframe`
+      );
+      const surfaceEvidence: Array<{ background: string; nested: number; label: string }> = [];
+      for (let index = 0; index < 3; index += 1) {
+        surfaceEvidence.push(
+          await surfaceFrames.nth(index).locator('[data-blueprint-primitive="surface"]').evaluate(element => {
+            const visibleName = [...element.querySelectorAll<HTMLElement>('.surface__name')].find(
+              name => window.getComputedStyle(name).display !== 'none'
+            );
             return {
-              level: node.dataset.surfaceLevel ?? '',
-              background: window.getComputedStyle(node).backgroundColor,
-              nested: node.querySelectorAll('.surface-level').length
+              background: window.getComputedStyle(element).backgroundColor,
+              nested: element.querySelectorAll('.surface__nested').length,
+              label: visibleName?.textContent?.trim() ?? ''
             };
           })
         );
-      assert.ok(surfaceEvidence.length >= 5, 'surface should render an additive nested ladder through at least +5');
-      assert.ok(surfaceEvidence[0]?.nested && surfaceEvidence[0].nested >= 4, 'surface ladder should be recursively nested');
-      assert.notEqual(surfaceEvidence[0]?.background, surfaceEvidence.at(-1)?.background, 'surface levels should visibly change as they stack');
-      const surfaceCardBackgrounds = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .surface-card-example`)
-        .evaluateAll(elements => elements.map(element => window.getComputedStyle(element).backgroundColor));
-      assert.equal(surfaceCardBackgrounds.length, 2, 'surface should compare the same card across two surface levels');
-      assert.notEqual(surfaceCardBackgrounds[0], surfaceCardBackgrounds[1], 'card-on-surface comparison should visibly change across levels');
+      }
+      assert.equal(surfaceEvidence.length, 3, 'surface should render one canonical specimen per declared level state');
+      assert.ok(surfaceEvidence.every(level => level.nested === 1), 'each surface level should render its nested +1 tile');
+      assert.ok(
+        surfaceEvidence.every((level, index) => level.label === `Surface ${index + 1}`),
+        'each surface specimen should name its own level'
+      );
+      const surfaceLightness = surfaceEvidence.map(level => {
+        const rgb = /rgb\((\d+), (\d+), (\d+)\)/.exec(level.background);
+        if (rgb) {
+          return Number(rgb[1]) + Number(rgb[2]) + Number(rgb[3]);
+        }
+        const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)/.exec(level.background);
+        return srgb ? (Number(srgb[1]) + Number(srgb[2]) + Number(srgb[3])) * 255 : 0;
+      });
+      assert.ok(
+        surfaceLightness[0] !== undefined &&
+          surfaceLightness[1] !== undefined &&
+          surfaceLightness[2] !== undefined &&
+          surfaceLightness[0] < surfaceLightness[1] &&
+          surfaceLightness[1] < surfaceLightness[2],
+        `surface levels should lighten as they stack: ${JSON.stringify(surfaceEvidence.map(level => level.background))}`
+      );
 
-      const cardEvidence = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'card'))} .card[data-primitive-state-id]`)
-        .evaluateAll(elements =>
-          elements.map(element => {
-            const node = element as HTMLElement;
-            const style = window.getComputedStyle(node);
-            return {
-              state: node.dataset.primitiveStateId ?? '',
-              classes: node.className,
-              borderColor: style.borderColor,
-              boxShadow: style.boxShadow
-            };
-          })
-        );
-      assert.ok(cardEvidence.some(card => card.state === 'flat' && card.classes.includes('flat')), 'flat card state should use flat card styling');
-      assert.ok(cardEvidence.some(card => card.state === 'elevated' && card.boxShadow !== 'none'), 'elevated card should visibly use shadow');
-      assert.ok(cardEvidence.some(card => card.state === 'status-accent' && card.classes.includes('status-accent')), 'status card should use accent frame styling');
+      const cardSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'card'))} .canonical-primitive-iframe`)
+        .first();
+      const cardStyles = await cardSpecimen.locator('[data-blueprint-primitive="card"]').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return { background: style.backgroundColor, borderRadius: style.borderTopLeftRadius };
+      });
+      assert.equal(cardStyles.background, 'rgb(17, 24, 33)', 'canonical card should use the default color.surface background');
+      assert.equal(cardStyles.borderRadius, '14px', 'canonical card should use the default shape.radius-lg radius');
 
-      const badgeOverflow = await page
-        .locator(`${boundarySelector(boundaryId(projectId, 'primitive', 'badge'))} .badge`)
-        .evaluateAll(elements =>
-          elements
-            .map(element => {
-              const node = element as HTMLElement;
-              return {
-                label: node.textContent?.trim() ?? '',
-                overflowX: node.scrollWidth - node.clientWidth,
-                overflowY: node.scrollHeight - node.clientHeight,
-                borderRadius: window.getComputedStyle(node).borderTopLeftRadius
-              };
-            })
-            .filter(item => item.overflowX > 1 || item.overflowY > 1 || item.borderRadius === '0px')
-        );
-      assert.deepEqual(badgeOverflow, [], 'badges should remain non-overflowing pill labels');
+      const badgeSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'badge'))} .canonical-primitive-iframe`)
+        .first();
+      const badgeEvidence = await badgeSpecimen.locator('[data-blueprint-primitive="badge"]').evaluate(element => {
+        const node = element as HTMLElement;
+        return {
+          label: node.textContent?.trim() ?? '',
+          overflowX: node.scrollWidth - node.clientWidth,
+          overflowY: node.scrollHeight - node.clientHeight,
+          borderRadius: window.getComputedStyle(node).borderTopLeftRadius
+        };
+      });
+      assert.ok(badgeEvidence.label.length > 0, 'canonical badge should render a text-backed label');
+      assert.notEqual(badgeEvidence.borderRadius, '0px', 'canonical badge should keep its default shape.radius-sm radius');
+      assert.ok(badgeEvidence.overflowX <= 1 && badgeEvidence.overflowY <= 1, 'canonical badge should remain a non-overflowing pill label');
+
+      const checkboxOnSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'checkbox'))} .canonical-primitive-iframe`)
+        .nth(1);
+      const checkboxOnStyles = await checkboxOnSpecimen.locator('.checkbox__box').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return { background: style.backgroundColor, borderColor: style.borderTopColor };
+      });
+      assert.equal(checkboxOnStyles.background, 'rgb(232, 237, 245)', 'checked checkbox should use the default color.primary fill');
+      assert.equal(checkboxOnStyles.borderColor, 'rgb(232, 237, 245)', 'checked checkbox should keep its color.primary frame');
+
+      const switchOnSpecimen = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'switch'))} .canonical-primitive-iframe`)
+        .nth(1);
+      const switchOnStyles = await switchOnSpecimen.locator('.switch__track').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return { background: style.backgroundColor };
+      });
+      assert.equal(switchOnStyles.background, 'rgb(232, 237, 245)', 'on switch should use the default color.primary track');
+
+      const sliderFrames = page.frameLocator(
+        `${boundarySelector(boundaryId(projectId, 'primitive', 'slider'))} .canonical-primitive-iframe`
+      );
+      const sliderFills: string[] = [];
+      for (let index = 0; index < 4; index += 1) {
+        sliderFills.push(await sliderFrames.nth(index).locator('.slider__fill').evaluate(element => window.getComputedStyle(element).backgroundColor));
+      }
+      assert.equal(sliderFills[0], 'rgb(232, 237, 245)', 'primary slider should use the default color.primary fill');
+      assert.equal(sliderFills[1], 'rgb(158, 172, 186)', 'secondary slider should use the default color.secondary fill');
+      assert.equal(sliderFills[2], 'rgb(238, 243, 248)', 'contrast slider should use the default color.foreground fill');
+      assert.match(
+        sliderFills[3] ?? '',
+        /^(?:rgba\(140, 154, 170, 0\.4\)|color\(srgb 0\.54902 0\.603922 0\.666667 \/ 0\.4\))$/,
+        'disabled slider should mute the default color.muted fill'
+      );
+
+      const destructiveDialog = page
+        .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'alert-dialog'))} .canonical-primitive-iframe`)
+        .nth(1);
+      const confirmStyles = await destructiveDialog.locator('.alert-dialog__action--confirm').evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return { background: style.backgroundColor, color: style.color };
+      });
+      assert.equal(confirmStyles.background, 'rgb(230, 107, 107)', 'destructive dialog confirm should use the default color.destructive action');
+      assert.equal(confirmStyles.color, 'rgb(11, 17, 24)', 'destructive dialog confirm should keep readable text on the action');
     } finally {
       await page.close();
     }
@@ -370,7 +504,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         mutatedValue: '700 22px/1.1 system-ui',
         cssProperty: 'font-size',
         baseExpected: '14px',
-        mutatedExpected: '22px'
+        mutatedExpected: '22px',
+        iframeSelector: '[data-blueprint-primitive="button"]'
       },
       {
         root: novaRoot,
@@ -391,8 +526,9 @@ describe('Blueprint data-driven primitives canvas', () => {
         tokenId: 'press',
         mutatedValue: '240ms linear',
         cssProperty: 'transition-duration',
-        baseExpected: '0.12s',
-        mutatedExpected: '0.24s'
+        baseExpected: '0.12s, 0.12s, 0.16s, 0.16s, 0.16s, 0.12s, 0.16s',
+        mutatedExpected: '0.24s, 0.24s, 0.16s, 0.16s, 0.16s, 0.24s, 0.16s',
+        iframeSelector: '[data-blueprint-primitive="button"]'
       }
     ];
 
@@ -403,6 +539,25 @@ describe('Blueprint data-driven primitives canvas', () => {
       const mutatedPage = await openPrimitiveBoard(mutatedBundle);
 
       try {
+        if ('iframeSelector' in item && item.iframeSelector) {
+          const readCanonicalStyle = async (page: Page): Promise<string> => {
+            const specimen = page
+              .frameLocator(`${boundarySelector(item.boundary)} .canonical-primitive-iframe`)
+              .nth(0);
+            const value = await specimen
+              .locator(item.iframeSelector as string)
+              .evaluate((element, property) => window.getComputedStyle(element).getPropertyValue(property as string), item.cssProperty);
+            assert.ok(value.trim().length > 0, `canonical ${item.iframeSelector} should expose computed ${item.cssProperty}`);
+            return value;
+          };
+          const baseStyle = await readCanonicalStyle(basePage);
+          const mutatedStyle = await readCanonicalStyle(mutatedPage);
+          assert.equal(baseStyle, item.baseExpected, `${item.tokenRef} should drive canonical ${item.cssProperty} before mutation`);
+          assert.equal(mutatedStyle, item.mutatedExpected, `${item.tokenRef} should drive canonical ${item.cssProperty} after mutation`);
+          assert.notEqual(mutatedStyle, baseStyle, `${item.tokenRef} should change ${item.cssProperty} through the canonical specimen`);
+          continue;
+        }
+
         const baseStyle = await readTokenHookStyle(basePage, item.boundary, item.tokenRef, item.cssProperty);
         const mutatedStyle = await readTokenHookStyle(mutatedPage, item.boundary, item.tokenRef, item.cssProperty);
         assert.equal(baseStyle.value, item.baseExpected, `${item.tokenRef} base style should match fixture token value`);
@@ -818,17 +973,27 @@ function assertTokenGroupsVisible(bundle: BlueprintProjectBundle, records: Visib
 }
 
 async function assertFamilyCoverage(page: Page, bundle: BlueprintProjectBundle): Promise<void> {
+  const canonicalIds = new Set(
+    bundle.primitives.primitives.filter(primitive => primitive.prototype).map(primitive => primitive.id)
+  );
   const families = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
     elements.map(element => ({
       id: (element as HTMLElement).dataset.boundaryId ?? '',
       family: (element as HTMLElement).dataset.primitiveFamily ?? '',
-      renderer: (element as HTMLElement).querySelector<HTMLElement>('.primitive-visual')?.dataset.primitiveRenderer ?? ''
+      renderer: (element as HTMLElement).querySelector<HTMLElement>('.primitive-visual')?.dataset.primitiveRenderer ?? '',
+      renderMode: (element as HTMLElement).querySelector<HTMLElement>('[data-prototype-render-mode]')?.dataset.prototypeRenderMode ?? ''
     }))
   );
   const missingFamily = families.filter(item => item.family.length === 0);
   assert.deepEqual(missingFamily, [], `${bundle.manifest.project.id} primitive cards should name their renderer family`);
-  const missingRenderer = families.filter(item => item.family !== 'generic' && item.renderer !== item.family);
-  assert.deepEqual(missingRenderer, [], `${bundle.manifest.project.id} known primitive cards should use their visual family renderer`);
+  const missingRenderer = families.filter(item => {
+    const localId = item.id.split('/').pop() ?? '';
+    if (canonicalIds.has(localId)) {
+      return item.renderMode !== 'canonical-app-owned';
+    }
+    return item.family !== 'generic' && item.renderer !== item.family;
+  });
+  assert.deepEqual(missingRenderer, [], `${bundle.manifest.project.id} known primitive cards should use their canonical source or visual family renderer`);
 
   const distinctFamilies = new Set(families.map(item => item.family));
   const minimumFamilies = Math.min(2, bundle.primitives.primitives.length);

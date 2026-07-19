@@ -1,0 +1,105 @@
+/* Cover: media is the card. Layered gradient art (no network assets), a
+   duration flag top-right, and a bottom scrim carrying title + caption. */
+[data-blueprint-primitive="media-card"] {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+}
+
+.media-card__media {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(52% 40% at 74% 30%, color-mix(in srgb, var(--app-color-accent) 62%, white 8%) 0%, transparent 72%),
+    radial-gradient(90% 75% at 14% 96%, color-mix(in srgb, var(--app-color-warning) 26%, transparent) 0%, transparent 64%),
+    radial-gradient(120% 90% at 86% 4%, color-mix(in srgb, var(--app-color-accent) 34%, transparent) 0%, transparent 58%),
+    linear-gradient(163deg, color-mix(in srgb, var(--app-color-accent) 30%, var(--app-color-surface)) 0%, color-mix(in srgb, var(--app-color-background) 88%, black) 84%);
+}
+
+/* Duration flag floats over the media, dark chip on any art. */
+.media-card__flag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 6px;
+  border-radius: var(--app-radius-sm);
+  color: color-mix(in srgb, var(--app-color-foreground) 92%, white);
+  background: rgba(6, 9, 13, 0.58);
+  font: var(--app-type-label);
+  letter-spacing: 0.06em;
+}
+
+.media-card__scrim {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  gap: 3px;
+  padding: 34px var(--app-space-row) 10px;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--app-color-background) 82%, transparent) 82%);
+}
+
+.media-card__title {
+  overflow: hidden;
+  font: var(--app-type-body);
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-card__caption {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--app-color-foreground) 74%, transparent);
+  font: var(--app-type-label);
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Nested: media sits on an 8px gutter with concentric corners; the header
+   collapses to one line below it. */
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  box-sizing: border-box;
+  padding: 8px;
+}
+
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__media {
+  position: relative;
+  inset: auto;
+  height: 44px;
+  border-radius: max(calc(var(--app-radius-lg) - 8px), var(--app-radius-sm));
+}
+
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__flag {
+  top: 6px;
+  right: 6px;
+}
+
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__scrim {
+  position: static;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--app-space-row);
+  padding: 0 2px;
+  background: none;
+}
+
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__title {
+  font-size: 13px;
+}
+
+[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__caption {
+  flex: none;
+  color: var(--app-color-muted);
+}

@@ -3,8 +3,9 @@ import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
-import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
+import { createServer as createHttpServer, type Server as HttpServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { Page } from 'playwright';
 import { boundaryId, parseBoundarySelector } from './core/address';
 import { loadProjectFromFs } from './core/load';
 import { createReadinessReport, validateProject } from './core/validate';
@@ -18,6 +19,15 @@ import {
   showBoundary
 } from './core/query';
 import type { ValidationMode } from './core/types';
+import {
+  compilePrototypeReview,
+  parsePrototypeReviewRequest,
+  resolvePrototypeReviewSelection
+} from './cli/prototype-review';
+import { assertChromiumExecutableAvailable, createChromiumDependencyError } from './cli/browser-preflight';
+import { installPrototypeNetworkGuard } from './cli/prototype-network-guard';
+import { createBlueprintResponseHeaders, evaluateLoopbackHost } from './cli/prototype-host-policy';
+import { PROTOTYPE_CONTENT_SECURITY_POLICY } from './prototype/compiler';
 
 type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture' | 'serve';
 type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
@@ -46,6 +56,8 @@ interface Args {
   type?: QueryType;
   mode?: string;
   port?: string;
+  state?: string;
+  viewport?: string;
   force: boolean;
   help: boolean;
 }
@@ -249,6 +261,92 @@ async function commandCapture(args: Args): Promise<void> {
   if (!selectedScreen) {
     throw new Error(`Screen not found: ${selector.id}.`);
   }
+
+  if (selectedScreen.prototype) {
+    const selection = resolvePrototypeReviewSelection(bundle, {
+      screenId: selectedScreen.id,
+      state: args.state,
+      viewport: args.viewport
+    });
+    const chromium = await preflightChromium();
+    let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+
+    try {
+      browser = await chromium.launch();
+      const compiled = compilePrototypeReview(bundle, selection);
+      const page = await browser.newPage({
+        viewport: { width: selection.width, height: selection.height },
+        deviceScaleFactor: 1,
+        // Ambient app animation is authored under prefers-reduced-motion: no-preference,
+        // so emulating reduce keeps capture bytes deterministic across runs.
+        reducedMotion: 'reduce'
+      });
+      const networkGuard = await installPrototypeNetworkGuard({
+        route: async handler => {
+          await page.route('**/*', route => handler({
+            url: route.request().url(),
+            continue: () => route.continue(),
+            abort: () => route.abort('blockedbyclient')
+          }));
+        },
+        onFrameNavigated: handler => {
+          page.on('framenavigated', frame => handler(frame.url(), frame === page.mainFrame()));
+        },
+        currentUrl: () => page.url()
+      });
+      await page.setContent(compiled.html, { waitUntil: 'load' });
+      networkGuard.assertClean();
+      await waitForPrototypeCaptureReadiness(page);
+      networkGuard.assertClean();
+
+      const resolvedOut = path.resolve(out);
+      await mkdir(path.dirname(resolvedOut), { recursive: true });
+      await page.screenshot({
+        path: resolvedOut,
+        type: 'png',
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+        scale: 'css'
+      });
+
+      await writeOutput(
+        {
+          command: 'capture',
+          project: normalize(path.resolve(project)),
+          projectId: bundle.manifest.project.id,
+          boundary: selection.boundaryId,
+          state: selection.state,
+          viewport: selection.framePresetId,
+          reviewCondition: selection.conditionId,
+          dimensions: { width: selection.width, height: selection.height },
+          out: normalize(resolvedOut),
+          mediaType: 'image/png',
+          source: {
+            context: 'source-focused',
+            captureTarget: 'compiled-prototype-document',
+            method: 'browser-page-screenshot',
+            editorChrome: false,
+            readiness: {
+              fonts: 'ready',
+              images: 'decoded',
+              layout: 'stable'
+            },
+            observedBoundaryIds: compiled.observedBoundaryIds
+          }
+        },
+        undefined
+      );
+    } finally {
+      await browser?.close();
+    }
+    return;
+  }
+
+  if (args.state || args.viewport) {
+    throw new Error('--state and --viewport require a screen with declared browser-native prototype review conditions.');
+  }
+
   const renderBundle = {
     ...bundle,
     screens: {
@@ -256,16 +354,16 @@ async function commandCapture(args: Args): Promise<void> {
       screens: [selectedScreen, ...bundle.screens.screens.filter(screen => screen.id !== selector.id)]
     }
   };
-  const resolvedOut = path.resolve(out);
-  await mkdir(path.dirname(resolvedOut), { recursive: true });
-
   const fullBoundaryId = boundaryId(bundle.manifest.project.id, 'screen', selector.id);
-  const captureServer = await startCaptureServer();
-  let browser: Awaited<ReturnType<(typeof import('playwright'))['chromium']['launch']>> | undefined;
+  const chromium = await preflightChromium();
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  let captureServer: CaptureServer | undefined;
 
   try {
-    const { chromium } = await runtimeImport<typeof import('playwright')>('playwright');
     browser = await chromium.launch();
+    captureServer = await startCaptureServer();
+    const resolvedOut = path.resolve(out);
+    await mkdir(path.dirname(resolvedOut), { recursive: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
     await page.addInitScript(projectBundle => {
       Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
@@ -318,7 +416,7 @@ async function commandCapture(args: Args): Promise<void> {
     );
   } finally {
     await browser?.close();
-    await captureServer.close();
+    await captureServer?.close();
   }
 }
 
@@ -333,10 +431,77 @@ async function commandServe(args: Args): Promise<void> {
   await waitForShutdown(server);
 }
 
+async function preflightChromium(): Promise<(typeof import('playwright'))['chromium']> {
+  let chromium: (typeof import('playwright'))['chromium'];
+  try {
+    ({ chromium } = await runtimeImport<typeof import('playwright')>('playwright'));
+  } catch {
+    throw createChromiumDependencyError();
+  }
+
+  assertChromiumExecutableAvailable(chromium.executablePath());
+  return chromium;
+}
+
+async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      Array.from(document.images).map(async image => {
+        if (!image.complete) {
+          await new Promise<void>((resolve, reject) => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => reject(new Error(`Prototype image failed to load: ${image.currentSrc || image.src}`)), {
+              once: true
+            });
+          });
+        }
+        if (image.naturalWidth === 0) {
+          throw new Error(`Prototype image has no decoded pixels: ${image.currentSrc || image.src}`);
+        }
+        await image.decode();
+      })
+    );
+
+    const layoutFingerprint = (): string => {
+      const root = document.documentElement;
+      const body = document.body;
+      const bounds = body.getBoundingClientRect();
+      return [
+        root.scrollWidth,
+        root.scrollHeight,
+        body.scrollWidth,
+        body.scrollHeight,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height
+      ].join('|');
+    };
+    let previous = layoutFingerprint();
+    let stableFrames = 0;
+    for (let frame = 0; frame < 6; frame += 1) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      const current = layoutFingerprint();
+      if (current === previous) {
+        stableFrames += 1;
+        if (stableFrames >= 2) {
+          return;
+        }
+      } else {
+        stableFrames = 0;
+      }
+      previous = current;
+    }
+    throw new Error('Prototype layout did not stabilize before capture.');
+  });
+}
+
 async function rewriteStarterProject(destination: string, projectId: string, name: string): Promise<void> {
   const manifestPath = path.join(destination, 'manifest.json');
   const tokensPath = path.join(destination, 'tokens.json');
   const primitivesPath = path.join(destination, 'primitives.json');
+  const componentsPath = path.join(destination, 'components.json');
   const screensPath = path.join(destination, 'screens.json');
 
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
@@ -350,15 +515,24 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
   const primitives = JSON.parse(await readFile(primitivesPath, 'utf8'));
   primitives.projectId = projectId;
 
+  const components = existsSync(componentsPath) ? JSON.parse(await readFile(componentsPath, 'utf8')) : undefined;
+  if (components) {
+    components.projectId = projectId;
+  }
+
   const screens = JSON.parse(await readFile(screensPath, 'utf8'));
   screens.projectId = projectId;
 
-  await Promise.all([
+  const writes = [
     writeJsonFile(manifestPath, manifest),
     writeJsonFile(tokensPath, tokens),
     writeJsonFile(primitivesPath, primitives),
     writeJsonFile(screensPath, screens)
-  ]);
+  ];
+  if (components) {
+    writes.push(writeJsonFile(componentsPath, components));
+  }
+  await Promise.all(writes);
 }
 
 async function writeOutput(value: unknown, out?: string, options: { printOutSummary?: boolean } = {}): Promise<void> {
@@ -439,6 +613,10 @@ function parseArgs(argv: string[]): Args {
       args.mode = value;
     } else if (key === '--port') {
       args.port = value;
+    } else if (key === '--state') {
+      args.state = value;
+    } else if (key === '--viewport') {
+      args.viewport = value;
     } else {
       throw new Error(`Unknown argument ${key}.`);
     }
@@ -571,44 +749,86 @@ async function startServeServer(projectRoot: string, port: number): Promise<Serv
   };
 
   const server = createHttpServer(async (request, response) => {
+    if (!admitLoopbackRequest(server, request.headers.host, response)) {
+      return;
+    }
     const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
     const pathname = decodeRequestPathname(requestUrl);
     if (!pathname) {
-      response.writeHead(400);
+      response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Bad request');
+      return;
+    }
+
+    if (pathname === '/__blueprint/prototype') {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'GET, HEAD' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+
+      let reviewRequest: ReturnType<typeof parsePrototypeReviewRequest>;
+      try {
+        reviewRequest = parsePrototypeReviewRequest(requestUrl);
+      } catch (error) {
+        writePrototypeRouteError(response, 400, error);
+        return;
+      }
+
+      try {
+        const bundle = await loadProjectFromFs(projectRoot);
+        const validation = validateProject(bundle);
+        if (!validation.ok) {
+          throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+        }
+        const selection = resolvePrototypeReviewSelection(bundle, reviewRequest);
+        const compiled = compilePrototypeReview(bundle, selection);
+        response.writeHead(200, createBlueprintResponseHeaders({
+          contentType: 'text/html; charset=utf-8',
+          contentSecurityPolicy: PROTOTYPE_CONTENT_SECURITY_POLICY,
+          additionalHeaders: {
+            'X-Blueprint-Screen': selection.screenId,
+            'X-Blueprint-State': selection.state,
+            'X-Blueprint-Viewport': selection.framePresetId,
+            'X-Blueprint-Review-Condition': selection.conditionId
+          }
+        }));
+        response.end(request.method === 'HEAD' ? undefined : compiled.html);
+      } catch (error) {
+        const status = error instanceof Error && error.message.startsWith('Screen not found:') ? 404 : 422;
+        writePrototypeRouteError(response, status, error);
+      }
       return;
     }
 
     if (pathname === '/index.html') {
       const snapshot = await readBundleSnapshot();
-      response.setHeader('Cache-Control', 'no-store');
-      response.setHeader('Content-Type', 'text/html; charset=utf-8');
       if (!snapshot.bundle) {
-        response.writeHead(200);
+        response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
         response.end(createServeErrorHtml(lastLoadError ?? 'Unable to load Blueprint project.'));
         return;
       }
-      response.writeHead(200);
+      response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
       response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error));
       return;
     }
 
     const filePath = path.resolve(siteRoot, `.${pathname}`);
     if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
-      response.writeHead(403);
+      response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Forbidden');
       return;
     }
 
     try {
       const body = await readFile(filePath);
-      response.writeHead(200, {
-        'Cache-Control': 'no-store',
-        'Content-Type': contentType(filePath)
-      });
+      response.writeHead(200, createBlueprintResponseHeaders({ contentType: contentType(filePath) }));
       response.end(body);
     } catch {
-      response.writeHead(404);
+      response.writeHead(404, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Not found');
     }
   });
@@ -643,32 +863,48 @@ function createServeErrorHtml(message: string): string {
   return `<!doctype html><html><head><meta charset="UTF-8"><title>Blueprint serve error</title></head><body><main id="blueprint-serve-error"><h1>Blueprint project error</h1><pre>${escapeHtml(message)}</pre></main></body></html>`;
 }
 
+function writePrototypeRouteError(response: ServerResponse, status: number, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error);
+  response.writeHead(status, createBlueprintResponseHeaders({ contentType: 'application/problem+json; charset=utf-8' }));
+  response.end(
+    `${JSON.stringify({
+      type: 'blueprint/prototype-review-error',
+      title: 'Prototype review unavailable',
+      status,
+      detail
+    })}\n`
+  );
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function startStaticSiteServer(siteRoot: string): Promise<CaptureServer> {
   const server = createHttpServer(async (request, response) => {
+    if (!admitLoopbackRequest(server, request.headers.host, response)) {
+      return;
+    }
     const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
     const pathname = decodeRequestPathname(requestUrl);
     if (!pathname) {
-      response.writeHead(400);
+      response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Bad request');
       return;
     }
     const filePath = path.resolve(siteRoot, `.${pathname}`);
     if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
-      response.writeHead(403);
+      response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Forbidden');
       return;
     }
 
     try {
       const body = await readFile(filePath);
-      response.writeHead(200, { 'Content-Type': contentType(filePath) });
+      response.writeHead(200, createBlueprintResponseHeaders({ contentType: contentType(filePath) }));
       response.end(body);
     } catch {
-      response.writeHead(404);
+      response.writeHead(404, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Not found');
     }
   });
@@ -716,6 +952,23 @@ function closeHttpServer(server: HttpServer): Promise<void> {
       resolve();
     });
   });
+}
+
+function admitLoopbackRequest(server: HttpServer, hostHeader: string | undefined, response: ServerResponse): boolean {
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    response.writeHead(503, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+    response.end('Service unavailable');
+    return false;
+  }
+
+  const decision = evaluateLoopbackHost(hostHeader, address.port);
+  if (decision.allowed) {
+    return true;
+  }
+  response.writeHead(decision.status, decision.headers);
+  response.end(decision.body);
+  return false;
 }
 
 function waitForShutdown(server: ServeServer): Promise<void> {
@@ -766,7 +1019,7 @@ Commands:
   index --project <path> [--out file]
   query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
   extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
-  capture --project <path> --boundary screen:id --out file.png
+  capture --project <path> --boundary screen:id [--state id] [--viewport preset] --out file.png
   serve [--project design/blueprint] [--port 4173]
 `;
 }

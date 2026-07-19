@@ -36,7 +36,26 @@ export interface ReviewManifestOptions {
   board: BoardKind;
   screenId?: string;
   screenshotPath?: string;
+  /** Explicit status when no captured screenshot exists. Defaults to capture-ready. */
+  captureStatus?: 'capture-ready' | 'unresolved';
+  /** Required explanation when captureStatus is unresolved. */
+  captureReason?: string;
+  /** Exact governed source, state, and viewport selected for a prototype review. */
+  prototypeReview?: PrototypeReviewManifestContext;
   packetCommandBase?: string;
+}
+
+export interface PrototypeReviewManifestContext {
+  source: string;
+  state: string;
+  framePresetId: string;
+  conditionId: string;
+}
+
+export interface ReviewCaptureRecord {
+  status: 'captured' | 'capture-ready' | 'unresolved';
+  path?: string;
+  reason?: string;
 }
 
 export interface BoundaryReviewManifestEntry {
@@ -46,10 +65,9 @@ export interface BoundaryReviewManifestEntry {
   label: string;
   board: BoardKind;
   screenId?: string;
-  screenshot: {
-    status: 'captured' | 'capture-ready';
-    path?: string;
-  };
+  capture: ReviewCaptureRecord;
+  /** Backward-compatible alias for capture. */
+  screenshot: ReviewCaptureRecord;
   packet: {
     status: 'available' | 'unavailable';
     command?: string;
@@ -63,10 +81,10 @@ export interface ReviewManifest {
   generatedAt: string;
   board: BoardKind;
   screenId?: string;
-  screenshot: {
-    status: 'captured' | 'capture-ready';
-    path?: string;
-  };
+  prototypeReview?: PrototypeReviewManifestContext;
+  capture: ReviewCaptureRecord;
+  /** Backward-compatible alias for capture. */
+  screenshot: ReviewCaptureRecord;
   boundaries: BoundaryReviewManifestEntry[];
 }
 
@@ -138,7 +156,7 @@ export function createReviewManifest(
 ): ReviewManifest {
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const references = new Map(listBoundaryReferences(bundle).map(ref => [ref.id, ref]));
-  const screenshot = createScreenshotLink(options.screenshotPath);
+  const capture = createCaptureRecord(options);
 
   return {
     schemaVersion: '1.0.0',
@@ -147,7 +165,9 @@ export function createReviewManifest(
     generatedAt,
     board: options.board,
     screenId: options.screenId,
-    screenshot,
+    prototypeReview: options.prototypeReview,
+    capture,
+    screenshot: capture,
     boundaries: records.map(record => {
       const ref = references.get(record.id);
       const localId = ref?.localId ?? localIdFromBoundary(record.id);
@@ -158,7 +178,8 @@ export function createReviewManifest(
         label: record.label,
         board: record.board,
         screenId: record.screenId,
-        screenshot,
+        capture,
+        screenshot: capture,
         packet: createPacketLink(bundle, record.kind, localId, options.packetCommandBase)
       };
     })
@@ -203,11 +224,21 @@ function sectionSummary(projectId: string, screenId: string, section: ScreenSect
   };
 }
 
-function createScreenshotLink(path: string | undefined): ReviewManifest['screenshot'] {
-  if (path) {
+function createCaptureRecord(options: ReviewManifestOptions): ReviewCaptureRecord {
+  if (options.screenshotPath) {
     return {
       status: 'captured',
-      path
+      path: options.screenshotPath
+    };
+  }
+
+  if (options.captureStatus === 'unresolved') {
+    if (!options.captureReason?.trim()) {
+      throw new Error('Review manifests with unresolved capture status require a capture reason.');
+    }
+    return {
+      status: 'unresolved',
+      reason: options.captureReason
     };
   }
 

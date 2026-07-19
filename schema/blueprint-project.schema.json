@@ -10,6 +10,7 @@
     "manifest": { "$ref": "#/$defs/manifest" },
     "tokens": { "$ref": "#/$defs/tokenFile" },
     "primitives": { "$ref": "#/$defs/primitiveFile" },
+    "components": { "$ref": "#/$defs/componentFile" },
     "screens": { "$ref": "#/$defs/screenFile" }
   },
   "$defs": {
@@ -28,7 +29,17 @@
         "framePresets": {
           "type": "array",
           "items": { "$ref": "#/$defs/framePreset" }
-        }
+        },
+        "prototypeHost": { "$ref": "#/$defs/prototypeHost" }
+      }
+    },
+    "prototypeHost": {
+      "type": "object",
+      "required": ["assetRoots", "network", "scripts"],
+      "properties": {
+        "assetRoots": { "$ref": "#/$defs/stringArray" },
+        "network": { "const": "deny" },
+        "scripts": { "const": "none" }
       }
     },
     "project": {
@@ -148,10 +159,26 @@
           "type": "array",
           "items": { "$ref": "#/$defs/implementationTarget" }
         },
+        "prototype": { "$ref": "#/$defs/primitivePrototype" },
         "stateSets": {
           "type": "array",
           "items": { "$ref": "#/$defs/stateSet" }
         }
+      }
+    },
+    "primitivePrototype": {
+      "type": "object",
+      "required": ["source", "styles", "states", "slots", "variants", "accessibilityIntent", "tokenRoles"],
+      "properties": {
+        "source": { "type": "string" },
+        "styles": { "$ref": "#/$defs/stringArray" },
+        "states": { "$ref": "#/$defs/stringArray" },
+        "slots": { "$ref": "#/$defs/stringArray" },
+        "variants": { "$ref": "#/$defs/stringArray" },
+        "accessibilityIntent": { "type": "string" },
+        "tokenRoles": { "type": "object", "additionalProperties": { "type": "string" } },
+        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
+        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
       }
     },
     "stateSet": {
@@ -200,6 +227,45 @@
         }
       }
     },
+    "componentFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "components"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/component" } }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": ["id", "name", "description", "uses", "tokenGroupIds", "prototype"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "uses": { "type": "array", "items": { "$ref": "#/$defs/boundaryDependency" } },
+        "tokenGroupIds": { "$ref": "#/$defs/stringArray" },
+        "prototype": { "$ref": "#/$defs/componentPrototype" },
+        "styleRefs": { "$ref": "#/$defs/stringArray" },
+        "styleEvidence": { "type": "array", "items": { "$ref": "#/$defs/styleEvidence" } },
+        "notes": { "$ref": "#/$defs/stringArray" },
+        "prototypeOnly": { "type": "boolean" },
+        "implementationHints": { "$ref": "#/$defs/stringArray" },
+        "implementationTargets": { "type": "array", "items": { "$ref": "#/$defs/implementationTarget" } }
+      }
+    },
+    "componentPrototype": {
+      "type": "object",
+      "required": ["source", "styles", "states", "slots"],
+      "properties": {
+        "source": { "type": "string" },
+        "styles": { "$ref": "#/$defs/stringArray" },
+        "states": { "$ref": "#/$defs/stringArray" },
+        "slots": { "$ref": "#/$defs/stringArray" },
+        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
+        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
+      }
+    },
     "screen": {
       "type": "object",
       "required": ["id", "name", "description", "framePresetId", "styleRefs", "notes", "prototypeOnly", "implementationHints", "sections"],
@@ -221,9 +287,55 @@
           "type": "array",
           "items": { "$ref": "#/$defs/implementationTarget" }
         },
+        "prototype": { "$ref": "#/$defs/screenPrototype" },
         "sections": {
           "type": "array",
           "items": { "$ref": "#/$defs/screenSection" }
+        }
+      }
+    },
+    "screenPrototype": {
+      "type": "object",
+      "required": ["source", "styles", "states", "assetRefs", "reviewConditions"],
+      "properties": {
+        "source": { "type": "string" },
+        "styles": { "$ref": "#/$defs/stringArray" },
+        "states": { "$ref": "#/$defs/stringArray" },
+        "assetRefs": { "$ref": "#/$defs/stringArray" },
+        "reviewConditions": { "type": "array", "items": { "$ref": "#/$defs/reviewCondition" } },
+        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
+        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
+      }
+    },
+    "reviewCondition": {
+      "type": "object",
+      "required": ["id", "framePresetId", "state"],
+      "properties": {
+        "id": { "type": "string" },
+        "framePresetId": { "type": "string" },
+        "state": { "type": "string" }
+      }
+    },
+    "prototypeUses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": { "enum": ["primitive", "component"] },
+          "id": { "type": "string" }
+        }
+      }
+    },
+    "localValueExceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["property", "value", "reason"],
+        "properties": {
+          "property": { "type": "string" },
+          "value": { "type": "string" },
+          "reason": { "type": "string" }
         }
       }
     },
@@ -256,7 +368,7 @@
       "type": "object",
       "required": ["kind", "id", "reason"],
       "properties": {
-        "kind": { "enum": ["token-group", "primitive", "state-set", "screen", "section"] },
+        "kind": { "enum": ["token-group", "primitive", "state-set", "component", "screen", "section"] },
         "id": { "type": "string" },
         "reason": { "type": "string" },
         "binding": { "$ref": "#/$defs/compositionBinding" }
@@ -267,7 +379,7 @@
       "required": ["kind"],
       "properties": {
         "kind": {
-          "enum": ["new-route", "state-of-existing-screen", "variant-of-existing-screen", "section-replacement", "embedded-flow"]
+          "enum": ["new-route", "existing-route", "state-of-existing-screen", "variant-of-existing-screen", "section-replacement", "embedded-flow"]
         },
         "routePath": { "type": "string" },
         "targetScreenId": { "type": "string" },
@@ -325,9 +437,11 @@
     },
     "readinessReport": {
       "type": "object",
-      "required": ["projectId", "tier", "items", "blockers"],
+      "required": ["projectId", "fidelityTier", "prototypeSources", "tier", "items", "blockers"],
       "properties": {
         "projectId": { "type": "string" },
+        "fidelityTier": { "enum": ["baseline-compatible", "high-fidelity"] },
+        "prototypeSources": { "$ref": "#/$defs/stringArray" },
         "tier": { "enum": ["ready", "pending", "unresolved", "blocked"] },
         "items": {
           "type": "array",
@@ -371,7 +485,7 @@
         "tokenId": { "type": "string" },
         "role": { "type": "string" },
         "boundaryId": { "type": "string" },
-        "boundaryKind": { "enum": ["project", "board", "token-group", "primitive", "state-set", "screen", "section"] },
+        "boundaryKind": { "enum": ["project", "board", "token-group", "primitive", "state-set", "component", "screen", "section"] },
         "styleRef": { "type": "string" }
       }
     },

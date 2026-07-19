@@ -1,0 +1,104 @@
+/* App bar: surface band with a faint top sheen and a hairline base edge.
+   The 1fr/auto/1fr grid keeps side slots balanced so the title stays centered. */
+[data-blueprint-primitive="nav-bar"] {
+  display: grid;
+  min-height: 54px;
+  align-items: center;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--app-space-row);
+  box-sizing: border-box;
+  padding: 5px var(--app-space-row);
+  border-bottom: 1px solid color-mix(in srgb, var(--app-color-foreground) 9%, transparent);
+  color: var(--app-color-foreground);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-color-foreground) 3%, transparent), transparent 75%),
+    var(--app-color-surface);
+  font: var(--app-type-body);
+}
+
+.nav-bar__side {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.nav-bar__side--right {
+  justify-content: flex-end;
+}
+
+.nav-bar__center {
+  min-width: 0;
+  text-align: center;
+}
+
+.nav-bar__title {
+  display: block;
+  overflow: hidden;
+  font: var(--app-type-body);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ghost squircle actions: quiet until hover, crisp press, accent focus halo. */
+.nav-bar__action {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-md);
+  color: color-mix(in srgb, var(--app-color-foreground) 86%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform var(--app-motion-press),
+    color var(--app-motion-state),
+    border-color var(--app-motion-state),
+    background-color var(--app-motion-state),
+    box-shadow var(--app-motion-press);
+}
+
+.nav-bar__action:hover {
+  border-color: color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  color: var(--app-color-foreground);
+  background: color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+}
+
+.nav-bar__action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--app-color-background),
+    0 0 0 4px color-mix(in srgb, var(--app-color-accent) 70%, transparent);
+}
+
+.nav-bar__action:active {
+  transform: scale(0.92);
+}
+
+.nav-bar__action svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* Hidden slots keep their grid cell so the title never drifts off center. */
+[data-blueprint-primitive="nav-bar"][data-blueprint-state="back-only"] .nav-bar__side--right .nav-bar__action {
+  visibility: hidden;
+}
+
+[data-blueprint-primitive="nav-bar"][data-blueprint-state="right-only"] .nav-bar__action--back {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-bar__action {
+    transition: none;
+  }
+}

@@ -62,5 +62,10 @@
         "left": 0
       }
     }
-  ]
+  ],
+  "prototypeHost": {
+    "assetRoots": ["prototype/assets"],
+    "network": "deny",
+    "scripts": "none"
+  }
 }

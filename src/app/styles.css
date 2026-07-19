@@ -269,7 +269,6 @@ body {
 
 .token-grid {
   display: grid;
-  gap: 8px;
 }
 
 .token-row {
@@ -277,11 +276,13 @@ body {
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
-  min-height: 42px;
-  border: 1px solid rgba(238, 243, 248, 0.08);
-  border-radius: var(--bp-sample-r-sm);
-  background: var(--bp-sample-surface-3);
-  padding: 8px;
+  min-height: 40px;
+  border-top: 1px solid rgba(238, 243, 248, 0.07);
+  padding: 7px 2px;
+}
+
+.token-row:first-child {
+  border-top: 0;
 }
 
 .token-sample {
@@ -409,6 +410,93 @@ body {
 
 .primitive-specimen-body {
   overflow: visible;
+}
+
+/* Canonical specimens drop the card surface: the app-canvas stage is the only
+   surface between the Blueprint canvas and the control. */
+.primitive-specimen-body-canonical {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.canonical-primitive-stage {
+  display: grid;
+  justify-self: start;
+  gap: 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(238, 243, 248, 0.12);
+  border-radius: 10px;
+  background: var(--stage-bg, transparent);
+  padding: 14px;
+}
+
+.canonical-primitive-stage .canonical-prototype-state-label,
+.canonical-primitive-stage .canonical-primitive-variant-label {
+  color: var(--stage-fg, var(--bp-sample-muted-fg));
+}
+
+.canonical-primitive-specimen,
+.canonical-primitive-state {
+  display: grid;
+  gap: 8px;
+}
+
+.canonical-primitive-specimen {
+  gap: 14px;
+}
+
+.canonical-prototype-state-label {
+  margin: 0;
+  color: var(--bp-sample-muted-fg);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.canonical-primitive-iframe {
+  display: block;
+  width: var(--cell-w, 200px);
+  height: 88px;
+  border: 0;
+  background: transparent;
+}
+
+/* Review grid: state headers centered over natural-width cells, one row per
+   variant; the grid hugs its content like the reference canvas rows. */
+.canonical-primitive-matrix {
+  display: grid;
+  grid-template-columns: 88px repeat(var(--matrix-cols, 1), auto);
+  gap: 10px 8px;
+  align-items: center;
+  justify-content: start;
+}
+
+.canonical-primitive-matrix .canonical-primitive-cell {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.canonical-primitive-col-label {
+  text-align: center;
+}
+
+.canonical-primitive-matrix-corner {
+  visibility: hidden;
+}
+
+.canonical-primitive-variant-label {
+  margin: 0;
+  max-width: 88px;
+  color: var(--bp-sample-muted-fg);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .primitive-visual {
@@ -1751,6 +1839,92 @@ body {
   inset: 0;
   pointer-events: none;
   background: rgba(255, 255, 255, 0.018);
+}
+
+.canonical-prototype-screen::before {
+  content: none;
+}
+
+.canonical-prototype-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+/* Canonical frames: device/browser chrome wraps the captured screen host.
+   The shell grows around the preset content box so captures keep exact pixels. */
+.frame.frame-canonical {
+  display: flex;
+  height: auto;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(238, 243, 248, 0.08),
+    0 28px 64px rgba(0, 0, 0, 0.5);
+}
+
+.frame.frame-canonical .screen {
+  flex: none;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.frame.frame-canonical[data-frame-type="mobile"] {
+  border-radius: 64px;
+  background: #0d1117;
+}
+
+.frame.frame-canonical[data-frame-type="desktop"] {
+  border-radius: 12px;
+  background: #f3f5f7;
+}
+
+.frame-home-indicator {
+  position: relative;
+  flex: none;
+  height: 24px;
+  background: #0d1117;
+}
+
+.frame-home-indicator-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  width: 136px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  transform: translateX(-50%);
+}
+
+.frame.frame-canonical[data-frame-type="mobile"] > .status-bar {
+  flex: none;
+  background: #0d1117;
+}
+
+.frame.frame-canonical[data-frame-type="desktop"] > .browser-bar {
+  flex: none;
+}
+
+.prototype-compile-error {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #1b1214;
+  color: #ffd9df;
+  font: 600 13px/1.5 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.prototype-compile-error strong {
+  color: #fff2f4;
+  font-size: 14px;
 }
 
 .screen-template-body {

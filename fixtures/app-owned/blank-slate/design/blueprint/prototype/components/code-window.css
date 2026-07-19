@@ -1,0 +1,96 @@
+[data-blueprint-component="code-window"] {
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 4%, transparent),
+    var(--app-shadow-panel);
+}
+
+.code-window__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 15px;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+  background: color-mix(in srgb, var(--app-color-foreground) 3%, transparent);
+}
+
+.code-window__dots {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+}
+
+.code-window__dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-color-foreground) 14%, transparent);
+}
+
+.code-window__title {
+  color: var(--app-color-muted);
+  font: 500 12px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.code-window__copy {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+}
+
+.code-window__body {
+  overflow-x: auto;
+  margin: 0;
+  padding: 16px 20px 18px;
+  color: color-mix(in srgb, var(--app-color-foreground) 90%, transparent);
+  font: 400 13px/1.75 ui-monospace, "SF Mono", Menlo, monospace;
+  counter-reset: code-line;
+}
+
+.code-window__body .line {
+  position: relative;
+  display: block;
+  padding-left: 34px;
+}
+
+.code-window__body .line::before {
+  position: absolute;
+  left: 0;
+  width: 22px;
+  color: color-mix(in srgb, var(--app-color-foreground) 22%, transparent);
+  content: counter(code-line);
+  counter-increment: code-line;
+  font-size: 11px;
+  text-align: right;
+}
+
+.code-window__body i,
+.code-window__body b,
+.code-window__body em {
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.code-window__body .tk-c {
+  color: color-mix(in srgb, var(--app-color-muted) 72%, transparent);
+}
+
+.code-window__body .tk-k {
+  color: var(--app-color-accent);
+}
+
+.code-window__body .tk-s {
+  color: var(--app-color-success);
+}
+
+.code-window__body .tk-f {
+  color: color-mix(in srgb, var(--app-color-accent) 62%, var(--app-color-foreground));
+}
+
+.code-window__body .tk-n {
+  color: var(--app-color-warning);
+}

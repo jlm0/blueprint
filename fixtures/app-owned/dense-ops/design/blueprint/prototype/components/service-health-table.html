@@ -1,0 +1,22 @@
+<section data-blueprint-component="service-health-table" data-blueprint-state="populated" aria-labelledby="service-table-title">
+  <div class="ops-table-header">
+    <div>
+      <p>Runtime inventory</p>
+      <h2 id="service-table-title">Service health</h2>
+    </div>
+    <span class="ops-table-count">6 services</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th scope="col">Service</th><th scope="col">Health</th><th scope="col">Latency</th><th scope="col">Owner</th><th scope="col"><span class="visually-hidden">Action</span></th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Event ingest</strong><span>us-east-1</span></td><td><span class="ops-state ops-state--healthy">Healthy</span></td><td>43 ms</td><td>Streams</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+      <tr><td><strong>Label renderer</strong><span>global edge</span></td><td><span class="ops-state ops-state--healthy">Healthy</span></td><td>81 ms</td><td>Fulfillment</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+      <tr><td><strong>Carrier sync</strong><span>us-central-1</span></td><td><span class="ops-state ops-state--warning">Degraded</span></td><td>286 ms</td><td>Logistics</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+      <tr><td><strong>Webhook relay</strong><span>eu-west-1</span></td><td><span class="ops-state ops-state--healthy">Healthy</span></td><td>57 ms</td><td>Platform</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+      <tr><td><strong>Order index</strong><span>us-east-2</span></td><td><span class="ops-state ops-state--healthy">Healthy</span></td><td>66 ms</td><td>Commerce</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+      <tr><td><strong>Audit archive</strong><span>us-west-2</span></td><td><span class="ops-state ops-state--healthy">Healthy</span></td><td>109 ms</td><td>Trust</td><td><blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></td></tr>
+    </tbody>
+  </table>
+</section>

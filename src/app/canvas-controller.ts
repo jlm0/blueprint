@@ -151,6 +151,16 @@ export function createCanvasController({
     const width = maxX - minX;
     const height = maxY - minY;
     const nextScale = Math.min((window.innerWidth - 80) / width, (window.innerHeight - 140) / height, 1.18);
+    // Wide boards never fit below a readable floor: land on the first groups
+    // at review size and let pan reveal the rest instead of a distant strip.
+    const readableScale = 0.55;
+    if (nextScale < readableScale) {
+      view.s = readableScale;
+      view.x = 60 - minX * view.s;
+      view.y = Math.max(24, (window.innerHeight - height * view.s) / 2 - minY * view.s + 24);
+      apply();
+      return;
+    }
     view.s = Math.min(options.maxScale, Math.max(options.minScale, nextScale));
     view.x = (window.innerWidth - width * view.s) / 2 - minX * view.s;
     view.y = (window.innerHeight - height * view.s) / 2 - minY * view.s + 24;

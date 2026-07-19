@@ -1,0 +1,189 @@
+<main data-blueprint-screen="home" data-blueprint-state="initial">
+  <img class="hero-glow" src="../assets/hero-glow.svg" alt="" aria-hidden="true" />
+  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--home"></blueprint-use>
+
+  <section class="hero wrap">
+    <div class="hero__copy">
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
+        <span slot="label">Public beta · v0.9</span>
+      </blueprint-use>
+      <h1 class="hero__title">Every agent.<br /><span class="hero__title-accent">One harness.</span></h1>
+      <p class="hero__sub">Harness is the control plane for production AI agents — deploy, observe, and govern every run from a single console.</p>
+      <div class="hero__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
+          <span slot="label">Start building</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline">
+          <span slot="label">View live demo</span>
+        </blueprint-use>
+      </div>
+      <span class="hero__note">Free tier · 1,000 runs / month · no credit card</span>
+    </div>
+
+    <div class="console">
+      <div class="console__bar">
+        <span class="console__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="console__url">console.harness.dev/runs/run_8X2KQ4</span>
+        <span class="console__live"><i aria-hidden="true"></i>Live</span>
+      </div>
+      <div class="console__body">
+        <aside class="console__side">
+          <span class="console__side-brand">
+            <img src="../assets/harness-mark.svg" alt="" width="22" height="22" />
+            <b>Harness</b>
+          </span>
+          <nav class="console__nav" aria-label="Console">
+            <a class="is-active" href="/runs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3z"/></svg>Runs</a>
+            <a href="/agents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12h6M12 9v6"/></svg>Agents</a>
+            <a href="/evals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg>Evals</a>
+            <a href="/policies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.7-8 9-4.8-1.3-8-4.5-8-9V6z"/></svg>Policies</a>
+            <a href="/tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 0 0 6-6L14 13l-3-3z"/></svg>Tools</a>
+            <a href="/settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6A7 7 0 0 0 19 12z"/></svg>Settings</a>
+          </nav>
+          <div class="console__usage">
+            <span class="console__usage-label">Runs this month</span>
+            <span class="console__usage-bar"><i style="--p:76%"></i></span>
+            <span class="console__usage-value">38.2k / 50k</span>
+          </div>
+        </aside>
+        <div class="console__main">
+          <div class="console__head">
+            <div class="console__id">
+              <b>run_8X2KQ4</b>
+              <span>support-agent · v12 · ticket #4242</span>
+            </div>
+            <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
+              <span slot="label">12 tools</span>
+            </blueprint-use>
+            <blueprint-use kind="primitive" ref="badge" state="default" variant="success">
+              <span slot="label">Completed</span>
+            </blueprint-use>
+          </div>
+          <ol class="steps">
+            <li class="step step--done">
+              <i class="step__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></i>
+              <div class="step__body"><b>Plan response</b><span>reasoning · 2,140 tok</span></div>
+              <time>1.8s</time>
+            </li>
+            <li class="step step--done">
+              <i class="step__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></i>
+              <div class="step__body"><b>search_knowledge_base</b><span>tool · query “refund policy”</span></div>
+              <time>0.9s</time>
+            </li>
+            <li class="step step--done">
+              <i class="step__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></i>
+              <div class="step__body"><b>draft_reply</b><span>reasoning · 1,870 tok</span></div>
+              <time>3.1s</time>
+            </li>
+            <li class="step step--done">
+              <i class="step__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></i>
+              <div class="step__body"><b>policy_check</b><span>guardrail · spend-cap ok</span></div>
+              <time>0.2s</time>
+            </li>
+            <li class="step step--active">
+              <i class="step__icon"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg></i>
+              <div class="step__body"><b>send_response</b><span>tool · tickets.reply</span></div>
+              <time>streaming…</time>
+            </li>
+          </ol>
+          <div class="console__foot">
+            <div class="metric">
+              <span class="metric__label">Run cost</span>
+              <b class="metric__value">$0.041</b>
+              <span class="metric__bar"><i style="--p:16%"></i></span>
+              <span class="metric__meta">cap $0.25 / run</span>
+            </div>
+            <div class="metric">
+              <span class="metric__label">Latency</span>
+              <b class="metric__value">34.2s</b>
+              <span class="spark"><i style="--h:34%"></i><i style="--h:48%"></i><i style="--h:41%"></i><i style="--h:56%"></i><i style="--h:50%"></i><i style="--h:66%"></i><i style="--h:82%"></i></span>
+              <span class="metric__meta">p50 across 12 tools</span>
+            </div>
+            <div class="metric">
+              <span class="metric__label">Tokens</span>
+              <b class="metric__value">6,204</b>
+              <span class="metric__split"><i style="--p:64%"></i></span>
+              <span class="metric__meta">64% in · 36% out</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__stats">
+      <div class="hero__stat"><b>40M+</b><span>runs observed daily</span></div>
+      <div class="hero__stat"><b>99.99%</b><span>console uptime</span></div>
+      <div class="hero__stat"><b>−63%</b><span>time to debug</span></div>
+      <div class="hero__stat"><b>SOC 2</b><span>Type II certified</span></div>
+    </div>
+  </section>
+
+  <section class="logos wrap">
+    <span class="logos__label">Powering agent teams at</span>
+    <div class="logos__viewport">
+      <div class="logos__row">
+        <div class="logos__set">
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>Helios</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>Quantia</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8c3-2.5 6 2.5 9 0s6 2.5 9 0"/><path d="M3 13c3-2.5 6 2.5 9 0s6 2.5 9 0"/><path d="M3 18c3-2.5 6 2.5 9 0s6 2.5 9 0"/></svg>Driftwood</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="3" width="12" height="18" rx="2"/></svg>Monolith</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18a9 9 0 0 1 16 0"/><path d="M12 9V3"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>Arclight</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"/><path d="M6 12h12"/><path d="M9 18h6"/></svg>Fathom</span>
+        </div>
+        <div class="logos__set" aria-hidden="true">
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>Helios</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>Quantia</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8c3-2.5 6 2.5 9 0s6 2.5 9 0"/><path d="M3 13c3-2.5 6 2.5 9 0s6 2.5 9 0"/><path d="M3 18c3-2.5 6 2.5 9 0s6 2.5 9 0"/></svg>Driftwood</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="3" width="12" height="18" rx="2"/></svg>Monolith</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18a9 9 0 0 1 16 0"/><path d="M12 9V3"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>Arclight</span>
+          <span class="logos__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"/><path d="M6 12h12"/><path d="M9 18h6"/></svg>Fathom</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features wrap">
+    <blueprint-use kind="component" ref="section-head" state="initial">
+      <span slot="eyebrow">Control plane</span>
+      <span slot="title">Everything between the prompt and production.</span>
+      <span slot="sub">One control plane for the full agent lifecycle — from the first deploy to the millionth run.</span>
+    </blueprint-use>
+    <div class="features__grid">
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span slot="title">Observe every run</span>
+        <span slot="copy">Full-fidelity traces for every step — prompts, tool calls, tokens, latency, and cost — replayable in one click.</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.7-8 9-4.8-1.3-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4.5"/></svg>
+        <span slot="title">Govern with policies</span>
+        <span slot="copy">Guardrails, spend caps, and human approvals enforced at runtime — in the execution path, not a wiki page.</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg>
+        <span slot="title">Evaluate and improve</span>
+        <span slot="copy">Score runs against golden datasets, catch regressions before users do, and promote versions with confidence.</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="proof wrap">
+    <blueprint-use kind="component" ref="testimonial-card" state="initial">
+      <span slot="quote">Harness gave us the confidence to put agents in front of customers. We trace every run, cap every dollar, and sleep at night.</span>
+      <span slot="name">Maya Chen</span>
+      <span slot="role">Head of AI · Fathom</span>
+      <img slot="avatar" src="../assets/avatar-maya.svg" alt="" width="44" height="44" />
+    </blueprint-use>
+  </section>
+
+  <div class="cta-wrap wrap">
+    <blueprint-use kind="component" ref="cta-band" state="initial">
+      <span slot="title">Ship agents you can trust.</span>
+      <span slot="sub">Start free — your first 1,000 runs each month are on us.</span>
+      <span slot="cta-primary">Start building</span>
+      <span slot="cta-secondary">Talk to us</span>
+    </blueprint-use>
+  </div>
+
+  <blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>
+</main>

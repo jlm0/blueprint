@@ -1,0 +1,8 @@
+:root {
+  --app-color-accent: #d9ff5b;
+  --app-color-ink: #f8f7f0;
+  --app-color-canvas: #11140f;
+  --app-space-control: 16px;
+  --app-radius-control: 999px;
+  --app-type-body: 500 16px/1.4 system-ui;
+}

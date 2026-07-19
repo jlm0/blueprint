@@ -1,0 +1,22 @@
+<header data-blueprint-component="site-nav" data-blueprint-state="initial">
+  <div class="site-nav__inner">
+    <a class="site-nav__brand" href="/" aria-label="Harness home">
+      <img class="site-nav__mark" src="../assets/harness-mark.svg" alt="" width="26" height="26" />
+      <span class="site-nav__wordmark">Harness</span>
+    </a>
+    <nav class="site-nav__links" aria-label="Primary">
+      <a class="site-nav__link" data-nav="platform" href="/platform">Platform</a>
+      <a class="site-nav__link" data-nav="pricing" href="/pricing">Pricing</a>
+      <a class="site-nav__link" data-nav="docs" href="/docs">Docs</a>
+      <a class="site-nav__link" data-nav="changelog" href="/changelog">Changelog</a>
+    </nav>
+    <div class="site-nav__actions">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
+        <span slot="label">Sign in</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
+        <span slot="label">Get started</span>
+      </blueprint-use>
+    </div>
+  </div>
+</header>

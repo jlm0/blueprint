@@ -1,0 +1,20 @@
+:root {
+  --ops-color-canvas: #0b0d0f;
+  --ops-color-rail: #111417;
+  --ops-color-surface: #15191d;
+  --ops-color-line: #2b3136;
+  --ops-color-ink: #f0f2ed;
+  --ops-color-muted: #8e989f;
+  --ops-color-accent: #d4f35b;
+  --ops-color-healthy: #73d49a;
+  --ops-color-warning: #e0ad5a;
+  --ops-space-control-x: 12px;
+  --ops-space-cell: 14px;
+  --ops-space-section: 20px;
+  --ops-radius-control: 5px;
+  --ops-radius-panel: 8px;
+  --ops-shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.24);
+  --ops-type-body: 500 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ops-type-label: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ops-type-title: 650 28px/1.15 system-ui;
+}

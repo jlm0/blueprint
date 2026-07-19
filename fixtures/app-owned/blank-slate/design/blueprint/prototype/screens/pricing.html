@@ -1,0 +1,145 @@
+<main data-blueprint-screen="pricing" data-blueprint-state="initial">
+  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--pricing"></blueprint-use>
+
+  <header class="phead wrap">
+    <blueprint-use kind="component" ref="section-head" state="initial">
+      <span slot="eyebrow">Pricing</span>
+      <span slot="title">Pricing that scales with your agents.</span>
+      <span slot="sub">Start free. Pay when your agents do real work. Change tiers any time.</span>
+    </blueprint-use>
+    <div class="billing">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="tonal">
+        <span slot="label">Monthly</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
+        <span slot="label">Annual · save 20%</span>
+      </blueprint-use>
+    </div>
+  </header>
+
+  <section class="tiers wrap">
+    <blueprint-use kind="component" ref="pricing-card" state="initial">
+      <span slot="tier">Starter</span>
+      <span slot="price">$0</span>
+      <span slot="period">free forever</span>
+      <span slot="blurb">For side projects and your first production agent.</span>
+      <li slot="features">1,000 runs / month</li>
+      <li slot="features">1 seat</li>
+      <li slot="features">Full-fidelity tracing</li>
+      <li slot="features">Community support</li>
+      <span slot="cta">Start for free</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="pricing-card" state="initial" class="pricing-card--featured">
+      <span slot="flag">Most popular</span>
+      <span slot="tier">Team</span>
+      <span slot="price">$49</span>
+      <span slot="period">per seat / month</span>
+      <span slot="blurb">For teams shipping agents to production.</span>
+      <li slot="features">50,000 runs / month</li>
+      <li slot="features">Unlimited seats</li>
+      <li slot="features">Policies &amp; approvals</li>
+      <li slot="features">Evals &amp; golden datasets</li>
+      <li slot="features">Slack support</li>
+      <span slot="cta">Start 14-day trial</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="pricing-card" state="initial">
+      <span slot="tier">Enterprise</span>
+      <span slot="price">Custom</span>
+      <span slot="period">annual agreement</span>
+      <span slot="blurb">For regulated, high-volume operations.</span>
+      <li slot="features">Unlimited runs &amp; seats</li>
+      <li slot="features">SSO / SAML &amp; audit logs</li>
+      <li slot="features">Dedicated region or self-host</li>
+      <li slot="features">99.99% uptime SLA</li>
+      <span slot="cta">Talk to sales</span>
+    </blueprint-use>
+  </section>
+
+  <section class="includes wrap">
+    <span class="includes__label">Every plan includes</span>
+    <div class="includes__row">
+      <span class="includes__item">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </blueprint-use>
+        Full-fidelity traces
+      </span>
+      <span class="includes__item">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </blueprint-use>
+        Runtime spend caps
+      </span>
+      <span class="includes__item">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12h6M12 9v6"/></svg>
+        </blueprint-use>
+        Unlimited agents
+      </span>
+      <span class="includes__item">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 6-5 6 5 6M16 6l5 6-5 6"/></svg>
+        </blueprint-use>
+        API &amp; SDK access
+      </span>
+    </div>
+  </section>
+
+  <section class="ent wrap">
+    <div class="ent__band">
+      <span class="ent__icon">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.7-8 9-4.8-1.3-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4.5"/></svg>
+        </blueprint-use>
+      </span>
+      <div class="ent__copy">
+        <b>Enterprise ready when you are.</b>
+        <span>SSO/SAML, audit logs, dedicated region or self-host, and a 99.99% uptime SLA — on an annual agreement.</span>
+      </div>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
+        <span slot="label">Talk to sales</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="faq wrap">
+    <h2 class="faq__title">Questions, answered.</h2>
+    <div class="faq__grid">
+      <div class="faq__item">
+        <h3>What counts as a run?</h3>
+        <p>One agent execution, start to finish. Every step, retry, and tool call inside it is included — no per-span metering.</p>
+      </div>
+      <div class="faq__item">
+        <h3>Do unused runs roll over?</h3>
+        <p>No, but you can change tiers at any time, and Harness warns you before you approach a cap — never after.</p>
+      </div>
+      <div class="faq__item">
+        <h3>What happens if I hit my run limit?</h3>
+        <p>Agents keep running. We notify you at 80% and 100%, and overage runs bill at your plan's rate — or hard-stop them with a policy.</p>
+      </div>
+      <div class="faq__item">
+        <h3>Can I self-host Harness?</h3>
+        <p>Yes, on Enterprise. The same console runs in your cloud, with dedicated support and upgrade windows.</p>
+      </div>
+      <div class="faq__item">
+        <h3>Do you offer startup discounts?</h3>
+        <p>Yes — early-stage teams get the Team tier free for a year. Apply from the billing page with your company details.</p>
+      </div>
+      <div class="faq__item">
+        <h3>How are evals billed?</h3>
+        <p>Eval runs bill like normal runs. Golden datasets, scorers, and regression reports are free to store.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta-wrap wrap">
+    <blueprint-use kind="component" ref="cta-band" state="initial">
+      <span slot="title">Start shipping agents today.</span>
+      <span slot="sub">Free tier includes 1,000 runs a month — no credit card required.</span>
+      <span slot="cta-primary">Start building</span>
+      <span slot="cta-secondary">Talk to sales</span>
+    </blueprint-use>
+  </div>
+
+  <blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>
+</main>

@@ -1,0 +1,15 @@
+<header data-blueprint-component="site-header" data-blueprint-state="initial">
+  <div class="site-header__inner">
+    <blueprint-use kind="primitive" ref="brand-link" state="default">
+      <span slot="label">nowwhat</span>
+    </blueprint-use>
+    <nav class="site-header__nav" aria-label="Primary navigation">
+      <blueprint-use kind="primitive" ref="navigation-action" variant="plain" state="default" href="/waitlist">
+        <span slot="label">Waitlist</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="navigation-action" variant="tester" state="default" href="/auth">
+        <span slot="label">Tester login</span>
+      </blueprint-use>
+    </nav>
+  </div>
+</header>

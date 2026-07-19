@@ -1,0 +1,43 @@
+[data-blueprint-primitive="navigation-action"] {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--nw-radius-full);
+  color: var(--nw-color-text-secondary);
+  background: transparent;
+  font: 500 14px/1.25 var(--nw-font-body);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color var(--nw-duration-base) var(--nw-ease-out),
+    background var(--nw-duration-base) var(--nw-ease-out),
+    border-color var(--nw-duration-base) var(--nw-ease-out),
+    transform var(--nw-duration-fast) var(--nw-ease-out);
+}
+
+[data-blueprint-primitive="navigation-action"]:hover {
+  color: var(--nw-color-text-primary);
+  background: color-mix(in oklch, var(--nw-color-surface-1) 65%, transparent);
+}
+
+[data-blueprint-primitive="navigation-action"][data-blueprint-variant="tester"] {
+  padding-inline: 16px;
+  border-color: color-mix(in oklch, var(--nw-color-amber) 22%, transparent);
+  color: var(--nw-color-text-secondary);
+  background: var(--nw-color-amber-soft);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+[data-blueprint-primitive="navigation-action"][data-blueprint-variant="tester"]:hover {
+  border-color: color-mix(in oklch, var(--nw-color-amber) 38%, transparent);
+  background: color-mix(in oklch, var(--nw-color-amber-soft) 82%, var(--nw-color-surface-1));
+  transform: translateY(-1px);
+}
+
+[data-blueprint-primitive="navigation-action"]:focus-visible {
+  outline: 2px solid var(--nw-color-primary-line);
+  outline-offset: 2px;
+}

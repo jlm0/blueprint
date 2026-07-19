@@ -16,7 +16,7 @@ export function parseBoundarySelector(input: string): BoundarySelector {
 
   const kind = input.slice(0, divider) as BoundaryKind;
   const id = input.slice(divider + 1);
-  const allowed: BoundaryKind[] = ['project', 'board', 'token-group', 'primitive', 'state-set', 'screen', 'section'];
+  const allowed: BoundaryKind[] = ['project', 'board', 'token-group', 'primitive', 'state-set', 'component', 'screen', 'section'];
 
   if (!allowed.includes(kind)) {
     throw new Error(`Boundary selector "${input}" uses unsupported kind "${kind}".`);

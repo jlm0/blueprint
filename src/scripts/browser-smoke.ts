@@ -28,13 +28,14 @@ async function main(): Promise<void> {
     }
   });
 
-  await server.listen();
-  const address = server.httpServer?.address();
-  const port = typeof address === 'object' && address ? address.port : 5173;
-  const url = `http://127.0.0.1:${port}`;
-  const browser = await chromium.launch();
+  let browser: import('playwright').Browser | undefined;
 
   try {
+    await server.listen();
+    const address = server.httpServer?.address();
+    const port = typeof address === 'object' && address ? address.port : 5173;
+    const url = `http://127.0.0.1:${port}`;
+    browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
     await page.goto(url);
     await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
@@ -124,7 +125,7 @@ async function main(): Promise<void> {
 
     console.log(`Browser smoke passed at ${url}. Screenshots written to ${screenshotRoot}.`);
   } finally {
-    await browser.close();
+    await browser?.close();
     await server.close();
   }
 }
@@ -325,7 +326,12 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
     ...bundle.tokens.tokenGroups.map(group => `${bundle.manifest.project.id}/token-group/${group.id}`),
     ...bundle.primitives.primitives.flatMap(primitive => [
       `${bundle.manifest.project.id}/primitive/${primitive.id}`,
-      ...primitive.stateSets.map(stateSet => `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`)
+      // Prototype-backed primitives render one compiled canonical specimen per declared
+      // prototype state instead of legacy state-set sections, so their state sets are
+      // not expected as separate visible board records.
+      ...(primitive.prototype
+        ? []
+        : primitive.stateSets.map(stateSet => `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`))
     ])
   ];
   const visibleBoundaryIds = records.map(record => record.id);
@@ -377,6 +383,19 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
   }
 
   for (const primitive of bundle.primitives.primitives) {
+    if (primitive.prototype) {
+      // Canonical primitives render one compiled specimen iframe per declared variant × state combination.
+      const canonicalFrames = await page
+        .locator(`[data-boundary-id="${bundle.manifest.project.id}/primitive/${primitive.id}"] .canonical-primitive-iframe`)
+        .count();
+      const expectedFrames = primitive.prototype.states.length * Math.max(primitive.prototype.variants.length, 1);
+      if (canonicalFrames !== expectedFrames) {
+        throw new Error(
+          `${bundle.manifest.project.id} canonical primitive ${primitive.id} should render one specimen iframe per declared variant × state combination, received ${canonicalFrames}.`
+        );
+      }
+      continue;
+    }
     for (const stateSet of primitive.stateSets) {
       const stateSetBoundary = `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`;
       for (const state of stateSet.states) {
@@ -437,12 +456,20 @@ async function writePrimitiveReviewArtifacts(
   const { writeFile } = await import('node:fs/promises');
   const capturedManifest = {
     ...manifest,
+    capture: {
+      status: 'captured',
+      path: screenshotPath
+    },
     screenshot: {
       status: 'captured',
       path: screenshotPath
     },
     boundaries: manifest.boundaries.map(boundary => ({
       ...boundary,
+      capture: {
+        status: 'captured',
+        path: screenshotPath
+      },
       screenshot: {
         status: 'captured',
         path: screenshotPath
@@ -643,12 +670,20 @@ async function writeScreenReviewArtifacts(page: import('playwright').Page, proje
   const { writeFile } = await import('node:fs/promises');
   const capturedManifest = {
     ...manifest,
+    capture: {
+      status: 'captured',
+      path: screenshotPath
+    },
     screenshot: {
       status: 'captured',
       path: screenshotPath
     },
     boundaries: manifest.boundaries.map(boundary => ({
       ...boundary,
+      capture: {
+        status: 'captured',
+        path: screenshotPath
+      },
       screenshot: {
         status: 'captured',
         path: screenshotPath

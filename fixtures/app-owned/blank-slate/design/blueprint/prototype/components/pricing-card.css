@@ -1,0 +1,139 @@
+[data-blueprint-component="pricing-card"] {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 30px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 4%, transparent);
+}
+
+.pricing-card__flag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  padding: 4px 11px;
+  border: 1px solid color-mix(in srgb, var(--app-color-accent) 38%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--app-color-accent) 88%, var(--app-color-foreground));
+  background: color-mix(in srgb, var(--app-color-accent) 16%, var(--app-color-surface));
+  font: var(--app-type-label);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.pricing-card__flag:empty {
+  display: none;
+}
+
+.pricing-card__tier {
+  margin: 0;
+  color: var(--app-color-foreground);
+  font: 700 15px/1.2 system-ui;
+  letter-spacing: -0.01em;
+}
+
+.pricing-card__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 15px 0 0;
+}
+
+.pricing-card__price {
+  color: var(--app-color-foreground);
+  font: 800 44px/1 system-ui;
+  letter-spacing: -0.03em;
+}
+
+.pricing-card__period {
+  color: var(--app-color-muted);
+  font-size: 13px;
+}
+
+.pricing-card__blurb {
+  min-height: 44px;
+  margin: 11px 0 0;
+  color: var(--app-color-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pricing-card__features {
+  display: grid;
+  gap: 12px;
+  margin: 26px 0 30px;
+  padding: 0;
+  list-style: none;
+}
+
+.pricing-card__features li {
+  position: relative;
+  padding-left: 23px;
+  color: color-mix(in srgb, var(--app-color-foreground) 86%, transparent);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.pricing-card__features li::before {
+  position: absolute;
+  top: 4px;
+  left: 1px;
+  width: 5px;
+  height: 9px;
+  border-right: 1.8px solid var(--app-color-accent);
+  border-bottom: 1.8px solid var(--app-color-accent);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.pricing-card__cta {
+  margin-top: auto;
+}
+
+.pricing-card__cta[data-blueprint-primitive="button"],
+[data-blueprint-component="pricing-card"] .pricing-card__cta {
+  width: 100%;
+}
+
+[data-blueprint-component="pricing-card"].pricing-card--featured {
+  border-color: color-mix(in srgb, var(--app-color-accent) 36%, transparent);
+  background: color-mix(in srgb, var(--app-color-accent) 5%, var(--app-color-surface));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 5%, transparent),
+    0 18px 48px color-mix(in srgb, var(--app-color-accent) 13%, transparent);
+}
+
+[data-blueprint-component="pricing-card"].pricing-card--featured::before {
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: calc(var(--app-radius-lg) + 1px);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--app-color-accent) 55%, transparent),
+    transparent 42%,
+    transparent 68%,
+    color-mix(in srgb, var(--app-color-accent) 28%, transparent)
+  );
+  content: "";
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+[data-blueprint-component="pricing-card"].pricing-card--featured [data-blueprint-primitive="button"] {
+  color: var(--app-color-background);
+  background: var(--app-color-primary);
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}

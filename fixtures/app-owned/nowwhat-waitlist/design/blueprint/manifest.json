@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0.0",
+  "handoffContractVersion": "1.0.0",
+  "project": {
+    "id": "nowwhat-waitlist-proof",
+    "name": "NowWhat Waitlist Proof",
+    "description": "App-owned high-fidelity proof of the NowWhat seller waitlist at its pinned desktop and phone review conditions.",
+    "owner": "NowWhat",
+    "sourceRoot": "fixtures/app-owned/nowwhat-waitlist/design/blueprint"
+  },
+  "defaultBoardId": "screens",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "Canonical controls and compact identity/status treatments used by the waitlist proof."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "The browser-native NowWhat waitlist proof surface."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "desktop-reference",
+      "name": "Desktop reference",
+      "type": "desktop",
+      "width": 1280,
+      "height": 800,
+      "safeArea": { "top": 0, "right": 0, "bottom": 0, "left": 0 }
+    },
+    {
+      "id": "phone-reference",
+      "name": "Phone reference",
+      "type": "mobile",
+      "width": 390,
+      "height": 844,
+      "safeArea": { "top": 0, "right": 0, "bottom": 0, "left": 0 }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": ["prototype/assets"],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

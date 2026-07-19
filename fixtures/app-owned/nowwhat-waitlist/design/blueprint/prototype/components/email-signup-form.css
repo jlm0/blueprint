@@ -1,0 +1,22 @@
+[data-blueprint-component="email-signup-form"] {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid color-mix(in oklch, var(--nw-color-surface-1) 78%, transparent);
+  border-radius: var(--nw-radius-xl);
+  background: color-mix(in oklch, var(--nw-color-surface-1) 52%, transparent);
+  box-shadow: var(--nw-shadow-glass);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+}
+
+.email-signup-form__status { min-height: 0; }
+
+@media (min-width: 768px) {
+  [data-blueprint-component="email-signup-form"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .email-signup-form__status { grid-column: 1 / -1; }
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "high-fidelity-red",
+  "components": [
+    {
+      "id": "email-signup",
+      "name": "Email Signup",
+      "description": "Reusable glass email form composed with the canonical action button.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "action-button",
+          "reason": "Submit action",
+          "binding": { "slot": "submit", "state": "default", "copy": "Join waitlist" }
+        }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "prototype": {
+        "source": "prototype/components/email-signup.html",
+        "styles": ["prototype/components/email-signup.css"],
+        "slots": ["email", "submit"],
+        "states": ["empty", "filled"]
+      }
+    },
+    {
+      "id": "metric-table",
+      "name": "Metric Table",
+      "description": "Dense application assembly used by the portability proof.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "action-button",
+          "reason": "Row-level action",
+          "binding": { "slot": "rowAction", "state": "default", "copy": "Inspect" }
+        }
+      ],
+      "tokenGroupIds": ["color", "space", "typography"],
+      "prototype": {
+        "source": "prototype/components/metric-table.html",
+        "styles": ["prototype/components/metric-table.css"],
+        "slots": ["rows", "rowAction"],
+        "states": ["populated"]
+      }
+    }
+  ]
+}

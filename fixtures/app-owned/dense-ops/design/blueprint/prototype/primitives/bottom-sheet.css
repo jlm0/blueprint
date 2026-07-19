@@ -1,0 +1,167 @@
+/* Anchored sheet: top-radius panel with an edge-lit rim and upward
+   elevation so it lifts off the canvas; one slot region shows per state. */
+[data-blueprint-primitive="bottom-sheet"] {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 7px var(--app-space-row) 13px;
+  border-top: 1px solid color-mix(in srgb, var(--app-color-foreground) 10%, transparent);
+  border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 -16px 36px rgba(0, 0, 0, 0.38),
+    var(--app-shadow-panel);
+  font: var(--app-type-body);
+}
+
+.bottom-sheet__handle {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 1px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-color-foreground) 22%, transparent);
+}
+
+.bottom-sheet__navbar,
+.bottom-sheet__content,
+.bottom-sheet__footer {
+  display: none;
+}
+
+/* Navbar slot: balanced 1fr/auto/1fr row, ghost close, text-style done. */
+[data-blueprint-primitive="bottom-sheet"][data-blueprint-state="navbar"] .bottom-sheet__navbar {
+  display: grid;
+  min-height: 34px;
+  align-items: center;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--app-space-row);
+}
+
+[data-blueprint-primitive="bottom-sheet"][data-blueprint-state="content"] .bottom-sheet__content {
+  display: grid;
+  gap: 3px;
+  padding: 2px 2px 8px;
+}
+
+[data-blueprint-primitive="bottom-sheet"][data-blueprint-state="footer"] .bottom-sheet__footer {
+  display: grid;
+}
+
+.bottom-sheet__nav-action {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--app-radius-md);
+  color: color-mix(in srgb, var(--app-color-foreground) 86%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--app-motion-state),
+    background-color var(--app-motion-state),
+    transform var(--app-motion-press);
+}
+
+.bottom-sheet__nav-action:hover {
+  color: var(--app-color-foreground);
+  background: color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+}
+
+.bottom-sheet__nav-action:active {
+  transform: scale(0.92);
+}
+
+.bottom-sheet__nav-action svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+.bottom-sheet__nav-action--done {
+  width: auto;
+  min-height: 28px;
+  justify-self: end;
+  padding: 0 6px;
+  color: var(--app-color-primary);
+  font: var(--app-type-body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bottom-sheet__title {
+  font: var(--app-type-body);
+  font-weight: 650;
+  text-align: center;
+}
+
+.bottom-sheet__content-title {
+  font: var(--app-type-body);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bottom-sheet__content-copy {
+  margin: 0;
+  color: var(--app-color-muted);
+  font: var(--app-type-body);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Footer slot: full-width edge-lit primary command. */
+.bottom-sheet__primary {
+  min-height: 34px;
+  margin: 0;
+  padding: 0 var(--app-space-control-x);
+  border: 0;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-background);
+  background: var(--app-color-primary);
+  font: var(--app-type-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  transition:
+    transform var(--app-motion-press),
+    box-shadow var(--app-motion-press),
+    filter var(--app-motion-press);
+}
+
+.bottom-sheet__primary:hover {
+  filter: brightness(1.06);
+}
+
+.bottom-sheet__primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--app-color-background),
+    0 0 0 4px color-mix(in srgb, var(--app-color-accent) 70%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--app-color-accent) 16%, transparent);
+}
+
+.bottom-sheet__primary:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet__nav-action,
+  .bottom-sheet__primary {
+    transition: none;
+  }
+}

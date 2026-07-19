@@ -1,0 +1,312 @@
+[data-blueprint-screen="platform"] {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---------- Page head ---------- */
+
+.phead {
+  padding-top: 64px;
+  padding-bottom: 16px;
+}
+
+/* ---------- Alternating platform rows ---------- */
+
+.prow {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  gap: 64px;
+  padding-top: 56px;
+}
+
+.prow--flip {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+}
+
+.prow__copy {
+  min-width: 0;
+}
+
+.prow__index {
+  color: var(--app-color-accent);
+  font: 700 12px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+
+.prow__title {
+  max-width: 420px;
+  margin: 14px 0 0;
+  color: var(--app-color-foreground);
+  font: 800 30px/1.14 system-ui;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+}
+
+.prow__text {
+  max-width: 430px;
+  margin: 15px 0 0;
+  color: var(--app-color-muted);
+  font-size: 15px;
+  line-height: 1.62;
+}
+
+.ticks {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticks li {
+  position: relative;
+  padding-left: 24px;
+  color: color-mix(in srgb, var(--app-color-foreground) 88%, transparent);
+  font-size: 13.5px;
+}
+
+.ticks li::before {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  width: 5px;
+  height: 10px;
+  border-right: 2px solid var(--app-color-accent);
+  border-bottom: 2px solid var(--app-color-accent);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.prow__visual {
+  min-width: 0;
+}
+
+/* ---------- Waterfall trace panel ---------- */
+
+.runview {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 4%, transparent),
+    var(--app-shadow-panel);
+}
+
+.runview__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+}
+
+.runview__id {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.runview__id b {
+  color: var(--app-color-foreground);
+  font: 700 13px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.runview__id span {
+  color: var(--app-color-muted);
+  font-size: 11.5px;
+}
+
+.runview__rows {
+  display: grid;
+  gap: 2px;
+  padding: 14px 18px 10px;
+}
+
+.wrow {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 158px minmax(0, 1fr) 46px;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.wrow__label {
+  overflow: hidden;
+  color: var(--app-color-muted);
+  font: 500 11.5px/1.3 ui-monospace, "SF Mono", Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wrow--root .wrow__label {
+  color: var(--app-color-foreground);
+  font-weight: 700;
+}
+
+.wrow__track {
+  position: relative;
+  height: 13px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--app-color-foreground) 4%, transparent);
+}
+
+.wrow__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--x, 0%);
+  width: var(--w, 10%);
+  border-radius: 4px;
+  background: var(--app-color-accent);
+}
+
+.wrow__bar--root {
+  background: color-mix(in srgb, var(--app-color-foreground) 20%, transparent);
+}
+
+.wrow__bar--tool {
+  background: color-mix(in srgb, var(--app-color-accent) 48%, var(--app-color-secondary));
+}
+
+.wrow__bar--guard {
+  background: var(--app-color-success);
+}
+
+.wrow time {
+  color: var(--app-color-muted);
+  font: 500 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.runview__foot {
+  display: flex;
+  gap: 20px;
+  margin: 6px 18px 0;
+  padding: 12px 0 14px;
+  border-top: 1px solid color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+  color: var(--app-color-muted);
+  font: 500 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Policies panel ---------- */
+
+.policies {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--app-color-foreground) 4%, transparent),
+    var(--app-shadow-panel);
+}
+
+.policies__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+}
+
+.policies__head b {
+  color: var(--app-color-foreground);
+  font: 700 14px/1.2 system-ui;
+  letter-spacing: -0.01em;
+}
+
+.policies__head span {
+  color: var(--app-color-muted);
+  font: 500 11.5px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.policies__head [data-blueprint-primitive="badge"] {
+  margin-left: auto;
+}
+
+.policies__rows {
+  display: grid;
+  padding: 8px 18px 4px;
+}
+
+.policy {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 13px;
+  padding: 13px 0;
+}
+
+.policy + .policy {
+  border-top: 1px solid color-mix(in srgb, var(--app-color-foreground) 5%, transparent);
+}
+
+.policy__icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--app-color-accent) 18%, transparent);
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-accent);
+  background: color-mix(in srgb, var(--app-color-accent) 9%, transparent);
+}
+
+.policy__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.policy__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.policy__body b {
+  color: var(--app-color-foreground);
+  font: 650 14px/1.25 system-ui;
+  letter-spacing: -0.01em;
+}
+
+.policy__body span {
+  color: var(--app-color-muted);
+  font-size: 12px;
+}
+
+.policy [data-blueprint-primitive="switch"] .switch__label {
+  display: none;
+}
+
+.policies__foot {
+  margin: 8px 18px 0;
+  padding: 12px 0 14px;
+  border-top: 1px solid color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+  color: var(--app-color-muted);
+  font: 500 11px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ---------- Capabilities ---------- */
+
+.caps {
+  display: grid;
+  gap: 42px;
+  padding-top: 72px;
+}
+
+.caps__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.cta-wrap {
+  margin-top: 60px;
+  margin-bottom: 64px;
+}

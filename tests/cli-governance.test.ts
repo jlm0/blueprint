@@ -55,22 +55,26 @@ describe('Blueprint CLI and template governance', () => {
       assert.equal(result.status, 0, result.stderr);
       const output = parseJson(result.stdout);
       assert.equal(output.command, 'init');
-      assert.deepEqual(output.files.sort(), ['AGENTS.md', 'manifest.json', 'primitives.json', 'screens.json', 'tokens.json']);
+      assert.deepEqual(output.files.sort(), ['AGENTS.md', 'components.json', 'manifest.json', 'primitives.json', 'prototype', 'screens.json', 'tokens.json']);
       assert.ok(output.nextCommands.some((command: string) => command.includes('blueprint validate')));
 
       const files = await readdir(out);
-      assert.deepEqual(files.sort(), ['AGENTS.md', 'manifest.json', 'primitives.json', 'screens.json', 'tokens.json']);
+      assert.deepEqual(files.sort(), ['AGENTS.md', 'components.json', 'manifest.json', 'primitives.json', 'prototype', 'screens.json', 'tokens.json']);
 
       const manifest = JSON.parse(await readFile(path.join(out, 'manifest.json'), 'utf8'));
       const tokens = JSON.parse(await readFile(path.join(out, 'tokens.json'), 'utf8'));
       const primitives = JSON.parse(await readFile(path.join(out, 'primitives.json'), 'utf8'));
+      const components = JSON.parse(await readFile(path.join(out, 'components.json'), 'utf8'));
       const screens = JSON.parse(await readFile(path.join(out, 'screens.json'), 'utf8'));
       assert.equal(manifest.project.id, 'app-a');
       assert.equal(manifest.project.name, 'App A');
       assert.equal(manifest.project.sourceRoot, normalize(out));
       assert.equal(tokens.projectId, 'app-a');
       assert.equal(primitives.projectId, 'app-a');
+      assert.equal(components.projectId, 'app-a');
       assert.equal(screens.projectId, 'app-a');
+      assert.equal(existsSync(path.join(out, 'prototype', 'primitives', 'button.html')), true);
+      assert.equal(existsSync(path.join(out, 'prototype', 'components', 'action-cluster.html')), true);
       assert.deepEqual(
         screens.screens.map((screen: { id: string; framePresetId: string; sections: unknown[] }) => ({
           id: screen.id,
@@ -83,7 +87,7 @@ describe('Blueprint CLI and template governance', () => {
         ]
       );
 
-      const structured = JSON.stringify({ manifest, tokens, primitives, screens });
+      const structured = JSON.stringify({ manifest, tokens, primitives, components, screens });
       assert.equal(structured.includes('starter-app'), false);
 
       const validation = run('node', [cliPath, 'validate', '--project', out]);
@@ -461,6 +465,7 @@ describe('Blueprint CLI and template governance', () => {
     const schema = JSON.parse(await readFile('schema/blueprint-project.schema.json', 'utf8'));
     assert.equal(schema.$id, 'https://blueprint.local/schema/blueprint-project.schema.json');
     assert.ok(schema.$defs.manifest);
+    assert.ok(schema.$defs.component);
     assert.ok(schema.$defs.implementationTarget);
     assert.ok(schema.$defs.styleEvidence);
 
@@ -468,8 +473,9 @@ describe('Blueprint CLI and template governance', () => {
     assert.match(agents, /sidecar-first/i);
     assert.match(agents, /blueprint validate/i);
     assert.match(agents, /blueprint index/i);
-    assert.match(agents, /new screens/i);
-    assert.match(agents, /raw .*fallback/i);
+    assert.match(agents, /empty base frames/i);
+    assert.match(agents, /<blueprint-use/i);
+    assert.match(agents, /screenshots.*evidence/i);
 
     const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/starter-scaffold.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;
     for (const term of ['blueprint init', 'blueprint validate', 'blueprint serve', 'blueprint index', 'blueprint query', 'blueprint extract', 'blueprint capture', 'schema/blueprint-project.schema.json', 'AGENTS.md', 'single-project']) {
@@ -477,6 +483,9 @@ describe('Blueprint CLI and template governance', () => {
     }
     assert.match(docs, /init[\s\S]+validate[\s\S]+serve[\s\S]+query[\s\S]+extract[\s\S]+capture/i);
     assert.match(docs, /never becomes a central project manager|not .*central registry|not .*centralized/i);
+    assert.match(docs, /baseline-compatible/i);
+    assert.match(docs, /structured JSON.*owns|JSON owns/i);
+    assert.match(docs, /screen HTML\/CSS.*owns/i);
     assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);
   });
 });

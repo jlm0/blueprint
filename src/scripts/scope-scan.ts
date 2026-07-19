@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const runtimeRoots = ['src/app', 'src/core', 'src/index.ts', 'index.html', 'package.json'];
+const runtimeRoots = ['src/app', 'src/cli', 'src/core', 'src/prototype', 'src/cli.ts', 'src/index.ts', 'index.html', 'package.json'];
 const forbiddenRuntimeTerms = [
   'reference',
   'reference-app',

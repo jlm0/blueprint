@@ -1,0 +1,68 @@
+[data-blueprint-primitive="skeleton"] {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 0 14px;
+}
+
+/* Placeholder fills sit in a shallow recessed well; the shimmer is a slow,
+   low-peak sweep so loading reads calm rather than frantic. */
+.skeleton__line,
+.skeleton__block {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--app-color-foreground) 8%, var(--app-color-surface));
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.skeleton__line::after,
+.skeleton__block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--app-color-foreground) 7%, transparent) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: bp-skeleton-shimmer 1500ms ease-in-out infinite;
+}
+
+.skeleton__line {
+  height: 10px;
+  border-radius: var(--app-radius-sm);
+}
+
+.skeleton__line--short {
+  width: 58%;
+}
+
+.skeleton__block {
+  height: 56px;
+  border-radius: var(--app-radius-lg);
+}
+
+[data-blueprint-primitive="skeleton"][data-blueprint-state="line"] .skeleton__block {
+  display: none;
+}
+
+[data-blueprint-primitive="skeleton"][data-blueprint-state="block"] .skeleton__line {
+  display: none;
+}
+
+@keyframes bp-skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton__line::after,
+  .skeleton__block::after {
+    animation: none;
+  }
+}

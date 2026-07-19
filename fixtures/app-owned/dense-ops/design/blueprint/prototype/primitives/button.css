@@ -1,0 +1,215 @@
+/* Base anatomy: padded pill with edge-lit filled surface and press motion. */
+[data-blueprint-primitive="button"] {
+  position: relative;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 0 var(--app-space-control-x);
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-background);
+  background: var(--app-color-primary);
+  font: var(--app-type-body);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  transition:
+    transform var(--app-motion-press),
+    box-shadow var(--app-motion-press),
+    border-color var(--app-motion-state),
+    background-color var(--app-motion-state),
+    color var(--app-motion-state),
+    filter var(--app-motion-press),
+    opacity var(--app-motion-state);
+}
+
+.button__label {
+  display: inline-flex;
+  align-items: center;
+  transition: opacity var(--app-motion-state);
+}
+
+/* Loading spinner: hidden until the loading state, sized like a leading icon. */
+.button__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity var(--app-motion-state);
+}
+
+/* Variant personalities */
+[data-blueprint-primitive="button"][data-blueprint-variant="secondary"] {
+  color: var(--app-color-foreground);
+  background: color-mix(in srgb, var(--app-color-foreground) 8%, var(--app-color-surface));
+  border-color: color-mix(in srgb, var(--app-color-foreground) 14%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="tonal"] {
+  color: color-mix(in srgb, var(--app-color-accent) 82%, var(--app-color-foreground));
+  background: color-mix(in srgb, var(--app-color-accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--app-color-accent) 26%, transparent);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="outline"] {
+  color: var(--app-color-foreground);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--app-color-foreground) 26%, transparent);
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="ghost"] {
+  color: color-mix(in srgb, var(--app-color-foreground) 84%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="destructive"] {
+  color: var(--app-color-background);
+  background: var(--app-color-destructive);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="accent"] {
+  color: var(--app-color-background);
+  background: var(--app-color-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="success"] {
+  color: var(--app-color-background);
+  background: var(--app-color-success);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="gradient"] {
+  color: var(--app-color-background);
+  background: linear-gradient(135deg, var(--app-color-primary) 0%, var(--app-color-accent) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+    0 2px 10px color-mix(in srgb, var(--app-color-accent) 22%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="link"] {
+  min-height: 0;
+  padding: 0;
+  color: var(--app-color-primary);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--app-color-primary) 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* Hover lift, kept off busy and inert states. */
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="primary"]:hover,
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="destructive"]:hover,
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="accent"]:hover,
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="success"]:hover,
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="gradient"]:hover {
+  filter: brightness(1.06);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="secondary"]:hover {
+  background: color-mix(in srgb, var(--app-color-foreground) 11%, var(--app-color-surface));
+  border-color: color-mix(in srgb, var(--app-color-foreground) 22%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="tonal"]:hover {
+  background: color-mix(in srgb, var(--app-color-accent) 21%, transparent);
+  border-color: color-mix(in srgb, var(--app-color-accent) 36%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="outline"]:hover {
+  background: color-mix(in srgb, var(--app-color-foreground) 6%, transparent);
+  border-color: color-mix(in srgb, var(--app-color-foreground) 42%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="ghost"]:hover {
+  color: var(--app-color-foreground);
+  background: color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"][data-blueprint-variant="link"]:hover {
+  text-decoration-color: var(--app-color-primary);
+}
+
+/* Focus halo: canvas-colored gap ring, accent ring, soft outer glow. */
+[data-blueprint-primitive="button"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--app-color-background),
+    0 0 0 4px color-mix(in srgb, var(--app-color-accent) 70%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--app-color-accent) 16%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="normal"]:active {
+  transform: scale(0.97);
+}
+
+/* Loading: label swaps for the spinner, variant fill stays lit. */
+[data-blueprint-primitive="button"][data-blueprint-state="loading"] {
+  cursor: progress;
+  opacity: 0.88;
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="loading"] .button__label {
+  opacity: 0;
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="loading"] .button__spinner {
+  opacity: 1;
+  animation: bp-button-spin 640ms linear infinite;
+}
+
+[data-blueprint-primitive="button"][data-blueprint-state="disabled"] {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+@keyframes bp-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-blueprint-primitive="button"],
+  .button__label,
+  .button__spinner {
+    transition: none;
+    animation: none;
+  }
+}

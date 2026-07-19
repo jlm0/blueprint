@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "dense-ops",
+  "screens": [
+    {
+      "id": "service-health",
+      "name": "Service Health",
+      "description": "Dense control-room overview for service ownership and incident triage.",
+      "framePresetId": "desktop-ops",
+      "styleRefs": ["prototype/screens/service-health.css"],
+      "styleEvidence": [
+        { "styleRef": "prototype/screens/service-health.css", "status": "source", "sourceAnchor": "prototype/screens/service-health.css" }
+      ],
+      "notes": ["Operational density and navigation are screen-local composition; row actions remain canonical reusable primitives."],
+      "prototypeOnly": false,
+      "implementationHints": ["Preserve the navigation/content split and semantic health table when adapting this proof."],
+      "productionRelationship": { "kind": "new-route", "routePath": "/ops/services" },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/ServiceHealth",
+          "symbolName": "ServiceHealthScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": { "populated": "populated" },
+          "tokenAdapter": "ops tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/service-health.html",
+        "styles": ["prototype/screens/service-health.css"],
+        "assetRefs": [],
+        "states": ["populated"],
+        "reviewConditions": [
+          { "id": "desktop-populated", "framePresetId": "desktop-ops", "state": "populated" }
+        ],
+        "renderedUses": [
+          { "kind": "component", "id": "service-health-table" }
+        ],
+        "localValueExceptions": [
+          { "property": "grid-template-columns", "value": "216px 1fr", "reason": "The navigation rail width is unique to this operational screen composition." },
+          { "property": "content-max-width", "value": "1064px", "reason": "The review viewport and dense table define a screen-local readable content width." }
+        ]
+      },
+      "sections": [
+        {
+          "id": "service-table",
+          "name": "Service table",
+          "description": "Primary incident-triage table region.",
+          "styleRefs": [],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ServiceHealth",
+              "symbolName": "ServiceTableRegion",
+              "operationIntent": "create-section",
+              "propMapping": { "services": "services" },
+              "stateMapping": { "populated": "populated" },
+              "tokenAdapter": "ops tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "service-health-table",
+              "reason": "Reusable semantic service table.",
+              "binding": { "slot": "content", "state": "populated", "data": "services", "layout": "primary content region" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

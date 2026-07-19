@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "high-fidelity-red",
+  "screens": [
+    {
+      "id": "waitlist",
+      "name": "Waitlist",
+      "description": "High-fidelity marketing landing screen proof.",
+      "framePresetId": "desktop-reference",
+      "styleRefs": ["prototype/screens/waitlist.css"],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/waitlist.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/waitlist.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Preserve unique grid, layering, and responsive art direction as screen-local composition."],
+      "productionRelationship": { "kind": "existing-route", "routePath": "/waitlist" },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "react",
+          "candidatePath": "src/app/waitlist/page.tsx",
+          "symbolName": "WaitlistPage",
+          "operationIntent": "adapt-existing-screen",
+          "propMapping": {},
+          "stateMapping": { "initial": "initial" },
+          "tokenAdapter": "app tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/waitlist.html",
+        "styles": ["prototype/screens/waitlist.css"],
+        "assetRefs": ["prototype/assets/product-preview.svg"],
+        "states": ["initial"],
+        "reviewConditions": [
+          { "id": "desktop-initial", "framePresetId": "desktop-reference", "state": "initial" },
+          { "id": "phone-initial", "framePresetId": "phone-review", "state": "initial" }
+        ]
+      },
+      "sections": [
+        {
+          "id": "hero",
+          "name": "Hero",
+          "description": "Screen-local hero composition containing the reusable email signup.",
+          "styleRefs": [],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "react",
+              "candidatePath": "src/app/waitlist/page.tsx",
+              "symbolName": "WaitlistHero",
+              "operationIntent": "adapt-existing-section",
+              "propMapping": {},
+              "stateMapping": { "initial": "initial" },
+              "tokenAdapter": "app tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "email-signup",
+              "reason": "Reusable waitlist conversion form",
+              "binding": { "slot": "signup", "state": "empty", "layout": "hero form placement" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dense-dashboard",
+      "name": "Dense Dashboard",
+      "description": "Structurally unrelated portability proof screen.",
+      "framePresetId": "desktop-reference",
+      "styleRefs": ["prototype/screens/dense-dashboard.css"],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/dense-dashboard.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/dense-dashboard.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": { "kind": "new-route", "routePath": "/ops" },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/OpsDashboard",
+          "symbolName": "OpsDashboard",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": { "populated": "populated" },
+          "tokenAdapter": "app tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/dense-dashboard.html",
+        "styles": ["prototype/screens/dense-dashboard.css"],
+        "assetRefs": [],
+        "states": ["populated"],
+        "reviewConditions": [
+          { "id": "desktop-populated", "framePresetId": "desktop-reference", "state": "populated" }
+        ]
+      },
+      "sections": [
+        {
+          "id": "metrics",
+          "name": "Metrics",
+          "description": "Dense tabular application content.",
+          "styleRefs": [],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/OpsDashboard",
+              "symbolName": "MetricsPanel",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": { "populated": "populated" },
+              "tokenAdapter": "app tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "metric-table",
+              "reason": "Reusable dense table assembly",
+              "binding": { "slot": "content", "state": "populated", "layout": "dashboard table region" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

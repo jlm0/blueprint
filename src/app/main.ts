@@ -23,6 +23,13 @@ import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
 import { loadConfiguredProject } from './fixture-projects';
+import {
+  compilePrototypeDocument,
+  selectPrototypeReviewCondition,
+  type PrototypeReviewSelectionRequest,
+  type SelectedPrototypeReviewCondition
+} from '../prototype/compiler';
+import { applyPrototypeIframeIsolation } from '../prototype/host-policy';
 
 type BoardId = 'primitives' | 'screens';
 
@@ -197,29 +204,76 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
   });
 
   const groupedPrimitives = groupPrimitivesByFamily(bundle.primitives.primitives);
-  groupedPrimitives.forEach((group, index) => {
-    const x = 650 + index * 520;
-    addGroupHeading(root, controller, {
-      title: familyLabel(group.family),
-      subtitle: `${group.primitives.length} ${group.family} ${group.primitives.length === 1 ? 'primitive' : 'primitives'}`,
-      x,
-      y: 300,
-      accent: familyAccent(group.family)
-    });
-    group.primitives.forEach((primitive, primitiveIndex) => {
-      addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, group.family, {
-        x,
-        y: 380 + primitiveIndex * 280,
-        width: familyWidth(group.family)
-      });
-    });
-  });
+  // Related families share one column and stack vertically (all form controls
+  // together, feedback together, overlays together) instead of one endless
+  // horizontal row of single-family columns. Per-primitive chips carry the
+  // identity, so columns need no group headings.
+  const byFamily = new Map(groupedPrimitives.map(group => [group.family, group.primitives]));
+  const claimedFamilies = new Set<string>();
+  const familyColumns: string[][] = [];
+  for (const planned of FAMILY_COLUMN_GROUPS) {
+    const present = planned.filter(family => byFamily.has(family));
+    if (present.length > 0) {
+      familyColumns.push(present);
+      present.forEach(family => claimedFamilies.add(family));
+    }
+  }
+  for (const group of groupedPrimitives) {
+    if (!claimedFamilies.has(group.family)) {
+      familyColumns.push([group.family]);
+    }
+  }
+  // Height autofits arrive per iframe; reflow synchronously with each one so
+  // positions are never stale between a resize and its repack. Column x
+  // positions are recomputed from measured card widths so cards that grew to
+  // fit their content never clip or overlap a neighboring group.
+  const columnCards: HTMLElement[][] = [];
+  const refit = (): void => {
+    if (root.hidden) {
+      return;
+    }
+    let columnX = 650;
+    for (const cards of columnCards) {
+      const width = Math.max(...cards.map(card => card.offsetWidth || 400));
+      for (const card of cards) {
+        card.dataset.layoutX = String(columnX);
+        card.style.left = `${columnX}px`;
+      }
+      columnX += width + 64;
+    }
+    controller.fitTo(layout.reflow());
+  };
+  let columnX = 650;
+  for (const columnFamilies of familyColumns) {
+    const width = Math.max(
+      ...columnFamilies.flatMap(family =>
+        (byFamily.get(family) ?? []).map(primitive =>
+          primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : familyWidth(family)
+        )
+      )
+    );
+    const x = columnX;
+    columnX += width + 64;
+    let stackY = 380;
+    const cardsInColumn: HTMLElement[] = [];
+    columnCards.push(cardsInColumn);
+    for (const family of columnFamilies) {
+      for (const primitive of byFamily.get(family) ?? []) {
+        const cardWidth = primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : width;
+        const card = addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, family, {
+          x,
+          y: stackY,
+          width: cardWidth
+        }, refit);
+        cardsInColumn.push(card);
+        stackY += 280;
+      }
+    }
+  }
 
   if (document.fonts?.ready) {
     void document.fonts.ready.then(() => {
-      if (!root.hidden) {
-        controller.fitTo(layout.reflow());
-      }
+      refit();
     });
   }
 
@@ -256,6 +310,7 @@ interface PrimitiveRenderContext {
   tokenIndex: TokenIndex;
   primitive: PrimitiveDefinition;
   family: string;
+  onSpecimenResize?: () => void;
 }
 
 interface TokenApplicationOptions {
@@ -274,13 +329,17 @@ interface TokenApplicationOptions {
 const FAMILY_ORDER = [
   'button',
   'input',
+  'select',
   'checkbox',
+  'radio',
   'switch',
   'slider',
+  'text',
   'surface',
   'card',
   'media',
   'navigation',
+  'tabs',
   'separator',
   'list',
   'row',
@@ -288,10 +347,28 @@ const FAMILY_ORDER = [
   'badge',
   'icon',
   'skeleton',
+  'toast',
   'dialog',
   'menu',
   'sheet',
   'generic'
+];
+
+/**
+ * Board column grouping: related families stack vertically in one shared
+ * column so the primitives board reads as a handful of organized groups
+ * instead of one long horizontal strip. Families not listed here (app-added)
+ * fall through to their own trailing columns in FAMILY_ORDER order.
+ */
+const FAMILY_COLUMN_GROUPS: string[][] = [
+  ['button'],
+  ['input', 'select', 'checkbox', 'radio', 'switch', 'slider'],
+  ['text'],
+  ['surface', 'card', 'media'],
+  ['navigation', 'tabs'],
+  ['separator', 'list', 'row'],
+  ['loading', 'badge', 'icon', 'skeleton', 'toast'],
+  ['dialog', 'menu', 'sheet']
 ];
 
 function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
@@ -370,7 +447,8 @@ function addPrimitiveDefinitionCard(
   tokenIndex: TokenIndex,
   primitive: PrimitiveDefinition,
   family: string,
-  position: PositionedCard
+  position: PositionedCard,
+  onSpecimenResize?: () => void
 ): HTMLElement {
   const card = createSpecCard({
     label: primitive.name,
@@ -385,7 +463,13 @@ function addPrimitiveDefinitionCard(
 
   const body = appendSpecBody(card);
   body.classList.add('primitive-specimen-body');
-  body.append(renderPrimitiveSpecimen({ bundle, tokenIndex, primitive, family }));
+  if (primitive.prototype) {
+    body.classList.add('primitive-specimen-body-canonical');
+    // Canonical cards hug their measured grid; column positions are recomputed
+    // from real widths on every refit.
+    card.style.width = 'max-content';
+  }
+  body.append(renderPrimitiveSpecimen({ bundle, tokenIndex, primitive, family, ...(onSpecimenResize ? { onSpecimenResize } : {}) }));
 
   root.append(card);
   controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
@@ -415,7 +499,177 @@ const primitiveFamilyRenderers: Record<string, (context: PrimitiveRenderContext)
 };
 
 function renderPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
-  return primitiveFamilyRenderers[context.family]?.(context) ?? renderGenericPrimitiveCard(context);
+  if (context.primitive.prototype) {
+    return renderCanonicalPrimitiveSpecimen(context);
+  }
+  const fallback = primitiveFamilyRenderers[context.family]?.(context) ?? renderGenericPrimitiveCard(context);
+  fallback.dataset.prototypeRenderMode = 'legacy-fallback';
+  fallback.dataset.prototypeRenderLabel = 'Legacy family fallback';
+  return fallback;
+}
+
+function renderCanonicalPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
+  const root = el('div', 'canonical-primitive-specimen');
+  root.dataset.prototypeRenderMode = 'canonical-app-owned';
+  const states = context.primitive.prototype?.states ?? [];
+  const variants = context.primitive.prototype?.variants ?? [];
+  // Specimens review on the app's own canvas color, not on a Blueprint-drawn
+  // surface: the stage is the only surface, cells stay transparent.
+  const stage = el('div', 'canonical-primitive-stage');
+  const canvasColor = findTokenValue(context.bundle, ['background']);
+  const labelColor = findTokenValue(context.bundle, ['text-muted', 'muted', 'text-secondary']);
+  if (canvasColor) {
+    stage.style.setProperty('--stage-bg', canvasColor);
+  }
+  if (labelColor) {
+    stage.style.setProperty('--stage-fg', labelColor);
+  }
+  // Every canonical primitive renders as the same review grid: one header row
+  // naming the states, then one content row per variant. Cells keep their
+  // natural family size and the container hugs the grid — never the reverse.
+  const rowLabels = variants.length > 0 ? variants : ['default'];
+  const matrix = el('div', 'canonical-primitive-matrix');
+  matrix.style.setProperty('--matrix-cols', String(states.length));
+  matrix.style.setProperty('--cell-w', `${primitiveCellWidth(context.family, context.primitive.id)}px`);
+  matrix.append(el('p', 'canonical-prototype-state-label canonical-primitive-matrix-corner', 'type'));
+  for (const state of states) {
+    matrix.append(el('p', 'canonical-prototype-state-label canonical-primitive-col-label', state));
+  }
+  for (const variant of rowLabels) {
+    matrix.append(el('p', 'canonical-primitive-variant-label', variant));
+    for (const state of states) {
+      matrix.append(createCanonicalPrimitiveCell(context, state, variants.length > 0 ? variant : undefined));
+    }
+  }
+  stage.append(matrix);
+  root.append(stage);
+  return root;
+}
+
+function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): string | undefined {
+  const colorGroup = bundle.tokens.tokenGroups.find(group => group.id === 'color');
+  for (const id of tokenIds) {
+    const token = colorGroup?.tokens.find(candidate => candidate.id === id);
+    if (token) {
+      return token.value;
+    }
+  }
+  return undefined;
+}
+
+function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: string, variant?: string): HTMLElement {
+  const item = el('section', 'canonical-primitive-state canonical-primitive-cell');
+  try {
+    const compiled = compilePrototypeDocument({
+      bundle: context.bundle,
+      target: { kind: 'primitive', id: context.primitive.id },
+      state,
+      ...(variant ? { variant } : {})
+    });
+    const iframe = document.createElement('iframe');
+    iframe.className = 'canonical-primitive-iframe';
+    applyPrototypeIframeIsolation(iframe);
+    iframe.title = `${context.primitive.name} · ${variant ? `${variant} · ` : ''}${state}`;
+    iframe.srcdoc = compiled.html;
+    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
+    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
+    item.append(iframe);
+    // The visible frame keeps its empty-permission sandbox, so its content is
+    // measured through an ephemeral offscreen twin instead; the twin renders
+    // the same CSP-locked no-script document and is removed immediately.
+    measureCanonicalCellSize(compiled.html, primitiveCellWidth(context.family, context.primitive.id), size => {
+      iframe.style.width = `${size.width}px`;
+      iframe.style.height = `${size.height}px`;
+      context.onSpecimenResize?.();
+    });
+  } catch (error) {
+    item.append(createPrototypeCompileError(error));
+  }
+  return item;
+}
+
+/**
+ * Fits a specimen cell to its rendered control so the review cell hugs the
+ * content instead of clipping or stretching it. The family width is the floor
+ * (keeps grid columns uniform); content that runs wider grows its own cell.
+ * Full-bleed controls (width:100% roots) measure at the floor and keep it.
+ */
+function measureCanonicalCellSize(
+  html: string,
+  fallbackWidth: number,
+  done: (size: { width: number; height: number }) => void
+): void {
+  const probe = document.createElement('iframe');
+  probe.style.cssText = `position:absolute;left:-10000px;top:0;width:${fallbackWidth}px;height:88px;border:0;visibility:hidden;`;
+  probe.setAttribute('aria-hidden', 'true');
+  probe.addEventListener('load', () => {
+    try {
+      const control = probe.contentDocument?.querySelector<HTMLElement>('[data-blueprint-primitive]') ?? probe.contentDocument?.body;
+      const rect = control?.getBoundingClientRect();
+      const measuredWidth = rect ? Math.ceil(rect.width) + 24 : fallbackWidth;
+      const measuredHeight = rect ? Math.ceil(rect.height) + 24 : 88;
+      done({
+        width: Math.max(fallbackWidth, Math.min(520, measuredWidth)),
+        height: Math.min(280, Math.max(40, measuredHeight))
+      });
+    } catch {
+      // Keep the default cell size when the document cannot be measured.
+    } finally {
+      probe.remove();
+    }
+  });
+  probe.srcdoc = html;
+  document.body.append(probe);
+}
+
+/**
+ * Natural review-cell width per primitive family, mirroring the reference
+ * canvas: small centered cells for compact controls, wider cells for fields,
+ * rows, and panels. Column headers align over these cells.
+ */
+function familyCellWidth(family: string): number {
+  const widths: Record<string, number> = {
+    button: 140,
+    input: 190,
+    select: 190,
+    checkbox: 120,
+    radio: 120,
+    switch: 120,
+    slider: 180,
+    text: 240,
+    surface: 240,
+    card: 240,
+    media: 240,
+    navigation: 280,
+    tabs: 300,
+    separator: 200,
+    list: 260,
+    row: 260,
+    loading: 120,
+    badge: 96,
+    icon: 96,
+    skeleton: 220,
+    toast: 240,
+    dialog: 240,
+    menu: 240,
+    sheet: 240
+  };
+  return widths[family] ?? 200;
+}
+
+/** Primitives whose natural footprint exceeds their family's default cell. */
+const PRIMITIVE_CELL_WIDTH_OVERRIDES: Record<string, number> = {
+  'otp-input': 344
+};
+
+function primitiveCellWidth(family: string, primitiveId: string): number {
+  return PRIMITIVE_CELL_WIDTH_OVERRIDES[primitiveId] ?? familyCellWidth(family);
+}
+
+/** Width a canonical specimen card needs to hug its review grid. */
+function canonicalSpecimenCardWidth(family: string, primitive: PrimitiveDefinition): number {
+  const cols = Math.max(1, primitive.prototype?.states.length ?? 1);
+  return 28 + 88 + 8 + cols * (primitiveCellWidth(family, primitive.id) + 8) + 4;
 }
 
 function renderVisualStateSets(
@@ -1717,9 +1971,13 @@ function inferPrimitiveFamily(primitive: PrimitiveDefinition): string {
   const terms = primitiveFamilyTerms(primitive);
   if (hasFamilyTerm(terms, 'button')) return 'button';
   if (hasFamilyTerm(terms, 'otp', 'input')) return 'input';
+  if (hasFamilyTerm(terms, 'select')) return 'select';
   if (hasFamilyTerm(terms, 'checkbox')) return 'checkbox';
+  if (hasFamilyTerm(terms, 'radio')) return 'radio';
   if (hasFamilyTerm(terms, 'switch')) return 'switch';
   if (hasFamilyTerm(terms, 'slider')) return 'slider';
+  if (hasFamilyTerm(terms, 'tabs', 'tab')) return 'tabs';
+  if (hasFamilyTerm(terms, 'text', 'typography')) return 'text';
   if (hasFamilyTerm(terms, 'surface')) return 'surface';
   if (hasFamilyTerm(terms, 'media')) return 'media';
   if (hasFamilyTerm(terms, 'card')) return 'card';
@@ -1731,6 +1989,7 @@ function inferPrimitiveFamily(primitive: PrimitiveDefinition): string {
   if (hasFamilyTerm(terms, 'badge', 'pill')) return 'badge';
   if (hasFamilyTerm(terms, 'icon')) return 'icon';
   if (hasFamilyTerm(terms, 'skeleton')) return 'skeleton';
+  if (hasFamilyTerm(terms, 'toast')) return 'toast';
   if (hasFamilyTerm(terms, 'dialog')) return 'dialog';
   if (hasFamilyTerm(terms, 'menu')) return 'menu';
   if (hasFamilyTerm(terms, 'sheet')) return 'sheet';
@@ -1755,44 +2014,22 @@ function familySortIndex(family: string): number {
   return index === -1 ? FAMILY_ORDER.length : index;
 }
 
-function familyLabel(family: string): string {
-  const labels: Record<string, string> = {
-    button: 'Actions',
-    input: 'Inputs',
-    checkbox: 'Checks',
-    switch: 'Switches',
-    slider: 'Ranges',
-    surface: 'Surfaces',
-    card: 'Cards',
-    media: 'Media',
-    navigation: 'Navigation',
-    separator: 'Separators',
-    list: 'Lists',
-    row: 'Rows',
-    loading: 'Loading',
-    badge: 'Badges',
-    icon: 'Icons',
-    skeleton: 'Skeletons',
-    dialog: 'Dialogs',
-    menu: 'Menus',
-    sheet: 'Sheets',
-    generic: 'Generic'
-  };
-  return labels[family] ?? family;
-}
-
 function familyAccent(family: string): string {
   const accents: Record<string, string> = {
     token: 'var(--bp-sample-accent-token)',
     button: 'var(--bp-sample-accent-action)',
     input: 'var(--bp-sample-accent-input)',
+    select: 'var(--bp-sample-accent-input)',
     checkbox: 'var(--bp-sample-accent-input)',
+    radio: 'var(--bp-sample-accent-input)',
     switch: 'var(--bp-sample-accent-input)',
     slider: 'var(--bp-sample-accent-input)',
+    text: 'var(--bp-sample-accent-input)',
     surface: 'var(--bp-sample-accent-surface)',
     card: 'var(--bp-sample-accent-surface)',
     media: 'var(--bp-sample-accent-surface)',
     navigation: 'var(--bp-sample-accent-surface)',
+    tabs: 'var(--bp-sample-accent-surface)',
     separator: 'var(--bp-sample-accent-surface)',
     list: 'var(--bp-sample-accent-row)',
     row: 'var(--bp-sample-accent-row)',
@@ -1800,6 +2037,7 @@ function familyAccent(family: string): string {
     badge: 'var(--bp-sample-accent-feedback)',
     icon: 'var(--bp-sample-accent-feedback)',
     skeleton: 'var(--bp-sample-accent-feedback)',
+    toast: 'var(--bp-sample-accent-feedback)',
     dialog: 'var(--bp-sample-accent-overlay)',
     menu: 'var(--bp-sample-accent-overlay)',
     sheet: 'var(--bp-sample-accent-overlay)',
@@ -1879,9 +2117,14 @@ function applyTokenPreview(element: HTMLElement, token: DesignToken): void {
 }
 
 function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
-  const frameLayouts = layoutScreenFrames(bundle);
+  const params = new URLSearchParams(location.search);
+  const request: PrototypeReviewSelectionRequest = {
+    state: params.get('state') ?? undefined,
+    viewport: params.get('viewport') ?? undefined
+  };
+  const frameLayouts = layoutScreenFrames(bundle, request);
   const fallbackWidth = Math.max(393, ...frameLayouts.map(layout => layout.preset.width));
-  const fallbackHeight = Math.max(852, ...frameLayouts.map(layout => layout.preset.height));
+  const fallbackHeight = Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.screen, layout.preset)));
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.15,
@@ -1891,7 +2134,16 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const controller = configure();
   const tokenIndex = createTokenIndex(bundle);
   frameLayouts.forEach(layout => {
-    root.append(createPrototypeFrame(bundle, tokenIndex, layout.screen, layout.preset, layout.x, layout.y));
+    root.append(createPrototypeFrame(
+      bundle,
+      tokenIndex,
+      layout.screen,
+      layout.preset,
+      layout.x,
+      layout.y,
+      layout.prototypeSelection,
+      layout.selectionError
+    ));
   });
 
   return {
@@ -1900,35 +2152,100 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   };
 }
 
-function layoutScreenFrames(bundle: BlueprintProjectBundle): Array<{ screen: ScreenDefinition; preset: FramePreset; x: number; y: number }> {
+interface ScreenFrameLayout {
+  screen: ScreenDefinition;
+  preset: FramePreset;
+  x: number;
+  y: number;
+  prototypeSelection?: SelectedPrototypeReviewCondition;
+  selectionError?: string;
+}
+
+function layoutScreenFrames(bundle: BlueprintProjectBundle, request: PrototypeReviewSelectionRequest): ScreenFrameLayout[] {
   const startX = 90;
   const startY = 160;
   const gapX = 80;
-  const gapY = 140;
-  const maxRowWidth = 1600;
   let x = startX;
-  let y = startY;
-  let rowWidth = 0;
-  let rowHeight = 0;
-  const layouts: Array<{ screen: ScreenDefinition; preset: FramePreset; x: number; y: number }> = [];
+  const layouts: ScreenFrameLayout[] = [];
 
+  // Screens always lay out on a single row; horizontal pan reveals the rest.
   for (const screen of bundle.screens.screens) {
-    const preset = resolveFramePreset(bundle, screen);
-    const nextWidth = rowWidth === 0 ? preset.width : rowWidth + gapX + preset.width;
-    if (rowWidth > 0 && nextWidth > maxRowWidth) {
-      x = startX;
-      y += rowHeight + gapY;
-      rowWidth = 0;
-      rowHeight = 0;
+    for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
+      layouts.push({ screen, preset: resolved.preset, x, y: startY, ...resolved.prototype });
+      x += resolved.preset.width + gapX;
     }
-
-    layouts.push({ screen, preset, x, y });
-    x += preset.width + gapX;
-    rowWidth = rowWidth === 0 ? preset.width : rowWidth + gapX + preset.width;
-    rowHeight = Math.max(rowHeight, preset.height);
   }
 
   return layouts;
+}
+
+// Canonical frames draw device/browser chrome outside the captured screen host,
+// so the frame's visible extent exceeds the preset's content dimensions.
+function frameExtentHeight(screen: ScreenDefinition, preset: FramePreset): number {
+  if (!screen.prototype) {
+    return preset.height;
+  }
+  return preset.height + (preset.type === 'mobile' ? 59 + 24 : 48);
+}
+
+function resolveScreenFrameVariants(
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  request: PrototypeReviewSelectionRequest
+): Array<{
+  preset: FramePreset;
+  prototype: { prototypeSelection?: SelectedPrototypeReviewCondition; selectionError?: string };
+}> {
+  // An explicit state/viewport request (capture, deep link) keeps single-frame selection.
+  if (request.state || request.viewport || !screen.prototype) {
+    return [resolveScreenFrame(bundle, screen, request)];
+  }
+  // Default board view: one frame per declared review condition (phone, desktop, states).
+  return screen.prototype.reviewConditions.map(condition => {
+    const preset = bundle.manifest.framePresets.find(candidate => candidate.id === condition.framePresetId);
+    if (!preset) {
+      return {
+        preset: resolveFramePreset(bundle, screen),
+        prototype: {
+          selectionError: `Screen "${screen.id}" review condition "${condition.id}" references unknown frame preset "${condition.framePresetId}".`
+        }
+      };
+    }
+    return {
+      preset,
+      prototype: {
+        prototypeSelection: { conditionId: condition.id, framePresetId: condition.framePresetId, state: condition.state }
+      }
+    };
+  });
+}
+
+function resolveScreenFrame(
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  request: PrototypeReviewSelectionRequest
+): {
+  preset: FramePreset;
+  prototype: { prototypeSelection?: SelectedPrototypeReviewCondition; selectionError?: string };
+} {
+  if (!screen.prototype) {
+    return { preset: resolveFramePreset(bundle, screen), prototype: {} };
+  }
+  try {
+    const prototypeSelection = selectPrototypeReviewCondition(screen, request);
+    const preset = bundle.manifest.framePresets.find(candidate => candidate.id === prototypeSelection.framePresetId);
+    if (!preset) {
+      throw new Error(
+        `Screen "${screen.id}" review condition "${prototypeSelection.conditionId}" references unknown frame preset "${prototypeSelection.framePresetId}".`
+      );
+    }
+    return { preset, prototype: { prototypeSelection } };
+  } catch (error) {
+    return {
+      preset: resolveFramePreset(bundle, screen),
+      prototype: { selectionError: errorMessage(error) }
+    };
+  }
 }
 
 function resolveFramePreset(bundle: BlueprintProjectBundle, screen: ScreenDefinition): FramePreset {
@@ -1971,7 +2288,16 @@ function addGroupHeading(
   return heading;
 }
 
-function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, screen: ScreenDefinition, preset: FramePreset, x: number, y: number): HTMLElement {
+function createPrototypeFrame(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  screen: ScreenDefinition,
+  preset: FramePreset,
+  x: number,
+  y: number,
+  prototypeSelection?: SelectedPrototypeReviewCondition,
+  selectionError?: string
+): HTMLElement {
   const frame = el('article', 'frame');
   frame.style.left = `${x}px`;
   frame.style.top = `${y}px`;
@@ -1988,6 +2314,10 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   frame.dataset.frameType = preset.type;
   frame.dataset.framePresetId = preset.id;
   frame.dataset.boundarySummary = screen.description;
+  if (prototypeSelection) {
+    frame.dataset.reviewConditionId = prototypeSelection.conditionId;
+    frame.dataset.reviewState = prototypeSelection.state;
+  }
 
   const head = el('div', 'frame-head bp-chrome-frame-head');
   const chip = el('button', 'frame-chip bp-chrome-frame-chip') as HTMLButtonElement;
@@ -2014,8 +2344,77 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   const save = createIconButton('frame-save bp-chrome-frame-tool bp-chrome-frame-save', 'Save screen as PNG', downloadIcon());
   head.append(chip, shot, save);
 
+  if (screen.prototype) {
+    // Canonical screens render inside device/browser chrome that lives OUTSIDE the
+    // captured screen host, keeping CLI/canvas captures at exact preset content pixels.
+    const screenEl = createCanonicalPrototypeScreen(bundle, screen, preset, prototypeSelection, selectionError);
+    wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
+    frame.classList.add('frame-canonical');
+    if (preset.type === 'mobile') {
+      frame.append(head, createStatusBar(), screenEl, createFrameHomeIndicator());
+    } else {
+      frame.append(head, createBrowserBar(screen), screenEl);
+    }
+    return frame;
+  }
+
+  const screenEl = createLegacyPrototypeScreen(bundle, tokenIndex, screen, preset);
+  wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
+
+  frame.append(head, screenEl);
+  return frame;
+}
+
+function createFrameHomeIndicator(): HTMLElement {
+  const strip = el('div', 'frame-home-indicator');
+  strip.append(el('span', 'frame-home-indicator-pill'));
+  return strip;
+}
+
+function createCanonicalPrototypeScreen(
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  preset: FramePreset,
+  selection: SelectedPrototypeReviewCondition | undefined,
+  selectionError: string | undefined
+): HTMLElement {
+  const host = el('div', `screen canonical-prototype-screen canonical-prototype-screen-${preset.type}`);
+  host.dataset.frameType = preset.type;
+  host.dataset.prototypeRenderMode = 'canonical-app-owned';
+  if (selectionError || !selection) {
+    host.append(createPrototypeCompileError(selectionError ?? `Screen "${screen.id}" has no selected review condition.`));
+    return host;
+  }
+  try {
+    const compiled = compilePrototypeDocument({
+      bundle,
+      target: { kind: 'screen', id: screen.id },
+      state: selection.state
+    });
+    const iframe = document.createElement('iframe');
+    iframe.className = 'canonical-prototype-iframe';
+    applyPrototypeIframeIsolation(iframe);
+    iframe.title = `${screen.name} · ${selection.state} · ${preset.name}`;
+    iframe.srcdoc = compiled.html;
+    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
+    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
+    host.append(iframe);
+  } catch (error) {
+    host.append(createPrototypeCompileError(error));
+  }
+  return host;
+}
+
+function createLegacyPrototypeScreen(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  screen: ScreenDefinition,
+  preset: FramePreset
+): HTMLElement {
   const screenEl = el('div', `screen screen-template screen-template-${preset.type}`);
   screenEl.dataset.frameType = preset.type;
+  screenEl.dataset.prototypeRenderMode = 'legacy-fallback';
+  screenEl.dataset.prototypeRenderLabel = 'Legacy section projection fallback';
   const body = el('div', 'screen-template-body');
   body.dataset.screenId = screen.id;
   applyScreenCanvasTokens(body, tokenIndex);
@@ -2027,10 +2426,21 @@ function createPrototypeFrame(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   } else {
     screenEl.append(createBrowserBar(screen), body);
   }
-  wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
+  return screenEl;
+}
 
-  frame.append(head, screenEl);
-  return frame;
+function createPrototypeCompileError(error: unknown): HTMLElement {
+  const message = el('div', 'prototype-compile-error');
+  message.setAttribute('role', 'alert');
+  message.append(
+    el('strong', '', 'Prototype unavailable'),
+    el('span', '', errorMessage(error))
+  );
+  return message;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function bodyTopInset(preset: FramePreset): number {

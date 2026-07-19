@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" role="img" aria-labelledby="title">
+  <title id="title">Layered product preview fixture</title>
+  <rect x="36" y="26" width="448" height="508" rx="34" fill="#20251d" stroke="#d9ff5b" stroke-opacity=".45"/>
+  <rect x="72" y="82" width="376" height="74" rx="18" fill="#f8f7f0" fill-opacity=".12"/>
+  <rect x="72" y="188" width="248" height="18" rx="9" fill="#d9ff5b"/>
+  <rect x="72" y="230" width="344" height="14" rx="7" fill="#f8f7f0" fill-opacity=".28"/>
+  <rect x="72" y="266" width="304" height="14" rx="7" fill="#f8f7f0" fill-opacity=".18"/>
+  <rect x="72" y="338" width="376" height="142" rx="22" fill="#11140f" stroke="#f8f7f0" stroke-opacity=".18"/>
+</svg>

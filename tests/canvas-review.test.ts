@@ -7,7 +7,7 @@ import {
   summarizeScreenSections,
   validateVisibleBoundaryRecords
 } from '../src/core/review';
-import { createConfiguredProjectBundle } from '../src/app/fixture-projects';
+import { createConfiguredProjectBundle } from '../src/core/bundle';
 import type { VisibleBoundaryRecord } from '../src/core/review';
 
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
@@ -72,10 +72,47 @@ describe('Blueprint canvas-to-contract review loop', () => {
     assert.equal(manifest.projectId, 'nova-care');
     assert.equal(manifest.board, 'screens');
     assert.equal(manifest.screenId, 'home');
+    assert.equal(manifest.capture.status, 'captured');
     assert.equal(manifest.screenshot.status, 'captured');
     assert.equal(manifest.boundaries.length, 2);
     assert.equal(manifest.boundaries[1]?.boundaryId, 'nova-care/section/home/next-action');
     assert.match(manifest.boundaries[1]?.packet.command ?? '', /blueprint extract --project fixtures\/app-owned\/nova-care\/design\/blueprint --boundary section:home\/next-action --mode deep/);
+  });
+
+  it('records an unresolved prototype capture with exact source, state, and viewport context', async () => {
+    const bundle = await loadProjectFromFs(novaRoot);
+    const records: VisibleBoundaryRecord[] = [
+      { id: 'nova-care/screen/home', kind: 'screen', board: 'screens', label: 'Care Home', screenId: 'home' }
+    ];
+    const manifest = createReviewManifest(bundle, records, {
+      generatedAt: '2026-07-15T06:41:07.000Z',
+      board: 'screens',
+      screenId: 'home',
+      captureStatus: 'unresolved',
+      captureReason: 'No current browser capture exists.',
+      prototypeReview: {
+        source: 'prototype/screens/home.html',
+        state: 'initial',
+        framePresetId: 'desktop',
+        conditionId: 'desktop-initial'
+      },
+      packetCommandBase: 'blueprint extract'
+    });
+
+    assert.deepEqual(manifest.capture, {
+      status: 'unresolved',
+      reason: 'No current browser capture exists.'
+    });
+    assert.deepEqual(manifest.screenshot, manifest.capture);
+    assert.deepEqual(manifest.boundaries[0]?.capture, manifest.capture);
+    assert.equal(manifest.prototypeReview?.source, 'prototype/screens/home.html');
+    assert.equal(manifest.prototypeReview?.state, 'initial');
+    assert.equal(manifest.prototypeReview?.framePresetId, 'desktop');
+    assert.equal(manifest.prototypeReview?.conditionId, 'desktop-initial');
+    assert.throws(
+      () => createReviewManifest(bundle, records, { board: 'screens', captureStatus: 'unresolved' }),
+      /require a capture reason/
+    );
   });
 
   it('creates boundary-scoped canvas-side style evidence artifacts', async () => {

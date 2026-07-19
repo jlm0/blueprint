@@ -1,0 +1,24 @@
+<main data-blueprint-screen="service-health" data-blueprint-state="populated">
+  <aside class="ops-rail" aria-label="Operations navigation">
+    <div class="ops-wordmark"><span>DO</span><strong>Dense Ops</strong></div>
+    <nav>
+      <a class="is-active" href="#services">Services <span>06</span></a>
+      <a href="#incidents">Incidents <span>02</span></a>
+      <a href="#deployments">Deployments <span>14</span></a>
+      <a href="#audit">Audit log</a>
+    </nav>
+    <div class="ops-rail-status"><span></span><p>Control plane<br /><strong>Connected</strong></p></div>
+  </aside>
+  <section class="ops-content" id="services">
+    <header class="ops-page-header">
+      <div><p>Operations / Runtime</p><h1>System overview</h1></div>
+      <div class="ops-clock"><span>Last sync</span><strong>23:42:16 UTC</strong></div>
+    </header>
+    <div class="ops-summary" aria-label="System summary">
+      <article><span>Availability</span><strong>99.97%</strong><small>30-day window</small></article>
+      <article><span>Open incidents</span><strong>02</strong><small>1 investigating</small></article>
+      <article><span>Requests / min</span><strong>18.4k</strong><small>+4.8% over hour</small></article>
+    </div>
+    <blueprint-use kind="component" ref="service-health-table" state="populated"></blueprint-use>
+  </section>
+</main>

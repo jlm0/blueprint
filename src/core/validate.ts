@@ -2,9 +2,11 @@ import type {
   BlueprintProjectBundle,
   BoardDefinition,
   BoundaryDependency,
+  ComponentDefinition,
   FramePreset,
   ImplementationTarget,
   PrimitiveDefinition,
+  PrototypeSource,
   PrimitiveStateSet,
   ReadinessItem,
   ReadinessReport,
@@ -18,6 +20,8 @@ import type {
 } from './types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
 
 const supportedHandoffContractVersion = '1.0.0';
 
@@ -38,6 +42,10 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     errors.push(`primitives.projectId "${bundle.primitives.projectId}" must match manifest project id "${projectId}".`);
   }
 
+  if (bundle.components.projectId !== projectId) {
+    errors.push(`components.projectId "${bundle.components.projectId}" must match manifest project id "${projectId}".`);
+  }
+
   if (bundle.screens.projectId !== projectId) {
     errors.push(`screens.projectId "${bundle.screens.projectId}" must match manifest project id "${projectId}".`);
   }
@@ -53,6 +61,9 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     validatePrimitive(errors, primitive, tokenGroupIds);
   });
   const tokenIds = collectTokenIds(bundle.tokens.tokenGroups);
+  const componentIds = collectIds(errors, 'components.components', bundle.components.components, component => {
+    validateComponent(errors, component, tokenGroupIds);
+  });
 
   const stateSetIds = new Set<string>();
   for (const primitive of bundle.primitives.primitives) {
@@ -67,7 +78,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
-    validateScreen(errors, screen, framePresetIds, primitiveIds, stateSetIds);
+    validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
   });
   const sectionIds = new Set(
     bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
@@ -79,6 +90,20 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
         tokenGroupIds,
         primitiveIds,
         stateSetIds,
+        componentIds,
+        screenIds,
+        sectionIds
+      });
+    }
+  }
+
+  for (const component of bundle.components.components) {
+    for (const dependency of component.uses ?? []) {
+      validateDependency(errors, `component.${component.id}.uses`, dependency, {
+        tokenGroupIds,
+        primitiveIds,
+        stateSetIds,
+        componentIds,
         screenIds,
         sectionIds
       });
@@ -92,12 +117,17 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
           tokenGroupIds,
           primitiveIds,
           stateSetIds,
+          componentIds,
           screenIds,
           sectionIds
         });
       }
     }
   }
+
+  validateBasePrimitiveContract(errors, bundle);
+  validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
+  recordPrototypeSourceGraphValidation(errors, bundle);
 
   if ((options.mode ?? 'baseline') === 'strict') {
     validateStrictHandoffReadiness(errors, bundle);
@@ -108,6 +138,24 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
 
 export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
   const items: ReadinessItem[] = [];
+  const fidelityTier: ReadinessReport['fidelityTier'] = hasPrototypeDeclarations(bundle)
+    ? 'high-fidelity'
+    : 'baseline-compatible';
+  const prototypeSources = relativePrototypeSources(bundle);
+
+  if (fidelityTier === 'high-fidelity') {
+    for (const sourceRef of prototypeSources) {
+      if (!(sourceRef in bundle.prototypeSourceContents) && !(sourceRef in bundle.prototypeAssetContents)) {
+        items.push({
+          path: `prototypeSources.${sourceRef}`,
+          severity: 'blocker',
+          source: 'synthesized-missing',
+          message: `Declared prototype source "${sourceRef}" does not exist or could not be loaded.`
+        });
+      }
+    }
+    recordPrototypeSourceGraphReadiness(items, bundle);
+  }
 
   for (const primitive of bundle.primitives.primitives ?? []) {
     if (primitive.prototypeOnly) {
@@ -165,6 +213,22 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
     }
   }
 
+  for (const component of bundle.components.components ?? []) {
+    if (component.prototypeOnly) {
+      continue;
+    }
+    if (component.implementationTargets) {
+      recordImplementationTargetReadiness(items, `component.${component.id}.implementationTargets`, component.implementationTargets);
+    }
+    recordStyleEvidenceReadiness(
+      items,
+      bundle,
+      `component.${component.id}.styleEvidence`,
+      component.styleRefs ?? [],
+      component.styleEvidence
+    );
+  }
+
   const blockers = items.filter(item => item.severity === 'blocker');
   let tier: ReadinessReport['tier'] = 'ready';
   if (blockers.length > 0) {
@@ -177,10 +241,29 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
 
   return {
     projectId: bundle.manifest.project.id,
+    fidelityTier,
+    prototypeSources,
     tier,
     items,
     blockers
   };
+}
+
+function recordPrototypeSourceGraphValidation(errors: string[], bundle: BlueprintProjectBundle): void {
+  for (const issue of inspectPrototypeSourceGraph(bundle)) {
+    errors.push(`Prototype source graph ${issue.boundaryId} state "${issue.state}" cannot compile: ${issue.message}`);
+  }
+}
+
+function recordPrototypeSourceGraphReadiness(items: ReadinessItem[], bundle: BlueprintProjectBundle): void {
+  for (const issue of inspectPrototypeSourceGraph(bundle)) {
+    items.push({
+      path: `prototypeSourceGraph.${issue.boundaryId}.${issue.state}`,
+      severity: 'blocker',
+      source: 'declared',
+      message: `Prototype source graph ${issue.boundaryId} state "${issue.state}" cannot compile: ${issue.message}`
+    });
+  }
 }
 
 function recordImplementationTargetReadiness(
@@ -379,6 +462,20 @@ function validatePrimitive(errors: string[], primitive: PrimitiveDefinition, tok
   collectIds(errors, `primitive.${primitive.id}.stateSets`, primitive.stateSets, stateSet => validateStateSet(errors, primitive, stateSet));
 }
 
+function validateComponent(errors: string[], component: ComponentDefinition, tokenGroupIds: Set<string>): void {
+  requireString(errors, 'component.id', component.id);
+  requireString(errors, `component.${component.id}.name`, component.name);
+  requireString(errors, `component.${component.id}.description`, component.description);
+  requireArray(errors, `component.${component.id}.uses`, component.uses);
+  requireArray(errors, `component.${component.id}.tokenGroupIds`, component.tokenGroupIds);
+  requireObject(errors, `component.${component.id}.prototype`, component.prototype);
+  for (const tokenGroupId of component.tokenGroupIds ?? []) {
+    if (!tokenGroupIds.has(tokenGroupId)) {
+      errors.push(`component.${component.id}.tokenGroupIds references missing token group "${tokenGroupId}".`);
+    }
+  }
+}
+
 function validateStateSet(errors: string[], primitive: PrimitiveDefinition, stateSet: PrimitiveStateSet): void {
   requireString(errors, `primitive.${primitive.id}.stateSet.id`, stateSet.id);
   requireString(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.name`, stateSet.name);
@@ -400,6 +497,7 @@ function validateScreen(
   screen: ScreenDefinition,
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
+  componentIds: Set<string>,
   stateSetIds: Set<string>
 ): void {
   requireString(errors, 'screen.id', screen.id);
@@ -423,6 +521,9 @@ function validateScreen(
       if (dependency.kind === 'state-set' && !stateSetIds.has(dependency.id)) {
         errors.push(`screen.${screen.id}.section.${section.id}.uses references missing state-set "${dependency.id}".`);
       }
+      if (dependency.kind === 'component' && !componentIds.has(dependency.id)) {
+        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing component "${dependency.id}".`);
+      }
     }
   });
 }
@@ -435,6 +536,7 @@ function validateDependency(
     tokenGroupIds: Set<string>;
     primitiveIds: Set<string>;
     stateSetIds: Set<string>;
+    componentIds: Set<string>;
     screenIds: Set<string>;
     sectionIds: Set<string>;
   }
@@ -447,13 +549,195 @@ function validateDependency(
     'token-group': known.tokenGroupIds,
     primitive: known.primitiveIds,
     'state-set': known.stateSetIds,
+    component: known.componentIds,
     screen: known.screenIds,
     section: known.sectionIds
   } as const;
 
-  if (dependency.kind in map && !map[dependency.kind].has(dependency.id)) {
+  if (!(dependency.kind in map)) {
+    errors.push(`${path} has unsupported dependency kind "${String(dependency.kind)}".`);
+    return;
+  }
+  if (!map[dependency.kind].has(dependency.id)) {
     errors.push(`${path} references missing ${dependency.kind} "${dependency.id}".`);
   }
+}
+
+function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjectBundle): void {
+  // The locked universal base floor applies only to the high-fidelity/prototype
+  // contract; legacy baseline projects without prototypeHost are unaffected.
+  if (!bundle.manifest.prototypeHost) {
+    return;
+  }
+
+  const primitivesById = new Map(bundle.primitives.primitives.map(primitive => [primitive.id, primitive]));
+  for (const base of BASE_PRIMITIVE_CONTRACT) {
+    const primitive = primitivesById.get(base.id);
+    if (!primitive) {
+      errors.push(`primitives is missing locked base primitive "${base.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
+      continue;
+    }
+
+    // Supersets stay valid: apps may add state sets and states, never reduce the base floor.
+    const stateSetsById = new Map((primitive.stateSets ?? []).map(stateSet => [stateSet.id, stateSet]));
+    for (const requiredSet of base.stateSets) {
+      const stateSet = stateSetsById.get(requiredSet.id);
+      if (!stateSet) {
+        errors.push(`primitive.${base.id}.stateSets is missing locked base state-set "${requiredSet.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
+        continue;
+      }
+
+      const stateIds = new Set((stateSet.states ?? []).map(state => state.id));
+      for (const stateId of requiredSet.states) {
+        if (!stateIds.has(stateId)) {
+          errors.push(`primitive.${base.id}.stateSet.${requiredSet.id} is missing locked base state "${stateId}". ${BASE_PRIMITIVE_LOCK_REASON}`);
+        }
+      }
+    }
+  }
+}
+
+function validatePrototypeContracts(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  tokenIds: Set<string>,
+  framePresetIds: Set<string>
+): void {
+  for (const primitive of bundle.primitives.primitives) {
+    if (!primitive.prototype) {
+      continue;
+    }
+    validatePrototypeSource(errors, bundle, `primitive.${primitive.id}.prototype`, primitive.prototype);
+    requireArray(errors, `primitive.${primitive.id}.prototype.slots`, primitive.prototype.slots);
+    requireArray(errors, `primitive.${primitive.id}.prototype.variants`, primitive.prototype.variants);
+    requireString(errors, `primitive.${primitive.id}.prototype.accessibilityIntent`, primitive.prototype.accessibilityIntent);
+    requireObject(errors, `primitive.${primitive.id}.prototype.tokenRoles`, primitive.prototype.tokenRoles);
+    for (const [tokenRef, role] of Object.entries(primitive.prototype.tokenRoles ?? {})) {
+      if (!tokenIds.has(tokenRef)) {
+        errors.push(`primitive.${primitive.id}.prototype.tokenRoles references missing token "${tokenRef}".`);
+      }
+      requireString(errors, `primitive.${primitive.id}.prototype.tokenRoles.${tokenRef}`, role);
+    }
+    validateRenderedUses(errors, `primitive.${primitive.id}.prototype.renderedUses`, primitive.uses ?? [], primitive.prototype.renderedUses);
+  }
+
+  for (const component of bundle.components.components) {
+    validatePrototypeSource(errors, bundle, `component.${component.id}.prototype`, component.prototype);
+    requireArray(errors, `component.${component.id}.prototype.slots`, component.prototype.slots);
+    validateRenderedUses(errors, `component.${component.id}.prototype.renderedUses`, component.uses, component.prototype.renderedUses);
+  }
+
+  for (const screen of bundle.screens.screens) {
+    if (!screen.prototype) {
+      continue;
+    }
+    validatePrototypeSource(errors, bundle, `screen.${screen.id}.prototype`, screen.prototype);
+    requireArray(errors, `screen.${screen.id}.prototype.assetRefs`, screen.prototype.assetRefs);
+    requireArray(errors, `screen.${screen.id}.prototype.reviewConditions`, screen.prototype.reviewConditions);
+    for (const assetRef of screen.prototype.assetRefs ?? []) {
+      validatePrototypeFileRef(errors, bundle, `screen.${screen.id}.prototype.assetRef`, assetRef);
+      if (!isControlledAssetRef(bundle, assetRef)) {
+        errors.push(`screen.${screen.id}.prototype asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+      }
+    }
+    collectIds(errors, `screen.${screen.id}.prototype.reviewConditions`, screen.prototype.reviewConditions, condition => {
+      requireString(errors, `screen.${screen.id}.prototype.reviewCondition.id`, condition.id);
+      requireString(errors, `screen.${screen.id}.prototype.reviewCondition.${condition.id}.framePresetId`, condition.framePresetId);
+      requireString(errors, `screen.${screen.id}.prototype.reviewCondition.${condition.id}.state`, condition.state);
+      if (!framePresetIds.has(condition.framePresetId)) {
+        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references missing frame preset "${condition.framePresetId}".`);
+      }
+      if (!screen.prototype?.states.includes(condition.state)) {
+        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references undeclared state "${condition.state}".`);
+      }
+    });
+    const declaredUses = screen.sections.flatMap(section => section.uses);
+    validateRenderedUses(errors, `screen.${screen.id}.prototype.renderedUses`, declaredUses, screen.prototype.renderedUses);
+  }
+}
+
+function validatePrototypeSource(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  label: string,
+  prototype: PrototypeSource
+): void {
+  requireString(errors, `${label}.source`, prototype.source);
+  requireArray(errors, `${label}.styles`, prototype.styles);
+  requireArray(errors, `${label}.states`, prototype.states);
+  validatePrototypeFileRef(errors, bundle, `${label}.source`, prototype.source);
+  for (const styleRef of prototype.styles ?? []) {
+    validatePrototypeFileRef(errors, bundle, `${label}.style`, styleRef);
+  }
+  if (prototype.localValueExceptions) {
+    requireArray(errors, `${label}.localValueExceptions`, prototype.localValueExceptions);
+    for (const exception of prototype.localValueExceptions) {
+      requireString(errors, `${label}.localValueException.property`, exception.property);
+      requireString(errors, `${label}.localValueException.value`, exception.value);
+      requireString(errors, `${label}.localValueException.reason`, exception.reason);
+    }
+  }
+}
+
+function validatePrototypeFileRef(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  label: string,
+  sourceRef: string
+): void {
+  if (!isSafeRelativeRef(sourceRef)) {
+    errors.push(`${label} "${sourceRef}" escapes or points outside the Blueprint source root.`);
+    return;
+  }
+  if (!existsSync(path.resolve(bundle.sourceRoot, sourceRef))) {
+    errors.push(`${label} "${sourceRef}" does not exist.`);
+  }
+}
+
+function isSafeRelativeRef(sourceRef: string): boolean {
+  if (path.isAbsolute(sourceRef) || sourceRef.includes('://')) {
+    return false;
+  }
+  const segments = sourceRef.replace(/\\/g, '/').split('/');
+  return sourceRef.length > 0 && !segments.includes('..');
+}
+
+function isControlledAssetRef(bundle: BlueprintProjectBundle, assetRef: string): boolean {
+  const normalized = assetRef.replace(/\\/g, '/').replace(/^\.\//, '');
+  return (bundle.manifest.prototypeHost?.assetRoots ?? []).some(assetRoot => {
+    const root = assetRoot.replace(/\\/g, '/').replace(/\/$/, '');
+    return normalized === root || normalized.startsWith(`${root}/`);
+  });
+}
+
+function validateRenderedUses(
+  errors: string[],
+  label: string,
+  declaredUses: BoundaryDependency[],
+  renderedUses: PrototypeSource['renderedUses']
+): void {
+  if (!renderedUses) {
+    return;
+  }
+  const declared = declaredUses
+    .filter(dependency => dependency.kind === 'primitive' || dependency.kind === 'component')
+    .map(dependency => `${dependency.kind}:${dependency.id}`)
+    .sort();
+  const rendered = renderedUses.map(dependency => `${dependency.kind}:${dependency.id}`).sort();
+  if (JSON.stringify(declared) !== JSON.stringify(rendered)) {
+    errors.push(`${label} must exactly match declared reusable dependencies. Declared ${JSON.stringify(declared)}; rendered ${JSON.stringify(rendered)}.`);
+  }
+}
+
+function hasPrototypeDeclarations(bundle: BlueprintProjectBundle): boolean {
+  return bundle.primitives.primitives.some(primitive => primitive.prototype !== undefined) ||
+    bundle.components.components.length > 0 ||
+    bundle.screens.screens.some(screen => screen.prototype !== undefined);
+}
+
+function relativePrototypeSources(bundle: BlueprintProjectBundle): string[] {
+  const prefix = `${bundle.sourceRoot.replace(/\/$/, '')}/`;
+  return bundle.sourceFiles.prototypeSources.map(sourcePath => sourcePath.startsWith(prefix) ? sourcePath.slice(prefix.length) : sourcePath);
 }
 
 function collectTokenIds(groups: TokenGroup[]): Set<string> {
@@ -550,7 +834,7 @@ function validateProductionRelationship(errors: string[], label: string, relatio
   }
 
   requireString(errors, `${label}.kind`, relationship.kind);
-  if (relationship.kind === 'new-route') {
+  if (relationship.kind === 'new-route' || relationship.kind === 'existing-route') {
     requireString(errors, `${label}.routePath`, relationship.routePath);
   }
   if (

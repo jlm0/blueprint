@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "nowwhat-waitlist-proof",
+  "screens": [
+    {
+      "id": "waitlist",
+      "name": "NowWhat Waitlist Invitation",
+      "description": "High-fidelity browser-native proof of the pinned NowWhat seller invitation at desktop and phone review conditions.",
+      "framePresetId": "desktop-reference",
+      "styleRefs": ["prototype/styles/fonts.css", "prototype/screens/waitlist.css"],
+      "styleEvidence": [
+        { "styleRef": "prototype/styles/fonts.css", "status": "source", "sourceAnchor": "prototype/styles/fonts.css" },
+        { "styleRef": "prototype/screens/waitlist.css", "status": "source", "sourceAnchor": "prototype/screens/waitlist.css" }
+      ],
+      "notes": [
+        "The product preview remains present on desktop and is removed from visible/layout participation below the 1024px source breakpoint.",
+        "The page grid, exact hero wrapping, split composition, preview placement, and responsive continuation are intentionally screen-local art direction."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": ["Preserve the existing /waitlist route and production form behavior; this proof owns only the deterministic initial review state."],
+      "productionRelationship": { "kind": "existing-route", "routePath": "/waitlist" },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "Next.js + React",
+          "candidatePath": "apps/waitlist/src/app/waitlist/page.tsx",
+          "symbolName": "WaitlistPage",
+          "operationIntent": "document-existing-screen",
+          "propMapping": { "header": "SiteShell", "hero": "WaitlistHero", "form": "WaitlistForm", "proof": "WaitlistHero seller proof", "preview": "SellerWorkspaceBoard", "continuation": "FeatureActionCards" },
+          "stateMapping": {
+            "initial": "empty unfocused email field; enabled Save my spot action; no submission result",
+            "email-focused": "same invitation composition with the empty email field visibly focused"
+          },
+          "tokenAdapter": "apps/waitlist/src/app/globals.css",
+          "testPaths": ["apps/waitlist/src/components/waitlist-form.test.tsx"],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/waitlist.html",
+        "styles": ["prototype/styles/fonts.css", "prototype/screens/waitlist.css"],
+        "assetRefs": [
+          "prototype/assets/nowwhat-mark.svg",
+          "prototype/assets/nowwhat-grid.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2"
+        ],
+        "states": ["initial", "email-focused"],
+        "reviewConditions": [
+          { "id": "desktop-initial", "framePresetId": "desktop-reference", "state": "initial" },
+          { "id": "phone-initial", "framePresetId": "phone-reference", "state": "initial" },
+          { "id": "desktop-email-focused", "framePresetId": "desktop-reference", "state": "email-focused" }
+        ]
+      },
+      "sections": [
+        {
+          "id": "marketing-shell",
+          "name": "Marketing Shell",
+          "description": "Public brand header over the repeated warm-paper grid.",
+          "styleRefs": ["prototype/screens/waitlist.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/waitlist.css", "status": "source", "sourceAnchor": "prototype/screens/waitlist.css" }],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [{ "platform": "web", "framework": "Next.js + React", "candidatePath": "apps/waitlist/src/components/site-shell.tsx", "symbolName": "SiteShell", "operationIntent": "reuse-existing", "propMapping": { "navigation": "Waitlist and Tester login" }, "stateMapping": { "initial": "public shell" }, "tokenAdapter": "apps/waitlist/src/app/globals.css", "testPaths": [], "storyPaths": [], "unresolvedDecisions": [] }],
+          "uses": [
+            { "kind": "component", "id": "site-header", "reason": "Reusable public identity and navigation.", "binding": { "slot": "header", "state": "initial", "layout": "65px full-width header" } },
+            { "kind": "primitive", "id": "dev-indicator", "reason": "Pinned floating development indicator from the reference captures.", "binding": { "slot": "dev indicator", "state": "default", "layout": "fixed 40px circle, 18px from the bottom-left corner" } }
+          ]
+        },
+        {
+          "id": "hero-invitation",
+          "name": "Hero Invitation",
+          "description": "Closed-beta invitation copy, form, seller proof, and responsive workspace preview.",
+          "styleRefs": ["prototype/screens/waitlist.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/waitlist.css", "status": "source", "sourceAnchor": "prototype/screens/waitlist.css" }],
+          "notes": ["Headline text and line breaks, desktop split, grid placement, and responsive preview visibility are screen-local composition."],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [{ "platform": "web", "framework": "Next.js + React", "candidatePath": "apps/waitlist/src/containers/waitlist-page-container.tsx; apps/waitlist/src/components/waitlist-hero.tsx", "symbolName": "WaitlistPageContainer and WaitlistHero", "operationIntent": "reuse-existing", "propMapping": { "form": "WaitlistForm", "preview": "SellerWorkspaceBoard" }, "stateMapping": { "initial": "closed beta invitation" }, "tokenAdapter": "apps/waitlist/src/app/globals.css", "testPaths": [], "storyPaths": [], "unresolvedDecisions": [] }],
+          "uses": [
+            { "kind": "primitive", "id": "status-chip", "reason": "Canonical closed-beta eyebrow treatment.", "binding": { "slot": "eyebrow", "state": "default", "copy": "For_Whatnot_sellers · Closed_beta" } },
+            { "kind": "component", "id": "email-signup-form", "reason": "Reusable initial-state invitation form.", "binding": { "slot": "signup", "state": "initial", "layout": "hero form placement" } },
+            { "kind": "component", "id": "seller-trust-proof", "reason": "Reusable seller and login reassurance proof.", "binding": { "slot": "proof", "state": "initial", "layout": "wrapped proof row" } },
+            { "kind": "component", "id": "product-preview", "reason": "Reusable workspace preview composition.", "binding": { "slot": "preview", "state": "initial", "layout": "desktop second column; no phone layout box" } }
+          ]
+        },
+        {
+          "id": "feature-continuation",
+          "name": "Feature Continuation",
+          "description": "Below-fold value cards whose first edge is visible at the bottom of the phone reference.",
+          "styleRefs": ["prototype/screens/waitlist.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/waitlist.css", "status": "source", "sourceAnchor": "prototype/screens/waitlist.css" }],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [{ "platform": "web", "framework": "Next.js + React", "candidatePath": "apps/waitlist/src/components/feature-action-cards.tsx", "symbolName": "FeatureActionCards", "operationIntent": "reuse-existing", "propMapping": {}, "stateMapping": { "initial": "static value cards" }, "tokenAdapter": "apps/waitlist/src/app/globals.css", "testPaths": [], "storyPaths": [], "unresolvedDecisions": [] }],
+          "uses": [{ "kind": "component", "id": "feature-action-cards", "reason": "Reusable below-hero value summary.", "binding": { "slot": "continuation", "state": "initial", "layout": "four desktop columns; stacked phone cards" } }]
+        },
+        {
+          "id": "public-footer",
+          "name": "Public Footer",
+          "description": "Private-alpha and signed-delivery reassurance below the feature continuation.",
+          "styleRefs": ["prototype/screens/waitlist.css"],
+          "styleEvidence": [{ "styleRef": "prototype/screens/waitlist.css", "status": "source", "sourceAnchor": "prototype/screens/waitlist.css" }],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [{ "platform": "web", "framework": "Next.js + React", "candidatePath": "apps/waitlist/src/components/site-shell.tsx", "symbolName": "SiteShell footer", "operationIntent": "reuse-existing", "propMapping": {}, "stateMapping": { "initial": "public footer" }, "tokenAdapter": "apps/waitlist/src/app/globals.css", "testPaths": [], "storyPaths": [], "unresolvedDecisions": [] }],
+          "uses": [{ "kind": "component", "id": "site-footer", "reason": "Reusable alpha and delivery footer.", "binding": { "slot": "footer", "state": "initial", "layout": "below content" } }]
+        }
+      ]
+    }
+  ]
+}

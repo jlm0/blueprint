@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "blank-slate-proof",
+  "components": [
+    {
+      "id": "site-nav",
+      "name": "Site Nav",
+      "description": "Reusable marketing header composing the canonical ghost and primary buttons over screen-local brand, links, and sticky blur chrome; the active link arrives through the forwarded page class.",
+      "uses": [
+        { "kind": "primitive", "id": "button", "reason": "Canonical ghost sign-in command.", "binding": { "slot": "sign in", "state": "normal", "variant": "ghost", "copy": "Sign in" } },
+        { "kind": "primitive", "id": "button", "reason": "Canonical primary get-started command.", "binding": { "slot": "get started", "state": "normal", "variant": "primary", "copy": "Get started" } }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["prototype/components/site-nav.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/site-nav.css", "status": "source", "sourceAnchor": "prototype/components/site-nav.css" }],
+      "prototype": {
+        "source": "prototype/components/site-nav.html",
+        "styles": ["prototype/components/site-nav.css"],
+        "slots": [],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "button" }
+        ],
+        "localValueExceptions": [
+          { "property": "min-height", "value": "34px nav command height", "reason": "The 64px marketing nav runs denser than the default 40px command height; sizing only, color stays token-governed." }
+        ]
+      }
+    },
+    {
+      "id": "site-footer",
+      "name": "Site Footer",
+      "description": "Reusable marketing footer with brand block, certification badge, four link columns, and the status line, composed from the canonical secondary badge over screen-local link columns.",
+      "uses": [
+        { "kind": "primitive", "id": "badge", "reason": "Canonical secondary certification chip.", "binding": { "slot": "certification", "state": "default", "variant": "secondary", "copy": "SOC 2 Type II" } }
+      ],
+      "tokenGroupIds": ["color", "space", "typography"],
+      "styleRefs": ["prototype/components/site-footer.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/site-footer.css", "status": "source", "sourceAnchor": "prototype/components/site-footer.css" }],
+      "prototype": {
+        "source": "prototype/components/site-footer.html",
+        "styles": ["prototype/components/site-footer.css"],
+        "slots": [],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "badge" }
+        ]
+      }
+    },
+    {
+      "id": "section-head",
+      "name": "Section Head",
+      "description": "Reusable centered or left-aligned section opener composing the canonical tonal badge as the eyebrow with screen-supplied title and subcopy slots.",
+      "uses": [
+        { "kind": "primitive", "id": "badge", "reason": "Canonical tonal eyebrow chip; each instance forwards its own label.", "binding": { "slot": "eyebrow", "state": "default", "variant": "tonal", "copy": "section eyebrow" } }
+      ],
+      "tokenGroupIds": ["color", "space", "typography"],
+      "styleRefs": ["prototype/components/section-head.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/section-head.css", "status": "source", "sourceAnchor": "prototype/components/section-head.css" }],
+      "prototype": {
+        "source": "prototype/components/section-head.html",
+        "styles": ["prototype/components/section-head.css"],
+        "slots": ["eyebrow", "title", "sub"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "badge" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "800 38px/1.08 system-ui title", "reason": "Marketing section display size sits above the default display role and is component-local." }
+        ]
+      }
+    },
+    {
+      "id": "feature-card",
+      "name": "Feature Card",
+      "description": "Reusable capability panel composing the canonical accent icon inside an accent tile with screen-supplied glyph, title, and copy slots.",
+      "uses": [
+        { "kind": "primitive", "id": "icon", "reason": "Canonical accent capability glyph; each instance forwards its own artwork.", "binding": { "slot": "glyph", "state": "default", "variant": "accent" } }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["prototype/components/feature-card.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/feature-card.css", "status": "source", "sourceAnchor": "prototype/components/feature-card.css" }],
+      "prototype": {
+        "source": "prototype/components/feature-card.html",
+        "styles": ["prototype/components/feature-card.css"],
+        "slots": ["glyph", "title", "copy"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "icon" }
+        ]
+      }
+    },
+    {
+      "id": "testimonial-card",
+      "name": "Testimonial Card",
+      "description": "Reusable centered customer quote composing the canonical accent quote mark with screen-supplied quote, name, role, and avatar image slots.",
+      "uses": [
+        { "kind": "primitive", "id": "icon", "reason": "Canonical accent quotation mark.", "binding": { "slot": "mark", "state": "default", "variant": "accent" } }
+      ],
+      "tokenGroupIds": ["color", "space", "typography"],
+      "styleRefs": ["prototype/components/testimonial-card.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/testimonial-card.css", "status": "source", "sourceAnchor": "prototype/components/testimonial-card.css" }],
+      "prototype": {
+        "source": "prototype/components/testimonial-card.html",
+        "styles": ["prototype/components/testimonial-card.css"],
+        "slots": ["quote", "name", "role", "avatar"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "icon" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "500 22px/1.5 system-ui quote", "reason": "Pull-quote size sits between the default body and display roles and is component-local." }
+        ]
+      }
+    },
+    {
+      "id": "pricing-card",
+      "name": "Pricing Card",
+      "description": "Reusable pricing tier panel composing the canonical outline button CTA with screen-supplied tier, price, period, blurb, feature list, and CTA slots; the featured tier promotes its CTA to the primary command treatment through the forwarded class.",
+      "uses": [
+        { "kind": "primitive", "id": "button", "reason": "Canonical tier command; the featured tier restyles it with primary tokens.", "binding": { "slot": "cta", "state": "normal", "variant": "outline", "copy": "Choose plan" } }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["prototype/components/pricing-card.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/pricing-card.css", "status": "source", "sourceAnchor": "prototype/components/pricing-card.css" }],
+      "prototype": {
+        "source": "prototype/components/pricing-card.html",
+        "styles": ["prototype/components/pricing-card.css"],
+        "slots": ["flag", "tier", "price", "period", "blurb", "features", "cta"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "button" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "800 40px/1 system-ui price", "reason": "Price display size sits above the default display role and is component-local." },
+          { "property": "background", "value": "primary token on the featured tier CTA", "reason": "The featured tier promotes its canonical outline CTA to the primary command treatment using the same tokens." }
+        ]
+      }
+    },
+    {
+      "id": "code-window",
+      "name": "Code Window",
+      "description": "Reusable elevated code panel composing the canonical muted copy icon in the window chrome with screen-supplied filename and syntax-marked code slots.",
+      "uses": [
+        { "kind": "primitive", "id": "icon", "reason": "Canonical muted copy affordance in the window chrome.", "binding": { "slot": "copy", "state": "default", "variant": "muted" } }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["prototype/components/code-window.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/code-window.css", "status": "source", "sourceAnchor": "prototype/components/code-window.css" }],
+      "prototype": {
+        "source": "prototype/components/code-window.html",
+        "styles": ["prototype/components/code-window.css"],
+        "slots": ["title", "code"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "icon" }
+        ],
+        "localValueExceptions": [
+          { "property": "font-family", "value": "ui-monospace code stack", "reason": "Code art direction needs a monospace stack; colors and radii stay token-governed." }
+        ]
+      }
+    },
+    {
+      "id": "cta-band",
+      "name": "CTA Band",
+      "description": "Reusable closing call-to-action band composing the canonical primary and outline buttons over orbit-ring artwork with screen-supplied title, subcopy, and button label slots.",
+      "uses": [
+        { "kind": "primitive", "id": "button", "reason": "Canonical primary closing command.", "binding": { "slot": "cta-primary", "state": "normal", "variant": "primary", "copy": "Start building" } },
+        { "kind": "primitive", "id": "button", "reason": "Canonical outline secondary command.", "binding": { "slot": "cta-secondary", "state": "normal", "variant": "outline", "copy": "Talk to us" } }
+      ],
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["prototype/components/cta-band.css"],
+      "styleEvidence": [{ "styleRef": "prototype/components/cta-band.css", "status": "source", "sourceAnchor": "prototype/components/cta-band.css" }],
+      "prototype": {
+        "source": "prototype/components/cta-band.html",
+        "styles": ["prototype/components/cta-band.css"],
+        "slots": ["title", "sub", "cta-primary", "cta-secondary"],
+        "states": ["initial"],
+        "renderedUses": [
+          { "kind": "primitive", "id": "button" },
+          { "kind": "primitive", "id": "button" }
+        ],
+        "localValueExceptions": [
+          { "property": "font", "value": "800 34px/1.1 system-ui title", "reason": "Closing display size sits above the default display role and is component-local." }
+        ]
+      }
+    }
+  ]
+}
