@@ -15,7 +15,7 @@ import type {
 
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
-const nowWhatRoot = 'fixtures/app-owned/nowwhat-waitlist/design/blueprint';
+const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
 
 type ExtractionOptions = { mode?: 'focused' | 'deep' };
 type ValidateOptions = { mode?: 'baseline' | 'strict' };
@@ -34,16 +34,16 @@ const validate = validateProject as unknown as (
 describe('Blueprint production handoff contract', () => {
   it('exposes an honest unresolved capture with exact prototype review and standalone style-evidence context', async () => {
     const bundle = await loadProjectFromFs(nowWhatRoot);
-    const query = showBoundary(bundle, 'screen:waitlist') as BoundaryPacket<ScreenDefinition>;
-    const focused = createExtractionPacket(bundle, 'screen:waitlist', { mode: 'focused' }) as BoundaryPacket<ScreenDefinition>;
-    const deep = createExtractionPacket(bundle, 'screen:waitlist', { mode: 'deep' }) as DeepHandoffPacket<ScreenDefinition>;
+    const query = showBoundary(bundle, 'screen:home') as BoundaryPacket<ScreenDefinition>;
+    const focused = createExtractionPacket(bundle, 'screen:home', { mode: 'focused' }) as BoundaryPacket<ScreenDefinition>;
+    const deep = createExtractionPacket(bundle, 'screen:home', { mode: 'deep' }) as DeepHandoffPacket<ScreenDefinition>;
     const selection = resolvePrototypeReviewSelection(bundle, {
-      screenId: 'waitlist',
+      screenId: 'home',
       state: 'initial',
-      viewport: 'desktop-reference'
+      viewport: 'desktop-web-tall'
     });
     const compiled = compilePrototypeReview(bundle, selection);
-    const screen = bundle.screens.screens.find(candidate => candidate.id === 'waitlist');
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'home');
     assert.ok(screen?.prototype);
     const record = {
       id: selection.boundaryId,
@@ -73,20 +73,20 @@ describe('Blueprint production handoff contract', () => {
     const strict = validateProject(bundle, { mode: 'strict' });
 
     assert.ok(query.data.prototype);
-    assert.equal(query.data.prototype.source, 'prototype/screens/waitlist.html');
+    assert.equal(query.data.prototype.source, 'prototype/screens/home.html');
     assert.equal('boundaries' in focused, false);
     assert.equal(deep.extraction.mode, 'deep');
     assert.ok(deep.boundaries.some(boundary => boundary.kind === 'component'));
     assert.ok(deep.resolvedTokens.length > 0);
-    assert.ok(compiled.observedBoundaryIds.some(id => id.endsWith('/component/email-signup-form')));
+    assert.ok(compiled.observedBoundaryIds.some(id => id.endsWith('/component/email-capture')));
     assert.deepEqual(manifest.capture, {
       status: 'unresolved',
       reason: 'No current Blueprint candidate capture exists.'
     });
-    assert.equal(manifest.prototypeReview?.source, 'prototype/screens/waitlist.html');
+    assert.equal(manifest.prototypeReview?.source, 'prototype/screens/home.html');
     assert.equal(manifest.prototypeReview?.state, 'initial');
-    assert.equal(manifest.prototypeReview?.framePresetId, 'desktop-reference');
-    assert.equal(manifest.prototypeReview?.conditionId, 'desktop-initial');
+    assert.equal(manifest.prototypeReview?.framePresetId, 'desktop-web-tall');
+    assert.equal(manifest.prototypeReview?.conditionId, 'desktop-full');
     assert.equal(styleEvidence.boundaries[0]?.status, 'unresolved');
     // The four source fonts now ship as local OFL woff2 under prototype/assets/fonts/,
     // so unresolvedDecisions is empty and readiness is legitimately ready.
@@ -98,7 +98,7 @@ describe('Blueprint production handoff contract', () => {
 
   it('blocks baseline, strict, and readiness claims when governed visual source drifts from its declared graph', async () => {
     const bundle = await loadProjectFromFs(nowWhatRoot);
-    const screen = bundle.screens.screens.find(candidate => candidate.id === 'waitlist');
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'home');
     assert.ok(screen?.prototype);
     bundle.prototypeSourceContents[screen.prototype.source] = bundle.prototypeSourceContents[
       screen.prototype.source

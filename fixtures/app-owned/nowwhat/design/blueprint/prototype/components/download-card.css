@@ -1,0 +1,115 @@
+[data-blueprint-component="download-card"] {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 480px;
+  padding: 32px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: calc(var(--nw-radius-xl) + 4px);
+  background: var(--nw-color-surface-1);
+  box-shadow: var(--nw-shadow-glass);
+}
+
+.download-card__file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: var(--nw-radius-lg);
+  background: var(--nw-color-surface-2);
+}
+
+.download-card__tile {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nw-radius-md);
+  background: linear-gradient(150deg, var(--nw-color-primary) 0%, var(--nw-color-primary-strong) 100%);
+  color: var(--nw-color-on-primary);
+  font: 700 22px/1 var(--nw-font-display);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.35),
+    0 6px 14px oklch(0.63 0.19 293.5 / 0.3);
+}
+
+.download-card__file-meta {
+  min-width: 0;
+}
+
+.download-card__name {
+  margin: 0;
+  color: var(--nw-color-ink);
+  font: 600 15px/1.3 var(--nw-font-body);
+}
+
+.download-card__version {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--nw-color-text-muted);
+  font: 400 12px/1.4 var(--nw-font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-card__cta [data-blueprint-primitive="button"] {
+  width: 100%;
+  min-height: var(--nw-space-control-height);
+  font-size: 15px;
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.3),
+    var(--nw-shadow-glow);
+}
+
+.download-card__verify {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.download-card__sha {
+  color: var(--nw-color-text-muted);
+  font: var(--nw-type-mono);
+  letter-spacing: 0.06em;
+}
+
+.download-card__channel {
+  color: var(--nw-color-amber);
+  font: 600 11px/1 var(--nw-font-mono);
+  letter-spacing: 0.08em;
+}
+
+.download-card__rule {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--nw-color-ink) 8%, transparent);
+}
+
+.download-card__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 13.5px/1.6 var(--nw-font-body);
+}
+
+.download-card__note strong {
+  color: var(--nw-color-ink);
+  font-family: var(--nw-font-mono);
+  font-weight: 600;
+}
+
+.download-card__note-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  margin: 2px 0 0;
+}

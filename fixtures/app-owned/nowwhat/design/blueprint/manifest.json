@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0.0",
+  "handoffContractVersion": "1.0.0",
+  "project": {
+    "id": "nowwhat-web",
+    "name": "NowWhat Web",
+    "description": "The NowWhat marketing web design system: derived warm-paper tokens, themed locked primitives, reusable components, and the landing, login, and download screens.",
+    "owner": "NowWhat",
+    "sourceRoot": "fixtures/app-owned/nowwhat/design/blueprint"
+  },
+  "defaultBoardId": "screens",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "The locked Blueprint base set themed with NowWhat tokens, plus app-added primitives."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "The NowWhat marketing site: landing, tester login, and download screens."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "desktop-web-tall",
+      "name": "Desktop Web Full Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 3515,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "phone-tall",
+      "name": "Phone Web Full Page",
+      "type": "mobile",
+      "width": 390,
+      "height": 5390,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-web-split",
+      "name": "Desktop Web Split Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 1100,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "phone-split",
+      "name": "Phone Web Split Page",
+      "type": "mobile",
+      "width": 390,
+      "height": 1900,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-product",
+      "name": "Desktop Product Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 4248,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-features",
+      "name": "Desktop Features Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 3840,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-sellers",
+      "name": "Desktop Sellers Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 3097,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "phone-product",
+      "name": "Phone Product Page",
+      "type": "mobile",
+      "width": 390,
+      "height": 4705,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "phone-features",
+      "name": "Phone Features Page",
+      "type": "mobile",
+      "width": 390,
+      "height": 5440,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "phone-sellers",
+      "name": "Phone Sellers Page",
+      "type": "mobile",
+      "width": 390,
+      "height": 4706,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": [
+      "prototype/assets"
+    ],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

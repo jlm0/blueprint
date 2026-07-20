@@ -1,0 +1,2939 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "nowwhat-web",
+  "screens": [
+    {
+      "id": "home",
+      "name": "NowWhat · Home",
+      "description": "Marketing landing page: warm-paper hero with violet DynaPuff accent, glass email capture, seller proof, floating workspace preview, metrics band, three toolkit features, seller story, testimonial, closing CTA, and footer — composed from NowWhat tokens, themed locked primitives, and app-owned components.",
+      "framePresetId": "desktop-web-tall",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/screens/home.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/screens/home.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/home.css"
+        }
+      ],
+      "notes": [
+        "Hero art direction, chat-bubble panel, and testimonial are screen-local composition; every command, chip, field, and glyph resolves to a themed locked primitive or app-owned component."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/HomePage",
+          "symbolName": "HomePage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/home.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/screens/home.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2",
+          "prototype/assets/hero-glow.svg",
+          "prototype/assets/nowwhat-dashboard.png"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-full",
+            "framePresetId": "desktop-web-tall",
+            "state": "initial"
+          },
+          {
+            "id": "phone-full",
+            "framePresetId": "phone-tall",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "email-capture"
+          },
+          {
+            "kind": "component",
+            "id": "proof-row"
+          },
+          {
+            "kind": "component",
+            "id": "workspace-preview"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "section-head"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "cta-band"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header shared by all screens.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeNav",
+              "symbolName": "HomeNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial",
+                "layout": "sticky 72px full-width bar"
+              }
+            }
+          ]
+        },
+        {
+          "id": "hero",
+          "name": "Hero",
+          "description": "Eyebrow chip, oversized display headline with DynaPuff accent word, glass email capture, seller proof row, and floating workspace preview.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeHero",
+              "symbolName": "HomeHero",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Closed-beta eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "email-capture",
+              "reason": "Reusable capture bar.",
+              "binding": {
+                "slot": "capture",
+                "state": "initial",
+                "layout": "max-width 560px glass bar"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "proof-row",
+              "reason": "Seller proof and login trust.",
+              "binding": {
+                "slot": "proof",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "workspace-preview",
+              "reason": "Hero product proof.",
+              "binding": {
+                "slot": "preview",
+                "state": "initial",
+                "layout": "right column, floating"
+              }
+            }
+          ]
+        },
+        {
+          "id": "metrics",
+          "name": "Metrics Band",
+          "description": "Three oversized early-access metrics on a hairline band.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeMetrics",
+              "symbolName": "HomeMetrics",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Gross seller value metric.",
+              "binding": {
+                "slot": "gsv",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Waitlist count metric.",
+              "binding": {
+                "slot": "sellers",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Fulfillment speed metric.",
+              "binding": {
+                "slot": "speed",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "features",
+          "name": "Toolkit Features",
+          "description": "Section head and three capability cards.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeFeatures",
+              "symbolName": "HomeFeatures",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "section-head",
+              "reason": "Toolkit section opener.",
+              "binding": {
+                "slot": "head",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Live show insights card.",
+              "binding": {
+                "slot": "insights",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "One-tap fulfillment card.",
+              "binding": {
+                "slot": "fulfillment",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Analytics card.",
+              "binding": {
+                "slot": "analytics",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "story",
+          "name": "Seller Story",
+          "description": "Seller-built narrative with checklist and chat-bubble art panel.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeStory",
+              "symbolName": "HomeStory",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: no new logins.",
+              "binding": {
+                "slot": "check 1",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: one hand.",
+              "binding": {
+                "slot": "check 2",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: private by default.",
+              "binding": {
+                "slot": "check 3",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "quote",
+          "name": "Seller Quote",
+          "description": "Oversized editorial testimonial.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeQuote",
+              "symbolName": "HomeQuote",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": []
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Violet-glow closing band.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeCta",
+              "symbolName": "HomeCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cta-band",
+              "reason": "Reusable closing call to action.",
+              "binding": {
+                "slot": "cta",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/HomeFooter",
+              "symbolName": "HomeFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "marketing"
+    },
+    {
+      "id": "login",
+      "name": "NowWhat · Tester Login",
+      "description": "Tester access screen: split composition with access steps on the left and the reusable access-card form on the right.",
+      "framePresetId": "desktop-web-split",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/screens/login.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/screens/login.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/login.css"
+        }
+      ],
+      "notes": [
+        "The split composition and build pill are screen-local art direction."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/auth"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/AuthPage",
+          "symbolName": "AuthPage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/login.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/screens/login.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop",
+            "framePresetId": "desktop-web-split",
+            "state": "initial"
+          },
+          {
+            "id": "phone",
+            "framePresetId": "phone-split",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "access-card"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header.",
+          "styleRefs": [
+            "prototype/screens/login.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/login.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/login.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/AuthNav",
+              "symbolName": "AuthNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "access",
+          "name": "Tester Access",
+          "description": "Eyebrow, headline, steps, and the access-card form.",
+          "styleRefs": [
+            "prototype/screens/login.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/login.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/login.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/AuthAccess",
+              "symbolName": "AuthAccess",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Tester access eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Step glyph: verify invite.",
+              "binding": {
+                "slot": "step 1",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Step glyph: open download.",
+              "binding": {
+                "slot": "step 2",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Step glyph: install signed build.",
+              "binding": {
+                "slot": "step 3",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "access-card",
+              "reason": "Reusable tester access form.",
+              "binding": {
+                "slot": "form",
+                "state": "initial",
+                "layout": "right column card"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/login.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/login.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/login.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/AuthFooter",
+              "symbolName": "AuthFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "access"
+    },
+    {
+      "id": "download",
+      "name": "NowWhat · Download",
+      "description": "Approved tester download screen: signed-in eyebrow, display headline, trust checklist, and the reusable download-card.",
+      "framePresetId": "desktop-web-split",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/screens/download.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/screens/download.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/download.css"
+        }
+      ],
+      "notes": [
+        "The split composition is screen-local art direction."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/download"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/DownloadPage",
+          "symbolName": "DownloadPage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/download.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/screens/download.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop",
+            "framePresetId": "desktop-web-split",
+            "state": "initial"
+          },
+          {
+            "id": "phone",
+            "framePresetId": "phone-split",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "download-card"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with download highlighted.",
+          "styleRefs": [
+            "prototype/screens/download.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/download.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/download.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/DownloadNav",
+              "symbolName": "DownloadNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "get",
+          "name": "Get the App",
+          "description": "Approved eyebrow, headline, trust checklist, and download card.",
+          "styleRefs": [
+            "prototype/screens/download.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/download.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/download.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/DownloadGet",
+              "symbolName": "DownloadGet",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Approved tester eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: Apple Silicon.",
+              "binding": {
+                "slot": "check 1",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: signed and notarized.",
+              "binding": {
+                "slot": "check 2",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: auto-updates.",
+              "binding": {
+                "slot": "check 3",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "download-card",
+              "reason": "Reusable signed DMG card.",
+              "binding": {
+                "slot": "card",
+                "state": "initial",
+                "layout": "right column card"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/download.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/download.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/download.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/DownloadFooter",
+              "symbolName": "DownloadFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "access"
+    },
+    {
+      "id": "product",
+      "name": "NowWhat · Product",
+      "description": "Product overview: warm-paper intro, the real workspace capture, a zigzag live/ship/learn loop with deliberate app-screenshot placeholders, a flat three-step timeline, closing CTA, and footer.",
+      "framePresetId": "desktop-product",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/styles/marketing.css",
+        "prototype/screens/product.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/styles/marketing.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/marketing.css"
+        },
+        {
+          "styleRef": "prototype/screens/product.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/product.css"
+        }
+      ],
+      "notes": [
+        "Steps and page rhythm are screen-local composition over the shared marketing patterns."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/product"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/ProductPage",
+          "symbolName": "ProductPage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/product.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/styles/marketing.css",
+          "prototype/screens/product.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/hero-glow.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2",
+          "prototype/assets/nowwhat-dashboard.png"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-full",
+            "framePresetId": "desktop-product",
+            "state": "initial"
+          },
+          {
+            "id": "phone-full",
+            "framePresetId": "phone-product",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "workspace-preview"
+          },
+          {
+            "kind": "component",
+            "id": "section-head"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "component",
+            "id": "section-head"
+          },
+          {
+            "kind": "component",
+            "id": "cta-band"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with Product active.",
+          "styleRefs": [
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductNav",
+              "symbolName": "ProductNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "intro",
+          "name": "Product Intro",
+          "description": "Eyebrow, display headline, and product summary.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductIntro",
+              "symbolName": "ProductIntro",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Product eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "preview",
+          "name": "Workspace Preview",
+          "description": "The real NowWhat workspace as product proof.",
+          "styleRefs": [
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductPreview",
+              "symbolName": "ProductPreview",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "workspace-preview",
+              "reason": "Reusable product proof.",
+              "binding": {
+                "slot": "preview",
+                "state": "initial",
+                "layout": "max-width 1080px centered"
+              }
+            }
+          ]
+        },
+        {
+          "id": "loop",
+          "name": "Live / Ship / Learn Loop",
+          "description": "Zigzag rows pairing each pillar with a media-slot placeholder for its real app capture.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductLoop",
+              "symbolName": "ProductLoop",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "section-head",
+              "reason": "Loop section opener.",
+              "binding": {
+                "slot": "head",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Live pillar: run the show. Check glyph one.",
+              "binding": {
+                "slot": "live point 1",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Live pillar: run the show. Check glyph two.",
+              "binding": {
+                "slot": "live point 2",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "Live pillar: run the show. App-screenshot placeholder.",
+              "binding": {
+                "slot": "live media",
+                "state": "initial",
+                "layout": "zigzag row media column"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Ship pillar: clear the queue. Check glyph one.",
+              "binding": {
+                "slot": "ship point 1",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Ship pillar: clear the queue. Check glyph two.",
+              "binding": {
+                "slot": "ship point 2",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "Ship pillar: clear the queue. App-screenshot placeholder.",
+              "binding": {
+                "slot": "ship media",
+                "state": "initial",
+                "layout": "zigzag row media column"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Learn pillar: know what is next. Check glyph one.",
+              "binding": {
+                "slot": "learn point 1",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Learn pillar: know what is next. Check glyph two.",
+              "binding": {
+                "slot": "learn point 2",
+                "state": "default",
+                "variant": "accent"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "Learn pillar: know what is next. App-screenshot placeholder.",
+              "binding": {
+                "slot": "learn media",
+                "state": "initial",
+                "layout": "zigzag row media column"
+              }
+            }
+          ]
+        },
+        {
+          "id": "steps",
+          "name": "How It Works",
+          "description": "Three numbered steps.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductSteps",
+              "symbolName": "ProductSteps",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "section-head",
+              "reason": "Steps opener.",
+              "binding": {
+                "slot": "head",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Violet-glow closing band.",
+          "styleRefs": [
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductCta",
+              "symbolName": "ProductCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cta-band",
+              "reason": "Reusable closing call to action.",
+              "binding": {
+                "slot": "cta",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/product.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/product.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/product.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/ProductFooter",
+              "symbolName": "ProductFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "marketing"
+    },
+    {
+      "id": "features",
+      "name": "NowWhat · Features",
+      "description": "Feature showcase: warm-paper intro, a two-column mosaic of feature cards — each carrying a composed app vignette in its media slot — an analytics spotlight with the AI roadmap card, closing CTA, and footer.",
+      "framePresetId": "desktop-features",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/styles/marketing.css",
+        "prototype/screens/features.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/styles/marketing.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/marketing.css"
+        },
+        {
+          "styleRef": "prototype/screens/features.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/features.css"
+        }
+      ],
+      "notes": [
+        "The analytics spotlight and roadmap card are screen-local composition."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/features"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/FeaturesPage",
+          "symbolName": "FeaturesPage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/features.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/styles/marketing.css",
+          "prototype/screens/features.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/hero-glow.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-full",
+            "framePresetId": "desktop-features",
+            "state": "initial"
+          },
+          {
+            "id": "phone-full",
+            "framePresetId": "phone-features",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "component",
+            "id": "feature-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "cta-band"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with Features active.",
+          "styleRefs": [
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesNav",
+              "symbolName": "FeaturesNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "intro",
+          "name": "Features Intro",
+          "description": "Eyebrow, display headline, and features summary.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesIntro",
+              "symbolName": "FeaturesIntro",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Features eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "grid",
+          "name": "Feature Mosaic",
+          "description": "Two-column mosaic of six feature cards; the wide insights card spans the row and every card carries a composed app vignette in its media slot.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesGrid",
+              "symbolName": "FeaturesGrid",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Live show insights card.",
+              "binding": {
+                "slot": "insights",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "One-tap fulfillment card.",
+              "binding": {
+                "slot": "fulfillment",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Automatic greetings card.",
+              "binding": {
+                "slot": "greetings",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Plugged messages card.",
+              "binding": {
+                "slot": "plugged",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Programmable show button card.",
+              "binding": {
+                "slot": "button",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "feature-card",
+              "reason": "Label printing configs card.",
+              "binding": {
+                "slot": "labels",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "spotlight",
+          "name": "Analytics Spotlight",
+          "description": "Analytics narrative with checklist and the AI roadmap card.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesSpotlight",
+              "symbolName": "FeaturesSpotlight",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: repeat-buyer mix.",
+              "binding": {
+                "slot": "check 1",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: trend radar.",
+              "binding": {
+                "slot": "check 2",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Checklist glyph: next-show plan.",
+              "binding": {
+                "slot": "check 3",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Roadmap coming-soon chip.",
+              "binding": {
+                "slot": "roadmap",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Violet-glow closing band.",
+          "styleRefs": [
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesCta",
+              "symbolName": "FeaturesCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cta-band",
+              "reason": "Reusable closing call to action.",
+              "binding": {
+                "slot": "cta",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/features.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/features.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/features.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/FeaturesFooter",
+              "symbolName": "FeaturesFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "marketing"
+    },
+    {
+      "id": "sellers",
+      "name": "NowWhat · Sellers",
+      "description": "Seller story: warm-paper intro, full-bleed metric band, staggered editorial quotes, a show-night strip of app-screenshot placeholders, seller promises with the advisory-board card, closing CTA, and footer.",
+      "framePresetId": "desktop-sellers",
+      "styleRefs": [
+        "prototype/styles/screen-base.css",
+        "prototype/styles/fonts.css",
+        "prototype/styles/marketing.css",
+        "prototype/screens/sellers.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/screen-base.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/screen-base.css"
+        },
+        {
+          "styleRef": "prototype/styles/fonts.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/fonts.css"
+        },
+        {
+          "styleRef": "prototype/styles/marketing.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/marketing.css"
+        },
+        {
+          "styleRef": "prototype/screens/sellers.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/sellers.css"
+        }
+      ],
+      "notes": [
+        "Testimonials and the advisory card are screen-local composition."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/sellers"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/pages/SellersPage",
+          "symbolName": "SellersPage",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {
+            "initial": "static marketing content"
+          },
+          "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/sellers.html",
+        "styles": [
+          "prototype/styles/screen-base.css",
+          "prototype/styles/fonts.css",
+          "prototype/styles/marketing.css",
+          "prototype/screens/sellers.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/grid-texture.svg",
+          "prototype/assets/noise.svg",
+          "prototype/assets/hero-glow.svg",
+          "prototype/assets/fonts/bricolage-grotesque-latin.woff2",
+          "prototype/assets/fonts/dynapuff-latin.woff2",
+          "prototype/assets/fonts/geist-latin.woff2",
+          "prototype/assets/fonts/geist-mono-latin.woff2"
+        ],
+        "states": [
+          "initial"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-full",
+            "framePresetId": "desktop-sellers",
+            "state": "initial"
+          },
+          {
+            "id": "phone-full",
+            "framePresetId": "phone-sellers",
+            "state": "initial"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "site-nav"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "metric-stat"
+          },
+          {
+            "kind": "component",
+            "id": "section-head"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "component",
+            "id": "media-slot"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "cta-band"
+          },
+          {
+            "kind": "component",
+            "id": "site-footer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "chrome",
+          "name": "Site Nav",
+          "description": "Sticky marketing header with Sellers active.",
+          "styleRefs": [
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersNav",
+              "symbolName": "SellersNav",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-nav",
+              "reason": "Reusable marketing header.",
+              "binding": {
+                "slot": "chrome",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "intro",
+          "name": "Sellers Intro",
+          "description": "Eyebrow, display headline, and seller summary.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersIntro",
+              "symbolName": "SellersIntro",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Sellers eyebrow chip.",
+              "binding": {
+                "slot": "eyebrow",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "metrics",
+          "name": "Seller Metrics",
+          "description": "Three solo-seller metrics on a hairline band.",
+          "styleRefs": [
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersMetrics",
+              "symbolName": "SellersMetrics",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Solo-show share metric.",
+              "binding": {
+                "slot": "solo",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Hours saved metric.",
+              "binding": {
+                "slot": "hours",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "metric-stat",
+              "reason": "Chat engagement metric.",
+              "binding": {
+                "slot": "chat",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "quotes",
+          "name": "Testimonials",
+          "description": "Two seller testimonials.",
+          "styleRefs": [
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersQuotes",
+              "symbolName": "SellersQuotes",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": []
+        },
+        {
+          "id": "night",
+          "name": "One Show Night",
+          "description": "Three moment strip — before, during, after the show — each pairing a mono timestamp with a media-slot placeholder for the real app capture.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersNight",
+              "symbolName": "SellersNight",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "section-head",
+              "reason": "Night strip opener.",
+              "binding": {
+                "slot": "head",
+                "state": "initial"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "Before-show placeholder: queue prepped.",
+              "binding": {
+                "slot": "before media",
+                "state": "initial",
+                "layout": "strip column"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "Mid-show placeholder: chat runs itself.",
+              "binding": {
+                "slot": "during media",
+                "state": "initial",
+                "layout": "strip column"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "media-slot",
+              "reason": "After-show placeholder: labels out.",
+              "binding": {
+                "slot": "after media",
+                "state": "initial",
+                "layout": "strip column"
+              }
+            }
+          ]
+        },
+        {
+          "id": "principles",
+          "name": "Seller Promises",
+          "description": "Promises checklist with advisory-board card.",
+          "styleRefs": [
+            "prototype/styles/marketing.css",
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/styles/marketing.css",
+              "status": "source",
+              "sourceAnchor": "prototype/styles/marketing.css"
+            },
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersPrinciples",
+              "symbolName": "SellersPrinciples",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Promise glyph: account.",
+              "binding": {
+                "slot": "check 1",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Promise glyph: no spam.",
+              "binding": {
+                "slot": "check 2",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Promise glyph: private.",
+              "binding": {
+                "slot": "check 3",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Promise glyph: priced.",
+              "binding": {
+                "slot": "check 4",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Advisory board chip.",
+              "binding": {
+                "slot": "board",
+                "state": "default"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "Closing CTA",
+          "description": "Violet-glow closing band.",
+          "styleRefs": [
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersCta",
+              "symbolName": "SellersCta",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cta-band",
+              "reason": "Reusable closing call to action.",
+              "binding": {
+                "slot": "cta",
+                "state": "initial"
+              }
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Site Footer",
+          "description": "Shared marketing footer.",
+          "styleRefs": [
+            "prototype/screens/sellers.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/sellers.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/sellers.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/pages/SellersFooter",
+              "symbolName": "SellersFooter",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "initial": "static marketing content"
+              },
+              "tokenAdapter": "nowwhat-web tokens (design/blueprint/tokens.json)",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "site-footer",
+              "reason": "Reusable footer.",
+              "binding": {
+                "slot": "footer",
+                "state": "initial"
+              }
+            }
+          ]
+        }
+      ],
+      "flow": "marketing"
+    }
+  ]
+}

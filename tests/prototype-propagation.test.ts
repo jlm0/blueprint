@@ -6,7 +6,7 @@ import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, queryUsedBy, showBoundary } from '../src/core/query';
 import type { BoundaryReference, DeepHandoffPacket } from '../src/core/types';
 
-const nowWhatRoot = 'fixtures/app-owned/nowwhat-waitlist/design/blueprint';
+const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
 
 describe('canonical prototype propagation', () => {
   it('materializes one token mutation through the primitive, component, and both screen review conditions', async () => {
@@ -20,128 +20,132 @@ describe('canonical prototype propagation', () => {
 
     const primitive = compilePrototypeDocument({
       bundle: changed,
-      target: { kind: 'primitive', id: 'primary-action' },
-      state: 'default'
+      target: { kind: 'primitive', id: 'button' },
+      state: 'normal'
     });
     const component = compilePrototypeDocument({
       bundle: changed,
-      target: { kind: 'component', id: 'email-signup-form' },
+      target: { kind: 'component', id: 'email-capture' },
       state: 'initial'
     });
     const desktop = compilePrototypeReview(
       changed,
       resolvePrototypeReviewSelection(changed, {
-        screenId: 'waitlist',
+        screenId: 'home',
         state: 'initial',
-        viewport: 'desktop-reference'
+        viewport: 'desktop-web-tall'
       })
     );
     const phone = compilePrototypeReview(
       changed,
       resolvePrototypeReviewSelection(changed, {
-        screenId: 'waitlist',
+        screenId: 'home',
         state: 'initial',
-        viewport: 'phone-reference'
+        viewport: 'phone-tall'
       })
     );
 
     for (const html of [primitive.html, component.html, desktop.html, phone.html]) {
       assert.match(html, /--nw-color-primary: rgb\(17 34 51\)/);
     }
-    assert.equal(desktop.selection.width, 1280);
-    assert.equal(desktop.selection.height, 800);
+    assert.equal(desktop.selection.width, 1440);
+    assert.equal(desktop.selection.height, 3515);
     assert.equal(phone.selection.width, 390);
-    assert.equal(phone.selection.height, 844);
+    assert.equal(phone.selection.height, 5390);
   });
 
   it('propagates one primitive source edit to its direct specimen and every declared composed consumer', async () => {
     const original = await loadProjectFromFs(nowWhatRoot);
     const changed = structuredClone(original);
-    const sourceRef = 'prototype/primitives/primary-action.html';
+    const sourceRef = 'prototype/primitives/button.html';
     changed.prototypeSourceContents[sourceRef] = changed.prototypeSourceContents[sourceRef].replace(
       '<button ',
-      '<button data-propagation-probe="primary-action-v2" '
+      '<button data-propagation-probe="button-v2" '
     );
 
     const primitive = compilePrototypeDocument({
       bundle: changed,
-      target: { kind: 'primitive', id: 'primary-action' },
-      state: 'default'
+      target: { kind: 'primitive', id: 'button' },
+      state: 'normal'
     });
     const component = compilePrototypeDocument({
       bundle: changed,
-      target: { kind: 'component', id: 'email-signup-form' },
+      target: { kind: 'component', id: 'email-capture' },
       state: 'initial'
     });
     const screen = compilePrototypeDocument({
       bundle: changed,
-      target: { kind: 'screen', id: 'waitlist' },
+      target: { kind: 'screen', id: 'home' },
       state: 'initial'
     });
 
     for (const html of [primitive.html, component.html, screen.html]) {
-      assert.match(html, /data-propagation-probe="primary-action-v2"/);
+      assert.match(html, /data-propagation-probe="button-v2"/);
     }
-    assert.equal(screen.observedUses.some(use => use.targetBoundaryId.endsWith('/primitive/primary-action')), true);
+    assert.equal(screen.observedUses.some(use => use.targetBoundaryId.endsWith('/primitive/button')), true);
   });
 
-  it('reuses the same component source across two distinct screen-state consumers', async () => {
+  it('reuses the same component source across distinct screen consumers', async () => {
     const bundle = await loadProjectFromFs(nowWhatRoot);
-    const initial = compilePrototypeDocument({
+    const home = compilePrototypeDocument({
       bundle,
-      target: { kind: 'screen', id: 'waitlist' },
+      target: { kind: 'screen', id: 'home' },
       state: 'initial'
     });
-    const emailFocused = compilePrototypeDocument({
+    const login = compilePrototypeDocument({
       bundle,
-      target: { kind: 'screen', id: 'waitlist' },
-      state: 'email-focused'
+      target: { kind: 'screen', id: 'login' },
+      state: 'initial'
     });
-    const reusedComponentId = 'nowwhat-waitlist-proof/component/email-signup-form';
+    const reusedComponentId = 'nowwhat-web/component/site-footer';
 
-    assert.equal(initial.state, 'initial');
-    assert.equal(emailFocused.state, 'email-focused');
-    assert.ok(initial.observedUses.some(use => use.targetBoundaryId === reusedComponentId));
-    assert.ok(emailFocused.observedUses.some(use => use.targetBoundaryId === reusedComponentId));
-    assert.match(emailFocused.html, /data-blueprint-screen="waitlist"[^>]+data-blueprint-state="email-focused"/);
+    assert.equal(home.state, 'initial');
+    assert.equal(login.state, 'initial');
+    assert.ok(home.observedUses.some(use => use.targetBoundaryId === reusedComponentId));
+    assert.ok(login.observedUses.some(use => use.targetBoundaryId === reusedComponentId));
+    assert.match(login.html, /data-blueprint-boundary-local-id="login"/);
+    assert.match(login.html, /data-blueprint-state="initial"/);
   });
 
   it('carries component-owned token groups and canonical primitive roles through deterministic handoff packets', async () => {
     const bundle = await loadProjectFromFs(nowWhatRoot);
-    const component = showBoundary(bundle, 'component:feature-action-cards');
+    const component = showBoundary(bundle, 'component:feature-card');
     const componentUses = component.dependencies.uses.map(reference => reference.id);
     assert.deepEqual(componentUses, [
-      'nowwhat-waitlist-proof/token-group/color',
-      'nowwhat-waitlist-proof/token-group/space',
-      'nowwhat-waitlist-proof/token-group/shape',
-      'nowwhat-waitlist-proof/token-group/typography',
-      'nowwhat-waitlist-proof/token-group/motion'
+      'nowwhat-web/token-group/color',
+      'nowwhat-web/token-group/space',
+      'nowwhat-web/token-group/shape',
+      'nowwhat-web/token-group/typography',
+      'nowwhat-web/token-group/motion',
+      'nowwhat-web/primitive/icon'
     ]);
 
     const usedByColor = queryUsedBy(bundle, 'token-group:color').results as BoundaryReference[];
     assert.ok(
-      usedByColor.some(reference => reference.id === 'nowwhat-waitlist-proof/component/feature-action-cards'),
+      usedByColor.some(reference => reference.id === 'nowwhat-web/component/feature-card'),
       'token-group reverse lookup must include direct component ownership'
     );
 
-    const first = createExtractionPacket(bundle, 'component:feature-action-cards', { mode: 'deep' }) as DeepHandoffPacket;
-    const second = createExtractionPacket(bundle, 'component:feature-action-cards', { mode: 'deep' }) as DeepHandoffPacket;
+    const first = createExtractionPacket(bundle, 'component:feature-card', { mode: 'deep' }) as DeepHandoffPacket;
+    const second = createExtractionPacket(bundle, 'component:feature-card', { mode: 'deep' }) as DeepHandoffPacket;
     assert.equal(JSON.stringify(first), JSON.stringify(second), 'repeated deep packets must be byte-deterministic');
     assert.deepEqual(first.extraction.includedBoundaryIds, [
-      'nowwhat-waitlist-proof/component/feature-action-cards',
-      'nowwhat-waitlist-proof/token-group/color',
-      'nowwhat-waitlist-proof/token-group/motion',
-      'nowwhat-waitlist-proof/token-group/shape',
-      'nowwhat-waitlist-proof/token-group/space',
-      'nowwhat-waitlist-proof/token-group/typography'
+      'nowwhat-web/component/feature-card',
+      'nowwhat-web/primitive/icon',
+      'nowwhat-web/token-group/color',
+      'nowwhat-web/token-group/motion',
+      'nowwhat-web/token-group/shape',
+      'nowwhat-web/token-group/space',
+      'nowwhat-web/token-group/typography',
+      'nowwhat-web/state-set/icon/tone'
     ]);
     assert.ok(first.resolvedTokens.some(token => token.id === 'color.primary'));
     assert.ok(first.resolvedTokens.some(token => token.id === 'motion.base'));
 
-    const primitive = createExtractionPacket(bundle, 'primitive:primary-action', { mode: 'deep' }) as DeepHandoffPacket;
+    const primitive = createExtractionPacket(bundle, 'primitive:button', { mode: 'deep' }) as DeepHandoffPacket;
     const canonicalRole = primitive.tokenUsage.filter(
       usage =>
-        usage.boundaryId === 'nowwhat-waitlist-proof/primitive/primary-action' &&
+        usage.boundaryId === 'nowwhat-web/primitive/button' &&
         usage.tokenId === 'shape.radius-md' &&
         usage.role === 'radius'
     );

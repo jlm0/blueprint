@@ -1,0 +1,71 @@
+[data-blueprint-component="cta-band"] {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nw-color-primary) 24%, transparent);
+  border-radius: calc(var(--nw-radius-xl) + 8px);
+  background:
+    radial-gradient(120% 160% at 50% -30%, oklch(0.63 0.19 293.5 / 0.2), transparent 60%),
+    linear-gradient(160deg, oklch(0.985 0.006 85), oklch(0.96 0.015 293.5));
+  box-shadow: var(--nw-shadow-glass);
+}
+
+.cta-band__glow {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.63 0.19 293.5 / 0.22), transparent 65%);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.cta-band__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 84px 32px;
+  text-align: center;
+}
+
+.cta-band__title {
+  margin: 0;
+  max-width: 16ch;
+  font: 600 52px/1.02 var(--nw-font-display);
+  letter-spacing: -0.028em;
+  color: var(--nw-color-ink);
+}
+
+.cta-band__sub {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--nw-color-text-secondary);
+  font: 400 16px/1.6 var(--nw-font-body);
+}
+
+.cta-band__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.cta-band__actions [data-blueprint-primitive="button"] {
+  min-height: 52px;
+  padding: 0 30px;
+  font-size: 15px;
+}
+
+@media (max-width: 720px) {
+  .cta-band__inner {
+    padding: 56px 20px;
+  }
+
+  .cta-band__title {
+    font-size: 34px;
+  }
+}

@@ -1,0 +1,756 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "nowwhat-web",
+  "components": [
+    {
+      "id": "site-nav",
+      "name": "Site Nav",
+      "description": "Sticky marketing header composing canonical ghost and primary buttons over warm-paper blur chrome; the active link arrives through the forwarded page class.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical ghost sign-in command.",
+          "binding": {
+            "slot": "sign in",
+            "state": "normal",
+            "variant": "ghost",
+            "copy": "Sign in"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical primary early-access command.",
+          "binding": {
+            "slot": "get early access",
+            "state": "normal",
+            "variant": "primary",
+            "copy": "Get early access"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/site-nav.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/site-nav.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/site-nav.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/site-nav.html",
+        "styles": [
+          "prototype/components/site-nav.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "section-head",
+      "name": "Section Head",
+      "description": "Eyebrow badge, display title, and supporting copy opener for marketing sections.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Canonical tonal eyebrow chip.",
+          "binding": {
+            "slot": "eyebrow",
+            "state": "default",
+            "variant": "tonal"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/section-head.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/section-head.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/section-head.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/section-head.html",
+        "styles": [
+          "prototype/components/section-head.css"
+        ],
+        "slots": [
+          "eyebrow",
+          "title",
+          "sub"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "email-capture",
+      "name": "Email Capture",
+      "description": "Glassy capture bar composing the canonical ghost input and primary button; reused by the hero and closing calls to action.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "input",
+          "reason": "Canonical email field.",
+          "binding": {
+            "slot": "email",
+            "state": "empty",
+            "variant": "ghost"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical primary submit.",
+          "binding": {
+            "slot": "submit",
+            "state": "normal",
+            "variant": "primary",
+            "copy": "Save my spot"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/email-capture.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/email-capture.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/email-capture.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/email-capture.html",
+        "styles": [
+          "prototype/components/email-capture.css"
+        ],
+        "slots": [
+          "placeholder",
+          "cta"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "proof-row",
+      "name": "Proof Row",
+      "description": "Seller avatar cluster, list count with daily delta, and the login-trust note with a canonical success icon.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical success shield glyph for the trust note.",
+          "binding": {
+            "slot": "shield",
+            "state": "default",
+            "variant": "accent"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/proof-row.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/proof-row.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/proof-row.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/proof-row.html",
+        "styles": [
+          "prototype/components/proof-row.css"
+        ],
+        "slots": [
+          "count",
+          "delta",
+          "note"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "icon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "feature-card",
+      "name": "Feature Card",
+      "description": "Capability panel composing the canonical accent icon tile with tag, title, and copy slots.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical accent capability glyph; each instance forwards its own artwork.",
+          "binding": {
+            "slot": "glyph",
+            "state": "default",
+            "variant": "accent"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/feature-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/feature-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/feature-card.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/feature-card.html",
+        "styles": [
+          "prototype/components/feature-card.css"
+        ],
+        "slots": [
+          "glyph",
+          "media",
+          "tag",
+          "title",
+          "copy"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "icon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "metric-stat",
+      "name": "Metric Stat",
+      "description": "Oversized display metric with mono label and a canonical tonal delta chip.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Canonical tonal delta chip.",
+          "binding": {
+            "slot": "delta",
+            "state": "default",
+            "variant": "tonal"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/metric-stat.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/metric-stat.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/metric-stat.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/metric-stat.html",
+        "styles": [
+          "prototype/components/metric-stat.css"
+        ],
+        "slots": [
+          "value",
+          "label",
+          "delta"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspace-preview",
+      "name": "Workspace Preview",
+      "description": "Hero product proof: the real NowWhat seller workspace inside live window chrome with a canonical LIVE status badge.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Live window status.",
+          "binding": {
+            "slot": "status",
+            "state": "default",
+            "variant": "success",
+            "copy": "\u25cf LIVE"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/workspace-preview.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/workspace-preview.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/workspace-preview.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/workspace-preview.html",
+        "styles": [
+          "prototype/components/workspace-preview.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "media-slot",
+      "name": "Media Slot",
+      "description": "Deliberate image placeholder marking where a real app screenshot will land; composes the canonical accent icon with label and note slots so unfinished product imagery is an explicit design decision, not a gap.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical accent image glyph.",
+          "binding": {
+            "slot": "glyph",
+            "state": "default",
+            "variant": "accent"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/media-slot.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/media-slot.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/media-slot.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/media-slot.html",
+        "styles": [
+          "prototype/components/media-slot.css"
+        ],
+        "slots": [
+          "label",
+          "note"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "icon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cta-band",
+      "name": "CTA Band",
+      "description": "Closing violet-glow call to action composing canonical primary and outline buttons.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical primary closing command.",
+          "binding": {
+            "slot": "primary cta",
+            "state": "normal",
+            "variant": "primary",
+            "copy": "Save my spot"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical outline secondary command.",
+          "binding": {
+            "slot": "secondary cta",
+            "state": "normal",
+            "variant": "outline",
+            "copy": "Talk to a founder"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/cta-band.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/cta-band.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/cta-band.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/cta-band.html",
+        "styles": [
+          "prototype/components/cta-band.css"
+        ],
+        "slots": [
+          "title",
+          "sub",
+          "cta-primary",
+          "cta-secondary"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "access-card",
+      "name": "Access Card",
+      "description": "Tester access form card composing a canonical key icon, two labeled inputs, and the primary continue command.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical accent key glyph.",
+          "binding": {
+            "slot": "key",
+            "state": "default",
+            "variant": "accent"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "input",
+          "reason": "Canonical email field.",
+          "binding": {
+            "slot": "email",
+            "state": "empty",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "input",
+          "reason": "Canonical approval-code field.",
+          "binding": {
+            "slot": "approval code",
+            "state": "empty",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical primary continue command.",
+          "binding": {
+            "slot": "continue",
+            "state": "normal",
+            "variant": "primary",
+            "copy": "Continue to download"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/access-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/access-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/access-card.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/access-card.html",
+        "styles": [
+          "prototype/components/access-card.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "download-card",
+      "name": "Download Card",
+      "description": "Signed DMG card composing the canonical primary download command and trust-note icons.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical primary download command.",
+          "binding": {
+            "slot": "download",
+            "state": "normal",
+            "variant": "primary",
+            "copy": "Download macOS DMG"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical success shield for the signing note.",
+          "binding": {
+            "slot": "shield",
+            "state": "default",
+            "variant": "accent"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical accent help glyph for the support note.",
+          "binding": {
+            "slot": "help",
+            "state": "default",
+            "variant": "accent"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/download-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/download-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/download-card.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/download-card.html",
+        "styles": [
+          "prototype/components/download-card.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "site-footer",
+      "name": "Site Footer",
+      "description": "Marketing footer with brand lockup, a canonical closed-beta badge, link columns, and a mono legal line.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Canonical closed-beta status chip.",
+          "binding": {
+            "slot": "status",
+            "state": "default",
+            "variant": "tonal",
+            "copy": "Closed beta \u00b7 Mac only"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/site-footer.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/site-footer.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/site-footer.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/site-footer.html",
+        "styles": [
+          "prototype/components/site-footer.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    }
+  ]
+}

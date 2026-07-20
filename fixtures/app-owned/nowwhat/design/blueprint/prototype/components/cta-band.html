@@ -1,0 +1,15 @@
+<section data-blueprint-component="cta-band" data-blueprint-state="initial">
+  <div class="cta-band__glow" aria-hidden="true"></div>
+  <div class="cta-band__inner">
+    <h2 class="cta-band__title" data-blueprint-slot="title">Your next show deserves a next step.</h2>
+    <p class="cta-band__sub" data-blueprint-slot="sub">Join the sellers already running NowWhat after every stream.</p>
+    <div class="cta-band__actions">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
+        <b slot="label"><slot name="cta-primary">Save my spot</slot></b>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="outline">
+        <b slot="label"><slot name="cta-secondary">Talk to a founder</slot></b>
+      </blueprint-use>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,236 @@
+[data-blueprint-primitive="input"] {
+  display: block;
+  min-width: 0;
+  font: var(--app-type-body);
+}
+
+/* Eyebrow label above the control, fed by the label slot. */
+.input__label {
+  display: block;
+  margin: 0 0 6px 2px;
+  overflow: hidden;
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--app-motion-state);
+}
+
+/* The frame owns border, fill, radius, and the focus halo. */
+.input__control {
+  position: relative;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 12%, transparent);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  transition:
+    border-color var(--app-motion-state),
+    background-color var(--app-motion-state),
+    box-shadow var(--app-motion-state),
+    opacity var(--app-motion-state);
+}
+
+/* Native field keeps label/focus semantics; glyphs render through the
+   overlay spans so each compiled state paints deterministic text. */
+.input__field {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 var(--app-space-control-x);
+  border: 0;
+  outline: none;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  font: var(--app-type-body);
+}
+
+.input__placeholder,
+.input__value {
+  position: absolute;
+  right: var(--app-space-control-x);
+  left: var(--app-space-control-x);
+  overflow: hidden;
+  color: var(--app-color-muted);
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity var(--app-motion-state), color var(--app-motion-state);
+}
+
+.input__value {
+  color: var(--app-color-foreground);
+  opacity: 0;
+}
+
+/* Caret rides at the end of the value text in the focused state. */
+.input__caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  border-radius: 1px;
+  background: var(--app-color-accent);
+  opacity: 0;
+  vertical-align: text-bottom;
+}
+
+/* Variant frames */
+[data-blueprint-primitive="input"][data-blueprint-variant="filled"] .input__control {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="ghost"] .input__control {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="outline"] .input__control {
+  border-color: color-mix(in srgb, var(--app-color-foreground) 24%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"] .input__control {
+  border-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--app-color-foreground) 24%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"] .input__field {
+  padding-inline: 2px;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"] .input__placeholder,
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"] .input__value {
+  right: 2px;
+  left: 2px;
+}
+
+/* Value-bearing states paint the committed text. */
+[data-blueprint-primitive="input"][data-blueprint-state="value"] .input__placeholder,
+[data-blueprint-primitive="input"][data-blueprint-state="focused"] .input__placeholder,
+[data-blueprint-primitive="input"][data-blueprint-state="invalid"] .input__placeholder {
+  opacity: 0;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="value"] .input__value,
+[data-blueprint-primitive="input"][data-blueprint-state="focused"] .input__value,
+[data-blueprint-primitive="input"][data-blueprint-state="invalid"] .input__value {
+  opacity: 1;
+}
+
+/* Focused: accent frame, surface lift, soft halo, blinking caret. */
+[data-blueprint-primitive="input"][data-blueprint-state="focused"] .input__control,
+[data-blueprint-primitive="input"] .input__control:focus-within {
+  border-color: color-mix(in srgb, var(--app-color-accent) 65%, transparent);
+  background: color-mix(in srgb, var(--app-color-foreground) 4%, var(--app-color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-accent) 20%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="filled"][data-blueprint-state="focused"] .input__control,
+[data-blueprint-primitive="input"][data-blueprint-variant="filled"] .input__control:focus-within {
+  background: color-mix(in srgb, var(--app-color-foreground) 10%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="ghost"][data-blueprint-state="focused"] .input__control,
+[data-blueprint-primitive="input"][data-blueprint-variant="ghost"] .input__control:focus-within {
+  background: color-mix(in srgb, var(--app-color-foreground) 5%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="outline"][data-blueprint-state="focused"] .input__control,
+[data-blueprint-primitive="input"][data-blueprint-variant="outline"] .input__control:focus-within {
+  background: transparent;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"][data-blueprint-state="focused"] .input__control,
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"] .input__control:focus-within {
+  border-color: transparent;
+  border-bottom-color: var(--app-color-accent);
+  background: transparent;
+  box-shadow: 0 1px 0 0 var(--app-color-accent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="focused"] .input__caret,
+[data-blueprint-primitive="input"] .input__control:focus-within .input__caret {
+  opacity: 1;
+  animation: bp-input-caret 1.1s steps(1) infinite;
+}
+
+/* Invalid: destructive frame, halo, and label signal. */
+[data-blueprint-primitive="input"][data-blueprint-state="invalid"] .input__control {
+  border-color: color-mix(in srgb, var(--app-color-destructive) 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-destructive) 14%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"][data-blueprint-state="invalid"] .input__control {
+  border-color: transparent;
+  border-bottom-color: var(--app-color-destructive);
+  box-shadow: 0 1px 0 0 var(--app-color-destructive);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="invalid"] .input__label {
+  color: color-mix(in srgb, var(--app-color-destructive) 82%, var(--app-color-foreground));
+}
+
+/* Disabled: muted well, no halo, not-allowed cursor. */
+[data-blueprint-primitive="input"][data-blueprint-state="disabled"] {
+  cursor: not-allowed;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="disabled"] .input__control {
+  border-color: color-mix(in srgb, var(--app-color-muted) 16%, transparent);
+  background: color-mix(in srgb, var(--app-color-muted) 5%, transparent);
+  box-shadow: none;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="underline"][data-blueprint-state="disabled"] .input__control {
+  border-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--app-color-muted) 22%, transparent);
+  background: transparent;
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="disabled"] .input__label {
+  color: color-mix(in srgb, var(--app-color-muted) 60%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="disabled"] .input__placeholder {
+  color: color-mix(in srgb, var(--app-color-muted) 55%, transparent);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-state="disabled"] .input__field {
+  cursor: not-allowed;
+}
+
+@keyframes bp-input-caret {
+  0%,
+  54% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input__label,
+  .input__control,
+  .input__placeholder,
+  .input__value,
+  .input__caret {
+    transition: none;
+    animation: none;
+  }
+}

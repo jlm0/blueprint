@@ -1,0 +1,37 @@
+<blueprint-use kind="component" ref="site-nav" state="initial"></blueprint-use>
+<main class="auth">
+  <section class="auth__split wrap">
+    <div class="auth__copy">
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="accent" class="auth__eyebrow">
+        <b slot="label">Tester access</b>
+      </blueprint-use>
+      <h1 class="display auth__title">Tester access <span class="accent-word">starts here.</span></h1>
+      <p class="auth__sub">Enter the email you joined with and the alpha code we sent after approval. One code, one tester, one private Mac download.</p>
+      <ul class="auth__steps">
+        <li>
+          <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+          </blueprint-use>
+          <span>Verify your invite with the approved email and alpha code.</span>
+        </li>
+        <li>
+          <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+          </blueprint-use>
+          <span>Open the private Mac download after your code is accepted.</span>
+        </li>
+        <li>
+          <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          </blueprint-use>
+          <span>Install the signed, notarized build from a short-lived link.</span>
+        </li>
+      </ul>
+    </div>
+    <div class="auth__stage">
+      <blueprint-use kind="component" ref="access-card" state="initial"></blueprint-use>
+      <p class="auth__build">v1.4.0-alpha · signed &amp; notarized</p>
+    </div>
+  </section>
+</main>
+<blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>

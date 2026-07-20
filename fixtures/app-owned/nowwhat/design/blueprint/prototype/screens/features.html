@@ -1,0 +1,137 @@
+<blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--features"></blueprint-use>
+<main class="features-page">
+  <section class="page-intro">
+    <img class="page-intro__glow" src="../assets/hero-glow.svg" alt="" aria-hidden="true" />
+    <div class="wrap page-intro__inner">
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal" class="page-intro__eyebrow">
+        <b slot="label">Features</b>
+      </blueprint-use>
+      <h1 class="display page-intro__title">Built for the <span class="accent-word">live-show grind.</span></h1>
+      <p class="page-intro__sub">Every feature exists because a seller needed it mid-stream. No bloat, no dashboards for the sake of dashboards — just the tools that carry a one-person show.</p>
+    </div>
+  </section>
+
+  <section class="page-section features-page__grid-section">
+    <div class="wrap features-page__mosaic">
+      <blueprint-use kind="component" ref="feature-card" state="initial" class="feature-card--wide">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+        <span slot="tag">Mid-stream</span>
+        <span slot="title">Live show insights</span>
+        <span slot="copy">Momentum, buyer demand, and chat signals surface while you are still on air — not in a report the next morning.</span>
+        <figure slot="media" class="vg vg--insights">
+          <span class="vg-insights__stats">
+            <span class="vg-stat"><b>$2.8k</b><i>this show</i></span>
+            <span class="vg-stat"><b>214</b><i>buyers</i></span>
+            <span class="vg-stat"><b>38/min</b><i>chat</i></span>
+          </span>
+          <span class="vg-insights__bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+          <span class="vg-insights__trend">momentum building · 7:42 PM</span>
+        </figure>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+        <span slot="tag">Post-show</span>
+        <span slot="title">One-tap fulfillment</span>
+        <span slot="copy">Every lot lands in the queue already weighed and priced. One tap prints every label before the adrenaline wears off.</span>
+        <figure slot="media" class="vg vg--queue">
+          <span class="vg-queue__row"><b>Lot 118 · Vintage tee</b><i>8 oz · $24</i></span>
+          <span class="vg-queue__row"><b>Lot 119 · Windbreaker</b><i>12 oz · $38</i></span>
+          <span class="vg-queue__row vg-queue__row--done"><b>Lot 120 · Toy bundle</b><i>label printed</i></span>
+          <span class="vg-queue__cta">Print 23 labels</span>
+        </figure>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.3 7.3L4 21l1.7-5.7A8 8 0 1 1 21 12z"/></svg>
+        <span slot="tag">Chat help</span>
+        <span slot="title">Automatic greetings</span>
+        <span slot="copy">First-time chatters get a welcome the moment they join — warm, once, and never spammy. Your room feels hosted even when your hands are full.</span>
+        <figure slot="media" class="vg vg--greet">
+          <span class="vg-greet__join">maya_vtg joined the show</span>
+          <span class="vg-greet__bubble">Hey Maya, welcome in! New drops every Friday.</span>
+          <span class="vg-greet__meta">auto-greeting · sent once · never repeats</span>
+        </figure>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        <span slot="tag">Chat help</span>
+        <span slot="title">Plugged messages</span>
+        <span slot="copy">Schedule the repeats — shipping info, sizing, “follow us on Instagram” — and NowWhat keeps them cycling while you sell.</span>
+        <figure slot="media" class="vg vg--plug">
+          <span class="vg-plug__msg">Shipping is $5 flat — bundles always save.</span>
+          <span class="vg-plug__meta"><span class="vg-plug__dots" aria-hidden="true"><i></i><i></i><i></i></span>cycles every 15 min</span>
+        </figure>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
+        <span slot="tag">Mid-stream</span>
+        <span slot="title">Programmable show button</span>
+        <span slot="copy">Pre-program your bid styles, drops, and announcements on a single physical-friendly button. One press, perfectly timed.</span>
+        <figure slot="media" class="vg vg--button">
+          <span class="vg-button__pad" aria-hidden="true">TAP</span>
+          <span class="vg-button__presets"><span>Bid +$5</span><span>Drop now</span><span>Thank the raid</span></span>
+        </figure>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="feature-card" state="initial" class="feature-card--wide">
+        <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        <span slot="tag">Post-show</span>
+        <span slot="title">Label printing configs</span>
+        <span slot="copy">Saved presets for every carrier, size, and printer you use. Bundle lots your way and stop re-typing weights.</span>
+        <figure slot="media" class="vg vg--label">
+          <span class="vg-label__row vg-label__row--on"><span class="vg-label__dot" aria-hidden="true"></span><b>USPS Priority</b><i>4×6 · thermal</i></span>
+          <span class="vg-label__row"><span class="vg-label__dot" aria-hidden="true"></span><b>UPS Ground</b><i>4×6 · thermal</i></span>
+          <span class="vg-label__row"><span class="vg-label__dot" aria-hidden="true"></span><b>DYMO LabelWriter</b><i>2.25×1.25</i></span>
+        </figure>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap features-page__spotlight">
+      <div class="features-page__spotlight-copy">
+        <p class="eyebrow">Analytics</p>
+        <h2 class="features-page__spotlight-title">Insights Whatnot <span class="accent-word">does not hand you.</span></h2>
+        <p class="features-page__spotlight-sub">Post-show breakdowns that read like advice: what sold, what stalled, which brands are trending with your buyers, and who keeps coming back.</p>
+        <ul class="principles">
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Repeat-buyer mix.</strong> See who drives your revenue and when they are watching.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Trend radar.</strong> The brands and categories heating up in your niche, before everyone else piles in.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Next-show plan.</strong> Concrete suggestions: what to source, what to reprice, when to go live.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="features-page__roadmap">
+        <p class="features-page__roadmap-eyebrow">On the roadmap</p>
+        <p class="features-page__roadmap-title">AI show analysis</p>
+        <p class="features-page__roadmap-copy">Real-time post-show intelligence: watch the replay of your numbers, spot the moments buyers leaned in, and get a plan for the next show written for you.</p>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
+          <b slot="label">Coming soon</b>
+        </blueprint-use>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section--cta">
+    <div class="wrap">
+      <blueprint-use kind="component" ref="cta-band" state="initial">
+        <span slot="title">Stop working the show alone.</span>
+        <span slot="sub">Closed beta, Mac only. Save a spot and we will email your code the moment a seat opens.</span>
+        <span slot="cta-primary">Save my spot</span>
+        <span slot="cta-secondary">Talk to a founder</span>
+      </blueprint-use>
+    </div>
+  </section>
+</main>
+<blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>

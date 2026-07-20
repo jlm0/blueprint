@@ -1,0 +1,133 @@
+<blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--sellers"></blueprint-use>
+<main class="sellers">
+  <section class="page-intro">
+    <img class="page-intro__glow" src="../assets/hero-glow.svg" alt="" aria-hidden="true" />
+    <div class="wrap page-intro__inner">
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal" class="page-intro__eyebrow">
+        <b slot="label">For sellers</b>
+      </blueprint-use>
+      <h1 class="display page-intro__title">Made for the <span class="accent-word">one-person show.</span></h1>
+      <p class="page-intro__sub">Most sellers run everything solo — sourcing, streaming, chat, shipping, books. NowWhat is the extra set of hands that never misses a beat.</p>
+    </div>
+  </section>
+
+  <section class="metrics" aria-label="Seller metrics">
+    <div class="wrap metrics__grid">
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">94%</span>
+        <span slot="label">Sellers run their show alone</span>
+        <span slot="delta">who we build for</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">6 hrs</span>
+        <span slot="label">Saved weekly on shipping</span>
+        <span slot="delta">median early seller</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">2×</span>
+        <span slot="label">Chat engagement with automation</span>
+        <span slot="delta">greetings + plugged</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap sellers__quotes">
+      <figure class="sellers__quote sellers__quote--a">
+        <blockquote>“I used to lose my Sunday to labels and spreadsheets. Now the show ends, I tap once, and I am done.”</blockquote>
+        <figcaption><span class="sellers__avatar" data-tone="amber">M</span><span><strong>Maya R.</strong> · vintage toys, 214 shows</span></figcaption>
+      </figure>
+      <figure class="sellers__quote sellers__quote--b">
+        <blockquote>“The auto-greeting alone pays for it. People think I hired a mod.”</blockquote>
+        <figcaption><span class="sellers__avatar" data-tone="leaf">J</span><span><strong>Jon D.</strong> · sports cards, 96 shows</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="page-section sellers__night">
+    <div class="wrap">
+      <blueprint-use kind="component" ref="section-head" state="initial" class="section-head--center">
+        <span slot="eyebrow">One show night</span>
+        <span slot="title">Three saves before midnight.</span>
+        <span slot="sub">Where NowWhat quietly carries a solo show — real captures from the app will live here.</span>
+      </blueprint-use>
+      <div class="sellers__night-strip">
+        <div class="sellers__night-item">
+          <span class="sellers__night-time">5:30 PM</span>
+          <blueprint-use kind="component" ref="media-slot" state="initial" class="sellers__night-media">
+            <b slot="label">Queue prepped before go-live</b>
+          </blueprint-use>
+          <p class="sellers__night-caption">Lots weighed, priced, and staged before the stream starts.</p>
+        </div>
+        <div class="sellers__night-item">
+          <span class="sellers__night-time">7:00 PM</span>
+          <blueprint-use kind="component" ref="media-slot" state="initial" class="sellers__night-media">
+            <b slot="label">Chat runs itself mid-show</b>
+          </blueprint-use>
+          <p class="sellers__night-caption">Greetings and plugged messages keep the room warm.</p>
+        </div>
+        <div class="sellers__night-item">
+          <span class="sellers__night-time">11:15 PM</span>
+          <blueprint-use kind="component" ref="media-slot" state="initial" class="sellers__night-media">
+            <b slot="label">Labels out before bed</b>
+          </blueprint-use>
+          <p class="sellers__night-caption">One tap, twenty-three labels, done for the night.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="wrap sellers__principles">
+      <div class="sellers__principles-copy">
+        <p class="eyebrow">Our promises</p>
+        <h2 class="sellers__title">Built the way sellers <span class="accent-word">actually work.</span></h2>
+        <ul class="principles">
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Your account stays yours.</strong> NowWhat never touches your Whatnot credentials — your login stays with Whatnot.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>No spam, ever.</strong> Automation greets once and rotates gently. Your community stays human.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Private by default.</strong> Show data stays on your Mac until you say otherwise.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Priced for solo sellers.</strong> If it does not save you a Sunday, you should not pay for it.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="sellers__card">
+        <p class="sellers__card-eyebrow">Seller board</p>
+        <p class="sellers__card-copy">Every feature ships with a seller advisory board review. If the people running shows do not vote for it, it does not ship.</p>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="accent">
+          <b slot="label">41 sellers advising</b>
+        </blueprint-use>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section--cta">
+    <div class="wrap">
+      <blueprint-use kind="component" ref="cta-band" state="initial">
+        <span slot="title">Join the sellers on the list.</span>
+        <span slot="sub">Closed beta, Mac only. Save a spot and we will email your code the moment a seat opens.</span>
+        <span slot="cta-primary">Save my spot</span>
+        <span slot="cta-secondary">Talk to a founder</span>
+      </blueprint-use>
+    </div>
+  </section>
+</main>
+<blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>

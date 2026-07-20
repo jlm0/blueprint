@@ -203,22 +203,20 @@ describe('canonical prototype compiler', () => {
   });
 
   it('keeps NowWhat composition selectors attached to rendered component and primitive roots', async () => {
-    const bundle = await loadProjectFromFs('fixtures/app-owned/nowwhat-waitlist/design/blueprint');
-    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'waitlist' }, state: 'initial' });
+    const bundle = await loadProjectFromFs('fixtures/app-owned/nowwhat/design/blueprint');
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'home' }, state: 'initial' });
 
     assert.doesNotMatch(compiled.html, /<blueprint-boundary\b|<blueprint-use\b/i);
     assert.match(
       compiled.html,
-      /\.waitlist-hero-copy > \[data-blueprint-component="email-signup-form"\] \{ max-width: 576px; \}/
+      /class="hero__capture"[^>]*data-blueprint-component="email-capture"|data-blueprint-component="email-capture"[^>]*class="hero__capture"/
     );
+    assert.match(compiled.html, /Save my spot/);
+    const badgeCount = (compiled.html.match(/data-blueprint-primitive="badge"/g) ?? []).length;
+    assert.ok(badgeCount >= 8, `workspace preview and hero should render at least 8 badge specimens, saw ${badgeCount}`);
     assert.match(
       compiled.html,
-      /\.waitlist-hero-shell > \[data-blueprint-component="product-preview"\] \{ display: none !important;/
-    );
-    assert.doesNotMatch(compiled.html, /blueprint-use/);
-    assert.match(
-      compiled.html,
-      /data-blueprint-primitive="seller-avatar"[^>]*>[\s\S]*?<\/span>\s*<span data-blueprint-primitive="seller-avatar"/
+      /data-blueprint-component="workspace-preview"[\s\S]*data-blueprint-primitive="badge"/
     );
   });
 

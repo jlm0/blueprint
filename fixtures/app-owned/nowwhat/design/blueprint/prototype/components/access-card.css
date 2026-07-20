@@ -1,0 +1,78 @@
+[data-blueprint-component="access-card"] {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  max-width: 480px;
+  padding: 36px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: calc(var(--nw-radius-xl) + 4px);
+  background: var(--nw-color-surface-1);
+  box-shadow: var(--nw-shadow-glass);
+}
+
+.access-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.access-card__key {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  border: 1px solid var(--nw-color-primary-line);
+  border-radius: var(--nw-radius-md);
+  background: var(--nw-color-primary-soft);
+  color: var(--nw-color-primary-strong);
+}
+
+.access-card__key [data-blueprint-primitive="icon"] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.access-card__title {
+  margin: 0;
+  font: 600 27px/1.15 var(--nw-font-display);
+  letter-spacing: -0.02em;
+  color: var(--nw-color-ink);
+}
+
+.access-card__sub {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 14.5px/1.6 var(--nw-font-body);
+}
+
+.access-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.access-card__field input {
+  height: var(--nw-space-control-height);
+}
+
+.access-card__submit [data-blueprint-primitive="button"] {
+  width: 100%;
+  min-height: var(--nw-space-control-height);
+  font-size: 15px;
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.3),
+    var(--nw-shadow-glow);
+}
+
+.access-card__foot {
+  margin: 0;
+  color: var(--nw-color-text-muted);
+  font: var(--nw-type-mono);
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}

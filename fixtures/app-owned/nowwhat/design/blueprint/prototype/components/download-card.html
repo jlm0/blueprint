@@ -1,0 +1,29 @@
+<section data-blueprint-component="download-card" data-blueprint-state="initial" aria-label="Download NowWhat">
+  <div class="download-card__file">
+    <span class="download-card__tile">n</span>
+    <div class="download-card__file-meta">
+      <p class="download-card__name">NowWhat-latest.dmg</p>
+      <p class="download-card__version">Version 1.4.0-alpha · private signed URL</p>
+    </div>
+  </div>
+  <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" class="download-card__cta">
+    <b slot="label">↓ Download macOS DMG</b>
+  </blueprint-use>
+  <div class="download-card__verify">
+    <span class="download-card__sha">SHA256 · verified on download</span>
+    <span class="download-card__channel">channel: alpha</span>
+  </div>
+  <hr class="download-card__rule" />
+  <p class="download-card__note">
+    <blueprint-use kind="primitive" ref="icon" state="default" variant="accent" class="download-card__note-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+    </blueprint-use>
+    <span>macOS trust comes from Apple Developer ID signing and notarization.</span>
+  </p>
+  <p class="download-card__note">
+    <blueprint-use kind="primitive" ref="icon" state="default" variant="accent" class="download-card__note-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.8a2.5 2.5 0 1 1 3.4 2.34c-.83.32-.84 1.12-.84 1.86"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+    </blueprint-use>
+    <span>Stuck? Email <strong>testers@nowwhat.io</strong> and include your tester email.</span>
+  </p>
+</section>

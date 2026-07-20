@@ -1,0 +1,19 @@
+<div data-blueprint-component="proof-row" data-blueprint-state="initial">
+  <span class="proof-row__avatars" aria-hidden="true">
+    <span class="proof-row__avatar" data-tone="amber">M</span>
+    <span class="proof-row__avatar" data-tone="rose">J</span>
+    <span class="proof-row__avatar" data-tone="violet">A</span>
+    <span class="proof-row__avatar" data-tone="leaf">S</span>
+    <span class="proof-row__avatar" data-tone="sky">R</span>
+  </span>
+  <p class="proof-row__count">
+    <strong><slot name="count">2,851</slot></strong> sellers on the list
+    <span class="proof-row__delta"><slot name="delta">+12 today</slot></span>
+  </p>
+  <p class="proof-row__note">
+    <blueprint-use kind="primitive" ref="icon" state="default" variant="accent" class="proof-row__shield">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+    </blueprint-use>
+    <span data-blueprint-slot="note">Your Whatnot login stays with Whatnot.</span>
+  </p>
+</div>

@@ -1,0 +1,133 @@
+<blueprint-use kind="component" ref="site-nav" state="initial"></blueprint-use>
+<main class="home">
+  <section class="hero" id="top">
+    <img class="hero__glow" src="../assets/hero-glow.svg" alt="" aria-hidden="true" />
+    <div class="wrap hero__grid">
+      <div class="hero__copy">
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal" class="hero__eyebrow">
+          <b slot="label">For Whatnot sellers · Closed beta</b>
+        </blueprint-use>
+        <h1 class="display hero__title">After the show ends, <span class="accent-word">now what?</span></h1>
+        <p class="hero__sub">The seller toolkit Whatnot forgot to build. Live insights mid-stream, one-tap fulfillment, and analytics that finally tell you what is working — and what is next.</p>
+        <blueprint-use kind="component" ref="email-capture" state="initial" class="hero__capture">
+          <span slot="placeholder">you@example.com</span>
+          <span slot="cta">Save my spot</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="proof-row" state="initial" class="hero__proof">
+          <span slot="count">2,851</span>
+          <span slot="delta">+12 today</span>
+          <span slot="note">Your Whatnot login stays with Whatnot.</span>
+        </blueprint-use>
+      </div>
+      <div class="hero__stage">
+        <blueprint-use kind="component" ref="workspace-preview" state="initial" class="hero__preview float-slow"></blueprint-use>
+      </div>
+    </div>
+  </section>
+
+  <section class="metrics" aria-label="Early access metrics">
+    <div class="wrap metrics__grid">
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">$2.1M+</span>
+        <span slot="label">Moved through early shows</span>
+        <span slot="delta">gross seller value</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">2,851</span>
+        <span slot="label">Sellers on the list</span>
+        <span slot="delta">+12 today</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="metric-stat" state="initial">
+        <span slot="value">38%</span>
+        <span slot="label">Faster fulfillment</span>
+        <span slot="delta">vs manual labels</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="wrap">
+      <blueprint-use kind="component" ref="section-head" state="initial" class="section-head--center">
+        <span slot="eyebrow">The toolkit</span>
+        <span slot="title">Everything after “sold”.</span>
+        <span slot="sub">NowWhat watches the stream with you, then carries the boring parts — so the show never has to slow down.</span>
+      </blueprint-use>
+      <div class="features__grid">
+        <blueprint-use kind="component" ref="feature-card" state="initial">
+          <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+          <span slot="tag">Mid-stream</span>
+          <span slot="title">Live show insights</span>
+          <span slot="copy">Momentum, buyer demand, and chat signals surface while you are still on air — not in a report the next morning.</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="feature-card" state="initial">
+          <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+          <span slot="tag">Post-show</span>
+          <span slot="title">One-tap fulfillment</span>
+          <span slot="copy">Every lot lands in the queue already weighed and priced. One tap prints every label before the adrenaline wears off.</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="feature-card" state="initial">
+          <svg slot="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          <span slot="tag">Always on</span>
+          <span slot="title">Analytics with a next step</span>
+          <span slot="copy">Not just what sold — what to source, what to reprice, and when to go live next. Answers, not dashboards.</span>
+        </blueprint-use>
+      </div>
+    </div>
+  </section>
+
+  <section class="story" id="sellers">
+    <div class="wrap story__grid">
+      <div class="story__copy">
+        <p class="eyebrow story__eyebrow">Built with sellers</p>
+        <h2 class="story__title">Designed in the chat, <span class="accent-word">not the boardroom.</span></h2>
+        <p class="story__sub">Every workflow in NowWhat started as a seller complaint we could not unhear. The result is a toolkit that behaves the way a live show actually feels.</p>
+        <ul class="story__list">
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>No new logins to learn.</strong> Your Whatnot account is the account — NowWhat never touches your credentials.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Made for one hand.</strong> Every critical action lands within thumb reach while the other hand holds the product.</span>
+          </li>
+          <li>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            </blueprint-use>
+            <span><strong>Private by default.</strong> Show data stays on your Mac until you say otherwise.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="story__stage" aria-hidden="true">
+        <div class="story__bubble story__bubble--1">“chat keeps saying POKEMON — raise the starter?”</div>
+        <div class="story__bubble story__bubble--2">“23 lots ready. print all?”</div>
+        <div class="story__bubble story__bubble--3">“your best buyer just joined 👀”</div>
+        <div class="story__cursor">NowWhat</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="quote" aria-label="Seller testimonial">
+    <div class="wrap quote__inner">
+      <p class="quote__mark">“</p>
+      <blockquote class="quote__text">I used to lose my Sunday to labels and spreadsheets. Now the show ends, I tap once, and I am <span class="accent-word">done.</span></blockquote>
+      <p class="quote__who"><span class="quote__avatar">M</span><span><strong>Maya R.</strong> · vintage toys, 214 shows</span></p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <blueprint-use kind="component" ref="cta-band" state="initial">
+        <span slot="title">Your next show deserves a next step.</span>
+        <span slot="sub">Closed beta, Mac only. Save a spot and we will email your code the moment a seat opens.</span>
+        <span slot="cta-primary">Save my spot</span>
+        <span slot="cta-secondary">Talk to a founder</span>
+      </blueprint-use>
+    </div>
+  </section>
+</main>
+<blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>

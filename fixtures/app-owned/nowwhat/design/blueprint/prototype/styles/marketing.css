@@ -1,0 +1,140 @@
+/* Shared marketing sub-page patterns: intro hero, card grids, steps, spotlight, quotes. */
+
+.page-intro {
+  position: relative;
+  padding: 96px 0 72px;
+}
+
+.page-intro__glow {
+  position: absolute;
+  top: -220px;
+  left: 50%;
+  width: 1000px;
+  max-width: none;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.page-intro__inner {
+  position: relative;
+  display: flex;
+  max-width: 760px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.page-intro__eyebrow {
+  border-radius: var(--nw-radius-full);
+  font-family: var(--nw-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.page-intro__title {
+  font-size: 60px;
+  line-height: 0.98;
+}
+
+.page-intro__sub {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--nw-color-text-secondary);
+  font: 400 17px/1.65 var(--nw-font-body);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  counter-reset: step;
+}
+
+.steps__item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--nw-color-ink) 14%, transparent);
+}
+
+.steps__index {
+  color: var(--nw-color-primary-strong);
+  font: 500 15px/1 var(--nw-font-mono);
+  letter-spacing: 0.08em;
+}
+
+.steps__title {
+  margin: 0;
+  font: 600 19px/1.2 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.steps__copy {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 14px/1.6 var(--nw-font-body);
+}
+
+.principles {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.principles li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--nw-color-text-secondary);
+  font: 400 14.5px/1.6 var(--nw-font-body);
+}
+
+.principles strong {
+  color: var(--nw-color-ink);
+}
+
+.principles [data-blueprint-primitive="icon"] {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin: 1px 0 0;
+  color: var(--nw-color-success);
+}
+
+.page-section {
+  padding-top: var(--nw-space-section);
+}
+
+.page-section--cta {
+  padding: var(--nw-space-section) 0;
+}
+
+@media (max-width: 720px) {
+  .page-intro {
+    padding: 56px 0 48px;
+  }
+
+  .page-intro__title {
+    font-size: 38px;
+  }
+
+  .card-grid,
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .page-section {
+    padding-top: 84px;
+  }
+}

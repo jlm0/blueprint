@@ -1,0 +1,25 @@
+<section data-blueprint-component="access-card" data-blueprint-state="initial" aria-label="Tester access">
+  <header class="access-card__head">
+    <span class="access-card__key">
+      <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.9 12.1L21 2m-4 2l3 3m-6 0l3 3"/></svg>
+      </blueprint-use>
+    </span>
+    <h2 class="access-card__title">Enter your waitlist code</h2>
+    <p class="access-card__sub">Look for the approval email with subject “You’re off the NowWhat waitlist”.</p>
+  </header>
+  <div class="access-card__fields">
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="default" class="access-card__field">
+      <span slot="label">Email</span>
+      <span slot="placeholder">you@example.com</span>
+    </blueprint-use>
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="default" class="access-card__field">
+      <span slot="label">Approval code</span>
+      <span slot="placeholder">NW-ABCD1234</span>
+    </blueprint-use>
+  </div>
+  <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" class="access-card__submit">
+    <b slot="label">Continue to download</b>
+  </blueprint-use>
+  <p class="access-card__foot">One code, one tester, one private Mac download.</p>
+</section>
