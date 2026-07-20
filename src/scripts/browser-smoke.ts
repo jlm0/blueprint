@@ -641,7 +641,7 @@ async function assertVisibleBoundarySynchronization(page: import('playwright').P
 
 async function assertBoundaryAffordances(page: import('playwright').Page): Promise<void> {
   const frame = page.locator('.board-screens .frame').first();
-  const chip = frame.locator('[data-boundary-action="copy-id"]').first();
+  const chip = frame.locator('xpath=..').locator('[data-boundary-action="copy-id"]').first();
   await chip.waitFor({ timeout: 5000 });
 
   const command = await frame.getAttribute('data-handoff-command');

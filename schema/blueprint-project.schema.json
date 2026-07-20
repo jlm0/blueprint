@@ -274,6 +274,7 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "framePresetId": { "type": "string" },
+        "flow": { "type": "string" },
         "styleRefs": { "$ref": "#/$defs/stringArray" },
         "styleEvidence": {
           "type": "array",

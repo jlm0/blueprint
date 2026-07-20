@@ -2134,6 +2134,12 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const controller = configure();
   const tokenIndex = createTokenIndex(bundle);
   frameLayouts.forEach(layout => {
+    if (layout.flowLabel) {
+      const label = el('div', 'screen-flow-label', layout.flowLabel.text);
+      label.style.left = `${layout.flowLabel.x}px`;
+      label.style.top = `${layout.flowLabel.y}px`;
+      root.append(label);
+    }
     root.append(createPrototypeFrame(
       bundle,
       tokenIndex,
@@ -2157,6 +2163,8 @@ interface ScreenFrameLayout {
   preset: FramePreset;
   x: number;
   y: number;
+  flow?: string;
+  flowLabel?: { text: string; x: number; y: number };
   prototypeSelection?: SelectedPrototypeReviewCondition;
   selectionError?: string;
 }
@@ -2165,15 +2173,38 @@ function layoutScreenFrames(bundle: BlueprintProjectBundle, request: PrototypeRe
   const startX = 90;
   const startY = 160;
   const gapX = 80;
-  let x = startX;
-  const layouts: ScreenFrameLayout[] = [];
+  const gapY = 120;
 
-  // Screens always lay out on a single row; horizontal pan reveals the rest.
+  // Screens group into one row per declared sub-flow, preserving first-seen order;
+  // screens without a flow share a single unlabeled row.
+  const groups = new Map<string | undefined, ScreenDefinition[]>();
   for (const screen of bundle.screens.screens) {
-    for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
-      layouts.push({ screen, preset: resolved.preset, x, y: startY, ...resolved.prototype });
-      x += resolved.preset.width + gapX;
+    const key = screen.flow;
+    if (!groups.has(key)) {
+      groups.set(key, []);
     }
+    groups.get(key)?.push(screen);
+  }
+
+  const layouts: ScreenFrameLayout[] = [];
+  let y = startY;
+  for (const [flow, screens] of groups) {
+    let x = startX;
+    let rowHeight = 0;
+    let labeled = flow === undefined;
+    for (const screen of screens) {
+      for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
+        const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, flow, ...resolved.prototype };
+        if (!labeled && flow !== undefined) {
+          layout.flowLabel = { text: flow, x: startX, y: y - 44 };
+          labeled = true;
+        }
+        layouts.push(layout);
+        x += resolved.preset.width + gapX;
+        rowHeight = Math.max(rowHeight, frameExtentHeight(screen, resolved.preset));
+      }
+    }
+    y += rowHeight + gapY;
   }
 
   return layouts;
@@ -2298,9 +2329,13 @@ function createPrototypeFrame(
   prototypeSelection?: SelectedPrototypeReviewCondition,
   selectionError?: string
 ): HTMLElement {
+  // The frame lives inside an unclipped slot: the canonical frame clips its own
+  // rounded chrome (overflow: hidden), so the floating head must hang from the slot
+  // to stay visible above the frame.
+  const slot = el('div', 'frame-slot');
+  slot.style.left = `${x}px`;
+  slot.style.top = `${y}px`;
   const frame = el('article', 'frame');
-  frame.style.left = `${x}px`;
-  frame.style.top = `${y}px`;
   frame.style.setProperty('--frame-width', `${preset.width}px`);
   frame.style.setProperty('--frame-height', `${preset.height}px`);
   frame.style.setProperty('--frame-safe-top', `${preset.safeArea.top}px`);
@@ -2351,18 +2386,20 @@ function createPrototypeFrame(
     wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
     frame.classList.add('frame-canonical');
     if (preset.type === 'mobile') {
-      frame.append(head, createStatusBar(), screenEl, createFrameHomeIndicator());
+      frame.append(createStatusBar(), screenEl, createFrameHomeIndicator());
     } else {
-      frame.append(head, createBrowserBar(screen), screenEl);
+      frame.append(createBrowserBar(screen), screenEl);
     }
-    return frame;
+    slot.append(head, frame);
+    return slot;
   }
 
   const screenEl = createLegacyPrototypeScreen(bundle, tokenIndex, screen, preset);
   wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
 
-  frame.append(head, screenEl);
-  return frame;
+  slot.append(head, frame);
+  frame.append(screenEl);
+  return slot;
 }
 
 function createFrameHomeIndicator(): HTMLElement {

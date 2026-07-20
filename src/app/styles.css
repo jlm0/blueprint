@@ -161,6 +161,39 @@ body {
   position: absolute;
 }
 
+.frame-slot {
+  position: absolute;
+  width: max-content;
+}
+
+.frame-slot > .frame {
+  position: relative;
+}
+
+.screen-flow-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bp-sample-muted-fg);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.screen-flow-label::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--bp-sample-muted-fg);
+  opacity: 0.7;
+}
+
 .group-head {
   display: flex;
   flex-direction: column;
@@ -1756,6 +1789,7 @@ body {
 
 .frame-head {
   position: absolute;
+  z-index: 5;
   top: -48px;
   left: 50%;
   display: flex;

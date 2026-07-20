@@ -203,6 +203,8 @@ export interface ScreenDefinition {
   name: string;
   description: string;
   framePresetId: string;
+  /** Optional sub-flow grouping for the screens board; screens sharing a flow lay out on the same canvas row. */
+  flow?: string;
   styleRefs: string[];
   styleEvidence?: StyleEvidence[];
   notes: string[];

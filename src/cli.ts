@@ -388,7 +388,8 @@ async function commandCapture(args: Args): Promise<void> {
     if (missingSectionBoundaries.length > 0) {
       throw new Error(`Screen capture pre-download DOM assertion failed. Missing visible section boundaries: ${missingSectionBoundaries.join(', ')}`);
     }
-    const save = frame.locator('.frame-save').first();
+    // Frame tools hang from the unclipped frame slot (sibling of the frame), not the frame itself.
+    const save = frame.locator('xpath=..').locator('.frame-save').first();
     await save.waitFor({ state: 'visible', timeout: 5000 });
 
     const downloadPromise = page.waitForEvent('download', { timeout: 10000 });

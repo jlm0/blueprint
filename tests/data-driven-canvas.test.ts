@@ -1152,13 +1152,14 @@ function withDesktopScreen(bundle: BlueprintProjectBundle): BlueprintProjectBund
 }
 
 async function frameCollisions(page: Page): Promise<string[]> {
-  return page.locator('.board-screens .frame').evaluateAll(elements => {
+  return page.locator('.board-screens .frame-slot').evaluateAll(elements => {
     const boxes = elements.map(element => {
       const node = element as HTMLElement;
+      const frame = node.querySelector<HTMLElement>('.frame');
       const left = parseFloat(node.style.left || '0');
       const top = parseFloat(node.style.top || '0');
       return {
-        label: node.dataset.boundaryId ?? node.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? 'screen',
+        label: frame?.dataset.boundaryId ?? node.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? 'screen',
         left,
         right: left + node.offsetWidth,
         top,
