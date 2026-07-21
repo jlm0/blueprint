@@ -1,0 +1,5 @@
+/* app-footer layout lives in prototype/styles/app.css; the component root only
+   needs to exist as a styled wrapper for the shared .app-footer classes. */
+[data-blueprint-component="app-footer"] {
+  min-width: 0;
+}

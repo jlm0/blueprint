@@ -1,0 +1,540 @@
+.live {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.live__embed {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid color-mix(in srgb, var(--nw-color-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--nw-color-surface-2) 45%, transparent);
+}
+
+.live__panel {
+  width: 448px;
+  flex: none;
+  overflow: hidden;
+  background: var(--nw-color-surface-1);
+}
+
+.live-pills {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 8%, transparent);
+  border-radius: var(--nw-radius-full);
+  background: var(--nw-color-surface-2);
+}
+
+.live-pill[data-blueprint-primitive="button"] {
+  border-radius: var(--nw-radius-full);
+  box-shadow: none;
+  font-size: 12.5px;
+}
+
+.live-pill .live-pill__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-pill .live-pill__glyph {
+  width: 13px;
+  height: 13px;
+}
+
+[data-blueprint-screen="live"][data-blueprint-state="flic"] .live-pill--flic[data-blueprint-primitive="button"],
+[data-blueprint-screen="live"][data-blueprint-state="labels"] .live-pill--labels[data-blueprint-primitive="button"],
+[data-blueprint-screen="live"][data-blueprint-state="chat"] .live-pill--chat[data-blueprint-primitive="button"],
+[data-blueprint-screen="live"][data-blueprint-state="flic-paused"] .live-pill--flic[data-blueprint-primitive="button"],
+[data-blueprint-screen="live"][data-blueprint-state="labels-paused"] .live-pill--labels[data-blueprint-primitive="button"],
+[data-blueprint-screen="live"][data-blueprint-state="chat-paused"] .live-pill--chat[data-blueprint-primitive="button"] {
+  background: var(--nw-color-primary-soft);
+  color: var(--nw-color-primary-strong);
+}
+
+[data-blueprint-screen="live"][data-blueprint-state="flic"] .live-panel--labels,
+[data-blueprint-screen="live"][data-blueprint-state="flic"] .live-panel--chat,
+[data-blueprint-screen="live"][data-blueprint-state="labels"] .live-panel--flic,
+[data-blueprint-screen="live"][data-blueprint-state="labels"] .live-panel--chat,
+[data-blueprint-screen="live"][data-blueprint-state="chat"] .live-panel--flic,
+[data-blueprint-screen="live"][data-blueprint-state="chat"] .live-panel--labels,
+[data-blueprint-screen="live"][data-blueprint-state="flic-paused"] .live-panel--labels,
+[data-blueprint-screen="live"][data-blueprint-state="flic-paused"] .live-panel--chat,
+[data-blueprint-screen="live"][data-blueprint-state="labels-paused"] .live-panel--flic,
+[data-blueprint-screen="live"][data-blueprint-state="labels-paused"] .live-panel--chat,
+[data-blueprint-screen="live"][data-blueprint-state="chat-paused"] .live-panel--flic,
+[data-blueprint-screen="live"][data-blueprint-state="chat-paused"] .live-panel--labels {
+  display: none;
+}
+
+.live-panel {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.live-panel__head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nw-color-ink) 8%, transparent);
+}
+
+.live-panel__titles {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.live-panel__title {
+  margin: 0;
+  font: 600 17px/1.2 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.live-panel__desc {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 12.5px/1.45 var(--nw-font-body);
+}
+
+.live-panel__action[data-blueprint-primitive="button"] {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 8px;
+  color: var(--nw-color-text-secondary);
+  font-size: 13px;
+}
+
+.live-panel__action svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.live-panel__close[data-blueprint-primitive="button"] {
+  min-width: 0;
+  padding: 6px 10px;
+  color: var(--nw-color-text-muted);
+  font-size: 15px;
+}
+
+.live-panel__body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  overflow: hidden;
+}
+
+/* Flic surface: readiness rail + one command + one override. */
+
+.flic-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.flic-rail__item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: var(--nw-radius-lg);
+  background: color-mix(in srgb, var(--nw-color-surface-2) 60%, transparent);
+}
+
+.flic-rail__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--nw-color-text-muted);
+  font: 500 10px/1 var(--nw-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flic-rail__label svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+
+.flic-rail__value {
+  margin: 0;
+  font: 600 12.5px/1.2 var(--nw-font-body);
+  color: var(--nw-color-ink);
+}
+
+.flic-rail__value--live {
+  color: var(--nw-color-destructive);
+}
+
+/* The footer's live dot matches the rail's live red — one liveness color. */
+
+.live__footer-dot {
+  color: var(--nw-color-destructive);
+}
+
+.flic-rail__value--ok {
+  color: var(--nw-color-success);
+}
+
+.flic-command {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-success) 22%, transparent);
+  border-radius: var(--nw-radius-xl);
+  background: var(--nw-color-success-soft);
+}
+
+.flic-command__tile {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nw-radius-full);
+  background: var(--nw-color-surface-1);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+.flic-command .flic-command__tile [data-blueprint-primitive="icon"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  color: var(--nw-color-success);
+}
+
+.flic-command__title {
+  margin: 0;
+  font: 600 17px/1.3 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.flic-command__sub {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 12.5px/1.4 var(--nw-font-body);
+}
+
+.flic-command__pinned {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: var(--nw-radius-lg);
+  background: var(--nw-color-surface-1);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+.flic-command__pinned > i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--nw-color-destructive);
+  box-shadow: 0 0 6px var(--nw-color-destructive);
+}
+
+.flic-command__pinned-id {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flic-command__pinned-id b {
+  overflow: hidden;
+  color: var(--nw-color-ink);
+  font: 600 12.5px/1.3 var(--nw-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flic-command__pinned-id span {
+  flex: none;
+  color: var(--nw-color-text-muted);
+  font: 500 11px/1 var(--nw-font-mono);
+}
+
+.flic-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flic-zone__label {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--nw-color-text-muted);
+  font: 500 10px/1 var(--nw-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flic-swap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.flic-swap-row__glyph {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nw-radius-full);
+  background: var(--nw-color-surface-2);
+  color: var(--nw-color-ink);
+}
+
+.flic-swap-row__glyph svg {
+  width: 16px;
+  height: 16px;
+}
+
+.flic-swap-row__name {
+  flex: none;
+  min-width: 72px;
+  color: var(--nw-color-ink);
+  font: 500 12.5px/1.2 var(--nw-font-body);
+}
+
+.flic-swap-row .flic-swap-row__select[data-blueprint-primitive="select"] {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+
+.flic-conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: var(--nw-radius-lg);
+  background: color-mix(in srgb, var(--nw-color-surface-2) 55%, transparent);
+}
+
+.flic-conn__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--nw-color-text-muted);
+}
+
+.flic-conn__dot--ready {
+  background: var(--nw-color-success);
+  box-shadow: 0 0 6px var(--nw-color-success);
+}
+
+.flic-conn__name {
+  color: var(--nw-color-ink);
+  font: 600 12.5px/1.2 var(--nw-font-body);
+}
+
+.flic-conn--off .flic-conn__name {
+  color: var(--nw-color-text-secondary);
+  font-weight: 500;
+}
+
+.flic-conn__status {
+  margin-left: auto;
+  color: var(--nw-color-text-muted);
+  font: 500 11px/1 var(--nw-font-body);
+}
+
+.flic-conn__status--ready {
+  color: var(--nw-color-success);
+}
+
+/* Labels + chat surfaces reuse the flic rail → command → zone → conn anatomy.
+   Only tool-specific pieces live below. */
+
+.live-panel--labels .flic-swap-row__name,
+.live-panel--chat .flic-swap-row__name {
+  min-width: 96px;
+}
+
+/* Command ticket / sent bubble: success dot instead of the live red dot. */
+
+.labels-command .labels-command__next > i,
+.chat-command .chat-command__sent > i {
+  background: var(--nw-color-success);
+  box-shadow: 0 0 6px var(--nw-color-success);
+}
+
+/* Chat next-up row: dashed = upcoming, clock instead of a dot. */
+
+.chat-command .chat-command__next {
+  margin-top: 6px;
+  border: 1px dashed color-mix(in srgb, var(--nw-color-ink) 16%, transparent);
+  box-shadow: none;
+}
+
+.chat-command__clock {
+  display: inline-flex;
+  flex: none;
+  color: var(--nw-color-text-muted);
+}
+
+.chat-command__clock svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Paused states: hero swap, resume affordance, dimmed actions ── */
+
+.flic-command--paused {
+  display: none;
+}
+
+[data-blueprint-state$="-paused"] .live-panel .flic-command:not(.flic-command--paused) {
+  display: none;
+}
+
+[data-blueprint-state$="-paused"] .live-panel .flic-command--paused {
+  display: flex;
+  border-color: color-mix(in srgb, var(--nw-color-amber) 40%, transparent);
+  background: var(--nw-color-amber-soft);
+}
+
+.flic-command--paused .flic-command__tile [data-blueprint-primitive="icon"] {
+  color: var(--nw-color-amber);
+}
+
+/* Pause button becomes the resume verb. */
+
+.live-panel__resume-glyph {
+  display: none;
+}
+
+[data-blueprint-state$="-paused"] .live-panel .live-panel__pause-glyph {
+  display: none;
+}
+
+[data-blueprint-state$="-paused"] .live-panel .live-panel__resume-glyph {
+  display: inline;
+}
+
+[data-blueprint-state$="-paused"] .live-panel .live-panel__action--pause[data-blueprint-primitive="button"] {
+  background: var(--nw-color-primary-soft);
+  color: var(--nw-color-primary-strong);
+}
+
+/* Quick-override rows dim while paused; connections and the held-label
+   decision stay true — pausing stops automation, not manual calls. */
+
+[data-blueprint-state$="-paused"] .live-panel .flic-swap-row {
+  opacity: 0.5;
+}
+
+/* Chat rail: Auto flips to Paused (device truths stay as they are). */
+
+.flic-rail__value--paused {
+  display: none;
+  color: var(--nw-color-amber);
+}
+
+[data-blueprint-state="chat-paused"] .live-panel--chat .flic-rail__value--auto {
+  display: none;
+}
+
+[data-blueprint-state="chat-paused"] .live-panel--chat .flic-rail__value--paused {
+  display: block;
+}
+
+/* Held-for-review row: the one quick decision mid-show. */
+
+.labels-held {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-amber) 45%, transparent);
+  border-radius: var(--nw-radius-lg);
+  background: var(--nw-color-amber-soft);
+}
+
+.labels-held__glyph {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nw-radius-full);
+  background: color-mix(in srgb, var(--nw-color-amber) 18%, transparent);
+  color: var(--nw-color-ink);
+}
+
+.labels-held__glyph svg {
+  width: 15px;
+  height: 15px;
+}
+
+.labels-held__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.labels-held__copy b {
+  overflow: hidden;
+  color: var(--nw-color-ink);
+  font: 600 12.5px/1.3 var(--nw-font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labels-held__copy p {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 11.5px/1.35 var(--nw-font-body);
+}
+
+.labels-held .labels-held__print[data-blueprint-primitive="button"] {
+  min-height: 30px;
+  flex: none;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.labels-held .labels-held__skip[data-blueprint-primitive="button"] {
+  min-width: 0;
+  min-height: 30px;
+  flex: none;
+  padding: 0 10px;
+  color: var(--nw-color-text-muted);
+  font-size: 12.5px;
+}

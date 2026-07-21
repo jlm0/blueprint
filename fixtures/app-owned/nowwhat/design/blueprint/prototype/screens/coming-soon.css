@@ -1,0 +1,41 @@
+.coming-soon {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.coming-soon__card {
+  display: flex;
+  width: 620px;
+  max-width: calc(100% - 64px);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 40px;
+  border: 1.5px dashed color-mix(in srgb, var(--nw-color-ink) 16%, transparent);
+  border-radius: var(--nw-radius-xl);
+  background: color-mix(in srgb, var(--nw-color-surface-2) 45%, transparent);
+  text-align: center;
+}
+
+.coming-soon__card [data-blueprint-primitive="icon"] {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+}
+
+.coming-soon__card b {
+  font: 600 17px/1.25 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.coming-soon__card p {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--nw-color-text-secondary);
+  font: 400 14px/1.6 var(--nw-font-body);
+}

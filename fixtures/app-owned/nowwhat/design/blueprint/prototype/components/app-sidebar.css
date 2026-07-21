@@ -1,0 +1,221 @@
+[data-blueprint-component="app-sidebar"] {
+  display: flex;
+  width: 232px;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px 10px;
+  border-right: 1px solid color-mix(in srgb, var(--nw-color-ink) 8%, transparent);
+  background: var(--nw-color-background);
+  font: 400 14px/1.5 var(--nw-font-body);
+  color: var(--nw-color-ink);
+}
+
+.app-sidebar__brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 2px 4px 14px;
+}
+
+.app-sidebar__mark-tile {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--nw-color-primary);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+.app-sidebar__mark {
+  width: 19px;
+  height: 19px;
+}
+
+.app-sidebar__brand-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-sidebar__wordmark-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.app-sidebar__wordmark {
+  font: 700 17px/1.1 var(--nw-font-brand);
+  letter-spacing: -0.02em;
+  color: var(--nw-color-ink);
+}
+
+.app-sidebar__flavor[data-blueprint-primitive="badge"] {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.app-sidebar__edition {
+  color: var(--nw-color-text-muted);
+  font: var(--nw-type-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.app-sidebar__collapse {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0 0 auto;
+  color: var(--nw-color-text-muted);
+}
+
+.app-sidebar__collapse svg {
+  width: 17px;
+  height: 17px;
+}
+
+.app-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-sidebar__group {
+  margin: 14px 4px 6px;
+  color: var(--nw-color-text-muted);
+  font: var(--nw-type-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.app-sidebar__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--nw-color-text-secondary);
+  text-decoration: none;
+}
+
+.app-sidebar__nav-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin: 0;
+  color: var(--nw-color-text-muted);
+}
+
+.app-sidebar__nav-label {
+  font: 500 13.5px/1.2 var(--nw-font-body);
+  letter-spacing: -0.01em;
+}
+
+.app-sidebar--dashboard .app-sidebar__nav-item[data-nav="dashboard"],
+.app-sidebar--shows .app-sidebar__nav-item[data-nav="shows"],
+.app-sidebar--buyers .app-sidebar__nav-item[data-nav="buyers"],
+.app-sidebar--inventory .app-sidebar__nav-item[data-nav="inventory"],
+.app-sidebar--analytics .app-sidebar__nav-item[data-nav="analytics"],
+.app-sidebar--whatnot .app-sidebar__nav-item[data-nav="whatnot"],
+.app-sidebar--settings .app-sidebar__nav-item[data-nav="settings"] {
+  border-color: color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  background: var(--nw-color-surface-1);
+  color: var(--nw-color-ink);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+.app-sidebar--dashboard .app-sidebar__nav-item[data-nav="dashboard"] .app-sidebar__nav-icon,
+.app-sidebar--shows .app-sidebar__nav-item[data-nav="shows"] .app-sidebar__nav-icon,
+.app-sidebar--buyers .app-sidebar__nav-item[data-nav="buyers"] .app-sidebar__nav-icon,
+.app-sidebar--inventory .app-sidebar__nav-item[data-nav="inventory"] .app-sidebar__nav-icon,
+.app-sidebar--analytics .app-sidebar__nav-item[data-nav="analytics"] .app-sidebar__nav-icon,
+.app-sidebar--whatnot .app-sidebar__nav-item[data-nav="whatnot"] .app-sidebar__nav-icon,
+.app-sidebar--settings .app-sidebar__nav-item[data-nav="settings"] .app-sidebar__nav-icon {
+  color: var(--nw-color-primary);
+}
+
+.app-sidebar__session {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: var(--nw-radius-lg);
+  background: var(--nw-color-surface-1);
+  box-shadow: var(--nw-shadow-xs);
+}
+
+.app-sidebar__synced {
+  align-self: flex-start;
+}
+
+.app-sidebar__session-note {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 13px/1.4 var(--nw-font-body);
+}
+
+.app-sidebar__signout {
+  padding: 8px 0 2px;
+}
+
+.app-sidebar__signout-button {
+  justify-content: flex-start;
+  color: var(--nw-color-text-secondary);
+}
+
+/* Collapsed rail: production behavior when the live tools panel opens. */
+.app-sidebar--rail {
+  width: 68px;
+  padding-inline: 10px;
+}
+
+.app-sidebar--rail .app-sidebar__brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.app-sidebar--rail .app-sidebar__brand-text,
+.app-sidebar--rail .app-sidebar__group,
+.app-sidebar--rail .app-sidebar__nav-label,
+.app-sidebar--rail .app-sidebar__session-note,
+.app-sidebar--rail .app-sidebar__signout,
+.app-sidebar--rail .app-sidebar__collapse {
+  display: none;
+}
+
+.app-sidebar--rail .app-sidebar__nav-item {
+  justify-content: center;
+  padding: 9px 0;
+}
+
+.app-sidebar--rail .app-sidebar__session {
+  align-items: center;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-sidebar--rail .app-sidebar__synced {
+  align-self: center;
+}
+
+.app-sidebar--rail .app-sidebar__synced [data-blueprint-slot="label"],
+.app-sidebar--rail .app-sidebar__synced > * {
+  font-size: 0;
+}
+
+.app-sidebar--rail .app-sidebar__synced::before {
+  content: "●";
+  font-size: 9px;
+}

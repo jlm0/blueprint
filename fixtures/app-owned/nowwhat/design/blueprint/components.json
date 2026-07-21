@@ -3,6 +3,274 @@
   "projectId": "nowwhat-web",
   "components": [
     {
+      "id": "app-sidebar",
+      "name": "App Sidebar",
+      "description": "Workspace window sidebar: brand lockup with flavor chip, workspace/account nav with forwarded-class active states, session card, and ghost sign-out. The rail variant collapses to icons when the live tools panel opens.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Canonical tonal flavor chip beside the wordmark.",
+          "binding": {
+            "slot": "flavor",
+            "state": "default",
+            "variant": "tonal",
+            "copy": "E2E"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Dashboard.",
+          "binding": {
+            "slot": "nav dashboard",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Shows.",
+          "binding": {
+            "slot": "nav shows",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Buyers.",
+          "binding": {
+            "slot": "nav buyers",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Inventory.",
+          "binding": {
+            "slot": "nav inventory",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Analytics.",
+          "binding": {
+            "slot": "nav analytics",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Whatnot.",
+          "binding": {
+            "slot": "nav whatnot",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Canonical nav glyph: Settings.",
+          "binding": {
+            "slot": "nav settings",
+            "state": "default",
+            "variant": "default"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Canonical success sync status chip in the session card.",
+          "binding": {
+            "slot": "synced",
+            "state": "default",
+            "variant": "success",
+            "copy": "● Synced"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical ghost sign-out command.",
+          "binding": {
+            "slot": "sign out",
+            "state": "normal",
+            "variant": "ghost",
+            "copy": "Sign out"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/components/app-sidebar.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/app-sidebar.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/app-sidebar.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/app-sidebar.html",
+        "styles": [
+          "prototype/components/app-sidebar.css"
+        ],
+        "slots": [],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "app-topbar",
+      "name": "App Topbar",
+      "description": "Workspace window top bar: breadcrumb trail, page title, and description; contextual actions are screen-local art direction.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/styles/app.css",
+        "prototype/components/app-topbar.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/app.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/app.css"
+        },
+        {
+          "styleRef": "prototype/components/app-topbar.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/app-topbar.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/app-topbar.html",
+        "styles": [
+          "prototype/styles/app.css",
+          "prototype/components/app-topbar.css"
+        ],
+        "slots": [
+          "trail",
+          "title",
+          "description"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": []
+      }
+    },
+    {
+      "id": "app-footer",
+      "name": "App Footer",
+      "description": "Workspace window status footer: live-state line on the left, contextual status (for example Flic paused) on the right.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography",
+        "motion"
+      ],
+      "styleRefs": [
+        "prototype/styles/app.css",
+        "prototype/components/app-footer.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/styles/app.css",
+          "status": "source",
+          "sourceAnchor": "prototype/styles/app.css"
+        },
+        {
+          "styleRef": "prototype/components/app-footer.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/app-footer.css"
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/app-footer.html",
+        "styles": [
+          "prototype/styles/app.css",
+          "prototype/components/app-footer.css"
+        ],
+        "slots": [
+          "footer-left",
+          "footer-right"
+        ],
+        "states": [
+          "initial"
+        ],
+        "renderedUses": []
+      }
+    },
+    {
       "id": "site-nav",
       "name": "Site Nav",
       "description": "Sticky marketing header composing canonical ghost and primary buttons over warm-paper blur chrome; the active link arrives through the forwarded page class.",
@@ -367,7 +635,7 @@
             "slot": "status",
             "state": "default",
             "variant": "success",
-            "copy": "\u25cf LIVE"
+            "copy": "● LIVE"
           }
         }
       ],
@@ -714,7 +982,7 @@
             "slot": "status",
             "state": "default",
             "variant": "tonal",
-            "copy": "Closed beta \u00b7 Mac only"
+            "copy": "Closed beta · Mac only"
           }
         }
       ],

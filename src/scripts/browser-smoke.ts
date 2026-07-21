@@ -169,9 +169,9 @@ async function assertDarkBlueprintCanvas(page: import('playwright').Page): Promi
     };
   });
 
-  const radialCount = styles.backgroundImage.match(/radial-gradient/g)?.length ?? 0;
-  if (radialCount !== 1 || styles.backgroundColor !== 'rgb(11, 17, 24)') {
-    throw new Error('Canvas should render the dark dotted Blueprint reference background.');
+  const lineCount = styles.backgroundImage.match(/linear-gradient/g)?.length ?? 0;
+  if (lineCount !== 4 || styles.backgroundColor !== 'rgb(11, 21, 38)') {
+    throw new Error('Canvas should render the navy blueprint grid-line background.');
   }
 }
 
@@ -260,7 +260,8 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
   }
 
   const focusStyle = await page.locator('.board-switcher [data-board]').first().evaluate(element => {
-    (element as HTMLElement).focus();
+    // Keyboard users get :focus-visible; request that state explicitly here.
+    (element as HTMLElement).focus({ focusVisible: true } as FocusOptions);
     const computed = window.getComputedStyle(element);
     return {
       outlineStyle: computed.outlineStyle,
@@ -801,7 +802,9 @@ async function assertScreenChromeFocus(page: import('playwright').Page): Promise
   for (const control of controls) {
     const focusStyle = await page.locator(control.selector).first().evaluate(element => {
       const node = element as HTMLElement;
-      node.focus();
+      // Chrome controls ring focus for keyboard users (:focus-visible);
+      // request the same state explicitly for the programmatic check.
+      node.focus({ focusVisible: true } as FocusOptions);
       const computed = window.getComputedStyle(node);
       return {
         className: node.className,

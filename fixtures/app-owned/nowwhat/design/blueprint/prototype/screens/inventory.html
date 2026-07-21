@@ -1,0 +1,22 @@
+<div class="app-window">
+  <blueprint-use kind="component" ref="app-sidebar" state="initial" class="app-sidebar--inventory"></blueprint-use>
+  <div class="app-window__body">
+    <blueprint-use kind="component" ref="app-topbar" state="initial">
+      <b slot="trail">Workspace</b>
+      <b slot="title">Inventory</b>
+      <b slot="description">— Catalog, pricing, condition, and show assignment</b>
+    </blueprint-use>
+    <main class="coming-soon">
+      <div class="coming-soon__card">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+        </blueprint-use>
+        <b>Your inventory will live here</b>
+        <p>Your full Whatnot catalog with pricing, condition, categories, and show assignment is on the way.</p>
+      </div>
+    </main>
+    <blueprint-use kind="component" ref="app-footer" state="initial">
+      <b slot="footer-left">● Not on a show</b>
+    </blueprint-use>
+  </div>
+</div>

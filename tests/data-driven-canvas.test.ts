@@ -10,6 +10,7 @@ import type { BlueprintProjectBundle, PrimitiveDefinition, ScreenDefinition } fr
 const starterRoot = 'starter/design/blueprint';
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
+const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -718,6 +719,61 @@ describe('Blueprint data-driven primitives canvas', () => {
 
       const collisions = await frameCollisions(page);
       assert.deepEqual(collisions, [], `Mixed mobile and desktop screen frames should not overlap:\n${collisions.join('\n')}`);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('splits the screens board into flow subpages that deep links bypass', async () => {
+    const bundle = await loadProjectFromFs(nowWhatRoot);
+    const page = await openScreensBoard(bundle);
+
+    try {
+      const switcher = page.locator('.bp-chrome-flow-switcher');
+      assert.equal(await switcher.isVisible(), true, 'Flow subpage switcher should render on the screens board');
+      assert.deepEqual(
+        (await switcher.locator('button').allTextContents()).map(text => text.trim()),
+        ['marketing', 'access', 'app'],
+        'Flow pills should be the declared flows in first-seen order'
+      );
+      assert.equal(
+        await switcher.locator('button[data-flow="marketing"]').getAttribute('aria-pressed'),
+        'true',
+        'First declared flow should be the default canvas'
+      );
+      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 8);
+
+      await switcher.locator('button[data-flow="access"]').click();
+      await page.waitForFunction(
+        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 4,
+        undefined,
+        { timeout: 5000 }
+      );
+      const accessFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
+        elements.map(element => (element as HTMLElement).dataset.boundaryId).sort()
+      );
+      assert.deepEqual(
+        accessFrames,
+        ['nowwhat-web/screen/download', 'nowwhat-web/screen/download', 'nowwhat-web/screen/login', 'nowwhat-web/screen/login'],
+        'Access subpage should mount only the access-flow frames'
+      );
+      assert.equal(await switcher.locator('button[data-flow="access"]').getAttribute('aria-pressed'), 'true');
+      assert.match(page.url(), /flow=access/);
+
+      await switcher.locator('button[data-flow="marketing"]').click();
+      await page.waitForSelector('.board-screens [data-boundary-id="nowwhat-web/screen/sellers"]', { timeout: 5000 });
+      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 8);
+
+      await switcher.locator('button[data-flow="app"]').click();
+      await page.waitForFunction(
+        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 29,
+        undefined,
+        { timeout: 5000 }
+      );
+
+      // Deep links (state/viewport, used by capture) resolve every screen regardless of the active subpage.
+      await page.goto(`${baseUrl}?board=screens&flow=access&state=initial&viewport=desktop-web-tall`);
+      await page.waitForSelector('.board-screens [data-boundary-id="nowwhat-web/screen/home"]', { timeout: 5000 });
     } finally {
       await page.close();
     }

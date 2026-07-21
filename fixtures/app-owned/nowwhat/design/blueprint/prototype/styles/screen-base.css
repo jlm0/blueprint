@@ -101,5 +101,9 @@ body::before {
 }
 
 main {
-  flex: 1 0 auto;
+  /* Shrinkable so the status footer is never pushed out of the window;
+     the page area owns any overflow instead of the chrome. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }

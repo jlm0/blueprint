@@ -20,7 +20,7 @@
       "id": "screens",
       "kind": "screens",
       "name": "Screens",
-      "description": "The NowWhat marketing site: landing, tester login, and download screens."
+      "description": "NowWhat surfaces: marketing site (web) and the seller workspace app (Mac window), grouped in flow subpages."
     }
   ],
   "framePresets": [
@@ -147,6 +147,19 @@
       "type": "mobile",
       "width": 390,
       "height": 4706,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    },
+    {
+      "id": "app-window",
+      "name": "Mac App Window",
+      "type": "desktop",
+      "width": 1512,
+      "height": 917,
       "safeArea": {
         "top": 0,
         "right": 0,

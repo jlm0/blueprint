@@ -1,0 +1,252 @@
+<div class="app-window" data-blueprint-screen="settings-labels" data-blueprint-state="empty">
+  <blueprint-use kind="component" ref="app-sidebar" state="initial" class="app-sidebar--settings"></blueprint-use>
+  <div class="app-window__body">
+    <header class="app-topbar">
+      <span class="app-topbar__trail">Account</span>
+      <span class="app-topbar__trail-sep" aria-hidden="true">/</span>
+      <span class="app-topbar__trail">Settings</span>
+      <span class="app-topbar__trail-sep" aria-hidden="true">/</span>
+      <span class="app-topbar__title">Labels &amp; printers</span>
+      <span class="app-topbar__description">— Buyer labels that print themselves</span>
+      <span class="app-topbar__aside labels__topbar-badge">
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="success">
+          <b slot="label">Printer ready</b>
+        </blueprint-use>
+      </span>
+    </header>
+    <main class="labels">
+      <div class="app-page labels__page">
+        <section class="labels__empty" aria-label="Get started">
+          <span class="labels__empty-tile">
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+            </blueprint-use>
+          </span>
+          <h1 class="labels__empty-title">Every sale, labeled the moment it happens</h1>
+          <p class="labels__empty-sub">A buyer number prints the instant someone wins — packing stops being guesswork.</p>
+          <div class="labels__empty-cta">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" class="labels__empty-button">
+              <span slot="label">Add your printer</span>
+            </blueprint-use>
+            <p class="labels__empty-note">Works with POLONO thermal printers · about a minute</p>
+          </div>
+        </section>
+        <div class="labels__setup">
+          <section class="labels__zone labels__zone--printer" aria-label="Printer">
+            <header class="labels__zone-head">
+              <p class="app-label">Printer</p>
+              <span class="labels__zone-meta">What labels come out of</span>
+            </header>
+            <div class="labels-printer">
+              <span class="labels-printer__tile">
+                <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+                </blueprint-use>
+              </span>
+              <div class="labels-printer__id">
+                <b class="labels-printer__name">POLONO PL60</b>
+                <span class="labels-printer__status labels-printer__status--ready"><i></i>Ready</span>
+              </div>
+              <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" class="labels-printer__test">
+                <span slot="label">Print test label</span>
+              </blueprint-use>
+              <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" class="labels-printer__menu">
+                <svg slot="label" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+              </blueprint-use>
+            </div>
+          </section>
+          <section class="labels__zone" aria-label="Your label">
+            <header class="labels__zone-head">
+              <p class="app-label">Your label</p>
+              <span class="labels__zone-aside">
+                <span class="labels__zone-meta">What every sticker looks like</span>
+                <blueprint-use kind="primitive" ref="icon" state="default" variant="muted" class="labels__help">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                </blueprint-use>
+              </span>
+            </header>
+            <div class="labels-recipe">
+              <div class="labels-recipe__preview" aria-hidden="true">
+                <div class="labels-stub">
+                  <span class="labels-stub__buyer">B012</span>
+                  <span class="labels-stub__item">Charizard ex · Obsidian Flames</span>
+                  <span class="labels-stub__meta">$24 · 3rd sale this show</span>
+                  <span class="labels-stub__band">nowwhat</span>
+                </div>
+              </div>
+              <div class="labels-recipe__controls">
+                <div class="labels-recipe__field">
+                  <p class="labels-recipe__label">Stock</p>
+                  <div class="labels-stocks" role="group" aria-label="Label stock">
+                    <span class="labels-stock"><i class="labels-stock__rect labels-stock__rect--1x1"></i>1 × 1</span>
+                    <span class="labels-stock labels-stock--on"><i class="labels-stock__rect labels-stock__rect--2x1"></i>2 × 1</span>
+                    <span class="labels-stock"><i class="labels-stock__rect labels-stock__rect--1x3"></i>1 × 3</span>
+                    <span class="labels-stock"><i class="labels-stock__rect labels-stock__rect--2x3"></i>2 × 3</span>
+                    <span class="labels-stock"><i class="labels-stock__rect labels-stock__rect--4x6"></i>4 × 6</span>
+                  </div>
+                </div>
+                <div class="labels-recipe__field">
+                  <p class="labels-recipe__label">Buyer handle</p>
+                  <span class="labels-seg" role="group" aria-label="Buyer handle on labels">
+                    <span class="labels-seg__item labels-seg__item--on">Hidden</span>
+                    <span class="labels-seg__item">Shown</span>
+                  </span>
+                  <p class="labels-recipe__note">Handles stay off your pack-room videos.</p>
+                </div>
+              </div>
+            </div>
+            <div class="labels-recipe__field labels-templates">
+              <p class="labels-recipe__label">Template</p>
+              <div class="labels-templates__row" role="group" aria-label="Label template">
+                <span class="labels-template labels-template--on">
+                  <i class="labels-template__mini"><i class="labels-template__num"></i><i class="labels-template__lines"></i><i class="labels-template__band labels-template__band--bottom"></i></i>
+                  Classic
+                </span>
+                <span class="labels-template">
+                  <i class="labels-template__mini"><i class="labels-template__band labels-template__band--side"></i><i class="labels-template__lines"></i></i>
+                  Side band
+                </span>
+                <span class="labels-template">
+                  <i class="labels-template__mini"><i class="labels-template__stack"></i><i class="labels-template__band labels-template__band--bottom"></i></i>
+                  Stacked
+                </span>
+                <span class="labels-template">
+                  <i class="labels-template__mini"><i class="labels-template__band labels-template__band--top"></i><i class="labels-template__num labels-template__num--small"></i><i class="labels-template__lines"></i></i>
+                  Top band
+                </span>
+                <span class="labels-template">
+                  <i class="labels-template__mini"><i class="labels-template__handle-line"></i><i class="labels-template__band labels-template__band--bottom"></i></i>
+                  Buyer bar
+                </span>
+              </div>
+            </div>
+          </section>
+          <section class="labels__zone labels__zone--plan" aria-label="When to print">
+            <header class="labels__zone-head labels__zone-head--control">
+              <p class="app-label">When to print</p>
+              <span class="labels-seg" role="group" aria-label="What prints">
+                <span class="labels-seg__item labels-seg__item--on">One per buyer</span>
+                <span class="labels-seg__item">One per item</span>
+                <span class="labels-seg__item">Both</span>
+              </span>
+            </header>
+            <div class="labels-plan">
+              <div class="labels-plan__row">
+                <span class="labels-plan__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg></span>
+                <b class="labels-plan__name">Auction won</b>
+                <blueprint-use kind="primitive" ref="select" state="value" variant="default" class="labels-plan__select">
+                  <span slot="value">Print buyer label</span>
+                </blueprint-use>
+              </div>
+              <div class="labels-plan__row">
+                <span class="labels-plan__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/></svg></span>
+                <b class="labels-plan__name">Buy It Now</b>
+                <blueprint-use kind="primitive" ref="select" state="value" variant="default" class="labels-plan__select">
+                  <span slot="value">Ask me first</span>
+                </blueprint-use>
+              </div>
+              <div class="labels-plan__row">
+                <span class="labels-plan__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
+                <b class="labels-plan__name">Giveaway</b>
+                <blueprint-use kind="primitive" ref="select" state="value" variant="default" class="labels-plan__select">
+                  <span slot="value">Skip it</span>
+                </blueprint-use>
+              </div>
+              <div class="labels-plan__row">
+                <span class="labels-plan__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+                <b class="labels-plan__name">Payment issue</b>
+                <blueprint-use kind="primitive" ref="select" state="value" variant="default" class="labels-plan__select">
+                  <span slot="value">Ask me first</span>
+                </blueprint-use>
+              </div>
+            </div>
+          </section>
+          <div class="labels__advanced">
+            <span>Stock, fields, timing &amp; diagnostics</span>
+            <blueprint-use kind="primitive" ref="icon" state="default" variant="muted">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </blueprint-use>
+          </div>
+          <div class="labels-advanced-wrap">
+            <span class="labels-detail__back">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+              Labels &amp; printers
+            </span>
+            <div class="labels-advanced-card">
+              <header class="labels-advanced-card__head">
+                <b>Stock, fields, timing &amp; diagnostics</b>
+              </header>
+              <div class="labels-advanced__row">
+                <p class="labels-advanced__label">Timing</p>
+                <span class="labels-seg" role="group" aria-label="When labels fire">
+                  <span class="labels-seg__item labels-seg__item--on">Right away</span>
+                  <span class="labels-seg__item">After payment confirms</span>
+                </span>
+              </div>
+              <div class="labels-advanced__row labels-advanced__row--top">
+                <p class="labels-advanced__label">Extra fields</p>
+                <div class="labels-chips" role="group" aria-label="Extra label fields">
+                  <span class="labels-chip labels-chip--on">Title</span>
+                  <span class="labels-chip labels-chip--on">Price</span>
+                  <span class="labels-chip labels-chip--on">Qty</span>
+                  <span class="labels-chip labels-chip--on">Type</span>
+                  <span class="labels-chip labels-chip--on">Payment</span>
+                  <span class="labels-chip">Source</span>
+                  <span class="labels-chip">QR</span>
+                </div>
+              </div>
+              <div class="labels-advanced__row">
+                <p class="labels-advanced__label">Custom stock</p>
+                <div class="labels-advanced__dims">
+                  <blueprint-use kind="primitive" ref="input" state="empty" variant="default" class="labels-advanced__dim">
+                    <span slot="placeholder">Width · 2.00 in</span>
+                  </blueprint-use>
+                  <blueprint-use kind="primitive" ref="input" state="empty" variant="default" class="labels-advanced__dim">
+                    <span slot="placeholder">Height · 1.00 in</span>
+                  </blueprint-use>
+                </div>
+              </div>
+              <div class="labels-advanced__row">
+                <p class="labels-advanced__label">Trouble</p>
+                <div class="labels-advanced__diag">
+                  <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" class="labels-advanced__diag-button">
+                    <span slot="label">Print diagnostic label</span>
+                  </blueprint-use>
+                  <p class="labels-advanced__note">Skips macOS — a raw test straight to the printer.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <blueprint-use kind="component" ref="app-footer" state="initial">
+      <b slot="footer-left">● Not on a show</b>
+      <b slot="footer-right" class="labels__footer-status">Printer ready</b>
+    </blueprint-use>
+  </div>
+  <div class="labels-detect" role="dialog" aria-label="New printer found">
+    <div class="labels-detect__scrim"></div>
+    <div class="labels-detect__dialog">
+      <header class="labels-detect__head">
+        <h2 class="labels-detect__title">New printer found</h2>
+        <span class="labels-detect__close" aria-hidden="true">×</span>
+      </header>
+      <div class="labels-detect__found">
+        <span class="labels-detect__found-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+        </span>
+        <b>POLONO PL60 · USB</b>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" class="labels-detect__use">
+          <span slot="label">Use this printer</span>
+        </blueprint-use>
+      </div>
+      <p class="labels-detect__hint">Not seeing yours? Plug it in, then add it once in macOS Printers &amp; Scanners.</p>
+      <footer class="labels-detect__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
+          <span slot="label">Cancel</span>
+        </blueprint-use>
+      </footer>
+    </div>
+  </div>
+</div>

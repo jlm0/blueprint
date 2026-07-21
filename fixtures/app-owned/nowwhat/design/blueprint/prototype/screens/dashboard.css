@@ -1,0 +1,257 @@
+.dash__page {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dash__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dash__greeting {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dash__title {
+  margin: 0;
+  font: 600 27px/1.15 var(--nw-font-display);
+  letter-spacing: -0.025em;
+  color: var(--nw-color-ink);
+}
+
+.dash__sub {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 15px/1.4 var(--nw-font-body);
+}
+
+.dash__grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+}
+
+.dash__upnext {
+  display: flex;
+  grid-column: span 4;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--nw-color-ink) 7%, transparent);
+  border-radius: var(--nw-radius-xl);
+  background: color-mix(in srgb, var(--nw-color-surface-2) 70%, transparent);
+}
+
+.dash__upnext-copy {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--nw-color-text-secondary);
+  font: 400 14px/1.55 var(--nw-font-body);
+}
+
+.dash__stats {
+  display: grid;
+  grid-column: span 8;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+}
+
+.stat-card__tile {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.stat-card__label {
+  padding-right: 40px;
+}
+
+.stat-card__value {
+  margin: 6px 0 0;
+  font: 600 30px/1.05 var(--nw-font-display);
+  letter-spacing: -0.025em;
+  color: var(--nw-color-ink);
+}
+
+.stat-card__sub {
+  margin: 0;
+  color: var(--nw-color-text-muted);
+  font: 400 13px/1.4 var(--nw-font-body);
+}
+
+.dash__revenue {
+  display: flex;
+  grid-column: span 8;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 24px 18px;
+}
+
+.dash__revenue-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dash__revenue-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dash__revenue-title {
+  margin: 0;
+  font: 600 19px/1.2 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.dash__revenue-head [data-blueprint-primitive="badge"] {
+  border-radius: var(--nw-radius-full);
+}
+
+.dash__chart {
+  min-height: 0;
+  flex: 1;
+}
+
+.dash__chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 260px;
+}
+
+.dash__chart-x {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  color: var(--nw-color-text-muted);
+  font: var(--nw-type-mono);
+  text-align: center;
+}
+
+.dash__legend {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding-top: 10px;
+  color: var(--nw-color-text-secondary);
+  font: 400 13px/1 var(--nw-font-body);
+}
+
+.dash__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash__legend-item b {
+  color: var(--nw-color-ink);
+  font-weight: 600;
+}
+
+.dash__legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--nw-radius-full);
+  background: var(--nw-color-primary);
+}
+
+.dash__legend-line {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--nw-color-primary-strong);
+}
+
+.dash__actions {
+  display: flex;
+  grid-column: span 4;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+}
+
+.dash__actions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dash__actions-title {
+  margin: 0;
+  font: 600 19px/1.2 var(--nw-font-display);
+  letter-spacing: -0.015em;
+  color: var(--nw-color-ink);
+}
+
+.dash__action {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dash__action-tag[data-tone="amber"] {
+  color: oklch(0.52 0.11 75);
+}
+
+.dash__action-tag[data-tone="leaf"] {
+  color: var(--nw-color-teal);
+}
+
+.dash__action-tag[data-tone="violet"] {
+  color: var(--nw-color-primary-strong);
+}
+
+.dash__action-value {
+  margin: 0;
+  font: 600 15px/1.25 var(--nw-font-body);
+  letter-spacing: -0.01em;
+  color: var(--nw-color-ink);
+}
+
+.dash__action-sub {
+  margin: 0;
+  color: var(--nw-color-text-muted);
+  font: 400 13px/1.45 var(--nw-font-body);
+}
+
+.dash__insight {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--nw-color-primary-line);
+  border-radius: var(--nw-radius-lg);
+  background: var(--nw-color-primary-soft);
+}
+
+.dash__insight-tag {
+  color: var(--nw-color-primary-strong);
+}
+
+.dash__insight-copy {
+  margin: 0;
+  color: var(--nw-color-text-secondary);
+  font: 400 13px/1.5 var(--nw-font-body);
+}

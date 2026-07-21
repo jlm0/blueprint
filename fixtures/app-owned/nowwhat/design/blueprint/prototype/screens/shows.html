@@ -1,0 +1,22 @@
+<div class="app-window">
+  <blueprint-use kind="component" ref="app-sidebar" state="initial" class="app-sidebar--shows"></blueprint-use>
+  <div class="app-window__body">
+    <blueprint-use kind="component" ref="app-topbar" state="initial">
+      <b slot="trail">Workspace</b>
+      <b slot="title">Shows</b>
+      <b slot="description">— Scheduled, live, and past shows</b>
+    </blueprint-use>
+    <main class="coming-soon">
+      <div class="coming-soon__card">
+        <blueprint-use kind="primitive" ref="icon" state="default" variant="muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.9 19.1C1.73 15.93 1.73 8.07 4.9 4.9M8.75 15.24a5 5 0 0 1 0-6.48M15.25 8.76a5 5 0 0 1 0 6.48M19.1 4.9c3.17 3.17 3.17 11.03 0 14.2"/><path d="M12 12h.01"/></svg>
+        </blueprint-use>
+        <b>Your shows will live here</b>
+        <p>Scheduled and past shows with per-show breakdowns are on the way.</p>
+      </div>
+    </main>
+    <blueprint-use kind="component" ref="app-footer" state="initial">
+      <b slot="footer-left">● Not on a show</b>
+    </blueprint-use>
+  </div>
+</div>

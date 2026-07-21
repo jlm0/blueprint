@@ -69,6 +69,10 @@ shell.className = 'bp-chrome-shell';
 const switcher = el('nav', 'board-switcher bp-chrome-board-switcher');
 switcher.setAttribute('aria-label', 'Blueprint boards');
 
+const flowSwitcher = el('nav', 'flow-switcher bp-chrome-flow-switcher');
+flowSwitcher.setAttribute('aria-label', 'Screen flows');
+flowSwitcher.hidden = true;
+
 const viewport = el('main');
 viewport.id = 'viewport';
 viewport.className = 'bp-chrome-viewport';
@@ -77,7 +81,7 @@ viewport.setAttribute('aria-label', 'Blueprint canvas');
 const world = el('div');
 world.id = 'world';
 viewport.append(world);
-shell.append(switcher, viewport);
+shell.append(switcher, flowSwitcher, viewport);
 app.append(shell);
 
 const canvas = createCanvasController({
@@ -87,6 +91,19 @@ const canvas = createCanvasController({
   fallbackWidth: 320,
   fallbackHeight: 260
 });
+
+// Quiet chrome verb: jump back out to a fitted view of the active board.
+const fitButton = el('button', 'bp-chrome-fit') as HTMLButtonElement;
+fitButton.type = 'button';
+fitButton.title = 'Zoom to fit the canvas';
+fitButton.setAttribute('aria-label', 'Zoom to fit the canvas');
+fitButton.innerHTML = `${fitIcon()}<span>Fit</span>`;
+fitButton.addEventListener('click', () => {
+  if (activeBoardId) {
+    boardState.get(activeBoardId)?.mounted.fit();
+  }
+});
+shell.append(fitButton);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
@@ -111,6 +128,53 @@ for (const board of project.manifest.boards.filter(isVisibleBoard)) {
   button.addEventListener('click', () => showBoard(board.id));
   switcher.append(button);
 }
+
+// Screens board flow subpages: one pill per declared flow; each subpage is a
+// fresh canvas showing only that flow's frames. The first flow is the default
+// canvas — grouping is intentional, there is no catch-all page.
+const screenFlows = [
+  ...new Set(
+    project.screens.screens
+      .map(screen => screen.flow)
+      .filter((flow): flow is string => typeof flow === 'string' && flow.length > 0)
+  )
+];
+let activeScreenFlow: string | null = null;
+
+function requestedScreenFlow(): string | null {
+  const param = new URLSearchParams(location.search).get('flow');
+  return param && screenFlows.includes(param) ? param : null;
+}
+
+function refreshFlowPills(): void {
+  flowSwitcher.querySelectorAll<HTMLButtonElement>('[data-flow]').forEach(button => {
+    button.setAttribute('aria-pressed', String((button.dataset.flow || null) === activeScreenFlow));
+  });
+}
+
+function setScreenFlow(flow: string): void {
+  activeScreenFlow = flow;
+  const url = new URL(window.location.href);
+  url.searchParams.set('flow', flow);
+  history.replaceState(null, '', url);
+  refreshFlowPills();
+  remountBoard('screens');
+}
+
+if (screenFlows.length > 0) {
+  // The switcher reads as canvas pages (Figma-style): each page is its own
+  // canvas grouping that flow's screens.
+  flowSwitcher.append(el('span', 'bp-chrome-flow-label', 'Pages'));
+  for (const flow of screenFlows) {
+    const button = el('button', '', flow) as HTMLButtonElement;
+    button.type = 'button';
+    button.dataset.flow = flow;
+    button.addEventListener('click', () => setScreenFlow(flow));
+    flowSwitcher.append(button);
+  }
+}
+activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
+refreshFlowPills();
 
 const requestedBoard = new URLSearchParams(location.search).get('board');
 const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
@@ -137,6 +201,7 @@ function showBoard(id: BoardId): void {
   switcher.querySelectorAll<HTMLButtonElement>('[data-board]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.board === id));
   });
+  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0;
 
   const url = new URL(window.location.href);
   url.searchParams.set('board', id);
@@ -167,6 +232,20 @@ function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
   const state: MountedBoard = { root, mounted, view: null };
   boardState.set(id, state);
   return state;
+}
+
+// Rebuilds a board from scratch (used when the screens flow subpage changes);
+// the fresh mount refits instead of restoring a stale canvas view.
+function remountBoard(id: BoardId): void {
+  const existing = boardState.get(id);
+  if (existing) {
+    existing.root.remove();
+    boardState.delete(id);
+  }
+  if (activeBoardId === id) {
+    activeBoardId = null;
+    showBoard(id);
+  }
 }
 
 function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
@@ -2122,9 +2201,14 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
   };
-  const frameLayouts = layoutScreenFrames(bundle, request);
-  const fallbackWidth = Math.max(393, ...frameLayouts.map(layout => layout.preset.width));
-  const fallbackHeight = Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.screen, layout.preset)));
+  // Flow subpages filter the board view only; deep links (state/viewport) always
+  // resolve their frames regardless of the active subpage.
+  const flowFilter = request.state || request.viewport ? undefined : (activeScreenFlow ?? undefined);
+  const frameLayouts = layoutScreenFrames(bundle, request, flowFilter);
+  const fallbackWidth = frameLayouts.length > 0 ? Math.max(393, ...frameLayouts.map(layout => layout.preset.width)) : 1440;
+  const fallbackHeight = frameLayouts.length > 0
+    ? Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.screen, layout.preset)))
+    : 900;
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.15,
@@ -2138,6 +2222,12 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
       const label = el('div', 'screen-flow-label', layout.flowLabel.text);
       label.style.left = `${layout.flowLabel.x}px`;
       label.style.top = `${layout.flowLabel.y}px`;
+      root.append(label);
+    }
+    if (layout.routeLabel) {
+      const label = el('div', 'screen-route-label', layout.routeLabel.text);
+      label.style.left = `${layout.routeLabel.x}px`;
+      label.style.top = `${layout.routeLabel.y}px`;
       root.append(label);
     }
     root.append(createPrototypeFrame(
@@ -2165,21 +2255,42 @@ interface ScreenFrameLayout {
   y: number;
   flow?: string;
   flowLabel?: { text: string; x: number; y: number };
+  routeLabel?: { text: string; x: number; y: number };
   prototypeSelection?: SelectedPrototypeReviewCondition;
   selectionError?: string;
 }
 
-function layoutScreenFrames(bundle: BlueprintProjectBundle, request: PrototypeReviewSelectionRequest): ScreenFrameLayout[] {
+// Rows are routes; a row's columns read left-to-right as substates of that route.
+// The group key is the screen's full production route, so distinct subroutes
+// (e.g. /settings vs /settings/flic) each get their own row instead of one
+// overlong row per top-level section.
+function routeGroupOf(screen: ScreenDefinition): string {
+  const routePath = screen.productionRelationship?.routePath;
+  if (!routePath) {
+    return screen.id;
+  }
+  return routePath.startsWith('/') ? routePath : `/${routePath}`;
+}
+
+function layoutScreenFrames(
+  bundle: BlueprintProjectBundle,
+  request: PrototypeReviewSelectionRequest,
+  flowFilter?: string
+): ScreenFrameLayout[] {
   const startX = 90;
   const startY = 160;
   const gapX = 80;
   const gapY = 120;
 
-  // Screens group into one row per declared sub-flow, preserving first-seen order;
-  // screens without a flow share a single unlabeled row.
+  // Screens group by declared sub-flow (first-seen order); a flow filter narrows
+  // the board to one flow's subpage. Within a flow, each top-level route gets its
+  // own labeled row in first-seen order.
   const groups = new Map<string | undefined, ScreenDefinition[]>();
   for (const screen of bundle.screens.screens) {
     const key = screen.flow;
+    if (flowFilter !== undefined && key !== flowFilter) {
+      continue;
+    }
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -2188,23 +2299,41 @@ function layoutScreenFrames(bundle: BlueprintProjectBundle, request: PrototypeRe
 
   const layouts: ScreenFrameLayout[] = [];
   let y = startY;
+  // Flow labels only earn their place when several flows share one canvas
+  // (deep-link boards); on a single-flow page the rail already names it.
+  const showFlowLabels = groups.size > 1;
   for (const [flow, screens] of groups) {
-    let x = startX;
-    let rowHeight = 0;
-    let labeled = flow === undefined;
+    const rows = new Map<string, ScreenDefinition[]>();
     for (const screen of screens) {
-      for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
-        const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, flow, ...resolved.prototype };
-        if (!labeled && flow !== undefined) {
-          layout.flowLabel = { text: flow, x: startX, y: y - 44 };
-          labeled = true;
-        }
-        layouts.push(layout);
-        x += resolved.preset.width + gapX;
-        rowHeight = Math.max(rowHeight, frameExtentHeight(screen, resolved.preset));
+      const key = routeGroupOf(screen);
+      if (!rows.has(key)) {
+        rows.set(key, []);
       }
+      rows.get(key)?.push(screen);
     }
-    y += rowHeight + gapY;
+    let flowLabeled = !showFlowLabels;
+    for (const [route, rowScreens] of rows) {
+      let x = startX;
+      let rowHeight = 0;
+      let routeLabeled = false;
+      for (const screen of rowScreens) {
+        for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
+          const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, flow, ...resolved.prototype };
+          if (!flowLabeled && flow !== undefined) {
+            layout.flowLabel = { text: flow, x: startX, y: y - 70 };
+            flowLabeled = true;
+          }
+          if (!routeLabeled) {
+            layout.routeLabel = { text: route, x: startX, y: y - 44 };
+            routeLabeled = true;
+          }
+          layouts.push(layout);
+          x += resolved.preset.width + gapX;
+          rowHeight = Math.max(rowHeight, frameExtentHeight(screen, resolved.preset));
+        }
+      }
+      y += rowHeight + gapY;
+    }
   }
 
   return layouts;
@@ -2386,7 +2515,11 @@ function createPrototypeFrame(
     wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
     frame.classList.add('frame-canonical');
     if (preset.type === 'mobile') {
-      frame.append(createStatusBar(), screenEl, createFrameHomeIndicator());
+      // Display stack (status bar, screen, home indicator) clipped to the
+      // phone's rounded panel inside a full bezel ring.
+      const display = el('div', 'frame-display');
+      display.append(createStatusBar(), screenEl, createFrameHomeIndicator());
+      frame.append(display);
     } else {
       frame.append(createBrowserBar(screen), screenEl);
     }
@@ -2767,19 +2900,37 @@ function resolveScreenDependency(
 function createStatusBar(): HTMLElement {
   const status = el('div', 'status-bar');
   const icons = el('span', 'status-icons');
-  icons.append(el('span', 'signal'), el('span', 'wifi'), el('span', 'battery'));
+  icons.innerHTML = `${signalIcon()}${wifiIcon()}${batteryIcon()}`;
   status.append(el('span', 'time', '9:41'), icons);
   return status;
+}
+
+function signalIcon(): string {
+  return '<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>';
+}
+
+function wifiIcon(): string {
+  return '<svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1.5 3.6a10.4 10.4 0 0 1 14 0"/><path d="M3.9 6.3a7 7 0 0 1 9.2 0"/><path d="M6.4 9a3.6 3.6 0 0 1 4.2 0"/><circle cx="8.5" cy="11" r="1" fill="currentColor" stroke="none"/></svg>';
+}
+
+function batteryIcon(): string {
+  return '<svg width="27" height="13" viewBox="0 0 27 13" fill="none" aria-hidden="true"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="2.5" y="2.5" width="16" height="8" rx="1.8" fill="currentColor"/><path d="M25 4.5v4a2.2 2.2 0 0 0 0-4Z" fill="currentColor" fill-opacity="0.5"/></svg>';
 }
 
 function createBrowserBar(screen: ScreenDefinition): HTMLElement {
   const bar = el('div', 'browser-bar');
   const controls = el('span', 'browser-controls');
   controls.append(el('span', 'browser-dot close'), el('span', 'browser-dot minimize'), el('span', 'browser-dot maximize'));
-  const address = el('span', 'browser-address', screen.productionRelationship?.routePath ?? screen.name);
-  const title = el('span', 'browser-title', screen.name);
-  bar.append(controls, address, title);
+  const address = el('span', 'browser-address');
+  const route = el('span', 'browser-address-text', screen.productionRelationship?.routePath ?? screen.name);
+  address.innerHTML = lockIcon();
+  address.append(route);
+  bar.append(controls, address, el('span', 'browser-bar-spacer'));
   return bar;
+}
+
+function lockIcon(): string {
+  return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 }
 
 function createSpecCard(options: {
@@ -2901,6 +3052,10 @@ function sampleIcon(name: keyof typeof ICON_PATHS): string {
 
 function cameraIcon(): string {
   return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
+}
+
+function fitIcon(): string {
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
 }
 
 function downloadIcon(): string {
