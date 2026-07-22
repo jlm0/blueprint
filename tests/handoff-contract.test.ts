@@ -15,7 +15,8 @@ import type {
 
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
-const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
+const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
+const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 
 type ExtractionOptions = { mode?: 'focused' | 'deep' };
 type ValidateOptions = { mode?: 'baseline' | 'strict' };
@@ -33,17 +34,17 @@ const validate = validateProject as unknown as (
 
 describe('Blueprint production handoff contract', () => {
   it('exposes an honest unresolved capture with exact prototype review and standalone style-evidence context', async () => {
-    const bundle = await loadProjectFromFs(nowWhatRoot);
-    const query = showBoundary(bundle, 'screen:home') as BoundaryPacket<ScreenDefinition>;
-    const focused = createExtractionPacket(bundle, 'screen:home', { mode: 'focused' }) as BoundaryPacket<ScreenDefinition>;
-    const deep = createExtractionPacket(bundle, 'screen:home', { mode: 'deep' }) as DeepHandoffPacket<ScreenDefinition>;
+    const bundle = await loadProjectFromFs(denseRoot);
+    const query = showBoundary(bundle, 'screen:service-health') as BoundaryPacket<ScreenDefinition>;
+    const focused = createExtractionPacket(bundle, 'screen:service-health', { mode: 'focused' }) as BoundaryPacket<ScreenDefinition>;
+    const deep = createExtractionPacket(bundle, 'screen:service-health', { mode: 'deep' }) as DeepHandoffPacket<ScreenDefinition>;
     const selection = resolvePrototypeReviewSelection(bundle, {
-      screenId: 'home',
-      state: 'initial',
-      viewport: 'desktop-web-tall'
+      screenId: 'service-health',
+      state: 'populated',
+      viewport: 'desktop-ops'
     });
     const compiled = compilePrototypeReview(bundle, selection);
-    const screen = bundle.screens.screens.find(candidate => candidate.id === 'home');
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'service-health');
     assert.ok(screen?.prototype);
     const record = {
       id: selection.boundaryId,
@@ -73,23 +74,23 @@ describe('Blueprint production handoff contract', () => {
     const strict = validateProject(bundle, { mode: 'strict' });
 
     assert.ok(query.data.prototype);
-    assert.equal(query.data.prototype.source, 'prototype/screens/home.html');
+    assert.equal(query.data.prototype.source, 'prototype/screens/service-health.html');
     assert.equal('boundaries' in focused, false);
     assert.equal(deep.extraction.mode, 'deep');
     assert.ok(deep.boundaries.some(boundary => boundary.kind === 'component'));
     assert.ok(deep.resolvedTokens.length > 0);
-    assert.ok(compiled.observedBoundaryIds.some(id => id.endsWith('/component/email-capture')));
+    assert.ok(compiled.observedBoundaryIds.some(id => id.endsWith('/component/service-health-table')));
     assert.deepEqual(manifest.capture, {
       status: 'unresolved',
       reason: 'No current Blueprint candidate capture exists.'
     });
-    assert.equal(manifest.prototypeReview?.source, 'prototype/screens/home.html');
-    assert.equal(manifest.prototypeReview?.state, 'initial');
-    assert.equal(manifest.prototypeReview?.framePresetId, 'desktop-web-tall');
-    assert.equal(manifest.prototypeReview?.conditionId, 'desktop-full');
+    assert.equal(manifest.prototypeReview?.source, 'prototype/screens/service-health.html');
+    assert.equal(manifest.prototypeReview?.state, 'populated');
+    assert.equal(manifest.prototypeReview?.framePresetId, 'desktop-ops');
+    assert.equal(manifest.prototypeReview?.conditionId, 'desktop-populated');
     assert.equal(styleEvidence.boundaries[0]?.status, 'unresolved');
-    // The four source fonts now ship as local OFL woff2 under prototype/assets/fonts/,
-    // so unresolvedDecisions is empty and readiness is legitimately ready.
+    // Dense Ops ships its font assets locally, so unresolvedDecisions is
+    // empty and readiness is legitimately ready.
     assert.equal(readiness.tier, 'ready');
     assert.equal(readiness.fidelityTier, 'high-fidelity');
     assert.equal(strict.ok, true);
@@ -97,8 +98,8 @@ describe('Blueprint production handoff contract', () => {
   });
 
   it('blocks baseline, strict, and readiness claims when governed visual source drifts from its declared graph', async () => {
-    const bundle = await loadProjectFromFs(nowWhatRoot);
-    const screen = bundle.screens.screens.find(candidate => candidate.id === 'home');
+    const bundle = await loadProjectFromFs(denseRoot);
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'service-health');
     assert.ok(screen?.prototype);
     bundle.prototypeSourceContents[screen.prototype.source] = bundle.prototypeSourceContents[
       screen.prototype.source

@@ -7,7 +7,6 @@ import type { BlueprintProjectBundle } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
 const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
-const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
 const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
@@ -30,7 +29,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('accepts compliant high-fidelity projects carrying the themed base set', async () => {
-    for (const root of [starterRoot, blankSlateRoot, nowWhatRoot, denseRoot]) {
+    for (const root of [starterRoot, blankSlateRoot, denseRoot]) {
       const bundle = await loadProjectFromFs(root);
       assert.ok(bundle.manifest.prototypeHost, `${root} should declare the prototype-era contract`);
       assert.equal(validateProject(bundle).ok, true, `${root} should remain baseline-valid`);

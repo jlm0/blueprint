@@ -10,7 +10,7 @@ import type { BlueprintProjectBundle, PrimitiveDefinition, ScreenDefinition } fr
 const starterRoot = 'starter/design/blueprint';
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
-const nowWhatRoot = 'fixtures/app-owned/nowwhat/design/blueprint';
+const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -725,7 +725,12 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('splits the screens board into flow subpages that deep links bypass', async () => {
-    const bundle = await loadProjectFromFs(nowWhatRoot);
+    const bundle = await loadProjectFromFs(blankSlateRoot);
+    // Synthetic flow declarations: the page rail groups whatever flows screens declare.
+    const flowByScreen: Record<string, string> = { home: 'marketing', pricing: 'marketing', platform: 'product' };
+    for (const screen of bundle.screens.screens) {
+      screen.flow = flowByScreen[screen.id];
+    }
     const page = await openScreensBoard(bundle);
 
     try {
@@ -733,7 +738,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await switcher.isVisible(), true, 'Flow subpage switcher should render on the screens board');
       assert.deepEqual(
         (await switcher.locator('button').allTextContents()).map(text => text.trim()),
-        ['marketing', 'access', 'app'],
+        ['marketing', 'product'],
         'Flow pills should be the declared flows in first-seen order'
       );
       assert.equal(
@@ -741,39 +746,36 @@ describe('Blueprint data-driven primitives canvas', () => {
         'true',
         'First declared flow should be the default canvas'
       );
-      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 8);
+      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
 
-      await switcher.locator('button[data-flow="access"]').click();
+      await switcher.locator('button[data-flow="product"]').click();
       await page.waitForFunction(
-        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 4,
+        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 1,
         undefined,
         { timeout: 5000 }
       );
-      const accessFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
-        elements.map(element => (element as HTMLElement).dataset.boundaryId).sort()
+      const productFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
+        elements.map(element => (element as HTMLElement).dataset.boundaryId)
       );
       assert.deepEqual(
-        accessFrames,
-        ['nowwhat-web/screen/download', 'nowwhat-web/screen/download', 'nowwhat-web/screen/login', 'nowwhat-web/screen/login'],
-        'Access subpage should mount only the access-flow frames'
+        productFrames,
+        ['blank-slate-proof/screen/platform'],
+        'Product subpage should mount only the product-flow frames'
       );
-      assert.equal(await switcher.locator('button[data-flow="access"]').getAttribute('aria-pressed'), 'true');
-      assert.match(page.url(), /flow=access/);
+      assert.equal(await switcher.locator('button[data-flow="product"]').getAttribute('aria-pressed'), 'true');
+      assert.match(page.url(), /flow=product/);
 
       await switcher.locator('button[data-flow="marketing"]').click();
-      await page.waitForSelector('.board-screens [data-boundary-id="nowwhat-web/screen/sellers"]', { timeout: 5000 });
-      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 8);
-
-      await switcher.locator('button[data-flow="app"]').click();
       await page.waitForFunction(
-        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 29,
+        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 2,
         undefined,
         { timeout: 5000 }
       );
+      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
 
       // Deep links (state/viewport, used by capture) resolve every screen regardless of the active subpage.
-      await page.goto(`${baseUrl}?board=screens&flow=access&state=initial&viewport=desktop-web-tall`);
-      await page.waitForSelector('.board-screens [data-boundary-id="nowwhat-web/screen/home"]', { timeout: 5000 });
+      await page.goto(`${baseUrl}?board=screens&flow=product&state=initial&viewport=desktop-web-tall`);
+      await page.waitForSelector('.board-screens [data-boundary-id="blank-slate-proof/screen/home"]', { timeout: 5000 });
     } finally {
       await page.close();
     }

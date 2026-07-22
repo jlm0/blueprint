@@ -202,21 +202,19 @@ describe('canonical prototype compiler', () => {
     assert.ok(readiness.blockers.some(item => /Prototype source graph.*missing|renders undeclared component "missing"/.test(item.message)));
   });
 
-  it('keeps NowWhat composition selectors attached to rendered component and primitive roots', async () => {
-    const bundle = await loadProjectFromFs('fixtures/app-owned/nowwhat/design/blueprint');
+  it('keeps Blank Slate composition selectors attached to rendered component and primitive roots', async () => {
+    const bundle = await loadProjectFromFs('fixtures/app-owned/blank-slate/design/blueprint');
     const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'home' }, state: 'initial' });
 
     assert.doesNotMatch(compiled.html, /<blueprint-boundary\b|<blueprint-use\b/i);
-    assert.match(
-      compiled.html,
-      /class="hero__capture"[^>]*data-blueprint-component="email-capture"|data-blueprint-component="email-capture"[^>]*class="hero__capture"/
-    );
-    assert.match(compiled.html, /Save my spot/);
+    assert.match(compiled.html, /data-blueprint-component="site-nav"/);
+    assert.match(compiled.html, /data-blueprint-component="cta-band"/);
+    assert.match(compiled.html, /Start building/);
     const badgeCount = (compiled.html.match(/data-blueprint-primitive="badge"/g) ?? []).length;
-    assert.ok(badgeCount >= 8, `workspace preview and hero should render at least 8 badge specimens, saw ${badgeCount}`);
+    assert.equal(badgeCount, 13, `home should render 13 badge specimens, saw ${badgeCount}`);
     assert.match(
       compiled.html,
-      /data-blueprint-component="workspace-preview"[\s\S]*data-blueprint-primitive="badge"/
+      /data-blueprint-component="site-footer"[\s\S]*data-blueprint-primitive="badge"/
     );
   });
 
