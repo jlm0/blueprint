@@ -115,6 +115,7 @@ async function main(): Promise<void> {
       await configured.locator('.board-screens .frame-chip').first().focus();
       await configured.locator('.board-screens .frame-shot').first().focus();
     });
+    await assertCanonicalFrameExports(browser, url);
 
     await assertBoardSwitcherChrome(page);
     await assertScreenChromeFocus(page);
@@ -790,6 +791,117 @@ async function assertFrameTools(page: import('playwright').Page): Promise<void> 
 
   await shot.click();
   await page.locator('.board-screens .frame-shot.done').waitFor({ timeout: 10000 });
+}
+
+async function assertCanonicalFrameExports(browser: import('playwright').Browser, url: string): Promise<void> {
+  const bundle = await loadProjectFromFs('fixtures/red/high-fidelity-prototype/design/blueprint');
+  const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url });
+  await page.addInitScript(projectBundle => {
+    Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
+      configurable: true,
+      value: projectBundle
+    });
+  }, bundle);
+
+  try {
+    await page.goto(`${url}?board=screens`);
+    const frame = page.locator('.board-screens .frame.frame-canonical').first();
+    const screen = frame.locator('.canonical-prototype-screen');
+    await screen.waitFor({ state: 'visible', timeout: 10000 });
+    await frame.locator('.canonical-prototype-iframe').contentFrame().locator('body').waitFor({ state: 'visible', timeout: 10000 });
+    const expected = await screen.evaluate(element => ({
+      width: (element as HTMLElement).clientWidth * 2,
+      height: (element as HTMLElement).clientHeight * 2
+    }));
+
+    const save = frame.locator('xpath=..').locator('.frame-save');
+    const savedPath = path.join(screenshotRoot, 'canonical-frame-save.png');
+    const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
+    await save.click();
+    const download = await downloadPromise;
+    await download.saveAs(savedPath);
+    const savedPng = await readFile(savedPath);
+    const saved = await inspectPng(page, `data:image/png;base64,${savedPng.toString('base64')}`);
+    assertCapturedFrameContent(saved, expected, 'Saved canonical frame');
+
+    const copy = frame.locator('xpath=..').locator('.frame-shot');
+    await page.bringToFront();
+    await copy.click();
+    await page.locator('.board-screens .frame-shot.done').first().waitFor({ timeout: 15000 });
+    const copiedPng = await page.evaluate(async () => {
+      const items = await navigator.clipboard.read();
+      const pngItem = items.find(item => item.types.includes('image/png'));
+      if (!pngItem) {
+        throw new Error('Clipboard did not contain an image/png item.');
+      }
+      const bytes = new Uint8Array(await (await pngItem.getType('image/png')).arrayBuffer());
+      let binary = '';
+      for (let offset = 0; offset < bytes.length; offset += 32768) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+      }
+      return `data:image/png;base64,${btoa(binary)}`;
+    });
+    const copied = await inspectPng(page, copiedPng);
+    assertCapturedFrameContent(copied, expected, 'Copied canonical frame');
+  } finally {
+    await page.close();
+  }
+}
+
+interface CapturedPngSummary {
+  width: number;
+  height: number;
+  nonWhiteRatio: number;
+  distinctColors: number;
+}
+
+async function inspectPng(page: import('playwright').Page, dataUrl: string): Promise<CapturedPngSummary> {
+  return page.evaluate(async source => {
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      throw new Error('Could not create a canvas context for PNG inspection.');
+    }
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let nonWhite = 0;
+    const colors = new Set<string>();
+    for (let index = 0; index < pixels.length; index += 4) {
+      const red = pixels[index] ?? 0;
+      const green = pixels[index + 1] ?? 0;
+      const blue = pixels[index + 2] ?? 0;
+      const alpha = pixels[index + 3] ?? 0;
+      if (alpha > 8 && (red < 248 || green < 248 || blue < 248)) {
+        nonWhite += 1;
+      }
+      colors.add(`${Math.round(red / 32)}:${Math.round(green / 32)}:${Math.round(blue / 32)}:${Math.round(alpha / 32)}`);
+    }
+    return {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      nonWhiteRatio: nonWhite / (canvas.width * canvas.height),
+      distinctColors: colors.size
+    };
+  }, dataUrl);
+}
+
+function assertCapturedFrameContent(
+  capture: CapturedPngSummary,
+  expected: { width: number; height: number },
+  label: string
+): void {
+  if (capture.width !== expected.width || capture.height !== expected.height) {
+    throw new Error(`${label} should be ${expected.width}x${expected.height}, received ${capture.width}x${capture.height}.`);
+  }
+  if (capture.nonWhiteRatio < 0.1 || capture.distinctColors < 8) {
+    throw new Error(`${label} should contain the rendered design instead of a white image, received ${JSON.stringify(capture)}.`);
+  }
 }
 
 async function assertScreenChromeFocus(page: import('playwright').Page): Promise<void> {
