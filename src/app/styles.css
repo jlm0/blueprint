@@ -428,6 +428,17 @@ body {
   opacity: 0.75;
 }
 
+.bp-chrome-history-row-label {
+  position: absolute;
+  color: var(--bp-sample-muted-fg);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .bp-chrome-exploration-unavailable {
   position: absolute;
   display: grid;
@@ -2055,7 +2066,8 @@ body {
 .bp-chrome-frame-chip,
 .bp-chrome-frame-tool,
 .bp-chrome-frame-note,
-.bp-chrome-frame-exploration {
+.bp-chrome-frame-exploration,
+.bp-chrome-frame-history {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2087,7 +2099,8 @@ body {
   font-weight: 800;
 }
 
-.bp-chrome-frame-exploration {
+.bp-chrome-frame-exploration,
+.bp-chrome-frame-history {
   height: 34px;
   padding: 0 12px;
   cursor: pointer;
@@ -2096,7 +2109,8 @@ body {
   font-weight: 750;
 }
 
-.bp-chrome-frame-exploration:hover {
+.bp-chrome-frame-exploration:hover,
+.bp-chrome-frame-history:hover {
   border-color: rgba(238, 243, 248, 0.24);
   color: var(--bp-chrome-fg);
 }
@@ -2126,7 +2140,8 @@ body {
 
 .bp-chrome-frame-chip:focus-visible,
 .bp-chrome-frame-tool:focus-visible,
-.bp-chrome-frame-exploration:focus-visible {
+.bp-chrome-frame-exploration:focus-visible,
+.bp-chrome-frame-history:focus-visible {
   outline: 2px solid var(--bp-chrome-focus);
   outline-offset: 2px;
 }

@@ -12,7 +12,8 @@
     "primitives": { "$ref": "#/$defs/primitiveFile" },
     "components": { "$ref": "#/$defs/componentFile" },
     "screens": { "$ref": "#/$defs/screenFile" },
-    "explorations": { "$ref": "#/$defs/explorationFile" }
+    "explorations": { "$ref": "#/$defs/explorationFile" },
+    "history": { "$ref": "#/$defs/screenHistoryFile" }
   },
   "$defs": {
     "manifest": {
@@ -240,6 +241,15 @@
         }
       }
     },
+    "explorationRecordFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "exploration"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "exploration": { "$ref": "#/$defs/exploration" }
+      }
+    },
     "exploration": {
       "type": "object",
       "required": ["id", "title", "intent", "lifecycle", "target", "candidates"],
@@ -294,6 +304,59 @@
         "source": { "type": "string" },
         "styles": { "$ref": "#/$defs/stringArray" },
         "assetRefs": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "screenHistoryFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "entries"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/screenHistoryEntry" }
+        }
+      }
+    },
+    "screenHistoryRecordFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "entry"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "entry": { "$ref": "#/$defs/screenHistoryEntry" }
+      }
+    },
+    "screenHistoryEntry": {
+      "type": "object",
+      "required": ["screenId", "version", "state", "framePresetId", "screen", "replacedBy"],
+      "properties": {
+        "screenId": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "state": { "type": "string" },
+        "framePresetId": { "type": "string" },
+        "screen": { "$ref": "#/$defs/screen" },
+        "replacedBy": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["type", "explorationId", "candidateId"],
+              "properties": {
+                "type": { "const": "exploration-candidate" },
+                "explorationId": { "type": "string" },
+                "candidateId": { "type": "string" }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["type", "version"],
+              "properties": {
+                "type": { "const": "history-restore" },
+                "version": { "type": "integer", "minimum": 1 }
+              }
+            }
+          ]
+        }
       }
     },
     "componentFile": {

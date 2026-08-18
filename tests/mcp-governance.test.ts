@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,7 +15,7 @@ const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
-const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'explore', 'promote'];
+const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'explore', 'promote', 'restore'];
 
 interface McpSession {
   client: Client;
@@ -62,7 +62,8 @@ describe('Blueprint MCP and template governance', () => {
       assert.match(JSON.stringify(query.inputSchema), /prototype-only/);
       assert.match(JSON.stringify(query.inputSchema), /used-by/);
       assert.match(JSON.stringify(query.inputSchema), /explorations/);
-      for (const toolName of ['explore', 'promote']) {
+      assert.match(JSON.stringify(query.inputSchema), /history-version/);
+      for (const toolName of ['explore', 'promote', 'restore']) {
         const tool = session.tools.find(candidate => candidate.name === toolName);
         assert.ok(tool);
         assert.deepEqual(tool.annotations, {
@@ -180,7 +181,7 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
-  it('creates, queries, archives, serves, and compare-and-swap promotes persistent explorations', async () => {
+  it('creates, queries, archives, serves, promotes, and restores persistent explorations and history', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
       await cp(explorationRoot, projectCopy, { recursive: true });
@@ -211,6 +212,8 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal(createdExploration.lifecycle, 'active');
         assert.match(createdExploration.target.baseDigest, /^[a-f0-9]{64}$/);
         assert.deepEqual(createdExploration.candidates.map(candidate => candidate.id), ['a', 'b', 'c']);
+        assert.equal(existsSync(path.join(projectCopy, 'explorations.json')), false);
+        assert.equal((await stat(path.join(projectCopy, 'explorations', 'home-hero.json'))).isFile(), true);
         for (const candidate of createdExploration.candidates) {
           assert.equal((await stat(path.join(projectCopy, candidate.prototype.source))).isFile(), true);
         }
@@ -248,11 +251,11 @@ describe('Blueprint MCP and template governance', () => {
         });
 
         const screensPath = path.join(projectCopy, 'screens.json');
-        const explorationsPath = path.join(projectCopy, 'explorations.json');
+        const explorationRecordPath = path.join(projectCopy, 'explorations', 'home-hero.json');
         const canonicalSourcePath = path.join(projectCopy, 'prototype/screens/home.html');
         const beforeStale = {
           screens: await readFile(screensPath),
-          explorations: await readFile(explorationsPath),
+          exploration: await readFile(explorationRecordPath),
           canonical: await readFile(canonicalSourcePath)
         };
         const stale = await session.client.callTool({
@@ -268,7 +271,7 @@ describe('Blueprint MCP and template governance', () => {
         });
         assertToolError(stale, /expectedCandidateDigest|digest mismatch/i);
         assert.deepEqual(await readFile(screensPath), beforeStale.screens);
-        assert.deepEqual(await readFile(explorationsPath), beforeStale.explorations);
+        assert.deepEqual(await readFile(explorationRecordPath), beforeStale.exploration);
         assert.deepEqual(await readFile(canonicalSourcePath), beforeStale.canonical);
 
         const promoted = await call(session, 'promote', {
@@ -280,16 +283,42 @@ describe('Blueprint MCP and template governance', () => {
           expectedCandidateDigest: inspection.candidateDigests.b
         });
         assert.equal((promoted.promotedScreen as { id: string }).id, 'home');
-        assert.equal((promoted.promotedScreen as { version: number }).version, 2);
-        assert.equal((promoted.historicalScreen as { version: number }).version, 1);
+        assert.equal('version' in (promoted.promotedScreen as object), false);
+        assert.equal((promoted.historicalVersion as { version: number }).version, 1);
         assert.equal((promoted.exploration as { lifecycle: string }).lifecycle, 'promoted');
         assert.equal((promoted.exploration as { selectedCandidateId: string }).selectedCandidateId, 'b');
         const persistedScreens = JSON.parse(await readFile(screensPath, 'utf8')) as {
           screens: Array<{ id: string; version?: number }>;
         };
-        assert.ok(persistedScreens.screens.some(screen => screen.id === 'home' && screen.version === 2));
-        assert.ok(persistedScreens.screens.some(screen => screen.id !== 'home' && screen.version === 1));
+        assert.equal(persistedScreens.screens.filter(screen => screen.id === 'home').length, 1);
+        assert.equal(persistedScreens.screens.some(screen => screen.id !== 'home' && screen.version === 1), false);
+        assert.equal((await stat(path.join(projectCopy, 'history', 'home-v1.json'))).isFile(), true);
         assert.equal((await stat(path.join(projectCopy, createdExploration.candidates[1]!.prototype.source))).isFile(), true);
+
+        const historyList = await call(session, 'query', {
+          project: projectCopy,
+          query: { type: 'history', screenId: 'home' }
+        });
+        assert.deepEqual((historyList.results as Array<{ version: number }>).map(entry => entry.version), [1]);
+        const historyInspection = await call(session, 'query', {
+          project: projectCopy,
+          query: { type: 'history-version', screenId: 'home', version: 1 }
+        });
+        const versionInspection = (historyInspection.results as Array<{
+          currentDigest: string;
+          versionDigest: string;
+        }>)[0];
+        assert.ok(versionInspection);
+        const restored = await call(session, 'restore', {
+          project: projectCopy,
+          screenId: 'home',
+          version: 1,
+          expectedCurrentDigest: versionInspection.currentDigest,
+          expectedVersionDigest: versionInspection.versionDigest
+        });
+        assert.equal(restored.restoredFromVersion, 1);
+        assert.equal((restored.historicalVersion as { version: number }).version, 2);
+        assert.equal((await stat(path.join(projectCopy, 'history', 'home-v2.json'))).isFile(), true);
 
         const repeated = await session.client.callTool({
           name: 'promote',
@@ -350,6 +379,56 @@ describe('Blueprint MCP and template governance', () => {
     } finally {
       await session.close();
     }
+  });
+
+  it('compacts a legacy aggregate exploration file into independent records on mutation', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(explorationRoot, projectCopy, { recursive: true });
+      const session = await openSession();
+      try {
+        await call(session, 'explore', {
+          project: projectCopy,
+          operation: {
+            type: 'create',
+            id: 'legacy-home',
+            screenId: 'home',
+            state: 'initial',
+            framePresetId: 'desktop-web-tall',
+            title: 'Legacy home',
+            intent: 'Exercise aggregate migration.',
+            candidateLabels: ['A', 'B']
+          }
+        });
+        const recordPath = path.join(projectCopy, 'explorations', 'legacy-home.json');
+        const record = JSON.parse(await readFile(recordPath, 'utf8')) as {
+          schemaVersion: string;
+          projectId: string;
+          exploration: unknown;
+        };
+        await writeFile(path.join(projectCopy, 'explorations.json'), `${JSON.stringify({
+          schemaVersion: record.schemaVersion,
+          projectId: record.projectId,
+          explorations: [record.exploration]
+        }, null, 2)}\n`);
+        await unlink(recordPath);
+
+        await call(session, 'explore', {
+          project: projectCopy,
+          operation: { type: 'archive', explorationId: 'legacy-home' }
+        });
+        const compacted = JSON.parse(await readFile(path.join(projectCopy, 'explorations.json'), 'utf8')) as {
+          explorations: unknown[];
+        };
+        const migrated = JSON.parse(await readFile(recordPath, 'utf8')) as {
+          exploration: { lifecycle: string };
+        };
+        assert.deepEqual(compacted.explorations, []);
+        assert.equal(migrated.exploration.lifecycle, 'archived');
+      } finally {
+        await session.close();
+      }
+    });
   });
 
   it('returns domain and schema failures as tool errors while unknown tools remain protocol errors', async () => {
@@ -472,6 +551,8 @@ describe('Blueprint MCP and template governance', () => {
     assert.ok(schema.$defs.manifest);
     assert.ok(schema.$defs.component);
     assert.ok(schema.$defs.exploration);
+    assert.ok(schema.$defs.explorationRecordFile);
+    assert.ok(schema.$defs.screenHistoryRecordFile);
     assert.ok(schema.$defs.implementationTarget);
     assert.ok(schema.$defs.styleEvidence);
 

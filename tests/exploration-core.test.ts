@@ -7,14 +7,25 @@ import {
   archiveExploration,
   computeCanonicalScreenDigest,
   computeExplorationCandidateDigest,
+  computeHistoryVersionDigest,
   createExplorationMetadata,
   inspectExploration,
+  inspectScreenHistory,
   listExplorations,
+  listScreenHistory,
   promoteExploration,
+  restoreScreenHistory,
   type ExplorationMutationResult,
-  type PromotionResult
+  type PromotionResult,
+  type RestoreHistoryResult
 } from '../src/core/exploration';
 import { loadProjectFromFs } from '../src/core/load';
+import {
+  explorationRecordFile,
+  explorationRecordRef,
+  historyRecordFile,
+  historyRecordRef
+} from '../src/core/storage-records';
 import type { BlueprintProjectBundle } from '../src/core/types';
 import { validateProject } from '../src/core/validate';
 
@@ -26,7 +37,11 @@ describe('persistent screen exploration core', () => {
 
     assert.deepEqual(bundle.explorations.explorations, []);
     assert.equal(bundle.sourceFiles.explorations, undefined);
+    assert.deepEqual(bundle.sourceFiles.explorationRecords, []);
+    assert.deepEqual(bundle.sourceFiles.historyRecords, []);
     assert.deepEqual(bundle.sourceFiles.explorationSources, []);
+    assert.deepEqual(bundle.sourceFiles.historySources, []);
+    assert.deepEqual(bundle.history.entries, []);
     assert.deepEqual(bundle.screens.screens.map(screen => screen.id), ['service-health']);
     assert.equal(validateProject(bundle).ok, true);
   });
@@ -52,11 +67,27 @@ describe('persistent screen exploration core', () => {
       const validation = validateProject(reloaded);
       assert.equal(validation.ok, true, validation.errors.join('\n'));
       assert.equal(reloaded.explorations.explorations.length, 1);
+      assert.equal(reloaded.sourceFiles.explorationRecords.length, 1);
       assert.equal(reloaded.sourceFiles.explorationSources.length, 8);
       assert.equal(reloaded.sourceFiles.prototypeSources.length, bundle.sourceFiles.prototypeSources.length);
       assert.deepEqual(reloaded.screens.screens.map(screen => screen.id), ['service-health']);
       assert.deepEqual(listExplorations(reloaded)[0]?.candidates.map(candidate => candidate.label), ['A', 'B', 'C']);
       assert.equal(inspectExploration(reloaded, created.exploration.id).currentDigest, created.exploration.target.baseDigest);
+    });
+  });
+
+  it('loads the prior aggregate exploration file as read-compatible input', async () => {
+    await withFixture(async root => {
+      const bundle = await loadProjectFromFs(root);
+      const created = createExplorationMetadata(bundle, explorationInput('legacy-read'));
+      await writeFile(path.join(root, 'explorations.json'), `${JSON.stringify(created.explorations, null, 2)}\n`);
+      await persistSourceWrites(root, created.sourceWrites);
+
+      const reloaded = await loadProjectFromFs(root);
+      assert.equal(reloaded.explorations.explorations[0]?.id, created.exploration.id);
+      assert.match(reloaded.sourceFiles.explorations ?? '', /explorations\.json$/);
+      assert.deepEqual(reloaded.sourceFiles.explorationRecords, []);
+      assert.equal(validateProject(reloaded).ok, true);
     });
   });
 
@@ -122,7 +153,7 @@ describe('persistent screen exploration core', () => {
     assert.equal(activeBundle.explorations.explorations[0]?.lifecycle, 'active', 'archive must be atomic in memory');
   });
 
-  it('rejects stale promotion digests and preserves V1 history while advancing the stable current screen to V2', async () => {
+  it('rejects stale promotion digests, stores V1 outside screens.json, and restores it without losing V2', async () => {
     await withFixture(async root => {
       const original = await loadProjectFromFs(root);
       const created = createExplorationMetadata(original, explorationInput('promotion'));
@@ -152,9 +183,10 @@ describe('persistent screen exploration core', () => {
       const promoted = promoteExploration(bundle, input);
       assert.equal(bundle.screens.screens[0]?.version, undefined, 'promotion must not mutate its input bundle');
       assert.equal(promoted.promotedScreen.id, 'service-health');
-      assert.equal(promoted.promotedScreen.version, 2);
-      assert.equal(promoted.historicalScreen.id, 'service-health-v1');
-      assert.equal(promoted.historicalScreen.version, 1);
+      assert.equal(promoted.promotedScreen.version, undefined);
+      assert.equal(promoted.historicalVersion.screenId, 'service-health');
+      assert.equal(promoted.historicalVersion.version, 1);
+      assert.equal(promoted.historicalVersion.screen.id, 'service-health');
       assert.equal(promoted.exploration.lifecycle, 'promoted');
       assert.equal(promoted.exploration.selectedCandidateId, candidate.id);
       assert.equal(promoted.exploration.promotedScreenId, 'service-health');
@@ -168,12 +200,36 @@ describe('persistent screen exploration core', () => {
       assert.equal(strictValidation.ok, true, strictValidation.errors.join('\n'));
       assert.deepEqual(
         reloaded.screens.screens.map(screen => ({ id: screen.id, version: screen.version })),
-        [{ id: 'service-health', version: 2 }, { id: 'service-health-v1', version: 1 }]
+        [{ id: 'service-health', version: undefined }]
       );
+      assert.equal(reloaded.history.entries.length, 1);
+      assert.equal(reloaded.sourceFiles.historyRecords.length, 1);
+      assert.equal(listScreenHistory(reloaded, 'service-health')[0]?.version, 1);
       assert.equal(reloaded.explorations.explorations[0]?.lifecycle, 'promoted');
 
-      const nextCreated = createExplorationMetadata(reloaded, explorationInput('promotion-next'));
-      const nextBundle = applyMutation(reloaded, nextCreated);
+      const inspectedV1 = inspectScreenHistory(reloaded, 'service-health', 1);
+      const restored = restoreScreenHistory(reloaded, {
+        screenId: 'service-health',
+        version: 1,
+        expectedCurrentDigest: inspectedV1.currentDigest,
+        expectedVersionDigest: inspectedV1.versionDigest
+      });
+      assert.equal(restored.historicalVersion.version, 2);
+      assert.equal(restored.historicalVersion.replacedBy.type, 'history-restore');
+      assert.match(restored.prototypeSourceContents['prototype/screens/service-health.html'] ?? '', /System overview/);
+      assert.throws(() => restoreScreenHistory(reloaded, {
+        screenId: 'service-health',
+        version: 1,
+        expectedCurrentDigest: '0'.repeat(64),
+        expectedVersionDigest: computeHistoryVersionDigest(reloaded, 'service-health', 1)
+      }), /expectedCurrentDigest is stale/);
+      await persistRestore(root, reloaded.manifest.project.id, restored);
+      const restoredReloaded = await loadProjectFromFs(root);
+      assert.equal(validateProject(restoredReloaded).ok, true);
+      assert.deepEqual(listScreenHistory(restoredReloaded, 'service-health').map(entry => entry.version), [2, 1]);
+
+      const nextCreated = createExplorationMetadata(restoredReloaded, explorationInput('promotion-next'));
+      const nextBundle = applyMutation(restoredReloaded, nextCreated);
       const nextCandidate = nextCreated.exploration.candidates[0]!;
       const nextPromoted = promoteExploration(nextBundle, {
         explorationId: nextCreated.exploration.id,
@@ -182,9 +238,8 @@ describe('persistent screen exploration core', () => {
         expectedCurrentDigest: computeCanonicalScreenDigest(nextBundle, 'service-health'),
         expectedCandidateDigest: computeExplorationCandidateDigest(nextBundle, nextCreated.exploration.id, nextCandidate.id)
       });
-      assert.equal(nextPromoted.promotedScreen.version, 3);
-      assert.equal(nextPromoted.historicalScreen.id, 'service-health-v2');
-      assert.equal(nextPromoted.historicalScreen.version, 2);
+      assert.equal(nextPromoted.promotedScreen.version, undefined);
+      assert.equal(nextPromoted.historicalVersion.version, 3);
     });
   });
 });
@@ -209,13 +264,41 @@ function applyMutation(bundle: BlueprintProjectBundle, mutation: ExplorationMuta
 }
 
 async function persistExplorationMutation(root: string, mutation: ExplorationMutationResult): Promise<void> {
-  await writeFile(path.join(root, 'explorations.json'), `${JSON.stringify(mutation.explorations, null, 2)}\n`);
+  const projectId = mutation.explorations.projectId;
+  const recordRef = explorationRecordRef(mutation.exploration.id);
+  await mkdir(path.dirname(path.join(root, recordRef)), { recursive: true });
+  await writeFile(
+    path.join(root, recordRef),
+    `${JSON.stringify(explorationRecordFile(projectId, mutation.exploration), null, 2)}\n`
+  );
   await persistSourceWrites(root, mutation.sourceWrites);
 }
 
 async function persistPromotion(root: string, mutation: PromotionResult): Promise<void> {
   await writeFile(path.join(root, 'screens.json'), `${JSON.stringify(mutation.screens, null, 2)}\n`);
-  await writeFile(path.join(root, 'explorations.json'), `${JSON.stringify(mutation.explorations, null, 2)}\n`);
+  const explorationRef = explorationRecordRef(mutation.exploration.id);
+  const historyRef = historyRecordRef(mutation.historicalVersion.screenId, mutation.historicalVersion.version);
+  await mkdir(path.dirname(path.join(root, explorationRef)), { recursive: true });
+  await mkdir(path.dirname(path.join(root, historyRef)), { recursive: true });
+  await writeFile(
+    path.join(root, explorationRef),
+    `${JSON.stringify(explorationRecordFile(mutation.explorations.projectId, mutation.exploration), null, 2)}\n`
+  );
+  await writeFile(
+    path.join(root, historyRef),
+    `${JSON.stringify(historyRecordFile(mutation.history.projectId, mutation.historicalVersion), null, 2)}\n`
+  );
+  await persistSourceWrites(root, mutation.sourceWrites);
+}
+
+async function persistRestore(root: string, projectId: string, mutation: RestoreHistoryResult): Promise<void> {
+  await writeFile(path.join(root, 'screens.json'), `${JSON.stringify(mutation.screens, null, 2)}\n`);
+  const historyRef = historyRecordRef(mutation.historicalVersion.screenId, mutation.historicalVersion.version);
+  await mkdir(path.dirname(path.join(root, historyRef)), { recursive: true });
+  await writeFile(
+    path.join(root, historyRef),
+    `${JSON.stringify(historyRecordFile(projectId, mutation.historicalVersion), null, 2)}\n`
+  );
   await persistSourceWrites(root, mutation.sourceWrites);
 }
 

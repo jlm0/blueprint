@@ -74,6 +74,20 @@ test('rejects a fixed JSON symlink whose canonical target escapes the project ro
   );
 });
 
+test('rejects an independently stored exploration record whose symlink escapes the project root', async t => {
+  const { tempRoot, projectRoot } = await temporaryProject(t);
+  const recordsRoot = path.join(projectRoot, 'explorations');
+  await mkdir(recordsRoot);
+  const outsideRecord = path.join(tempRoot, 'outside-exploration.json');
+  await writeFile(outsideRecord, '{}', 'utf8');
+  await symlink(outsideRecord, path.join(recordsRoot, 'escape.json'));
+
+  await assert.rejects(
+    () => loadProjectFromFs(projectRoot),
+    /fixed JSON "explorations\/escape\.json" resolves outside the canonical Blueprint source root/
+  );
+});
+
 test('rejects a governed input whose canonical target is not a regular file', async t => {
   const { projectRoot } = await temporaryProject(t);
   const sourcePath = path.join(projectRoot, 'prototype/screens/waitlist.html');

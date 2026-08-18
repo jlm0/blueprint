@@ -81,7 +81,7 @@ explorationNavigator.setAttribute('aria-label', 'Exploration navigation');
 explorationNavigator.hidden = true;
 const explorationBackButton = el('button', 'bp-chrome-exploration-back', '← Screens') as HTMLButtonElement;
 explorationBackButton.type = 'button';
-explorationBackButton.addEventListener('click', exitExploration);
+explorationBackButton.addEventListener('click', exitFocusedReview);
 const explorationTitle = el('span', 'bp-chrome-exploration-title');
 explorationNavigator.append(explorationBackButton, explorationTitle);
 
@@ -177,15 +177,27 @@ function explorationIsRequested(): boolean {
   return new URLSearchParams(location.search).has('exploration');
 }
 
+function historyIsRequested(): boolean {
+  return new URLSearchParams(location.search).has('history');
+}
+
+function focusedReviewIsRequested(): boolean {
+  return explorationIsRequested() || historyIsRequested();
+}
+
 function requestedExplorationId(): string {
   return new URLSearchParams(location.search).get('exploration') ?? '';
 }
 
-function exitExploration(): void {
+function exitFocusedReview(): void {
   const exploration = project.explorations.explorations.find(candidate => candidate.id === requestedExplorationId());
-  const targetFlow = exploration?.target.baseline.screen.flow;
+  const historyScreen = project.screens.screens.find(candidate => (
+    candidate.id === (new URLSearchParams(location.search).get('history') ?? '')
+  ));
+  const targetFlow = exploration?.target.baseline.screen.flow ?? historyScreen?.flow;
   const url = new URL(window.location.href);
   url.searchParams.delete('exploration');
+  url.searchParams.delete('history');
   url.searchParams.delete('state');
   url.searchParams.delete('viewport');
   if (targetFlow && screenFlows.includes(targetFlow)) {
@@ -204,8 +216,20 @@ function openExploration(explorationId: string): void {
   const url = new URL(window.location.href);
   url.searchParams.set('board', 'screens');
   url.searchParams.set('exploration', explorationId);
+  url.searchParams.delete('history');
   url.searchParams.delete('state');
   url.searchParams.delete('viewport');
+  history.replaceState(null, '', url);
+  remountBoard('screens');
+}
+
+function openHistory(screenId: string, state: string, framePresetId: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set('board', 'screens');
+  url.searchParams.set('history', screenId);
+  url.searchParams.set('state', state);
+  url.searchParams.set('viewport', framePresetId);
+  url.searchParams.delete('exploration');
   history.replaceState(null, '', url);
   remountBoard('screens');
 }
@@ -250,9 +274,9 @@ function showBoard(id: BoardId): void {
   switcher.querySelectorAll<HTMLButtonElement>('[data-board]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.board === id));
   });
-  const showingExploration = id === 'screens' && explorationIsRequested();
-  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0 || showingExploration;
-  explorationNavigator.hidden = !showingExploration;
+  const showingFocusedReview = id === 'screens' && focusedReviewIsRequested();
+  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0 || showingFocusedReview;
+  explorationNavigator.hidden = !showingFocusedReview;
 
   const url = new URL(window.location.href);
   url.searchParams.set('board', id);
@@ -2252,6 +2276,12 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   if (params.has('exploration')) {
     return mountExplorationScreens(root, boardCanvas, bundle, params.get('exploration') ?? '');
   }
+  if (params.has('history')) {
+    return mountHistoryScreens(root, boardCanvas, bundle, params.get('history') ?? '', {
+      state: params.get('state') ?? undefined,
+      viewport: params.get('viewport') ?? undefined
+    });
+  }
   const request: PrototypeReviewSelectionRequest = {
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
@@ -2302,6 +2332,193 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
     configure,
     fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame')])
   };
+}
+
+function mountHistoryScreens(
+  root: HTMLElement,
+  boardCanvas: CanvasController,
+  bundle: BlueprintProjectBundle,
+  screenId: string,
+  request: PrototypeReviewSelectionRequest
+): BoardMount {
+  root.dataset.canvasMode = 'history';
+  root.dataset.screenId = screenId;
+  const screen = bundle.screens.screens.find(candidate => candidate.id === screenId);
+  if (!screen?.prototype) {
+    explorationTitle.textContent = 'History unavailable';
+    const unavailable = createFocusedUnavailablePanel(
+      'History unavailable',
+      'Ask the agent to check this screen history and open it again.'
+    );
+    root.append(unavailable);
+    const configure = (): CanvasController => boardCanvas.configure({
+      minScale: 0.15,
+      readableScale: 0.55,
+      fallbackWidth: 420,
+      fallbackHeight: 180
+    });
+    const controller = configure();
+    return { configure, fit: () => controller.fitTo([unavailable]) };
+  }
+
+  let selection: SelectedPrototypeReviewCondition;
+  let preset: FramePreset | undefined;
+  try {
+    selection = selectPrototypeReviewCondition(screen, request);
+    preset = bundle.manifest.framePresets.find(candidate => candidate.id === selection.framePresetId);
+    if (!preset) {
+      throw new Error('Missing frame preset.');
+    }
+  } catch {
+    explorationTitle.textContent = `${screenFrameLabel(screen)} · History unavailable`;
+    const unavailable = createFocusedUnavailablePanel(
+      'History unavailable',
+      'This saved screen context is no longer available. Ask the agent to inspect it.'
+    );
+    root.append(unavailable);
+    const configure = (): CanvasController => boardCanvas.configure({
+      minScale: 0.15,
+      readableScale: 0.55,
+      fallbackWidth: 420,
+      fallbackHeight: 180
+    });
+    const controller = configure();
+    return { configure, fit: () => controller.fitTo([unavailable]) };
+  }
+
+  root.setAttribute('aria-label', `${screen.name} history`);
+  explorationTitle.textContent = `${screenFrameLabel(screen)} · History`;
+  const frameHeight = frameExtentHeight(screen, preset);
+  const configure = (): CanvasController => boardCanvas.configure({
+    minScale: 0.08,
+    readableScale: 0.12,
+    fallbackWidth: preset.width,
+    fallbackHeight: frameHeight
+  });
+  const controller = configure();
+  const startX = 90;
+  const gapX = 80;
+  const rowGap = 170;
+  let y = 220;
+
+  const versions = bundle.history.entries
+    .filter(entry => (
+      entry.screenId === screen.id
+        && entry.state === selection.state
+        && entry.framePresetId === preset.id
+    ))
+    .sort((left, right) => right.version - left.version);
+  appendHistoryRowLabel(root, 'Versions', startX, y - 56);
+  let x = startX;
+  root.append(createExplorationPrototypeFrame({
+    bundle,
+    screen,
+    preset,
+    selection,
+    role: 'current',
+    label: 'Current',
+    canonicalBoundary: true,
+    unavailableNoun: 'Version',
+    x,
+    y
+  }));
+  x += preset.width + gapX;
+  for (const entry of versions) {
+    const versionBundle = createExplorationCompileBundle(bundle, entry.screen, screenPrototypeForComparison(entry.screen));
+    const versionScreen = versionBundle.screens.screens[0] ?? entry.screen;
+    root.append(createExplorationPrototypeFrame({
+      bundle: versionBundle,
+      screen: versionScreen,
+      preset,
+      selection,
+      role: 'version',
+      historyVersion: entry.version,
+      label: `V${entry.version}`,
+      canonicalBoundary: false,
+      unavailableNoun: 'Version',
+      x,
+      y
+    }));
+    x += preset.width + gapX;
+  }
+  y += frameHeight + rowGap;
+
+  const explorations = bundle.explorations.explorations
+    .filter(exploration => (
+      exploration.target.screenId === screen.id
+        && exploration.target.state === selection.state
+        && exploration.target.framePresetId === preset.id
+    ))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  for (const exploration of explorations) {
+    appendHistoryRowLabel(
+      root,
+      `${exploration.title} · ${historyLifecycleLabel(exploration.lifecycle)}`,
+      startX,
+      y - 56
+    );
+    x = startX;
+    const baselineScreen = exploration.target.baseline.screen;
+    const baselineBundle = createExplorationCompileBundle(
+      bundle,
+      baselineScreen,
+      exploration.target.baseline.prototype
+    );
+    root.append(createExplorationPrototypeFrame({
+      bundle: baselineBundle,
+      screen: baselineBundle.screens.screens[0] ?? baselineScreen,
+      preset,
+      selection,
+      exploration,
+      role: 'baseline',
+      label: 'Starting point',
+      canonicalBoundary: false,
+      x,
+      y
+    }));
+    x += preset.width + gapX;
+    for (const candidate of exploration.candidates) {
+      const candidateBundle = createExplorationCompileBundle(bundle, baselineScreen, candidate.prototype);
+      root.append(createExplorationPrototypeFrame({
+        bundle: candidateBundle,
+        screen: candidateBundle.screens.screens[0] ?? baselineScreen,
+        preset,
+        selection,
+        exploration,
+        role: 'candidate',
+        candidateId: candidate.id,
+        label: candidate.id === exploration.selectedCandidateId ? `${candidate.label} · Chosen` : candidate.label,
+        canonicalBoundary: false,
+        x,
+        y
+      }));
+      x += preset.width + gapX;
+    }
+    y += frameHeight + rowGap;
+  }
+
+  return {
+    configure,
+    fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame-slot')])
+  };
+}
+
+function appendHistoryRowLabel(root: HTMLElement, label: string, x: number, y: number): void {
+  const rowLabel = el('div', 'bp-chrome-history-row-label', label);
+  rowLabel.style.left = `${x}px`;
+  rowLabel.style.top = `${y}px`;
+  root.append(rowLabel);
+}
+
+function historyLifecycleLabel(lifecycle: ExplorationDefinition['lifecycle']): string {
+  return lifecycle === 'active' ? 'Active' : lifecycle === 'promoted' ? 'Promoted' : 'Archived';
+}
+
+function screenPrototypeForComparison(screen: ScreenDefinition): ExplorationPrototypeSource {
+  if (!screen.prototype) {
+    throw new Error(`Screen "${screen.id}" does not retain a prototype source.`);
+  }
+  return screen.prototype;
 }
 
 function mountExplorationScreens(
@@ -2447,23 +2664,45 @@ interface ExplorationFrameOptions {
   screen: ScreenDefinition;
   preset: FramePreset;
   selection: SelectedPrototypeReviewCondition;
-  exploration: ExplorationDefinition;
-  role: 'baseline' | 'candidate';
+  exploration?: ExplorationDefinition;
+  role: 'current' | 'version' | 'baseline' | 'candidate';
   candidateId?: string;
+  historyVersion?: number;
+  canonicalBoundary?: boolean;
+  unavailableNoun?: 'Variation' | 'Version';
   label: string;
   x: number;
   y: number;
 }
 
 function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTMLElement {
-  const { bundle, screen, preset, selection, exploration, role, candidateId, label, x, y } = options;
+  const {
+    bundle,
+    screen,
+    preset,
+    selection,
+    exploration,
+    role,
+    candidateId,
+    historyVersion,
+    canonicalBoundary = role === 'baseline' || role === 'current',
+    unavailableNoun = 'Variation',
+    label,
+    x,
+    y
+  } = options;
   const slot = el('div', 'frame-slot exploration-frame-slot');
   slot.style.left = `${x}px`;
   slot.style.top = `${y}px`;
-  slot.dataset.explorationId = exploration.id;
+  if (exploration) {
+    slot.dataset.explorationId = exploration.id;
+  }
   slot.dataset.explorationRole = role;
   if (candidateId) {
     slot.dataset.explorationCandidateId = candidateId;
+  }
+  if (historyVersion !== undefined) {
+    slot.dataset.historyVersion = String(historyVersion);
   }
 
   const frame = el('article', 'frame frame-canonical exploration-frame');
@@ -2480,12 +2719,17 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
   frame.dataset.framePresetId = preset.id;
   frame.dataset.reviewConditionId = selection.conditionId;
   frame.dataset.reviewState = selection.state;
-  frame.dataset.explorationId = exploration.id;
+  if (exploration) {
+    frame.dataset.explorationId = exploration.id;
+  }
   frame.dataset.explorationRole = role;
   if (candidateId) {
     frame.dataset.explorationCandidateId = candidateId;
   }
-  if (role === 'baseline') {
+  if (historyVersion !== undefined) {
+    frame.dataset.historyVersion = String(historyVersion);
+  }
+  if (canonicalBoundary) {
     setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id, screen.name);
     frame.dataset.boundarySummary = screen.description;
   }
@@ -2495,7 +2739,7 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
   note.append(el('span', 'dot'), el('span', 'frame-name', label));
   head.append(note);
 
-  const rendered = createExplorationPrototypeScreen(bundle, screen, preset, selection, label);
+  const rendered = createExplorationPrototypeScreen(bundle, screen, preset, selection, label, unavailableNoun);
   frame.dataset.explorationStatus = rendered.available ? 'available' : 'unavailable';
   if (preset.type === 'mobile') {
     const display = el('div', 'frame-display');
@@ -2513,7 +2757,8 @@ function createExplorationPrototypeScreen(
   screen: ScreenDefinition,
   preset: FramePreset,
   selection: SelectedPrototypeReviewCondition,
-  label: string
+  label: string,
+  unavailableNoun: 'Variation' | 'Version' = 'Variation'
 ): { element: HTMLElement; available: boolean } {
   const host = el('div', `screen canonical-prototype-screen canonical-prototype-screen-${preset.type}`);
   host.dataset.frameType = preset.type;
@@ -2538,8 +2783,10 @@ function createExplorationPrototypeScreen(
     const message = el('div', 'prototype-compile-error exploration-prototype-error');
     message.setAttribute('role', 'status');
     message.append(
-      el('strong', '', 'Variation unavailable'),
-      el('span', '', 'Ask the agent to refresh this exploration.')
+      el('strong', '', `${unavailableNoun} unavailable`),
+      el('span', '', unavailableNoun === 'Variation'
+        ? 'Ask the agent to refresh this exploration.'
+        : 'Ask the agent to check this saved version.')
     );
     host.append(message);
     return { element: host, available: false };
@@ -2547,13 +2794,20 @@ function createExplorationPrototypeScreen(
 }
 
 function createExplorationUnavailablePanel(): HTMLElement {
+  return createFocusedUnavailablePanel(
+    'Exploration unavailable',
+    'Ask the agent to check the saved exploration and open it again.'
+  );
+}
+
+function createFocusedUnavailablePanel(title: string, message: string): HTMLElement {
   const panel = el('section', 'bp-chrome-exploration-unavailable');
   panel.dataset.explorationStatus = 'unavailable';
   panel.style.left = '90px';
   panel.style.top = '180px';
   panel.append(
-    el('strong', '', 'Exploration unavailable'),
-    el('span', '', 'Ask the agent to check the saved exploration and open it again.')
+    el('strong', '', title),
+    el('span', '', message)
   );
   return panel;
 }
@@ -2828,6 +3082,26 @@ function createPrototypeFrame(
     variations.dataset.explorationId = exploration.id;
     variations.addEventListener('click', () => openExploration(exploration.id));
     head.append(variations);
+  }
+  const hasSavedHistory = prototypeSelection
+    ? bundle.history.entries.some(entry => (
+      entry.screenId === screen.id
+        && entry.state === prototypeSelection.state
+        && entry.framePresetId === preset.id
+    )) || bundle.explorations.explorations.some(candidate => (
+      candidate.lifecycle !== 'active'
+        && candidate.target.screenId === screen.id
+        && candidate.target.state === prototypeSelection.state
+        && candidate.target.framePresetId === preset.id
+    ))
+    : false;
+  if (prototypeSelection && hasSavedHistory) {
+    const historyButton = el('button', 'bp-chrome-frame-history', 'History') as HTMLButtonElement;
+    historyButton.type = 'button';
+    historyButton.title = `Open ${screen.name} history`;
+    historyButton.dataset.historyScreenId = screen.id;
+    historyButton.addEventListener('click', () => openHistory(screen.id, prototypeSelection.state, preset.id));
+    head.append(historyButton);
   }
 
   if (screen.prototype) {

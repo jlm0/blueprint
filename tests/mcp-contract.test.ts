@@ -7,13 +7,14 @@ import {
   initInputSchema,
   promoteInputSchema,
   queryInputSchema,
+  restoreInputSchema,
   serveInputSchema,
   validateInputSchema
 } from '../src/mcp/schemas';
 import { BLUEPRINT_MCP_TOOL_NAMES, createBlueprintMcpServer } from '../src/mcp/create-server';
 
 describe('Blueprint MCP typed contract', () => {
-  it('publishes the seven parity tools plus bounded exploration mutations', async () => {
+  it('publishes the seven parity tools plus bounded exploration and history mutations', async () => {
     assert.deepEqual(BLUEPRINT_MCP_TOOL_NAMES, [
       'init',
       'validate',
@@ -23,7 +24,8 @@ describe('Blueprint MCP typed contract', () => {
       'capture',
       'serve',
       'explore',
-      'promote'
+      'promote',
+      'restore'
     ]);
     const server = createBlueprintMcpServer();
     await server.close();
@@ -50,7 +52,9 @@ describe('Blueprint MCP typed contract', () => {
       { type: 'sections', screen: 'home' },
       { type: 'prototype-only' },
       { type: 'explorations', screenId: 'home', lifecycle: 'active' },
-      { type: 'exploration', explorationId: 'home-layout' }
+      { type: 'exploration', explorationId: 'home-layout' },
+      { type: 'history', screenId: 'home' },
+      { type: 'history-version', screenId: 'home', version: 1 }
     ]) {
       assert.equal(queryInputSchema.safeParse({ project: 'design/blueprint', query }).success, true);
     }
@@ -97,6 +101,20 @@ describe('Blueprint MCP typed contract', () => {
       expectedBaseDigest: 'stale',
       expectedCurrentDigest: digest,
       expectedCandidateDigest: digest
+    }).success, false);
+    assert.equal(restoreInputSchema.safeParse({
+      project: 'design/blueprint',
+      screenId: 'home',
+      version: 1,
+      expectedCurrentDigest: digest,
+      expectedVersionDigest: digest
+    }).success, true);
+    assert.equal(restoreInputSchema.safeParse({
+      project: 'design/blueprint',
+      screenId: 'home',
+      version: 0,
+      expectedCurrentDigest: digest,
+      expectedVersionDigest: digest
     }).success, false);
   });
 

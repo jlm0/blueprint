@@ -84,12 +84,29 @@ const explorationQuerySchema = z
   })
   .strict();
 
+const historyQuerySchema = z
+  .object({
+    type: z.literal('history'),
+    screenId: nonEmptyString.optional()
+  })
+  .strict();
+
+const historyVersionQuerySchema = z
+  .object({
+    type: z.literal('history-version'),
+    screenId: nonEmptyString,
+    version: z.number().int().positive()
+  })
+  .strict();
+
 export const querySpecSchema = z.union([
   boundaryQuerySchema,
   sectionsQuerySchema,
   prototypeOnlyQuerySchema,
   explorationsQuerySchema,
-  explorationQuerySchema
+  explorationQuerySchema,
+  historyQuerySchema,
+  historyVersionQuerySchema
 ]);
 
 export const queryInputSchema = z
@@ -167,6 +184,16 @@ export const promoteInputSchema = z
     expectedBaseDigest: sha256DigestSchema,
     expectedCurrentDigest: sha256DigestSchema,
     expectedCandidateDigest: sha256DigestSchema
+  })
+  .strict();
+
+export const restoreInputSchema = z
+  .object({
+    project: projectPathSchema,
+    screenId: nonEmptyString,
+    version: z.number().int().positive(),
+    expectedCurrentDigest: sha256DigestSchema,
+    expectedVersionDigest: sha256DigestSchema
   })
   .strict();
 
@@ -441,11 +468,19 @@ export const exploreOutputSchema = z
   })
   .strict();
 
-const promotedScreenOutputSchema = z
+const canonicalScreenMutationOutputSchema = z
   .object({
     id: z.string(),
-    boundaryId: z.string(),
-    version: z.number().int().positive()
+    boundaryId: z.string()
+  })
+  .strict();
+
+const historicalVersionOutputSchema = z
+  .object({
+    screenId: z.string(),
+    version: z.number().int().positive(),
+    state: z.string(),
+    framePresetId: z.string()
   })
   .strict();
 
@@ -456,9 +491,20 @@ export const promoteOutputSchema = z
     projectId: z.string(),
     explorationId: z.string(),
     candidateId: z.string(),
-    promotedScreen: promotedScreenOutputSchema,
-    historicalScreen: promotedScreenOutputSchema,
+    promotedScreen: canonicalScreenMutationOutputSchema,
+    historicalVersion: historicalVersionOutputSchema,
     exploration: explorationOutputSchema
+  })
+  .strict();
+
+export const restoreOutputSchema = z
+  .object({
+    command: z.literal('restore'),
+    project: z.string(),
+    projectId: z.string(),
+    restoredFromVersion: z.number().int().positive(),
+    restoredScreen: canonicalScreenMutationOutputSchema,
+    historicalVersion: historicalVersionOutputSchema
   })
   .strict();
 
@@ -471,6 +517,7 @@ export type CaptureInput = z.infer<typeof captureInputSchema>;
 export type ServeInput = z.infer<typeof serveInputSchema>;
 export type ExploreInput = z.infer<typeof exploreInputSchema>;
 export type PromoteInput = z.infer<typeof promoteInputSchema>;
+export type RestoreInput = z.infer<typeof restoreInputSchema>;
 
 export type InitOutput = z.infer<typeof initOutputSchema>;
 export type ValidateOutput = z.infer<typeof validateOutputSchema>;
@@ -481,3 +528,4 @@ export type CaptureOutput = z.infer<typeof captureOutputSchema>;
 export type ServeOutput = z.infer<typeof serveOutputSchema>;
 export type ExploreOutput = z.infer<typeof exploreOutputSchema>;
 export type PromoteOutput = z.infer<typeof promoteOutputSchema>;
+export type RestoreOutput = z.infer<typeof restoreOutputSchema>;

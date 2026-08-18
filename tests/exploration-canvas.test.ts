@@ -148,6 +148,42 @@ describe('Blueprint focused exploration canvas', () => {
       await page.close();
     }
   });
+
+  it('keeps promoted work discoverable through a screen-local History view', async () => {
+    const bundle = await bundleWithHistory();
+    const page = await openBundle(bundle, '?board=screens&flow=marketing');
+
+    try {
+      assert.equal(await page.getByRole('button', { name: 'Variations', exact: true }).count(), 0);
+      const historyButton = page.getByRole('button', { name: 'History', exact: true });
+      assert.equal(await historyButton.count(), 1);
+      await historyButton.click();
+
+      const root = page.locator('[data-board-root="screens"][data-canvas-mode="history"]');
+      await root.waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(new URL(page.url()).searchParams.get('history'), 'waitlist');
+      assert.deepEqual(
+        (await root.locator('.bp-chrome-history-row-label').allTextContents()).map(label => label.trim()),
+        ['Versions', 'Hero directions · Promoted']
+      );
+      assert.deepEqual(
+        (await root.locator('.bp-chrome-frame-note .frame-name').allTextContents()).map(label => label.trim()),
+        ['Current', 'V1', 'Starting point', 'A', 'B · Chosen', 'C']
+      );
+      assert.equal(await root.locator('.frame').count(), 6);
+      assert.equal(await root.locator('.frame[data-boundary-kind="screen"]').count(), 1);
+      assert.equal(await root.locator('.frame[data-history-version="1"]').count(), 1);
+      assert.equal(await root.locator('.frame[data-exploration-candidate-id="direction-b"]').count(), 1);
+      assert.equal(await page.locator('.bp-chrome-flow-switcher').isVisible(), false);
+
+      await page.locator('.bp-chrome-exploration-back').click();
+      await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });
+      assert.equal(new URL(page.url()).searchParams.has('history'), false);
+      assert.equal(await page.getByRole('button', { name: 'History', exact: true }).count(), 1);
+    } finally {
+      await page.close();
+    }
+  });
 });
 
 async function openBundle(bundle: BlueprintProjectBundle, query: string): Promise<Page> {
@@ -242,6 +278,45 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
     `${fixtureRoot}/${candidateA}`,
     `${fixtureRoot}/${candidateB}`,
     `${fixtureRoot}/${candidateStyles}`
+  ];
+  return bundle;
+}
+
+async function bundleWithHistory(): Promise<BlueprintProjectBundle> {
+  const bundle = await bundleWithExploration();
+  const exploration = bundle.explorations.explorations[0];
+  const screen = bundle.screens.screens.find(candidate => candidate.id === 'waitlist');
+  if (!exploration || !screen?.prototype) {
+    throw new Error('Expected exploration history fixture inputs.');
+  }
+  exploration.lifecycle = 'promoted';
+  exploration.selectedCandidateId = 'direction-b';
+  exploration.promotedScreenId = screen.id;
+
+  const historicalScreen = structuredClone(exploration.target.baseline.screen);
+  if (!historicalScreen.prototype) {
+    throw new Error('Expected historical screen prototype.');
+  }
+  const historicalSource = 'prototype/screens/waitlist.history-waitlist-v1.html';
+  const historicalStyle = 'prototype/screens/waitlist.history-waitlist-v1.css';
+  bundle.prototypeSourceContents[historicalSource] = bundle.prototypeSourceContents[historicalScreen.prototype.source] ?? '';
+  bundle.prototypeSourceContents[historicalStyle] = bundle.prototypeSourceContents[historicalScreen.prototype.styles[0] ?? ''] ?? '';
+  historicalScreen.prototype.source = historicalSource;
+  historicalScreen.prototype.styles = [historicalStyle];
+  historicalScreen.styleRefs = [historicalStyle];
+  bundle.history.entries = [
+    {
+      screenId: screen.id,
+      version: 1,
+      state: 'initial',
+      framePresetId: 'desktop-reference',
+      screen: historicalScreen,
+      replacedBy: {
+        type: 'exploration-candidate',
+        explorationId: exploration.id,
+        candidateId: 'direction-b'
+      }
+    }
   ];
   return bundle;
 }

@@ -7,6 +7,7 @@ import {
   initializeBlueprint,
   promoteBlueprint,
   queryBlueprint,
+  restoreBlueprint,
   serveBlueprint,
   validateBlueprint,
   type BlueprintServeHandle
@@ -26,6 +27,8 @@ import {
   promoteOutputSchema,
   queryInputSchema,
   queryOutputSchema,
+  restoreInputSchema,
+  restoreOutputSchema,
   serveInputSchema,
   serveOutputSchema,
   validateInputSchema,
@@ -43,7 +46,8 @@ export const BLUEPRINT_MCP_TOOL_NAMES = [
   'capture',
   'serve',
   'explore',
-  'promote'
+  'promote',
+  'restore'
 ] as const;
 
 export function createBlueprintMcpServer(): McpServer {
@@ -51,7 +55,7 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for an app-owned design sidecar; the Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations preserve non-canonical alternatives; promotion requires explicit compare-and-swap digests and retains canonical history.'
+        'Blueprint MCP is the agent-facing control surface for an app-owned design sidecar; the Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
   const activeServeHandles = new Set<BlueprintServeHandle>();
@@ -101,7 +105,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Query Blueprint',
       description:
-        'Run exactly one typed boundary, section, prototype-only, exploration-list, or exploration-inspection query against one Blueprint project. When out is provided, also writes the returned JSON to that path.',
+        'Run exactly one typed boundary, section, prototype-only, exploration, or canonical-history query against one Blueprint project. When out is provided, also writes the returned JSON to that path.',
       inputSchema: queryInputSchema,
       outputSchema: queryOutputSchema
     },
@@ -189,6 +193,24 @@ export function createBlueprintMcpServer(): McpServer {
       }
     },
     async (input, context) => executeTool(() => promoteBlueprint(input, context.mcpReq.signal))
+  );
+
+  server.registerTool(
+    'restore',
+    {
+      title: 'Restore Blueprint Screen Version',
+      description:
+        'Restore one inspected canonical screen history version as the current screen while first preserving the outgoing current screen as the next immutable history version.',
+      inputSchema: restoreInputSchema,
+      outputSchema: restoreOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (input, context) => executeTool(() => restoreBlueprint(input, context.mcpReq.signal))
   );
 
   const closeProtocolServer = server.close.bind(server);

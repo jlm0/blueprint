@@ -14,6 +14,7 @@ export type {
   ExplorationCandidate,
   ExplorationDefinition,
   ExplorationFile,
+  ExplorationRecordFile,
   ExplorationLifecycle,
   ExplorationPrototypeSource,
   ExplorationTarget,
@@ -36,6 +37,10 @@ export type {
   ResolvedToken,
   ReviewCondition,
   ScreenDefinition,
+  ScreenHistoryEntry,
+  ScreenHistoryFile,
+  ScreenHistoryRecordFile,
+  ScreenHistoryReplacement,
   ScreenPrototypeSource,
   TokenUsage,
   TokenGroup,
@@ -62,10 +67,14 @@ export {
   computeCanonicalScreenDigest,
   computeExplorationBaselineDigest,
   computeExplorationCandidateDigest,
+  computeHistoryVersionDigest,
   createExplorationMetadata,
   inspectExploration,
+  inspectScreenHistory,
   listExplorations,
-  promoteExploration
+  listScreenHistory,
+  promoteExploration,
+  restoreScreenHistory
 } from './core/exploration';
 export type {
   CreateExplorationInput,
@@ -74,9 +83,19 @@ export type {
   ExplorationSummary,
   PromoteExplorationInput,
   PromotionResult,
+  RestoreHistoryInput,
+  RestoreHistoryResult,
+  ScreenHistoryInspection,
+  ScreenHistorySummary,
   TextSourceWrite
 } from './core/exploration';
 export { loadProjectFromFs } from './core/load';
+export {
+  explorationRecordFile,
+  explorationRecordRef,
+  historyRecordFile,
+  historyRecordRef
+} from './core/storage-records';
 export { createReadinessReport, validateProject } from './core/validate';
 export {
   createExtractionPacket,
@@ -114,6 +133,8 @@ export type {
   PromoteOutput,
   QueryInput,
   QueryOutput,
+  RestoreInput,
+  RestoreOutput,
   ServeInput,
   ServeOutput,
   ValidateInput,

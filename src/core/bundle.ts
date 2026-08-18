@@ -7,6 +7,7 @@ import type {
   PrototypeSource,
   PrototypeAssetContent,
   ScreenFile,
+  ScreenHistoryFile,
   TokenFile
 } from './types';
 
@@ -22,6 +23,10 @@ export interface RawProjectFiles {
   components?: ComponentFile;
   screens: ScreenFile;
   explorations?: ExplorationFile;
+  history?: ScreenHistoryFile;
+  legacyExplorationsFile?: boolean;
+  explorationRecordRefs?: string[];
+  historyRecordRefs?: string[];
   prototypeSourceContents?: Record<string, string>;
   prototypeAssetContents?: Record<string, PrototypeAssetContent>;
 }
@@ -29,8 +34,10 @@ export interface RawProjectFiles {
 export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): BlueprintProjectBundle {
   const components = raw.components ?? emptyComponentFile(raw.manifest.project.id);
   const explorations = raw.explorations ?? emptyExplorationFile(raw.manifest.project.id);
+  const history = raw.history ?? emptyScreenHistoryFile(raw.manifest.project.id);
   const prototypeSourceRefs = collectPrototypeSourceRefs(raw.primitives, components, raw.screens);
   const explorationSourceRefs = collectExplorationSourceRefs(explorations);
+  const historySourceRefs = collectHistorySourceRefs(history);
   return {
     manifest: raw.manifest,
     tokens: raw.tokens,
@@ -38,6 +45,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
     components,
     screens: raw.screens,
     explorations,
+    history,
     sourceRoot,
     sourceFiles: {
       manifest: `${sourceRoot}/manifest.json`,
@@ -45,9 +53,12 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
       primitives: `${sourceRoot}/primitives.json`,
       ...(raw.components ? { components: `${sourceRoot}/components.json` } : {}),
       screens: `${sourceRoot}/screens.json`,
-      ...(raw.explorations ? { explorations: `${sourceRoot}/explorations.json` } : {}),
+      ...(raw.legacyExplorationsFile ? { explorations: `${sourceRoot}/explorations.json` } : {}),
+      explorationRecords: (raw.explorationRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
+      historyRecords: (raw.historyRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),
-      explorationSources: explorationSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`)
+      explorationSources: explorationSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),
+      historySources: historySourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`)
     },
     prototypeSourceContents: raw.prototypeSourceContents ?? {},
     prototypeAssetContents: raw.prototypeAssetContents ?? {}
@@ -126,6 +137,27 @@ export function collectExplorationAssetRefs(explorations: ExplorationFile): stri
   return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
 }
 
+/** Lists safe HTML, CSS, and asset refs belonging only to prior canonical versions. */
+export function collectHistorySourceRefs(history: ScreenHistoryFile): string[] {
+  const refs = history.entries.flatMap(entry => [
+    ...sourceRefs(entry.screen.prototype),
+    ...(entry.screen.prototype?.assetRefs ?? [])
+  ]);
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
+/** Lists safe historical HTML and CSS refs that must be decoded as UTF-8. */
+export function collectHistoryTextSourceRefs(history: ScreenHistoryFile): string[] {
+  const refs = history.entries.flatMap(entry => sourceRefs(entry.screen.prototype));
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
+/** Lists safe historical assets that must retain their original bytes. */
+export function collectHistoryAssetRefs(history: ScreenHistoryFile): string[] {
+  const refs = history.entries.flatMap(entry => entry.screen.prototype?.assetRefs ?? []);
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
 function sourceRefs(prototype: PrototypeSource | undefined): string[] {
   return prototype ? [prototype.source, ...prototype.styles] : [];
 }
@@ -156,5 +188,13 @@ function emptyExplorationFile(projectId: string): ExplorationFile {
     schemaVersion: '1.0.0',
     projectId,
     explorations: []
+  };
+}
+
+function emptyScreenHistoryFile(projectId: string): ScreenHistoryFile {
+  return {
+    schemaVersion: '1.0.0',
+    projectId,
+    entries: []
   };
 }

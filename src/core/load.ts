@@ -2,19 +2,27 @@ import path from 'node:path';
 import {
   collectExplorationAssetRefs,
   collectExplorationTextSourceRefs,
+  collectHistoryAssetRefs,
+  collectHistoryTextSourceRefs,
   collectPrototypeAssetRefs,
   collectPrototypeTextSourceRefs,
   createProjectBundle
 } from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
+import { explorationRecordRef, historyRecordRef } from './storage-records';
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
   ComponentFile,
+  ExplorationDefinition,
   ExplorationFile,
+  ExplorationRecordFile,
   PrimitiveFile,
   PrototypeAssetContent,
   ScreenFile,
+  ScreenHistoryEntry,
+  ScreenHistoryFile,
+  ScreenHistoryRecordFile,
   TokenFile
 } from './types';
 
@@ -25,7 +33,16 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const primitives = await readJson<PrimitiveFile>(reader, 'primitives.json');
   const components = await readOptionalJson<ComponentFile>(reader, 'components.json');
   const screens = await readJson<ScreenFile>(reader, 'screens.json');
-  const explorations = await readOptionalJson<ExplorationFile>(reader, 'explorations.json');
+  const legacyExplorations = await readOptionalJson<ExplorationFile>(reader, 'explorations.json');
+  const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
+  const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
+  const explorations = await readExplorationCollection(
+    reader,
+    manifest.project.id,
+    legacyExplorations,
+    explorationRecordRefs
+  );
+  const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs);
   const componentFile = components ?? {
     schemaVersion: '1.0.0',
     projectId: manifest.project.id,
@@ -33,7 +50,8 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   };
   const sourceRefs = [
     ...collectPrototypeTextSourceRefs(primitives, componentFile, screens),
-    ...collectExplorationTextSourceRefs(explorations ?? emptyExplorationFile(manifest.project.id))
+    ...collectExplorationTextSourceRefs(explorations),
+    ...collectHistoryTextSourceRefs(history)
   ];
   const prototypeSourceContents: Record<string, string> = {};
   for (const sourceRef of new Set(sourceRefs)) {
@@ -45,7 +63,8 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const prototypeAssetContents: Record<string, PrototypeAssetContent> = {};
   const assetRefs = [
     ...collectPrototypeAssetRefs(screens),
-    ...collectExplorationAssetRefs(explorations ?? emptyExplorationFile(manifest.project.id))
+    ...collectExplorationAssetRefs(explorations),
+    ...collectHistoryAssetRefs(history)
   ];
   for (const assetRef of new Set(assetRefs)) {
     const bytes = await reader.readBytes(assetRef, { kind: 'prototype asset', optional: true });
@@ -63,14 +82,79 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
     primitives,
     ...(components ? { components } : {}),
     screens,
-    ...(explorations ? { explorations } : {}),
+    explorations,
+    history,
+    legacyExplorationsFile: legacyExplorations !== undefined,
+    explorationRecordRefs,
+    historyRecordRefs,
     prototypeSourceContents,
     prototypeAssetContents
   });
 }
 
-function emptyExplorationFile(projectId: string): ExplorationFile {
-  return { schemaVersion: '1.0.0', projectId, explorations: [] };
+async function readExplorationCollection(
+  reader: ContainedBlueprintReader,
+  projectId: string,
+  legacy: ExplorationFile | undefined,
+  recordRefs: string[]
+): Promise<ExplorationFile> {
+  const byId = new Map<string, ExplorationDefinition>();
+  for (const exploration of legacy?.explorations ?? []) {
+    byId.set(exploration.id, exploration);
+  }
+  const recordIds = new Set<string>();
+  for (const recordRef of recordRefs) {
+    const record = await readJson<ExplorationRecordFile>(reader, recordRef);
+    if (record.projectId !== projectId) {
+      throw new Error(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+    }
+    if (recordRef !== explorationRecordRef(record.exploration.id)) {
+      throw new Error(`Exploration record "${recordRef}" does not match exploration id "${record.exploration.id}".`);
+    }
+    if (recordIds.has(record.exploration.id)) {
+      throw new Error(`Exploration record id "${record.exploration.id}" is duplicated.`);
+    }
+    recordIds.add(record.exploration.id);
+    byId.set(record.exploration.id, record.exploration);
+  }
+  return {
+    schemaVersion: legacy?.schemaVersion ?? '1.0.0',
+    projectId,
+    explorations: [...byId.values()].sort((left, right) => left.id.localeCompare(right.id))
+  };
+}
+
+async function readHistoryCollection(
+  reader: ContainedBlueprintReader,
+  projectId: string,
+  recordRefs: string[]
+): Promise<ScreenHistoryFile> {
+  const entries: ScreenHistoryEntry[] = [];
+  const keys = new Set<string>();
+  for (const recordRef of recordRefs) {
+    const record = await readJson<ScreenHistoryRecordFile>(reader, recordRef);
+    if (record.projectId !== projectId) {
+      throw new Error(`History record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+    }
+    if (recordRef !== historyRecordRef(record.entry.screenId, record.entry.version)) {
+      throw new Error(
+        `History record "${recordRef}" does not match screen "${record.entry.screenId}" V${record.entry.version}.`
+      );
+    }
+    const key = `${record.entry.screenId}\u0000${record.entry.version}`;
+    if (keys.has(key)) {
+      throw new Error(`History record for screen "${record.entry.screenId}" V${record.entry.version} is duplicated.`);
+    }
+    keys.add(key);
+    entries.push(record.entry);
+  }
+  return {
+    schemaVersion: '1.0.0',
+    projectId,
+    entries: entries.sort((left, right) => (
+      left.screenId.localeCompare(right.screenId) || left.version - right.version
+    ))
+  };
 }
 
 export function normalizePath(filePath: string): string {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { screenVersionGroupKey } from './screen-naming';
+import { storageRecordSegment } from './storage-records';
 import type {
   BlueprintProjectBundle,
   ExplorationCandidate,
@@ -9,6 +9,8 @@ import type {
   ExplorationPrototypeSource,
   ScreenDefinition,
   ScreenFile,
+  ScreenHistoryEntry,
+  ScreenHistoryFile,
   ScreenPrototypeSource
 } from './types';
 
@@ -29,6 +31,21 @@ export interface ExplorationInspection {
   exploration: ExplorationDefinition;
   currentDigest: string;
   candidateDigests: Record<string, string>;
+}
+
+export interface ScreenHistorySummary {
+  screenId: string;
+  version: number;
+  state: string;
+  framePresetId: string;
+  replacedBy: ScreenHistoryEntry['replacedBy'];
+  digest: string;
+}
+
+export interface ScreenHistoryInspection {
+  entry: ScreenHistoryEntry;
+  currentDigest: string;
+  versionDigest: string;
 }
 
 export interface CreateExplorationInput {
@@ -63,8 +80,25 @@ export interface PromoteExplorationInput {
 
 export interface PromotionResult extends ExplorationMutationResult {
   screens: ScreenFile;
+  history: ScreenHistoryFile;
   promotedScreen: ScreenDefinition;
-  historicalScreen: ScreenDefinition;
+  historicalVersion: ScreenHistoryEntry;
+}
+
+export interface RestoreHistoryInput {
+  screenId: string;
+  version: number;
+  expectedCurrentDigest: string;
+  expectedVersionDigest: string;
+}
+
+export interface RestoreHistoryResult {
+  screens: ScreenFile;
+  history: ScreenHistoryFile;
+  restoredScreen: ScreenDefinition;
+  historicalVersion: ScreenHistoryEntry;
+  prototypeSourceContents: Record<string, string>;
+  sourceWrites: TextSourceWrite[];
 }
 
 /** Lists saved alternatives without exposing source text or treating them as screen boundaries. */
@@ -131,6 +165,46 @@ export function computeExplorationBaselineDigest(
   );
 }
 
+/** Lists immutable prior canonical versions without exposing their source text. */
+export function listScreenHistory(
+  bundle: BlueprintProjectBundle,
+  screenId?: string
+): ScreenHistorySummary[] {
+  return bundle.history.entries
+    .filter(entry => screenId === undefined || entry.screenId === screenId)
+    .map(entry => ({
+      screenId: entry.screenId,
+      version: entry.version,
+      state: entry.state,
+      framePresetId: entry.framePresetId,
+      replacedBy: structuredClone(entry.replacedBy),
+      digest: computeHistoryVersionDigest(bundle, entry.screenId, entry.version)
+    }))
+    .sort((left, right) => left.screenId.localeCompare(right.screenId) || right.version - left.version);
+}
+
+/** Returns one historical version plus compare-and-swap digests for restoration. */
+export function inspectScreenHistory(
+  bundle: BlueprintProjectBundle,
+  screenId: string,
+  version: number
+): ScreenHistoryInspection {
+  const entry = requireHistoryVersion(bundle, screenId, version);
+  return {
+    entry: structuredClone(entry),
+    currentDigest: computeCanonicalScreenDigest(bundle, screenId),
+    versionDigest: computeHistoryEntryDigest(bundle, entry)
+  };
+}
+
+export function computeHistoryVersionDigest(
+  bundle: BlueprintProjectBundle,
+  screenId: string,
+  version: number
+): string {
+  return computeHistoryEntryDigest(bundle, requireHistoryVersion(bundle, screenId, version));
+}
+
 /**
  * Creates valid persistent metadata and byte-for-byte starter copies for the baseline and every candidate.
  * It deliberately does not generate or choose design content.
@@ -184,7 +258,10 @@ export function createExplorationMetadata(
     existingIds
   );
   const baseDigest = computeScreenDigest(bundle, screen, screenPrototype(screen));
-  const baselinePrototype = snapshotPrototype(screen.prototype, explorationId, 'baseline');
+  const baselinePrototype = snapshotPrototype(
+    screen.prototype,
+    `exploration-${explorationId}-baseline`
+  );
   const candidateIds = new Set<string>();
   const candidates = input.candidateLabels.map(label => {
     const id = nextAvailableId(safeIdSegment(label), candidateIds);
@@ -192,7 +269,10 @@ export function createExplorationMetadata(
     return {
       id,
       label,
-      prototype: snapshotPrototype(screen.prototype!, explorationId, id)
+      prototype: snapshotPrototype(
+        screen.prototype!,
+        `exploration-${explorationId}-${id}`
+      )
     } satisfies ExplorationCandidate;
   });
   const exploration: ExplorationDefinition = {
@@ -248,7 +328,7 @@ export function archiveExploration(bundle: BlueprintProjectBundle, explorationId
 
 /**
  * Promotes an explicitly selected candidate while preserving the stable current screen ID.
- * The previous current render is appended as immutable Vn history and no input object is mutated.
+ * The previous current render is appended to independent immutable Vn history and no input object is mutated.
  */
 export function promoteExploration(
   bundle: BlueprintProjectBundle,
@@ -273,19 +353,26 @@ export function promoteExploration(
   const candidateDigest = computeCandidateDigest(bundle, exploration, candidate);
   assertDigest('expectedCandidateDigest', input.expectedCandidateDigest, candidateDigest);
 
-  const group = screensInExplorationGroup(bundle, exploration);
-  const currentVersion = group.length === 1 && current.version === undefined
-    ? 1
-    : Math.max(...group.map(screen => screen.version ?? 0));
-  const nextVersion = currentVersion + 1;
-  const historicalId = historyScreenId(current.id, currentVersion, new Set(bundle.screens.screens.map(screen => screen.id)));
-  const historicalPrototype = snapshotPrototype(screenPrototype(current), exploration.id, `history-v${currentVersion}`);
+  const currentVersion = nextHistoryVersion(bundle.history, current.id);
+  const historicalPrototype = snapshotPrototype(
+    screenPrototype(current),
+    `history-${storageRecordSegment(current.id)}-v${currentVersion}`
+  );
   const historicalScreen = withPrototypeRefs(structuredClone(current), historicalPrototype);
-  historicalScreen.id = historicalId;
-  historicalScreen.version = currentVersion;
+  const historicalVersion: ScreenHistoryEntry = {
+    screenId: current.id,
+    version: currentVersion,
+    state: exploration.target.state,
+    framePresetId: exploration.target.framePresetId,
+    screen: historicalScreen,
+    replacedBy: {
+      type: 'exploration-candidate',
+      explorationId: exploration.id,
+      candidateId: candidate.id
+    }
+  };
 
   const promotedScreen = structuredClone(current);
-  promotedScreen.version = nextVersion;
   const promotedPrototype: ScreenPrototypeSource = {
     ...structuredClone(screenPrototype(current)),
     source: screenPrototype(current).source,
@@ -302,11 +389,20 @@ export function promoteExploration(
   const prototypeSourceContents = { ...bundle.prototypeSourceContents };
   const sourceWrites: TextSourceWrite[] = [];
   copyPrototypeSources(bundle, screenPrototype(current), historicalPrototype, prototypeSourceContents, sourceWrites);
-  copyCandidateIntoCanonical(candidate, promotedScreen, bundle, prototypeSourceContents, sourceWrites);
+  copyPrototypeIntoCanonical(
+    candidate.prototype,
+    screenPrototype(promotedScreen),
+    bundle,
+    prototypeSourceContents,
+    sourceWrites
+  );
 
   const screens = structuredClone(bundle.screens);
   screens.screens = screens.screens.map(screen => screen.id === current.id ? promotedScreen : screen);
-  screens.screens.push(historicalScreen);
+  const history: ScreenHistoryFile = {
+    ...structuredClone(bundle.history),
+    entries: [...structuredClone(bundle.history.entries), historicalVersion]
+  };
 
   const promotedExploration: ExplorationDefinition = {
     ...structuredClone(exploration),
@@ -316,26 +412,103 @@ export function promoteExploration(
   };
   return {
     screens,
+    history,
     explorations: replaceExploration(bundle.explorations, promotedExploration),
     exploration: promotedExploration,
     promotedScreen,
-    historicalScreen,
+    historicalVersion,
+    prototypeSourceContents,
+    sourceWrites
+  };
+}
+
+/**
+ * Restores a prior canonical version as a new current revision. The outgoing current
+ * screen is preserved as the next immutable history entry before any canonical bytes change.
+ */
+export function restoreScreenHistory(
+  bundle: BlueprintProjectBundle,
+  input: RestoreHistoryInput
+): RestoreHistoryResult {
+  const current = bundle.screens.screens.find(screen => screen.id === input.screenId);
+  if (!current) {
+    throw new Error(`Canonical screen "${input.screenId}" does not exist.`);
+  }
+  const selectedVersion = requireHistoryVersion(bundle, input.screenId, input.version);
+  assertDigest(
+    'expectedCurrentDigest',
+    input.expectedCurrentDigest,
+    computeScreenDigest(bundle, current, screenPrototype(current))
+  );
+  assertDigest(
+    'expectedVersionDigest',
+    input.expectedVersionDigest,
+    computeHistoryEntryDigest(bundle, selectedVersion)
+  );
+
+  const outgoingVersion = nextHistoryVersion(bundle.history, current.id);
+  const outgoingPrototype = snapshotPrototype(
+    screenPrototype(current),
+    `history-${storageRecordSegment(current.id)}-v${outgoingVersion}`
+  );
+  const historicalVersion: ScreenHistoryEntry = {
+    screenId: current.id,
+    version: outgoingVersion,
+    state: selectedVersion.state,
+    framePresetId: selectedVersion.framePresetId,
+    screen: withPrototypeRefs(structuredClone(current), outgoingPrototype),
+    replacedBy: { type: 'history-restore', version: selectedVersion.version }
+  };
+
+  const selectedPrototype = screenPrototype(selectedVersion.screen);
+  const currentPrototype = screenPrototype(current);
+  const canonicalPrototype: ScreenPrototypeSource = {
+    ...structuredClone(selectedPrototype),
+    source: currentPrototype.source,
+    styles: canonicalStyleTargets(currentPrototype, selectedPrototype.styles),
+    assetRefs: [...selectedPrototype.assetRefs]
+  };
+  const restoredScreen = withPrototypeRefs(structuredClone(selectedVersion.screen), canonicalPrototype);
+  restoredScreen.id = current.id;
+  if (current.version === undefined) {
+    delete restoredScreen.version;
+  } else {
+    restoredScreen.version = current.version;
+  }
+
+  const prototypeSourceContents = { ...bundle.prototypeSourceContents };
+  const sourceWrites: TextSourceWrite[] = [];
+  copyPrototypeSources(bundle, currentPrototype, outgoingPrototype, prototypeSourceContents, sourceWrites);
+  copyPrototypeIntoCanonical(
+    selectedPrototype,
+    canonicalPrototype,
+    bundle,
+    prototypeSourceContents,
+    sourceWrites
+  );
+
+  const screens = structuredClone(bundle.screens);
+  screens.screens = screens.screens.map(screen => screen.id === current.id ? restoredScreen : screen);
+  const history: ScreenHistoryFile = {
+    ...structuredClone(bundle.history),
+    entries: [...structuredClone(bundle.history.entries), historicalVersion]
+  };
+  return {
+    screens,
+    history,
+    restoredScreen,
+    historicalVersion,
     prototypeSourceContents,
     sourceWrites
   };
 }
 
 function currentScreenForExploration(bundle: BlueprintProjectBundle, exploration: ExplorationDefinition): ScreenDefinition {
-  const group = screensInExplorationGroup(bundle, exploration);
-  if (group.length === 0) {
+  const current = bundle.screens.screens.find(screen => screen.id === exploration.target.screenId);
+  if (!current) {
     throw new Error(`Exploration "${exploration.id}" no longer has a canonical screen target.`);
   }
-  return [...group].sort((left, right) => (right.version ?? 1) - (left.version ?? 1))[0]!;
-}
-
-function screensInExplorationGroup(bundle: BlueprintProjectBundle, exploration: ExplorationDefinition): ScreenDefinition[] {
-  const key = screenVersionGroupKey(exploration.target.baseline.screen);
-  return bundle.screens.screens.filter(screen => screenVersionGroupKey(screen) === key);
+  return current;
 }
 
 function computeCandidateDigest(
@@ -358,6 +531,15 @@ function computeScreenDigest(
 ): string {
   return digest({
     screen,
+    sourceContents: prototypeText(prototype, bundle.prototypeSourceContents),
+    assets: prototypeAssets(prototype, bundle)
+  });
+}
+
+function computeHistoryEntryDigest(bundle: BlueprintProjectBundle, entry: ScreenHistoryEntry): string {
+  const prototype = screenPrototype(entry.screen);
+  return digest({
+    entry,
     sourceContents: prototypeText(prototype, bundle.prototypeSourceContents),
     assets: prototypeAssets(prototype, bundle)
   });
@@ -409,10 +591,8 @@ function screenPrototype(screen: ScreenDefinition): ScreenPrototypeSource {
 
 function snapshotPrototype(
   prototype: ExplorationPrototypeSource,
-  explorationId: string,
-  suffix: string
+  marker: string
 ): ExplorationPrototypeSource {
-  const marker = `exploration-${explorationId}-${suffix}`;
   return {
     source: insertFileSuffix(prototype.source, marker),
     styles: prototype.styles.map(styleRef => insertFileSuffix(styleRef, marker)),
@@ -449,17 +629,16 @@ function copyPrototypeSources(
   });
 }
 
-function copyCandidateIntoCanonical(
-  candidate: ExplorationCandidate,
-  promoted: ScreenDefinition,
+function copyPrototypeIntoCanonical(
+  sourcePrototype: ExplorationPrototypeSource,
+  targetPrototype: ExplorationPrototypeSource,
   bundle: BlueprintProjectBundle,
   contents: Record<string, string>,
   writes: TextSourceWrite[]
 ): void {
-  const prototype = screenPrototype(promoted);
-  const candidateRefs = [candidate.prototype.source, ...candidate.prototype.styles];
-  const targetRefs = [prototype.source, ...prototype.styles];
-  candidateRefs.forEach((sourceRef, index) => {
+  const sourceRefs = [sourcePrototype.source, ...sourcePrototype.styles];
+  const targetRefs = [targetPrototype.source, ...targetPrototype.styles];
+  sourceRefs.forEach((sourceRef, index) => {
     const content = bundle.prototypeSourceContents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
       throw new Error(`Governed prototype source "${sourceRef}" is missing or empty.`);
@@ -505,12 +684,25 @@ function replaceRef(ref: string, from: string[], to: string[]): string {
   return index >= 0 ? (to[index] ?? ref) : ref;
 }
 
-function historyScreenId(currentId: string, version: number, existing: Set<string>): string {
-  const candidate = `${safeIdSegment(currentId)}-v${version}`;
-  if (existing.has(candidate)) {
-    throw new Error(`Cannot preserve screen history because id "${candidate}" already exists.`);
+function nextHistoryVersion(history: ScreenHistoryFile, screenId: string): number {
+  const versions = history.entries
+    .filter(entry => entry.screenId === screenId)
+    .map(entry => entry.version);
+  return versions.length === 0 ? 1 : Math.max(...versions) + 1;
+}
+
+function requireHistoryVersion(
+  bundle: BlueprintProjectBundle,
+  screenId: string,
+  version: number
+): ScreenHistoryEntry {
+  const entry = bundle.history.entries.find(candidate => (
+    candidate.screenId === screenId && candidate.version === version
+  ));
+  if (!entry) {
+    throw new Error(`History for canonical screen "${screenId}" does not contain V${version}.`);
   }
-  return candidate;
+  return entry;
 }
 
 function replaceExploration(file: ExplorationFile, replacement: ExplorationDefinition): ExplorationFile {

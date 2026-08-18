@@ -6,7 +6,13 @@ import { existsSync } from 'node:fs';
 import { createServer as createHttpServer, type Server as HttpServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Page } from 'playwright';
-import type { BlueprintProjectBundle, ScreenDefinition } from '../core/types';
+import type {
+  BlueprintProjectBundle,
+  ExplorationDefinition,
+  ExplorationFile,
+  ScreenDefinition,
+  ScreenHistoryEntry
+} from '../core/types';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import { loadProjectFromFs } from '../core/load';
 import { createReadinessReport, validateProject } from '../core/validate';
@@ -14,9 +20,18 @@ import {
   archiveExploration,
   createExplorationMetadata,
   inspectExploration,
+  inspectScreenHistory,
   listExplorations,
-  promoteExploration
+  listScreenHistory,
+  promoteExploration,
+  restoreScreenHistory
 } from '../core/exploration';
+import {
+  explorationRecordFile,
+  explorationRecordRef,
+  historyRecordFile,
+  historyRecordRef
+} from '../core/storage-records';
 import {
   createExtractionPacket,
   listBoundaryReferences,
@@ -43,6 +58,7 @@ import {
   initOutputSchema,
   promoteOutputSchema,
   queryOutputSchema,
+  restoreOutputSchema,
   serveOutputSchema,
   validateOutputSchema,
   type CaptureInput,
@@ -59,6 +75,8 @@ import {
   type PromoteOutput,
   type QueryInput,
   type QueryOutput,
+  type RestoreInput,
+  type RestoreOutput,
   type ServeInput,
   type ServeOutput,
   type ValidateInput,
@@ -216,6 +234,20 @@ export async function queryBlueprint(input: QueryInput, signal?: AbortSignal): P
         query: `exploration:${query.explorationId}`,
         projectId: bundle.manifest.project.id,
         results: [inspectExploration(bundle, query.explorationId)]
+      };
+      break;
+    case 'history':
+      output = {
+        query: 'history',
+        projectId: bundle.manifest.project.id,
+        results: listScreenHistory(bundle, query.screenId)
+      };
+      break;
+    case 'history-version':
+      output = {
+        query: `history-version:${query.screenId}:v${query.version}`,
+        projectId: bundle.manifest.project.id,
+        results: [inspectScreenHistory(bundle, query.screenId, query.version)]
       };
       break;
   }
@@ -426,7 +458,7 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
 
   const transaction = await applyProjectFileTransaction(projectRoot, [
     ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
-    { fileRef: 'explorations.json', content: jsonFileContent(result.explorations) }
+    ...explorationMetadataWrites(bundle, result.explorations, result.exploration)
   ]);
   try {
     throwIfAborted(signal);
@@ -448,6 +480,13 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   const bundle = await loadProjectFromFs(projectRoot);
   const result = promoteExploration(bundle, input);
   const projectId = bundle.manifest.project.id;
+  assertValidMutation({
+    ...bundle,
+    screens: result.screens,
+    explorations: result.explorations,
+    history: result.history,
+    prototypeSourceContents: result.prototypeSourceContents
+  });
   const output = promoteOutputSchema.parse({
     command: 'promote',
     project: normalize(projectRoot),
@@ -455,14 +494,59 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
     explorationId: input.explorationId,
     candidateId: input.candidateId,
     promotedScreen: screenMutationSummary(projectId, result.promotedScreen),
-    historicalScreen: screenMutationSummary(projectId, result.historicalScreen),
+    historicalVersion: historyVersionSummary(result.historicalVersion),
     exploration: result.exploration
   });
 
   const transaction = await applyProjectFileTransaction(projectRoot, [
     ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
     { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
-    { fileRef: 'explorations.json', content: jsonFileContent(result.explorations) }
+    ...explorationMetadataWrites(bundle, result.explorations, result.exploration),
+    {
+      fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
+      content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
+    }
+  ]);
+  try {
+    throwIfAborted(signal);
+    await assertPersistedProjectValid(projectRoot);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  return output;
+}
+
+export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal): Promise<RestoreOutput> {
+  throwIfAborted(signal);
+  const projectRoot = path.resolve(input.project);
+  assertBlueprintProjectPath(projectRoot);
+  const bundle = await loadProjectFromFs(projectRoot);
+  const result = restoreScreenHistory(bundle, input);
+  const projectId = bundle.manifest.project.id;
+  assertValidMutation({
+    ...bundle,
+    screens: result.screens,
+    history: result.history,
+    prototypeSourceContents: result.prototypeSourceContents
+  });
+  const output = restoreOutputSchema.parse({
+    command: 'restore',
+    project: normalize(projectRoot),
+    projectId,
+    restoredFromVersion: input.version,
+    restoredScreen: screenMutationSummary(projectId, result.restoredScreen),
+    historicalVersion: historyVersionSummary(result.historicalVersion)
+  });
+
+  const transaction = await applyProjectFileTransaction(projectRoot, [
+    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+    { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
+    {
+      fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
+      content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
+    }
   ]);
   try {
     throwIfAborted(signal);
@@ -602,16 +686,50 @@ async function assertPersistedProjectValid(projectRoot: string): Promise<void> {
 function screenMutationSummary(projectId: string, screen: ScreenDefinition): {
   id: string;
   boundaryId: string;
-  version: number;
 } {
-  if (screen.version === undefined) {
-    throw new Error(`Promoted screen "${screen.id}" is missing its canonical version.`);
-  }
   return {
     id: screen.id,
-    boundaryId: boundaryId(projectId, 'screen', screen.id),
-    version: screen.version
+    boundaryId: boundaryId(projectId, 'screen', screen.id)
   };
+}
+
+function historyVersionSummary(entry: ScreenHistoryEntry): {
+  screenId: string;
+  version: number;
+  state: string;
+  framePresetId: string;
+} {
+  return {
+    screenId: entry.screenId,
+    version: entry.version,
+    state: entry.state,
+    framePresetId: entry.framePresetId
+  };
+}
+
+function explorationMetadataWrites(
+  bundle: BlueprintProjectBundle,
+  explorations: ExplorationFile,
+  changed: ExplorationDefinition
+): ProjectFileWrite[] {
+  const records = bundle.sourceFiles.explorations
+    ? explorations.explorations
+    : [changed];
+  const writes: ProjectFileWrite[] = records.map(exploration => ({
+    fileRef: explorationRecordRef(exploration.id),
+    content: jsonFileContent(explorationRecordFile(bundle.manifest.project.id, exploration))
+  }));
+  if (bundle.sourceFiles.explorations) {
+    writes.push({
+      fileRef: 'explorations.json',
+      content: jsonFileContent({
+        schemaVersion: explorations.schemaVersion,
+        projectId: explorations.projectId,
+        explorations: []
+      })
+    });
+  }
+  return writes;
 }
 
 function jsonFileContent(value: unknown): string {

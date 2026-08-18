@@ -168,11 +168,18 @@ export interface ScreenFile {
   screens: ScreenDefinition[];
 }
 
-/** Optional persistent sidecar file containing non-canonical screen alternatives. */
+/** In-memory collection of non-canonical screen alternatives. */
 export interface ExplorationFile {
   schemaVersion: string;
   projectId: string;
   explorations: ExplorationDefinition[];
+}
+
+/** One independently stored exploration record at explorations/<id>.json. */
+export interface ExplorationRecordFile {
+  schemaVersion: string;
+  projectId: string;
+  exploration: ExplorationDefinition;
 }
 
 export type ExplorationLifecycle = 'active' | 'archived' | 'promoted';
@@ -218,6 +225,41 @@ export interface ExplorationPrototypeSource {
   styles: string[];
   assetRefs: string[];
 }
+
+/** In-memory collection assembled from independently stored history records. */
+export interface ScreenHistoryFile {
+  schemaVersion: string;
+  projectId: string;
+  entries: ScreenHistoryEntry[];
+}
+
+/** One independently stored prior canonical version at history/<screen>-v<n>.json. */
+export interface ScreenHistoryRecordFile {
+  schemaVersion: string;
+  projectId: string;
+  entry: ScreenHistoryEntry;
+}
+
+/** Immutable prior canonical screen plus the exact review context that produced it. */
+export interface ScreenHistoryEntry {
+  screenId: string;
+  version: number;
+  state: string;
+  framePresetId: string;
+  screen: ScreenDefinition;
+  replacedBy: ScreenHistoryReplacement;
+}
+
+export type ScreenHistoryReplacement =
+  | {
+      type: 'exploration-candidate';
+      explorationId: string;
+      candidateId: string;
+    }
+  | {
+      type: 'history-restore';
+      version: number;
+    };
 
 /** Optional fifth structured sidecar file containing reusable composite boundaries. */
 export interface ComponentFile {
@@ -364,8 +406,10 @@ export interface BlueprintProjectBundle {
   /** Reusable components; empty for legacy four-file sidecars. */
   components: ComponentFile;
   screens: ScreenFile;
-  /** Saved alternatives; empty when the optional explorations.json file is absent. */
+  /** Saved alternatives assembled from separate exploration records. */
   explorations: ExplorationFile;
+  /** Prior canonical versions assembled from separate history records. */
+  history: ScreenHistoryFile;
   sourceRoot: string;
   sourceFiles: {
     manifest: string;
@@ -373,11 +417,16 @@ export interface BlueprintProjectBundle {
     primitives: string;
     components?: string;
     screens: string;
+    /** Legacy aggregate read compatibility; new mutations write one record per exploration. */
     explorations?: string;
+    explorationRecords: string[];
+    historyRecords: string[];
     /** Normalized absolute provenance paths for every governed prototype input. */
     prototypeSources: string[];
     /** Governed exploration inputs kept separate from canonical boundary sources. */
     explorationSources: string[];
+    /** Governed historical prototype inputs kept separate from canonical sources. */
+    historySources: string[];
   };
   /** Serializable source text keyed by sidecar-relative prototype path for browser compilation. */
   prototypeSourceContents: Record<string, string>;

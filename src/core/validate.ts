@@ -14,6 +14,7 @@ import type {
   ReadinessReport,
   ProductionRelationship,
   ScreenDefinition,
+  ScreenHistoryEntry,
   ScreenSection,
   StyleEvidence,
   ValidationOptions,
@@ -26,6 +27,7 @@ import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
+import { storageRecordSegment } from './storage-records';
 
 const supportedHandoffContractVersion = '1.0.0';
 
@@ -56,6 +58,10 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
 
   if (bundle.explorations.projectId !== projectId) {
     errors.push(`explorations.projectId "${bundle.explorations.projectId}" must match manifest project id "${projectId}".`);
+  }
+
+  if (bundle.history.projectId !== projectId) {
+    errors.push(`history.projectId "${bundle.history.projectId}" must match manifest project id "${projectId}".`);
   }
 
   const boardIds = collectIds(errors, 'manifest.boards', bundle.manifest.boards, board => validateBoard(errors, board));
@@ -90,6 +96,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   });
   validateScreenVersions(errors, bundle.screens.screens);
   validateExplorations(errors, bundle, screenIds, framePresetIds);
+  validateScreenHistory(errors, bundle, screenIds, framePresetIds, primitiveIds, componentIds, stateSetIds);
   const sectionIds = new Set(
     bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
   );
@@ -587,6 +594,123 @@ function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): 
   }
 }
 
+function validateScreenHistory(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  screenIds: Set<string>,
+  framePresetIds: Set<string>,
+  primitiveIds: Set<string>,
+  componentIds: Set<string>,
+  stateSetIds: Set<string>
+): void {
+  requireArray(errors, 'history.entries', bundle.history.entries);
+  const versionsByScreen = new Map<string, number[]>();
+  const keys = new Set<string>();
+  for (const entry of bundle.history.entries ?? []) {
+    validateScreenHistoryEntry(
+      errors,
+      bundle,
+      entry,
+      screenIds,
+      framePresetIds,
+      primitiveIds,
+      componentIds,
+      stateSetIds
+    );
+    const key = `${entry.screenId}\u0000${entry.version}`;
+    if (keys.has(key)) {
+      errors.push(`History for screen "${entry.screenId}" contains duplicate V${entry.version}.`);
+    }
+    keys.add(key);
+    versionsByScreen.set(entry.screenId, [...(versionsByScreen.get(entry.screenId) ?? []), entry.version]);
+  }
+  for (const [screenId, versions] of versionsByScreen) {
+    const ordered = [...versions].sort((left, right) => left - right);
+    const expected = Array.from({ length: ordered.length }, (_, index) => index + 1);
+    if (ordered.some((version, index) => version !== expected[index])) {
+      errors.push(
+        `History for screen "${screenId}" must use consecutive immutable versions ${expected.join(', ')}; received ${ordered.join(', ')}.`
+      );
+    }
+  }
+}
+
+function validateScreenHistoryEntry(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  entry: ScreenHistoryEntry,
+  screenIds: Set<string>,
+  framePresetIds: Set<string>,
+  primitiveIds: Set<string>,
+  componentIds: Set<string>,
+  stateSetIds: Set<string>
+): void {
+  const label = `history.${entry.screenId}.v${entry.version}`;
+  requireString(errors, `${label}.screenId`, entry.screenId);
+  if (!Number.isSafeInteger(entry.version) || entry.version < 1) {
+    errors.push(`${label}.version must be a positive integer.`);
+  }
+  requireString(errors, `${label}.state`, entry.state);
+  requireString(errors, `${label}.framePresetId`, entry.framePresetId);
+  if (!screenIds.has(entry.screenId)) {
+    errors.push(`${label} references missing canonical screen "${entry.screenId}".`);
+  }
+  if (!framePresetIds.has(entry.framePresetId)) {
+    errors.push(`${label} references missing frame preset "${entry.framePresetId}".`);
+  }
+  requireObject(errors, `${label}.screen`, entry.screen);
+  if (entry.screen?.id !== entry.screenId) {
+    errors.push(`${label}.screen.id must match canonical screen "${entry.screenId}".`);
+  }
+  if (entry.screen) {
+    validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
+  }
+  const prototype = entry.screen?.prototype;
+  if (!prototype) {
+    errors.push(`${label}.screen must retain a governed prototype source.`);
+    return;
+  }
+  const hasReviewPair = prototype.reviewConditions?.some(condition => (
+    condition.state === entry.state && condition.framePresetId === entry.framePresetId
+  ));
+  if (!hasReviewPair) {
+    errors.push(`${label} state and frame preset must remain a declared historical review condition.`);
+  }
+  const ownedMarker = `.history-${storageRecordSegment(entry.screenId)}-v${entry.version}`;
+  for (const sourceRef of [prototype.source, ...(prototype.styles ?? [])]) {
+    const extension = path.posix.extname(sourceRef.replace(/\\/g, '/'));
+    const withoutExtension = extension ? sourceRef.slice(0, -extension.length) : sourceRef;
+    if (!isSafeRelativeRef(sourceRef) || !withoutExtension.endsWith(ownedMarker)) {
+      errors.push(`${label} source "${sourceRef}" must carry immutable marker "${ownedMarker}".`);
+      continue;
+    }
+    const content = bundle.prototypeSourceContents[sourceRef];
+    if (typeof content !== 'string' || content.length === 0) {
+      errors.push(`${label} source "${sourceRef}" is missing or empty.`);
+    }
+  }
+  for (const assetRef of prototype.assetRefs ?? []) {
+    if (!isSafeRelativeRef(assetRef) || !isControlledAssetRef(bundle, assetRef)) {
+      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+    } else if (!(assetRef in bundle.prototypeAssetContents)) {
+      errors.push(`${label} asset "${assetRef}" is missing.`);
+    }
+  }
+  if (entry.replacedBy?.type === 'exploration-candidate') {
+    const replacement = entry.replacedBy;
+    const exploration = bundle.explorations.explorations.find(candidate => candidate.id === replacement.explorationId);
+    if (!exploration?.candidates.some(candidate => candidate.id === replacement.candidateId)) {
+      errors.push(`${label}.replacedBy must reference a saved exploration candidate.`);
+    }
+  } else if (entry.replacedBy?.type === 'history-restore') {
+    if (!Number.isSafeInteger(entry.replacedBy.version) || entry.replacedBy.version < 1) {
+      errors.push(`${label}.replacedBy.version must be a positive integer.`);
+    }
+  } else {
+    errors.push(`${label}.replacedBy must describe an exploration candidate or history restoration.`);
+  }
+}
+
 function validateExplorations(
   errors: string[],
   bundle: BlueprintProjectBundle,
@@ -762,7 +886,14 @@ function validateExplorationPrototype(
 }
 
 function hasExplorationSourceMarker(sourceRef: string, explorationId: string, ownerId: string): boolean {
-  const extension = path.posix.extname(sourceRef.replace(/\\/g, '/'));
+  const normalized = sourceRef.replace(/\\/g, '/');
+  const recordRoot = ownerId === 'baseline'
+    ? `prototype/explorations/${explorationId}/baseline/`
+    : `prototype/explorations/${explorationId}/candidates/${ownerId}/`;
+  if (normalized.startsWith(recordRoot)) {
+    return true;
+  }
+  const extension = path.posix.extname(normalized);
   const withoutExtension = extension ? sourceRef.slice(0, -extension.length) : sourceRef;
   return withoutExtension.endsWith(`.exploration-${explorationId}-${ownerId}`);
 }

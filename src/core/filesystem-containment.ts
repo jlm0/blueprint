@@ -1,4 +1,4 @@
-import { open, realpath, stat } from 'node:fs/promises';
+import { open, readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 export const BLUEPRINT_INPUT_LIMITS = {
@@ -58,6 +58,36 @@ export class ContainedBlueprintReader {
 
   readBytes(fileRef: string, options: ReadContainedFileOptions): Promise<Buffer | undefined> {
     return this.enqueue(() => this.readBytesNow(fileRef, options));
+  }
+
+  /** Lists a bounded flat record directory while preserving the same root containment as file reads. */
+  async listFileRefs(directoryRef: string, options: { optional?: boolean; suffix?: string } = {}): Promise<string[]> {
+    const normalizedRef = normalizeRef(directoryRef).replace(/\/$/, '');
+    const lexicalTarget = path.resolve(this.canonicalRoot, directoryRef);
+    assertContained(this.canonicalRoot, lexicalTarget, 'fixed JSON', normalizedRef);
+
+    let canonicalTarget: string;
+    try {
+      canonicalTarget = await realpath(lexicalTarget);
+    } catch (error) {
+      if (options.optional && isNodeError(error) && error.code === 'ENOENT') {
+        return [];
+      }
+      throw error;
+    }
+    assertContained(this.canonicalRoot, canonicalTarget, 'fixed JSON', normalizedRef);
+    if (!(await stat(canonicalTarget)).isDirectory()) {
+      throw new Error(`fixed JSON record directory "${normalizedRef}" must resolve to a directory.`);
+    }
+
+    const entries = await readdir(canonicalTarget, { withFileTypes: true });
+    if (entries.length > 1024) {
+      throw new Error(`fixed JSON record directory "${normalizedRef}" exceeds the 1024-record limit.`);
+    }
+    return entries
+      .filter(entry => (entry.isFile() || entry.isSymbolicLink()) && (!options.suffix || entry.name.endsWith(options.suffix)))
+      .map(entry => `${normalizedRef}/${entry.name}`)
+      .sort();
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
