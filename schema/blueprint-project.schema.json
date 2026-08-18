@@ -272,6 +272,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
         "description": { "type": "string" },
         "framePresetId": { "type": "string" },
         "flow": { "type": "string" },

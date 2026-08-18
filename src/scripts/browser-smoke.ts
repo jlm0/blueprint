@@ -3,6 +3,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { loadProjectFromFs } from '../core/load';
+import { screenFrameLabel } from '../core/screen-naming';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../core/review';
 import type { BlueprintProjectBundle } from '../core/types';
 
@@ -557,7 +558,7 @@ async function assertReferenceScreenBoard(page: import('playwright').Page, bundl
   const labels = await page.locator('.board-screens .frame-chip .frame-name').evaluateAll(elements =>
     elements.map(element => element.textContent?.trim()).filter(Boolean)
   );
-  const expected = bundle.screens.screens.map(screen => `${screen.id.toUpperCase()} · ${screen.name}`);
+  const expected = bundle.screens.screens.map(screenFrameLabel);
 
   if (labels.join(',') !== expected.join(',')) {
     throw new Error(`Screen frame labels drifted from the reference canvas shape, received: ${labels.join(',')}`);

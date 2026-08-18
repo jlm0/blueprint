@@ -201,6 +201,8 @@ export interface ComponentPrototypeSource extends PrototypeSource {
 export interface ScreenDefinition {
   id: string;
   name: string;
+  /** One-based revision shown only when the same route and frame name have multiple versions. */
+  version?: number;
   description: string;
   framePresetId: string;
   /** Optional sub-flow grouping for the screens board; screens sharing a flow lay out on the same canvas row. */

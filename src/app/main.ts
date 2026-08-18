@@ -1,6 +1,7 @@
 import './styles.css';
 import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
+import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
   createCanvasStyleEvidence,
   createReviewManifest,
@@ -2265,11 +2266,7 @@ interface ScreenFrameLayout {
 // (e.g. /settings vs /settings/flic) each get their own row instead of one
 // overlong row per top-level section.
 function routeGroupOf(screen: ScreenDefinition): string {
-  const routePath = screen.productionRelationship?.routePath;
-  if (!routePath) {
-    return screen.id;
-  }
-  return routePath.startsWith('/') ? routePath : `/${routePath}`;
+  return screenRoutePath(screen);
 }
 
 function layoutScreenFrames(
@@ -2488,7 +2485,7 @@ function createPrototypeFrame(
   chip.type = 'button';
   chip.title = 'Copy screen boundary id';
   chip.dataset.boundaryAction = 'copy-id';
-  chip.append(el('span', 'dot'), el('span', 'frame-name', `${screen.id.toUpperCase()} · ${screen.name}`));
+  chip.append(el('span', 'dot'), el('span', 'frame-name', screenFrameLabel(screen)));
   chip.addEventListener('click', () => {
     void copyText(boundaryId(bundle.manifest.project.id, 'screen', screen.id));
     const name = chip.querySelector<HTMLElement>('.frame-name');

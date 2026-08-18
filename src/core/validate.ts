@@ -22,6 +22,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
+import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 
 const supportedHandoffContractVersion = '1.0.0';
 
@@ -80,6 +81,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
     validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
   });
+  validateScreenVersions(errors, bundle.screens.screens);
   const sectionIds = new Set(
     bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
   );
@@ -502,6 +504,9 @@ function validateScreen(
 ): void {
   requireString(errors, 'screen.id', screen.id);
   requireString(errors, `screen.${screen.id}.name`, screen.name);
+  if (screen.version !== undefined && (!Number.isSafeInteger(screen.version) || screen.version < 1)) {
+    errors.push(`screen.${screen.id}.version must be a positive integer.`);
+  }
   requireString(errors, `screen.${screen.id}.framePresetId`, screen.framePresetId);
   requireArray(errors, `screen.${screen.id}.sections`, screen.sections);
 
@@ -526,6 +531,52 @@ function validateScreen(
       }
     }
   });
+}
+
+function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): void {
+  const groups = new Map<string, ScreenDefinition[]>();
+  for (const screen of screens ?? []) {
+    const key = screenVersionGroupKey(screen);
+    groups.set(key, [...(groups.get(key) ?? []), screen]);
+  }
+
+  for (const group of groups.values()) {
+    const first = group[0];
+    if (!first) {
+      continue;
+    }
+    const route = screenRoutePath(first);
+    const identity = `route "${route}" and frame name "${first.name.trim()}"`;
+
+    if (group.length === 1) {
+      if (first.version !== undefined) {
+        errors.push(`screen.${first.id}.version must be omitted because ${identity} has only one screen.`);
+      }
+      continue;
+    }
+
+    const unversioned = group.filter(screen => screen.version === undefined);
+    if (unversioned.length > 0) {
+      errors.push(
+        `Screens sharing ${identity} must each declare a unique consecutive version starting at 1; missing on ${unversioned.map(screen => `"${screen.id}"`).join(', ')}.`
+      );
+      continue;
+    }
+
+    const versions = group
+      .map(screen => screen.version)
+      .filter((version): version is number => typeof version === 'number' && Number.isSafeInteger(version) && version >= 1)
+      .sort((a, b) => a - b);
+    if (versions.length !== group.length) {
+      continue;
+    }
+    const expected = Array.from({ length: group.length }, (_, index) => index + 1);
+    if (versions.some((version, index) => version !== expected[index])) {
+      errors.push(
+        `Screens sharing ${identity} must use unique consecutive versions ${expected.join(', ')}; received ${versions.join(', ')}.`
+      );
+    }
+  }
 }
 
 function validateDependency(
