@@ -10,6 +10,13 @@ export type {
   ComponentFile,
   ComponentPrototypeSource,
   DeepHandoffPacket,
+  ExplorationBaseline,
+  ExplorationCandidate,
+  ExplorationDefinition,
+  ExplorationFile,
+  ExplorationLifecycle,
+  ExplorationPrototypeSource,
+  ExplorationTarget,
   ExtractionOptions,
   ExtractionPacket,
   LegacyFallbackRenderDecision,
@@ -50,6 +57,25 @@ export type {
 
 export { boundaryId, parseBoundarySelector } from './core/address';
 export { createProjectBundle } from './core/bundle';
+export {
+  archiveExploration,
+  computeCanonicalScreenDigest,
+  computeExplorationBaselineDigest,
+  computeExplorationCandidateDigest,
+  createExplorationMetadata,
+  inspectExploration,
+  listExplorations,
+  promoteExploration
+} from './core/exploration';
+export type {
+  CreateExplorationInput,
+  ExplorationInspection,
+  ExplorationMutationResult,
+  ExplorationSummary,
+  PromoteExplorationInput,
+  PromotionResult,
+  TextSourceWrite
+} from './core/exploration';
 export { loadProjectFromFs } from './core/load';
 export { createReadinessReport, validateProject } from './core/validate';
 export {
@@ -78,10 +104,14 @@ export type {
   CaptureOutput,
   ExtractInput,
   ExtractOutput,
+  ExploreInput,
+  ExploreOutput,
   IndexInput,
   IndexOutput,
   InitInput,
   InitOutput,
+  PromoteInput,
+  PromoteOutput,
   QueryInput,
   QueryOutput,
   ServeInput,

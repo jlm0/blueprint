@@ -14,7 +14,8 @@ const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
-const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve'];
+const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
+const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'explore', 'promote'];
 
 interface McpSession {
   client: Client;
@@ -60,6 +61,17 @@ describe('Blueprint MCP and template governance', () => {
       assert.ok(query);
       assert.match(JSON.stringify(query.inputSchema), /prototype-only/);
       assert.match(JSON.stringify(query.inputSchema), /used-by/);
+      assert.match(JSON.stringify(query.inputSchema), /explorations/);
+      for (const toolName of ['explore', 'promote']) {
+        const tool = session.tools.find(candidate => candidate.name === toolName);
+        assert.ok(tool);
+        assert.deepEqual(tool.annotations, {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: false
+        });
+      }
       assert.equal(session.stderr(), '');
     } finally {
       await session.close();
@@ -166,6 +178,178 @@ describe('Blueprint MCP and template governance', () => {
         await session.close();
       }
     });
+  });
+
+  it('creates, queries, archives, serves, and compare-and-swap promotes persistent explorations', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(explorationRoot, projectCopy, { recursive: true });
+      const session = await openSession();
+      try {
+        const created = await call(session, 'explore', {
+          project: projectCopy,
+          operation: {
+            type: 'create',
+            id: 'home-hero',
+            screenId: 'home',
+            state: 'initial',
+            framePresetId: 'desktop-web-tall',
+            title: 'Home hero',
+            intent: 'Compare three hero directions without changing the canonical canvas.',
+            candidateLabels: ['A', 'B', 'C']
+          }
+        });
+        assert.equal(created.command, 'explore');
+        assert.equal(created.operation, 'create');
+        const createdExploration = created.exploration as {
+          id: string;
+          lifecycle: string;
+          target: { baseDigest: string };
+          candidates: Array<{ id: string; prototype: { source: string } }>;
+        };
+        assert.equal(createdExploration.id, 'home-hero');
+        assert.equal(createdExploration.lifecycle, 'active');
+        assert.match(createdExploration.target.baseDigest, /^[a-f0-9]{64}$/);
+        assert.deepEqual(createdExploration.candidates.map(candidate => candidate.id), ['a', 'b', 'c']);
+        for (const candidate of createdExploration.candidates) {
+          assert.equal((await stat(path.join(projectCopy, candidate.prototype.source))).isFile(), true);
+        }
+
+        const listed = await call(session, 'query', {
+          project: projectCopy,
+          query: { type: 'explorations', screenId: 'home', lifecycle: 'active' }
+        });
+        assert.equal((listed.results as Array<{ id: string }>)[0]?.id, 'home-hero');
+        const inspected = await call(session, 'query', {
+          project: projectCopy,
+          query: { type: 'exploration', explorationId: 'home-hero' }
+        });
+        const inspection = (inspected.results as Array<{
+          exploration: { target: { baseDigest: string } };
+          currentDigest: string;
+          candidateDigests: Record<string, string>;
+        }>)[0];
+        assert.ok(inspection);
+        assert.match(inspection.currentDigest, /^[a-f0-9]{64}$/);
+        assert.match(inspection.candidateDigests.b ?? '', /^[a-f0-9]{64}$/);
+
+        const served = await call(session, 'serve', {
+          project: projectCopy,
+          port: 0,
+          explorationId: 'home-hero'
+        });
+        const servedUrl = new URL(served.url as string);
+        assert.equal(servedUrl.searchParams.get('board'), 'screens');
+        assert.equal(servedUrl.searchParams.get('exploration'), 'home-hero');
+        assert.deepEqual(served.selection, {
+          kind: 'exploration',
+          explorationId: 'home-hero',
+          screenId: 'home'
+        });
+
+        const screensPath = path.join(projectCopy, 'screens.json');
+        const explorationsPath = path.join(projectCopy, 'explorations.json');
+        const canonicalSourcePath = path.join(projectCopy, 'prototype/screens/home.html');
+        const beforeStale = {
+          screens: await readFile(screensPath),
+          explorations: await readFile(explorationsPath),
+          canonical: await readFile(canonicalSourcePath)
+        };
+        const stale = await session.client.callTool({
+          name: 'promote',
+          arguments: {
+            project: projectCopy,
+            explorationId: 'home-hero',
+            candidateId: 'b',
+            expectedBaseDigest: inspection.exploration.target.baseDigest,
+            expectedCurrentDigest: inspection.currentDigest,
+            expectedCandidateDigest: '0'.repeat(64)
+          }
+        });
+        assertToolError(stale, /expectedCandidateDigest|digest mismatch/i);
+        assert.deepEqual(await readFile(screensPath), beforeStale.screens);
+        assert.deepEqual(await readFile(explorationsPath), beforeStale.explorations);
+        assert.deepEqual(await readFile(canonicalSourcePath), beforeStale.canonical);
+
+        const promoted = await call(session, 'promote', {
+          project: projectCopy,
+          explorationId: 'home-hero',
+          candidateId: 'b',
+          expectedBaseDigest: inspection.exploration.target.baseDigest,
+          expectedCurrentDigest: inspection.currentDigest,
+          expectedCandidateDigest: inspection.candidateDigests.b
+        });
+        assert.equal((promoted.promotedScreen as { id: string }).id, 'home');
+        assert.equal((promoted.promotedScreen as { version: number }).version, 2);
+        assert.equal((promoted.historicalScreen as { version: number }).version, 1);
+        assert.equal((promoted.exploration as { lifecycle: string }).lifecycle, 'promoted');
+        assert.equal((promoted.exploration as { selectedCandidateId: string }).selectedCandidateId, 'b');
+        const persistedScreens = JSON.parse(await readFile(screensPath, 'utf8')) as {
+          screens: Array<{ id: string; version?: number }>;
+        };
+        assert.ok(persistedScreens.screens.some(screen => screen.id === 'home' && screen.version === 2));
+        assert.ok(persistedScreens.screens.some(screen => screen.id !== 'home' && screen.version === 1));
+        assert.equal((await stat(path.join(projectCopy, createdExploration.candidates[1]!.prototype.source))).isFile(), true);
+
+        const repeated = await session.client.callTool({
+          name: 'promote',
+          arguments: {
+            project: projectCopy,
+            explorationId: 'home-hero',
+            candidateId: 'b',
+            expectedBaseDigest: inspection.exploration.target.baseDigest,
+            expectedCurrentDigest: inspection.currentDigest,
+            expectedCandidateDigest: inspection.candidateDigests.b
+          }
+        });
+        assertToolError(repeated, /must be active/i);
+
+        const second = await call(session, 'explore', {
+          project: projectCopy,
+          operation: {
+            type: 'create',
+            id: 'home-copy',
+            screenId: 'home',
+            state: 'initial',
+            framePresetId: 'desktop-web-tall',
+            title: 'Home copy',
+            intent: 'Save two copy directions for later review.',
+            candidateLabels: ['Short', 'Warm']
+          }
+        });
+        const archived = await call(session, 'explore', {
+          project: projectCopy,
+          operation: { type: 'archive', explorationId: 'home-copy' }
+        });
+        assert.equal((archived.exploration as { lifecycle: string }).lifecycle, 'archived');
+        const secondSource = ((second.exploration as {
+          candidates: Array<{ prototype: { source: string } }>;
+        }).candidates[0]?.prototype.source) ?? '';
+        assert.equal((await stat(path.join(projectCopy, secondSource))).isFile(), true);
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('rejects an unknown exploration before opening its requested review listener', async () => {
+    const available = await occupyPort(0);
+    const address = available.address();
+    assert.ok(address && typeof address !== 'string');
+    const port = address.port;
+    await closeNetServer(available);
+    const session = await openSession();
+    try {
+      const missing = await session.client.callTool({
+        name: 'serve',
+        arguments: { project: explorationRoot, port, explorationId: 'missing-exploration' }
+      });
+      assertToolError(missing, /exploration.*does not exist/i);
+      const stillAvailable = await occupyPort(port);
+      await closeNetServer(stillAvailable);
+    } finally {
+      await session.close();
+    }
   });
 
   it('returns domain and schema failures as tool errors while unknown tools remain protocol errors', async () => {
@@ -287,6 +471,7 @@ describe('Blueprint MCP and template governance', () => {
     const schema = JSON.parse(await readFile('schema/blueprint-project.schema.json', 'utf8'));
     assert.ok(schema.$defs.manifest);
     assert.ok(schema.$defs.component);
+    assert.ok(schema.$defs.exploration);
     assert.ok(schema.$defs.implementationTarget);
     assert.ok(schema.$defs.styleEvidence);
 
@@ -295,6 +480,7 @@ describe('Blueprint MCP and template governance', () => {
     assert.match(agents, /MCP/i);
     assert.match(agents, /empty base frames/i);
     assert.match(agents, /<blueprint-use/i);
+    assert.match(agents, /explore.*promote/is);
     assert.match(agents, /screenshots.*evidence/i);
 
     const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/starter-scaffold.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;

@@ -1,13 +1,22 @@
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { cp, mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { createServer as createHttpServer, type Server as HttpServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Page } from 'playwright';
+import type { BlueprintProjectBundle, ScreenDefinition } from '../core/types';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import { loadProjectFromFs } from '../core/load';
 import { createReadinessReport, validateProject } from '../core/validate';
+import {
+  archiveExploration,
+  createExplorationMetadata,
+  inspectExploration,
+  listExplorations,
+  promoteExploration
+} from '../core/exploration';
 import {
   createExtractionPacket,
   listBoundaryReferences,
@@ -28,20 +37,26 @@ import { createBlueprintResponseHeaders, evaluateLoopbackHost } from '../prototy
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
 import {
   captureOutputSchema,
+  exploreOutputSchema,
   extractOutputSchema,
   indexOutputSchema,
   initOutputSchema,
+  promoteOutputSchema,
   queryOutputSchema,
   serveOutputSchema,
   validateOutputSchema,
   type CaptureInput,
   type CaptureOutput,
+  type ExploreInput,
+  type ExploreOutput,
   type ExtractInput,
   type ExtractOutput,
   type IndexInput,
   type IndexOutput,
   type InitInput,
   type InitOutput,
+  type PromoteInput,
+  type PromoteOutput,
   type QueryInput,
   type QueryOutput,
   type ServeInput,
@@ -57,6 +72,20 @@ interface CaptureServer {
 
 interface LocalServeServer extends CaptureServer {
   port: number;
+}
+
+interface ProjectFileWrite {
+  fileRef: string;
+  content: string | Buffer;
+}
+
+interface AppliedProjectFile {
+  target: string;
+  original?: Buffer;
+}
+
+interface ProjectFileTransaction {
+  rollback: () => Promise<void>;
 }
 
 export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
@@ -169,6 +198,25 @@ export async function queryBlueprint(input: QueryInput, signal?: AbortSignal): P
       break;
     case 'prototype-only':
       output = queryPrototypeOnly(bundle);
+      break;
+    case 'explorations': {
+      const results = listExplorations(bundle).filter(exploration => (
+        (query.screenId === undefined || exploration.target.screenId === query.screenId) &&
+        (query.lifecycle === undefined || exploration.lifecycle === query.lifecycle)
+      ));
+      output = {
+        query: 'explorations',
+        projectId: bundle.manifest.project.id,
+        results
+      };
+      break;
+    }
+    case 'exploration':
+      output = {
+        query: `exploration:${query.explorationId}`,
+        projectId: bundle.manifest.project.id,
+        results: [inspectExploration(bundle, query.explorationId)]
+      };
       break;
   }
 
@@ -354,6 +402,79 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
   }
 }
 
+export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal): Promise<ExploreOutput> {
+  throwIfAborted(signal);
+  const projectRoot = path.resolve(input.project);
+  assertBlueprintProjectPath(projectRoot);
+  const bundle = await loadProjectFromFs(projectRoot);
+  const result = input.operation.type === 'create'
+    ? createExplorationMetadata(bundle, input.operation)
+    : archiveExploration(bundle, input.operation.explorationId);
+  const projected = {
+    ...bundle,
+    explorations: result.explorations,
+    prototypeSourceContents: result.prototypeSourceContents
+  };
+  assertValidMutation(projected);
+  const output = exploreOutputSchema.parse({
+    command: 'explore',
+    operation: input.operation.type,
+    project: normalize(projectRoot),
+    projectId: bundle.manifest.project.id,
+    exploration: result.exploration
+  });
+
+  const transaction = await applyProjectFileTransaction(projectRoot, [
+    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+    { fileRef: 'explorations.json', content: jsonFileContent(result.explorations) }
+  ]);
+  try {
+    throwIfAborted(signal);
+    await assertPersistedProjectValid(projectRoot);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  return output;
+}
+
+export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal): Promise<PromoteOutput> {
+  throwIfAborted(signal);
+  const projectRoot = path.resolve(input.project);
+  assertBlueprintProjectPath(projectRoot);
+  // The mutation is computed from a fresh filesystem snapshot so the core digest
+  // checks are the final read before the bounded file transaction begins.
+  const bundle = await loadProjectFromFs(projectRoot);
+  const result = promoteExploration(bundle, input);
+  const projectId = bundle.manifest.project.id;
+  const output = promoteOutputSchema.parse({
+    command: 'promote',
+    project: normalize(projectRoot),
+    projectId,
+    explorationId: input.explorationId,
+    candidateId: input.candidateId,
+    promotedScreen: screenMutationSummary(projectId, result.promotedScreen),
+    historicalScreen: screenMutationSummary(projectId, result.historicalScreen),
+    exploration: result.exploration
+  });
+
+  const transaction = await applyProjectFileTransaction(projectRoot, [
+    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+    { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
+    { fileRef: 'explorations.json', content: jsonFileContent(result.explorations) }
+  ]);
+  try {
+    throwIfAborted(signal);
+    await assertPersistedProjectValid(projectRoot);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  return output;
+}
+
 export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): Promise<BlueprintServeHandle> {
   throwIfAborted(signal);
   const project = input.project;
@@ -361,14 +482,40 @@ export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): P
   const projectRoot = path.resolve(project);
   assertBlueprintProjectPath(projectRoot);
 
+  let selection: ServeOutput['selection'];
+  if (input.explorationId) {
+    const bundle = await loadProjectFromFs(projectRoot);
+    const validation = validateProject(bundle);
+    if (!validation.ok) {
+      throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+    }
+    const inspection = inspectExploration(bundle, input.explorationId);
+    selection = {
+      kind: 'exploration',
+      explorationId: inspection.exploration.id,
+      screenId: inspection.exploration.target.screenId
+    };
+  }
+
   const server = await startServeServer(projectRoot, port);
-  const output = serveOutputSchema.parse({
-    command: 'serve',
-    project: normalize(projectRoot),
-    port: server.port,
-    url: server.url
-  });
-  return { ...output, close: server.close };
+  const selectedUrl = new URL(server.url);
+  if (selection) {
+    selectedUrl.searchParams.set('board', 'screens');
+    selectedUrl.searchParams.set('exploration', selection.explorationId);
+  }
+  try {
+    const output = serveOutputSchema.parse({
+      command: 'serve',
+      project: normalize(projectRoot),
+      port: server.port,
+      url: selection ? selectedUrl.toString() : server.url,
+      ...(selection ? { selection } : {})
+    });
+    return { ...output, close: server.close };
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
 }
 
 async function preflightChromium(): Promise<(typeof import('playwright'))['chromium']> {
@@ -435,6 +582,186 @@ async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
     }
     throw new Error('Prototype layout did not stabilize before capture.');
   });
+}
+
+function assertValidMutation(bundle: BlueprintProjectBundle): void {
+  const validation = validateProject(bundle);
+  if (!validation.ok) {
+    throw new Error(`Exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
+  }
+}
+
+async function assertPersistedProjectValid(projectRoot: string): Promise<void> {
+  const persisted = await loadProjectFromFs(projectRoot);
+  const validation = validateProject(persisted);
+  if (!validation.ok) {
+    throw new Error(`Persisted exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
+  }
+}
+
+function screenMutationSummary(projectId: string, screen: ScreenDefinition): {
+  id: string;
+  boundaryId: string;
+  version: number;
+} {
+  if (screen.version === undefined) {
+    throw new Error(`Promoted screen "${screen.id}" is missing its canonical version.`);
+  }
+  return {
+    id: screen.id,
+    boundaryId: boundaryId(projectId, 'screen', screen.id),
+    version: screen.version
+  };
+}
+
+function jsonFileContent(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+/**
+ * Applies a small set of sidecar writes through sibling temporary files. If a
+ * later rename or persisted validation fails, every applied target is restored
+ * to its prior bytes and newly created files are removed.
+ */
+async function applyProjectFileTransaction(
+  projectRoot: string,
+  requestedWrites: ProjectFileWrite[]
+): Promise<ProjectFileTransaction> {
+  const canonicalRoot = await realpath(projectRoot);
+  const uniqueWrites = new Map<string, ProjectFileWrite>();
+  for (const write of requestedWrites) {
+    assertSafeProjectFileRef(write.fileRef);
+    const existing = uniqueWrites.get(write.fileRef);
+    if (existing) {
+      const existingBytes = Buffer.isBuffer(existing.content) ? existing.content : Buffer.from(existing.content);
+      const nextBytes = Buffer.isBuffer(write.content) ? write.content : Buffer.from(write.content);
+      if (!existingBytes.equals(nextBytes)) {
+        throw new Error(`Exploration mutation produced conflicting writes for "${write.fileRef}".`);
+      }
+      continue;
+    }
+    uniqueWrites.set(write.fileRef, write);
+  }
+
+  const prepared: Array<AppliedProjectFile & { temp: string }> = [];
+  try {
+    for (const write of uniqueWrites.values()) {
+      const lexicalTarget = path.resolve(canonicalRoot, write.fileRef);
+      assertContainedWrite(canonicalRoot, lexicalTarget, write.fileRef);
+      const parent = path.dirname(lexicalTarget);
+      await assertExistingAncestorContained(canonicalRoot, parent, write.fileRef);
+      await mkdir(parent, { recursive: true });
+      const canonicalParent = await realpath(parent);
+      assertContainedWrite(canonicalRoot, canonicalParent, write.fileRef);
+
+      let target = path.join(canonicalParent, path.basename(lexicalTarget));
+      let original: Buffer | undefined;
+      try {
+        const canonicalTarget = await realpath(lexicalTarget);
+        assertContainedWrite(canonicalRoot, canonicalTarget, write.fileRef);
+        target = canonicalTarget;
+        original = await readFile(canonicalTarget);
+      } catch (error) {
+        if (!isNodeError(error) || error.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+
+      const temp = path.join(canonicalParent, `.${path.basename(lexicalTarget)}.blueprint-${randomUUID()}.tmp`);
+      await writeFile(temp, write.content, { flag: 'wx' });
+      prepared.push({ target, original, temp });
+    }
+  } catch (error) {
+    await Promise.allSettled(prepared.map(entry => unlink(entry.temp)));
+    throw error;
+  }
+
+  const applied: AppliedProjectFile[] = [];
+  try {
+    for (const entry of prepared) {
+      await rename(entry.temp, entry.target);
+      applied.push({ target: entry.target, ...(entry.original ? { original: entry.original } : {}) });
+    }
+  } catch (error) {
+    await Promise.allSettled(prepared.map(entry => unlink(entry.temp)));
+    try {
+      await rollbackAppliedFiles(applied);
+    } catch (rollbackError) {
+      throw new AggregateError([error, rollbackError], 'Exploration file transaction and rollback both failed.');
+    }
+    throw error;
+  }
+
+  let rolledBack = false;
+  return {
+    rollback: async () => {
+      if (rolledBack) {
+        return;
+      }
+      rolledBack = true;
+      await rollbackAppliedFiles(applied);
+    }
+  };
+}
+
+async function rollbackAppliedFiles(applied: AppliedProjectFile[]): Promise<void> {
+  const errors: unknown[] = [];
+  for (const entry of [...applied].reverse()) {
+    try {
+      if (entry.original === undefined) {
+        await unlink(entry.target).catch(error => {
+          if (!isNodeError(error) || error.code !== 'ENOENT') {
+            throw error;
+          }
+        });
+        continue;
+      }
+      const temp = path.join(path.dirname(entry.target), `.${path.basename(entry.target)}.rollback-${randomUUID()}.tmp`);
+      await writeFile(temp, entry.original, { flag: 'wx' });
+      await rename(temp, entry.target);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, 'Failed to roll back one or more Blueprint exploration files.');
+  }
+}
+
+async function assertExistingAncestorContained(root: string, targetParent: string, fileRef: string): Promise<void> {
+  let current = targetParent;
+  while (!existsSync(current)) {
+    const parent = path.dirname(current);
+    if (parent === current) {
+      throw new Error(`Exploration write "${fileRef}" has no existing contained parent.`);
+    }
+    current = parent;
+  }
+  const canonicalAncestor = await realpath(current);
+  assertContainedWrite(root, canonicalAncestor, fileRef);
+}
+
+function assertSafeProjectFileRef(fileRef: string): void {
+  const normalized = fileRef.replace(/\\/g, '/');
+  if (
+    normalized.length === 0 ||
+    normalized.startsWith('/') ||
+    normalized.includes('://') ||
+    normalized.split('/').some(segment => segment === '..')
+  ) {
+    throw new Error(`Exploration write path "${fileRef}" must stay inside the Blueprint project.`);
+  }
+}
+
+function assertContainedWrite(root: string, target: string, fileRef: string): void {
+  const relative = path.relative(root, target);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Exploration write "${fileRef}" resolves outside the canonical Blueprint project root.`);
+  }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }
 
 async function rewriteStarterProject(destination: string, projectId: string, name: string): Promise<void> {

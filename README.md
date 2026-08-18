@@ -39,7 +39,7 @@ The first implementation is a browser-native TypeScript template with no runtime
 ```text
 src/core/        typed schema, validation, boundary IDs, queries, extraction packets
 src/app/         browser-native reference-style canvas template and placement helpers
-src/mcp/         typed MCP schemas, seven parity tools, and stdio server lifecycle
+src/mcp/         typed MCP schemas, nine project and exploration tools, and stdio server lifecycle
 src/scripts/     repository validation, extraction, scope, and browser-smoke harnesses
 fixtures/        app-owned proof fixtures and invalid fixture
 starter/         copyable design/blueprint starter shape
@@ -68,7 +68,7 @@ Blueprint exposes one local stdio MCP server for agents. Build the server and st
 npm run build
 ```
 
-Configure the agent host to start `blueprint-mcp` from the app repo root. The server exposes exactly seven typed tools:
+Configure the agent host to start `blueprint-mcp` from the app repo root. The server exposes exactly nine typed tools:
 
 ```json
 {
@@ -76,13 +76,17 @@ Configure the agent host to start `blueprint-mcp` from the app repo root. The se
   "validate": { "project": "design/blueprint", "mode": "baseline | readiness | strict" },
   "index": { "project": "design/blueprint" },
   "query": { "project": "design/blueprint", "query": { "type": "show", "boundary": "screen:home" } },
+  "explore": { "project": "design/blueprint", "operation": { "type": "create", "screenId": "home", "state": "initial", "framePresetId": "phone", "title": "Home hero options", "intent": "Compare three hero arrangements", "candidateLabels": ["A", "B", "C"] } },
+  "promote": { "project": "design/blueprint", "explorationId": "home-hero-options", "candidateId": "b", "expectedBaseDigest": "<digest>", "expectedCurrentDigest": "<digest>", "expectedCandidateDigest": "<digest>" },
   "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "focused | deep" },
   "capture": { "project": "design/blueprint", "boundary": "screen:<id>", "state": "<state>", "viewport": "<frame-preset-id>", "out": ".blueprint-artifacts/screen.png" },
-  "serve": { "project": "design/blueprint", "port": 4173 }
+  "serve": { "project": "design/blueprint", "port": 4173, "explorationId": "home-hero-options" }
 }
 ```
 
-The MCP interface is single-project by design: every tool call works against one app-owned project path. `serve` defaults to `design/blueprint` from the server process working directory and reloads structured and governed source edits without an app-specific runtime branch. `init` preserves a neutral token, canonical primitive, and reusable component foundation while leaving the `home` phone and `web-home` browser screens intentionally empty. Readiness validation reports the fidelity tier and evidence state; strict validation checks the production handoff contract. `capture` selects an explicit screen, named state, and declared viewport, waits for controlled fonts/media, and writes a screen PNG. Missing browser support fails during preflight with remediation rather than after rendering starts. Query and extraction packets expose source refs and the dependency graph; captures remain corroborating evidence under ignored `.blueprint-artifacts/`.
+The MCP interface is single-project by design: every tool call works against one app-owned project path. `serve` defaults to `design/blueprint` from the server process working directory, reloads structured and governed source edits without an app-specific runtime branch, and can return a focused review URL for one saved exploration. `explore` creates or archives a persistent comparison without adding its candidates to canonical route rows. Creation copies the current governed screen into a frozen baseline and two to five editable candidate sources; the agent then edits those candidate files and uses `query` to inspect their current digests. `promote` is the only operation that changes the canonical screen. It requires the explicit exploration, candidate, and compare-and-swap digests, preserves the previous screen as numbered history, and keeps the canonical screen ID stable. An unresolved or archived exploration and all of its sources remain available for later review.
+
+`init` preserves a neutral token, canonical primitive, and reusable component foundation while leaving the `home` phone and `web-home` browser screens intentionally empty. Readiness validation reports the fidelity tier and evidence state; strict validation checks the production handoff contract. `capture` selects an explicit canonical screen, named state, and declared viewport, waits for controlled fonts/media, and writes a screen PNG. Missing browser support fails during preflight with remediation rather than after rendering starts. Query and extraction packets expose source refs and the dependency graph; captures remain corroborating evidence under ignored `.blueprint-artifacts/`.
 
 `npm run extract:artifacts` writes canonical primitive and screen packets under `.blueprint-artifacts/extraction-query/` by default. `npm run smoke:browser` renders the dark Blueprint canvas, verifies the Primitives board is driven by starter, Nova Care, and Atlas Pay sidecar data, verifies the Screens board renders structured screen sections inside reusable mobile and desktop frames without restoring the rejected metadata-card projection, proves visible-boundary synchronization, review-loop affordances, no-dashboard constraints, and single-project rendering, then writes screenshots, review manifests, and canvas-side style evidence under `.blueprint-artifacts/browser-smoke/` by default. Set `BLUEPRINT_ARTIFACT_ROOT=<path>` to place either command's evidence under a caller-provided artifact root.
 

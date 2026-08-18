@@ -168,6 +168,57 @@ export interface ScreenFile {
   screens: ScreenDefinition[];
 }
 
+/** Optional persistent sidecar file containing non-canonical screen alternatives. */
+export interface ExplorationFile {
+  schemaVersion: string;
+  projectId: string;
+  explorations: ExplorationDefinition[];
+}
+
+export type ExplorationLifecycle = 'active' | 'archived' | 'promoted';
+
+/** One saved comparison attached to an exact canonical screen and review condition. */
+export interface ExplorationDefinition {
+  id: string;
+  title: string;
+  intent: string;
+  lifecycle: ExplorationLifecycle;
+  target: ExplorationTarget;
+  candidates: ExplorationCandidate[];
+  /** Present only after an explicitly selected candidate has been promoted. */
+  selectedCandidateId?: string;
+  /** Canonical screen version created by promotion. */
+  promotedScreenId?: string;
+}
+
+export interface ExplorationTarget {
+  screenId: string;
+  state: string;
+  framePresetId: string;
+  /** SHA-256 of the exact canonical screen record and its governed source bytes. */
+  baseDigest: string;
+  /** Immutable metadata plus governed render-source snapshot from creation time. */
+  baseline: ExplorationBaseline;
+}
+
+export interface ExplorationBaseline {
+  screen: ScreenDefinition;
+  prototype: ExplorationPrototypeSource;
+}
+
+export interface ExplorationCandidate {
+  id: string;
+  label: string;
+  prototype: ExplorationPrototypeSource;
+}
+
+/** Screen-local governed source for one non-canonical candidate. */
+export interface ExplorationPrototypeSource {
+  source: string;
+  styles: string[];
+  assetRefs: string[];
+}
+
 /** Optional fifth structured sidecar file containing reusable composite boundaries. */
 export interface ComponentFile {
   schemaVersion: string;
@@ -313,6 +364,8 @@ export interface BlueprintProjectBundle {
   /** Reusable components; empty for legacy four-file sidecars. */
   components: ComponentFile;
   screens: ScreenFile;
+  /** Saved alternatives; empty when the optional explorations.json file is absent. */
+  explorations: ExplorationFile;
   sourceRoot: string;
   sourceFiles: {
     manifest: string;
@@ -320,8 +373,11 @@ export interface BlueprintProjectBundle {
     primitives: string;
     components?: string;
     screens: string;
+    explorations?: string;
     /** Normalized absolute provenance paths for every governed prototype input. */
     prototypeSources: string[];
+    /** Governed exploration inputs kept separate from canonical boundary sources. */
+    explorationSources: string[];
   };
   /** Serializable source text keyed by sidecar-relative prototype path for browser compilation. */
   prototypeSourceContents: Record<string, string>;

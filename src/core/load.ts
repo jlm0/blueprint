@@ -1,10 +1,17 @@
 import path from 'node:path';
-import { collectPrototypeAssetRefs, collectPrototypeTextSourceRefs, createProjectBundle } from './bundle';
+import {
+  collectExplorationAssetRefs,
+  collectExplorationTextSourceRefs,
+  collectPrototypeAssetRefs,
+  collectPrototypeTextSourceRefs,
+  createProjectBundle
+} from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
   ComponentFile,
+  ExplorationFile,
   PrimitiveFile,
   PrototypeAssetContent,
   ScreenFile,
@@ -18,21 +25,29 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const primitives = await readJson<PrimitiveFile>(reader, 'primitives.json');
   const components = await readOptionalJson<ComponentFile>(reader, 'components.json');
   const screens = await readJson<ScreenFile>(reader, 'screens.json');
+  const explorations = await readOptionalJson<ExplorationFile>(reader, 'explorations.json');
   const componentFile = components ?? {
     schemaVersion: '1.0.0',
     projectId: manifest.project.id,
     components: []
   };
-  const sourceRefs = collectPrototypeTextSourceRefs(primitives, componentFile, screens);
+  const sourceRefs = [
+    ...collectPrototypeTextSourceRefs(primitives, componentFile, screens),
+    ...collectExplorationTextSourceRefs(explorations ?? emptyExplorationFile(manifest.project.id))
+  ];
   const prototypeSourceContents: Record<string, string> = {};
-  for (const sourceRef of sourceRefs) {
+  for (const sourceRef of new Set(sourceRefs)) {
     const content = await reader.readText(sourceRef, { kind: 'prototype source', optional: true });
     if (content !== undefined) {
       prototypeSourceContents[sourceRef] = content;
     }
   }
   const prototypeAssetContents: Record<string, PrototypeAssetContent> = {};
-  for (const assetRef of collectPrototypeAssetRefs(screens)) {
+  const assetRefs = [
+    ...collectPrototypeAssetRefs(screens),
+    ...collectExplorationAssetRefs(explorations ?? emptyExplorationFile(manifest.project.id))
+  ];
+  for (const assetRef of new Set(assetRefs)) {
     const bytes = await reader.readBytes(assetRef, { kind: 'prototype asset', optional: true });
     if (bytes !== undefined) {
       prototypeAssetContents[assetRef] = {
@@ -48,9 +63,14 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
     primitives,
     ...(components ? { components } : {}),
     screens,
+    ...(explorations ? { explorations } : {}),
     prototypeSourceContents,
     prototypeAssetContents
   });
+}
+
+function emptyExplorationFile(projectId: string): ExplorationFile {
+  return { schemaVersion: '1.0.0', projectId, explorations: [] };
 }
 
 export function normalizePath(filePath: string): string {

@@ -13,6 +13,8 @@ import type {
   BoundaryDependency,
   BoundaryKind,
   DesignToken,
+  ExplorationDefinition,
+  ExplorationPrototypeSource,
   FramePreset,
   PrimitiveDefinition,
   PrimitiveState,
@@ -74,6 +76,15 @@ const flowSwitcher = el('nav', 'flow-switcher bp-chrome-flow-switcher');
 flowSwitcher.setAttribute('aria-label', 'Screen flows');
 flowSwitcher.hidden = true;
 
+const explorationNavigator = el('nav', 'bp-chrome-exploration-nav');
+explorationNavigator.setAttribute('aria-label', 'Exploration navigation');
+explorationNavigator.hidden = true;
+const explorationBackButton = el('button', 'bp-chrome-exploration-back', '← Screens') as HTMLButtonElement;
+explorationBackButton.type = 'button';
+explorationBackButton.addEventListener('click', exitExploration);
+const explorationTitle = el('span', 'bp-chrome-exploration-title');
+explorationNavigator.append(explorationBackButton, explorationTitle);
+
 const viewport = el('main');
 viewport.id = 'viewport';
 viewport.className = 'bp-chrome-viewport';
@@ -82,7 +93,7 @@ viewport.setAttribute('aria-label', 'Blueprint canvas');
 const world = el('div');
 world.id = 'world';
 viewport.append(world);
-shell.append(switcher, flowSwitcher, viewport);
+shell.append(switcher, flowSwitcher, explorationNavigator, viewport);
 app.append(shell);
 
 const canvas = createCanvasController({
@@ -162,6 +173,43 @@ function setScreenFlow(flow: string): void {
   remountBoard('screens');
 }
 
+function explorationIsRequested(): boolean {
+  return new URLSearchParams(location.search).has('exploration');
+}
+
+function requestedExplorationId(): string {
+  return new URLSearchParams(location.search).get('exploration') ?? '';
+}
+
+function exitExploration(): void {
+  const exploration = project.explorations.explorations.find(candidate => candidate.id === requestedExplorationId());
+  const targetFlow = exploration?.target.baseline.screen.flow;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('exploration');
+  url.searchParams.delete('state');
+  url.searchParams.delete('viewport');
+  if (targetFlow && screenFlows.includes(targetFlow)) {
+    activeScreenFlow = targetFlow;
+    url.searchParams.set('flow', targetFlow);
+  } else {
+    activeScreenFlow = screenFlows[0] ?? null;
+    url.searchParams.delete('flow');
+  }
+  history.replaceState(null, '', url);
+  refreshFlowPills();
+  remountBoard('screens');
+}
+
+function openExploration(explorationId: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set('board', 'screens');
+  url.searchParams.set('exploration', explorationId);
+  url.searchParams.delete('state');
+  url.searchParams.delete('viewport');
+  history.replaceState(null, '', url);
+  remountBoard('screens');
+}
+
 if (screenFlows.length > 0) {
   // The switcher reads as canvas pages (Figma-style): each page is its own
   // canvas grouping that flow's screens.
@@ -202,7 +250,9 @@ function showBoard(id: BoardId): void {
   switcher.querySelectorAll<HTMLButtonElement>('[data-board]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.board === id));
   });
-  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0;
+  const showingExploration = id === 'screens' && explorationIsRequested();
+  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0 || showingExploration;
+  explorationNavigator.hidden = !showingExploration;
 
   const url = new URL(window.location.href);
   url.searchParams.set('board', id);
@@ -253,6 +303,7 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.08,
+      readableScale: 0.55,
       fallbackWidth: 400,
       fallbackHeight: 240
     });
@@ -2198,6 +2249,9 @@ function applyTokenPreview(element: HTMLElement, token: DesignToken): void {
 
 function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
   const params = new URLSearchParams(location.search);
+  if (params.has('exploration')) {
+    return mountExplorationScreens(root, boardCanvas, bundle, params.get('exploration') ?? '');
+  }
   const request: PrototypeReviewSelectionRequest = {
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
@@ -2213,6 +2267,7 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.15,
+      readableScale: 0.55,
       fallbackWidth,
       fallbackHeight
     });
@@ -2247,6 +2302,260 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
     configure,
     fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame')])
   };
+}
+
+function mountExplorationScreens(
+  root: HTMLElement,
+  boardCanvas: CanvasController,
+  bundle: BlueprintProjectBundle,
+  explorationId: string
+): BoardMount {
+  root.dataset.canvasMode = 'exploration';
+  root.dataset.explorationId = explorationId;
+  const exploration = bundle.explorations.explorations.find(candidate => candidate.id === explorationId);
+  if (!exploration) {
+    explorationTitle.textContent = 'Exploration unavailable';
+    root.dataset.explorationStatus = 'unavailable';
+    const unavailable = createExplorationUnavailablePanel();
+    root.append(unavailable);
+    const configure = (): CanvasController =>
+      boardCanvas.configure({
+        minScale: 0.15,
+        readableScale: 0.55,
+        fallbackWidth: 420,
+        fallbackHeight: 180
+      });
+    const controller = configure();
+    return {
+      configure,
+      fit: () => controller.fitTo([unavailable])
+    };
+  }
+
+  const screen = exploration.target.baseline.screen;
+  const preset = bundle.manifest.framePresets.find(candidate => candidate.id === exploration.target.framePresetId);
+  root.dataset.screenId = screen.id;
+  root.setAttribute('aria-label', `${screen.name} exploration`);
+  explorationTitle.textContent = `${screenFrameLabel(screen)} · ${exploration.title}`;
+  if (!preset || !screen.prototype) {
+    root.dataset.explorationStatus = 'unavailable';
+    const unavailable = createExplorationUnavailablePanel();
+    root.append(unavailable);
+    const configure = (): CanvasController =>
+      boardCanvas.configure({
+        minScale: 0.15,
+        readableScale: 0.55,
+        fallbackWidth: 420,
+        fallbackHeight: 180
+      });
+    const controller = configure();
+    return {
+      configure,
+      fit: () => controller.fitTo([unavailable])
+    };
+  }
+
+  const condition = screen.prototype.reviewConditions.find(candidate =>
+    candidate.framePresetId === exploration.target.framePresetId && candidate.state === exploration.target.state
+  );
+  const selection: SelectedPrototypeReviewCondition = {
+    conditionId: condition?.id ?? 'exploration-target',
+    framePresetId: exploration.target.framePresetId,
+    state: exploration.target.state
+  };
+  const fallbackHeight = frameExtentHeight(screen, preset);
+  const configure = (): CanvasController =>
+    boardCanvas.configure({
+      minScale: 0.08,
+      readableScale: 0.12,
+      fallbackWidth: preset.width,
+      fallbackHeight
+    });
+  const controller = configure();
+  const startX = 90;
+  const y = 180;
+  const gapX = 80;
+  let x = startX;
+
+  const baselineBundle = createExplorationCompileBundle(bundle, screen, exploration.target.baseline.prototype);
+  const baselineScreen = baselineBundle.screens.screens[0] ?? screen;
+  root.append(createExplorationPrototypeFrame({
+    bundle: baselineBundle,
+    screen: baselineScreen,
+    preset,
+    selection,
+    exploration,
+    role: 'baseline',
+    label: 'Current',
+    x,
+    y
+  }));
+  x += preset.width + gapX;
+
+  for (const candidate of exploration.candidates) {
+    const candidateBundle = createExplorationCompileBundle(bundle, screen, candidate.prototype);
+    const candidateScreen = candidateBundle.screens.screens[0] ?? screen;
+    root.append(createExplorationPrototypeFrame({
+      bundle: candidateBundle,
+      screen: candidateScreen,
+      preset,
+      selection,
+      exploration,
+      role: 'candidate',
+      candidateId: candidate.id,
+      label: candidate.label,
+      x,
+      y
+    }));
+    x += preset.width + gapX;
+  }
+
+  return {
+    configure,
+    fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame-slot')])
+  };
+}
+
+function createExplorationCompileBundle(
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  prototype: ExplorationPrototypeSource
+): BlueprintProjectBundle {
+  if (!screen.prototype) {
+    return bundle;
+  }
+  const shadowScreen: ScreenDefinition = {
+    ...screen,
+    prototype: {
+      ...screen.prototype,
+      source: prototype.source,
+      styles: prototype.styles,
+      assetRefs: prototype.assetRefs
+    }
+  };
+  return {
+    ...bundle,
+    screens: {
+      ...bundle.screens,
+      screens: [shadowScreen, ...bundle.screens.screens.filter(candidate => candidate.id !== screen.id)]
+    }
+  };
+}
+
+interface ExplorationFrameOptions {
+  bundle: BlueprintProjectBundle;
+  screen: ScreenDefinition;
+  preset: FramePreset;
+  selection: SelectedPrototypeReviewCondition;
+  exploration: ExplorationDefinition;
+  role: 'baseline' | 'candidate';
+  candidateId?: string;
+  label: string;
+  x: number;
+  y: number;
+}
+
+function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTMLElement {
+  const { bundle, screen, preset, selection, exploration, role, candidateId, label, x, y } = options;
+  const slot = el('div', 'frame-slot exploration-frame-slot');
+  slot.style.left = `${x}px`;
+  slot.style.top = `${y}px`;
+  slot.dataset.explorationId = exploration.id;
+  slot.dataset.explorationRole = role;
+  if (candidateId) {
+    slot.dataset.explorationCandidateId = candidateId;
+  }
+
+  const frame = el('article', 'frame frame-canonical exploration-frame');
+  frame.style.setProperty('--frame-width', `${preset.width}px`);
+  frame.style.setProperty('--frame-height', `${preset.height}px`);
+  frame.style.setProperty('--frame-safe-top', `${preset.safeArea.top}px`);
+  frame.style.setProperty('--frame-safe-right', `${preset.safeArea.right}px`);
+  frame.style.setProperty('--frame-safe-bottom', `${preset.safeArea.bottom}px`);
+  frame.style.setProperty('--frame-safe-left', `${preset.safeArea.left}px`);
+  frame.style.setProperty('--frame-body-top', `${bodyTopInset(preset)}px`);
+  frame.style.setProperty('--frame-body-bottom', `${bodyBottomInset(preset)}px`);
+  frame.dataset.screenId = screen.id;
+  frame.dataset.frameType = preset.type;
+  frame.dataset.framePresetId = preset.id;
+  frame.dataset.reviewConditionId = selection.conditionId;
+  frame.dataset.reviewState = selection.state;
+  frame.dataset.explorationId = exploration.id;
+  frame.dataset.explorationRole = role;
+  if (candidateId) {
+    frame.dataset.explorationCandidateId = candidateId;
+  }
+  if (role === 'baseline') {
+    setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id, screen.name);
+    frame.dataset.boundarySummary = screen.description;
+  }
+
+  const head = el('div', 'frame-head bp-chrome-frame-head');
+  const note = el('div', 'frame-note bp-chrome-frame-note');
+  note.append(el('span', 'dot'), el('span', 'frame-name', label));
+  head.append(note);
+
+  const rendered = createExplorationPrototypeScreen(bundle, screen, preset, selection, label);
+  frame.dataset.explorationStatus = rendered.available ? 'available' : 'unavailable';
+  if (preset.type === 'mobile') {
+    const display = el('div', 'frame-display');
+    display.append(createStatusBar(), rendered.element, createFrameHomeIndicator());
+    frame.append(display);
+  } else {
+    frame.append(createBrowserBar(screen), rendered.element);
+  }
+  slot.append(head, frame);
+  return slot;
+}
+
+function createExplorationPrototypeScreen(
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  preset: FramePreset,
+  selection: SelectedPrototypeReviewCondition,
+  label: string
+): { element: HTMLElement; available: boolean } {
+  const host = el('div', `screen canonical-prototype-screen canonical-prototype-screen-${preset.type}`);
+  host.dataset.frameType = preset.type;
+  host.dataset.prototypeRenderMode = 'canonical-app-owned';
+  try {
+    const compiled = compilePrototypeDocument({
+      bundle,
+      target: { kind: 'screen', id: screen.id },
+      state: selection.state
+    });
+    const iframe = document.createElement('iframe');
+    iframe.className = 'canonical-prototype-iframe';
+    applyPrototypeIframeIsolation(iframe);
+    iframe.title = `${label} · ${screen.name} · ${selection.state} · ${preset.name}`;
+    iframe.srcdoc = compiled.html;
+    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
+    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
+    host.append(iframe);
+    return { element: host, available: true };
+  } catch {
+    host.dataset.explorationStatus = 'unavailable';
+    const message = el('div', 'prototype-compile-error exploration-prototype-error');
+    message.setAttribute('role', 'status');
+    message.append(
+      el('strong', '', 'Variation unavailable'),
+      el('span', '', 'Ask the agent to refresh this exploration.')
+    );
+    host.append(message);
+    return { element: host, available: false };
+  }
+}
+
+function createExplorationUnavailablePanel(): HTMLElement {
+  const panel = el('section', 'bp-chrome-exploration-unavailable');
+  panel.dataset.explorationStatus = 'unavailable';
+  panel.style.left = '90px';
+  panel.style.top = '180px';
+  panel.append(
+    el('strong', '', 'Exploration unavailable'),
+    el('span', '', 'Ask the agent to check the saved exploration and open it again.')
+  );
+  return panel;
 }
 
 interface ScreenFrameLayout {
@@ -2504,6 +2813,22 @@ function createPrototypeFrame(
   const shot = createIconButton('frame-shot bp-chrome-frame-tool bp-chrome-frame-shot', 'Copy screen as PNG', cameraIcon());
   const save = createIconButton('frame-save bp-chrome-frame-tool bp-chrome-frame-save', 'Save screen as PNG', downloadIcon());
   head.append(chip, shot, save);
+  const exploration = prototypeSelection
+    ? bundle.explorations.explorations.find(candidate =>
+      candidate.lifecycle === 'active'
+        && candidate.target.screenId === screen.id
+        && candidate.target.state === prototypeSelection.state
+        && candidate.target.framePresetId === preset.id
+    )
+    : undefined;
+  if (exploration) {
+    const variations = el('button', 'bp-chrome-frame-exploration', 'Variations') as HTMLButtonElement;
+    variations.type = 'button';
+    variations.title = `Open ${exploration.title}`;
+    variations.dataset.explorationId = exploration.id;
+    variations.addEventListener('click', () => openExploration(exploration.id));
+    head.append(variations);
+  }
 
   if (screen.prototype) {
     // Canonical screens render inside device/browser chrome that lives OUTSIDE the

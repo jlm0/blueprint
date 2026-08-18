@@ -2,6 +2,7 @@ import type {
   BlueprintManifest,
   BlueprintProjectBundle,
   ComponentFile,
+  ExplorationFile,
   PrimitiveFile,
   PrototypeSource,
   PrototypeAssetContent,
@@ -20,19 +21,23 @@ export interface RawProjectFiles {
   primitives: PrimitiveFile;
   components?: ComponentFile;
   screens: ScreenFile;
+  explorations?: ExplorationFile;
   prototypeSourceContents?: Record<string, string>;
   prototypeAssetContents?: Record<string, PrototypeAssetContent>;
 }
 
 export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): BlueprintProjectBundle {
   const components = raw.components ?? emptyComponentFile(raw.manifest.project.id);
+  const explorations = raw.explorations ?? emptyExplorationFile(raw.manifest.project.id);
   const prototypeSourceRefs = collectPrototypeSourceRefs(raw.primitives, components, raw.screens);
+  const explorationSourceRefs = collectExplorationSourceRefs(explorations);
   return {
     manifest: raw.manifest,
     tokens: raw.tokens,
     primitives: raw.primitives,
     components,
     screens: raw.screens,
+    explorations,
     sourceRoot,
     sourceFiles: {
       manifest: `${sourceRoot}/manifest.json`,
@@ -40,7 +45,9 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
       primitives: `${sourceRoot}/primitives.json`,
       ...(raw.components ? { components: `${sourceRoot}/components.json` } : {}),
       screens: `${sourceRoot}/screens.json`,
-      prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`)
+      ...(raw.explorations ? { explorations: `${sourceRoot}/explorations.json` } : {}),
+      prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),
+      explorationSources: explorationSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`)
     },
     prototypeSourceContents: raw.prototypeSourceContents ?? {},
     prototypeAssetContents: raw.prototypeAssetContents ?? {}
@@ -85,6 +92,40 @@ export function collectPrototypeAssetRefs(screens: ScreenFile): string[] {
   )];
 }
 
+/** Lists safe HTML, CSS, and asset refs belonging only to saved explorations. */
+export function collectExplorationSourceRefs(explorations: ExplorationFile): string[] {
+  const refs = explorations.explorations.flatMap(exploration => [
+    exploration.target.baseline.prototype.source,
+    ...exploration.target.baseline.prototype.styles,
+    ...exploration.target.baseline.prototype.assetRefs,
+    ...exploration.candidates.flatMap(candidate => [
+      candidate.prototype.source,
+      ...candidate.prototype.styles,
+      ...candidate.prototype.assetRefs
+    ])
+  ]);
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
+/** Lists safe exploration HTML and CSS refs that must be decoded as UTF-8. */
+export function collectExplorationTextSourceRefs(explorations: ExplorationFile): string[] {
+  const refs = explorations.explorations.flatMap(exploration => [
+    exploration.target.baseline.prototype.source,
+    ...exploration.target.baseline.prototype.styles,
+    ...exploration.candidates.flatMap(candidate => [candidate.prototype.source, ...candidate.prototype.styles])
+  ]);
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
+/** Lists safe exploration assets that must retain their original bytes. */
+export function collectExplorationAssetRefs(explorations: ExplorationFile): string[] {
+  const refs = explorations.explorations.flatMap(exploration => [
+    ...exploration.target.baseline.prototype.assetRefs,
+    ...exploration.candidates.flatMap(candidate => candidate.prototype.assetRefs)
+  ]);
+  return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
 function sourceRefs(prototype: PrototypeSource | undefined): string[] {
   return prototype ? [prototype.source, ...prototype.styles] : [];
 }
@@ -107,5 +148,13 @@ function emptyComponentFile(projectId: string): ComponentFile {
     schemaVersion: '1.0.0',
     projectId,
     components: []
+  };
+}
+
+function emptyExplorationFile(projectId: string): ExplorationFile {
+  return {
+    schemaVersion: '1.0.0',
+    projectId,
+    explorations: []
   };
 }

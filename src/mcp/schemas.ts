@@ -69,7 +69,28 @@ const prototypeOnlyQuerySchema = z
   })
   .strict();
 
-export const querySpecSchema = z.union([boundaryQuerySchema, sectionsQuerySchema, prototypeOnlyQuerySchema]);
+const explorationsQuerySchema = z
+  .object({
+    type: z.literal('explorations'),
+    screenId: nonEmptyString.optional(),
+    lifecycle: z.enum(['active', 'archived', 'promoted']).optional()
+  })
+  .strict();
+
+const explorationQuerySchema = z
+  .object({
+    type: z.literal('exploration'),
+    explorationId: nonEmptyString
+  })
+  .strict();
+
+export const querySpecSchema = z.union([
+  boundaryQuerySchema,
+  sectionsQuerySchema,
+  prototypeOnlyQuerySchema,
+  explorationsQuerySchema,
+  explorationQuerySchema
+]);
 
 export const queryInputSchema = z
   .object({
@@ -101,7 +122,51 @@ export const captureInputSchema = z
 export const serveInputSchema = z
   .object({
     project: projectPathSchema.default('design/blueprint'),
-    port: z.number().int().min(0).max(65535).default(4173)
+    port: z.number().int().min(0).max(65535).default(4173),
+    explorationId: nonEmptyString.optional().describe('Saved exploration to open as an isolated Screens review view.')
+  })
+  .strict();
+
+const createExplorationOperationSchema = z
+  .object({
+    type: z.literal('create'),
+    id: nonEmptyString.optional(),
+    screenId: nonEmptyString,
+    state: nonEmptyString,
+    framePresetId: nonEmptyString,
+    title: nonEmptyString,
+    intent: nonEmptyString,
+    candidateLabels: z.array(nonEmptyString).min(2).max(5)
+  })
+  .strict();
+
+const archiveExplorationOperationSchema = z
+  .object({
+    type: z.literal('archive'),
+    explorationId: nonEmptyString
+  })
+  .strict();
+
+export const exploreInputSchema = z
+  .object({
+    project: projectPathSchema,
+    operation: z.union([createExplorationOperationSchema, archiveExplorationOperationSchema])
+  })
+  .strict();
+
+const sha256DigestSchema = z
+  .string()
+  .regex(/^[a-f0-9]{64}$/)
+  .describe('Lowercase hexadecimal SHA-256 digest returned by an exploration inspection query.');
+
+export const promoteInputSchema = z
+  .object({
+    project: projectPathSchema,
+    explorationId: nonEmptyString,
+    candidateId: nonEmptyString,
+    expectedBaseDigest: sha256DigestSchema,
+    expectedCurrentDigest: sha256DigestSchema,
+    expectedCandidateDigest: sha256DigestSchema
   })
   .strict();
 
@@ -312,7 +377,88 @@ export const serveOutputSchema = z
     command: z.literal('serve'),
     project: z.string(),
     port: z.number().int().min(0).max(65535),
-    url: z.string().url()
+    url: z.string().url(),
+    selection: z
+      .object({
+        kind: z.literal('exploration'),
+        explorationId: z.string(),
+        screenId: z.string()
+      })
+      .strict()
+      .optional()
+  })
+  .strict();
+
+const explorationPrototypeOutputSchema = z
+  .object({
+    source: z.string(),
+    styles: z.array(z.string()),
+    assetRefs: z.array(z.string())
+  })
+  .strict();
+
+const explorationOutputSchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    intent: z.string(),
+    lifecycle: z.enum(['active', 'archived', 'promoted']),
+    target: z
+      .object({
+        screenId: z.string(),
+        state: z.string(),
+        framePresetId: z.string(),
+        baseDigest: sha256DigestSchema,
+        baseline: z
+          .object({
+            screen: z.json(),
+            prototype: explorationPrototypeOutputSchema
+          })
+          .strict()
+      })
+      .strict(),
+    candidates: z.array(
+      z
+        .object({
+          id: z.string(),
+          label: z.string(),
+          prototype: explorationPrototypeOutputSchema
+        })
+        .strict()
+    ),
+    selectedCandidateId: z.string().optional(),
+    promotedScreenId: z.string().optional()
+  })
+  .strict();
+
+export const exploreOutputSchema = z
+  .object({
+    command: z.literal('explore'),
+    operation: z.enum(['create', 'archive']),
+    project: z.string(),
+    projectId: z.string(),
+    exploration: explorationOutputSchema
+  })
+  .strict();
+
+const promotedScreenOutputSchema = z
+  .object({
+    id: z.string(),
+    boundaryId: z.string(),
+    version: z.number().int().positive()
+  })
+  .strict();
+
+export const promoteOutputSchema = z
+  .object({
+    command: z.literal('promote'),
+    project: z.string(),
+    projectId: z.string(),
+    explorationId: z.string(),
+    candidateId: z.string(),
+    promotedScreen: promotedScreenOutputSchema,
+    historicalScreen: promotedScreenOutputSchema,
+    exploration: explorationOutputSchema
   })
   .strict();
 
@@ -323,6 +469,8 @@ export type QueryInput = z.infer<typeof queryInputSchema>;
 export type ExtractInput = z.infer<typeof extractInputSchema>;
 export type CaptureInput = z.infer<typeof captureInputSchema>;
 export type ServeInput = z.infer<typeof serveInputSchema>;
+export type ExploreInput = z.infer<typeof exploreInputSchema>;
+export type PromoteInput = z.infer<typeof promoteInputSchema>;
 
 export type InitOutput = z.infer<typeof initOutputSchema>;
 export type ValidateOutput = z.infer<typeof validateOutputSchema>;
@@ -331,3 +479,5 @@ export type QueryOutput = z.infer<typeof queryOutputSchema>;
 export type ExtractOutput = z.infer<typeof extractOutputSchema>;
 export type CaptureOutput = z.infer<typeof captureOutputSchema>;
 export type ServeOutput = z.infer<typeof serveOutputSchema>;
+export type ExploreOutput = z.infer<typeof exploreOutputSchema>;
+export type PromoteOutput = z.infer<typeof promoteOutputSchema>;

@@ -3,6 +3,8 @@ import type {
   BoardDefinition,
   BoundaryDependency,
   ComponentDefinition,
+  ExplorationDefinition,
+  ExplorationPrototypeSource,
   FramePreset,
   ImplementationTarget,
   PrimitiveDefinition,
@@ -23,6 +25,7 @@ import path from 'node:path';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
+import { computeExplorationBaselineDigest } from './exploration';
 
 const supportedHandoffContractVersion = '1.0.0';
 
@@ -49,6 +52,10 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
 
   if (bundle.screens.projectId !== projectId) {
     errors.push(`screens.projectId "${bundle.screens.projectId}" must match manifest project id "${projectId}".`);
+  }
+
+  if (bundle.explorations.projectId !== projectId) {
+    errors.push(`explorations.projectId "${bundle.explorations.projectId}" must match manifest project id "${projectId}".`);
   }
 
   const boardIds = collectIds(errors, 'manifest.boards', bundle.manifest.boards, board => validateBoard(errors, board));
@@ -82,6 +89,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
   });
   validateScreenVersions(errors, bundle.screens.screens);
+  validateExplorations(errors, bundle, screenIds, framePresetIds);
   const sectionIds = new Set(
     bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
   );
@@ -576,6 +584,197 @@ function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): 
         `Screens sharing ${identity} must use unique consecutive versions ${expected.join(', ')}; received ${versions.join(', ')}.`
       );
     }
+  }
+}
+
+function validateExplorations(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  screenIds: Set<string>,
+  framePresetIds: Set<string>
+): void {
+  collectIds(errors, 'explorations.explorations', bundle.explorations.explorations, exploration => {
+    validateExploration(errors, bundle, exploration, screenIds, framePresetIds);
+  });
+  const activeTargets = new Map<string, string>();
+  for (const exploration of bundle.explorations.explorations ?? []) {
+    if (exploration.lifecycle !== 'active') {
+      continue;
+    }
+    const targetKey = [
+      exploration.target?.screenId,
+      exploration.target?.state,
+      exploration.target?.framePresetId
+    ].join('\u0000');
+    const existing = activeTargets.get(targetKey);
+    if (existing) {
+      errors.push(
+        `Active explorations "${existing}" and "${exploration.id}" target the same canonical screen, state, and frame preset.`
+      );
+    } else {
+      activeTargets.set(targetKey, exploration.id);
+    }
+  }
+}
+
+function validateExploration(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  exploration: ExplorationDefinition,
+  screenIds: Set<string>,
+  framePresetIds: Set<string>
+): void {
+  const label = `exploration.${exploration.id}`;
+  requireString(errors, 'exploration.id', exploration.id);
+  if (!isSafeExplorationId(exploration.id)) {
+    errors.push(`${label}.id must use 1-64 lowercase letters, numbers, or internal hyphens.`);
+  }
+  requireSafeHumanLabel(errors, `${label}.title`, exploration.title);
+  requireSafeHumanLabel(errors, `${label}.intent`, exploration.intent);
+  if (!['active', 'archived', 'promoted'].includes(String(exploration.lifecycle))) {
+    errors.push(`${label}.lifecycle must be "active", "archived", or "promoted".`);
+  }
+  requireObject(errors, `${label}.target`, exploration.target);
+  requireString(errors, `${label}.target.screenId`, exploration.target?.screenId);
+  requireString(errors, `${label}.target.state`, exploration.target?.state);
+  requireString(errors, `${label}.target.framePresetId`, exploration.target?.framePresetId);
+  requireString(errors, `${label}.target.baseDigest`, exploration.target?.baseDigest);
+  if (!/^[a-f0-9]{64}$/.test(exploration.target?.baseDigest ?? '')) {
+    errors.push(`${label}.target.baseDigest must be a lowercase SHA-256 digest.`);
+  }
+  if (!screenIds.has(exploration.target?.screenId)) {
+    errors.push(`${label}.target references missing canonical screen "${exploration.target?.screenId}".`);
+  }
+  if (!framePresetIds.has(exploration.target?.framePresetId)) {
+    errors.push(`${label}.target references missing frame preset "${exploration.target?.framePresetId}".`);
+  }
+
+  const baseline = exploration.target?.baseline;
+  requireObject(errors, `${label}.target.baseline`, baseline);
+  requireObject(errors, `${label}.target.baseline.screen`, baseline?.screen);
+  requireObject(errors, `${label}.target.baseline.prototype`, baseline?.prototype);
+  if (baseline?.screen?.id !== exploration.target?.screenId) {
+    errors.push(`${label}.target.baseline.screen.id must match target screen "${exploration.target?.screenId}".`);
+  }
+  const baselineScreenPrototype = baseline?.screen?.prototype;
+  const hasReviewPair = baselineScreenPrototype?.reviewConditions?.some(condition => (
+    condition.state === exploration.target?.state &&
+    condition.framePresetId === exploration.target?.framePresetId
+  ));
+  if (!hasReviewPair) {
+    errors.push(
+      `${label}.target state "${exploration.target?.state}" and frame preset "${exploration.target?.framePresetId}" are not a declared baseline review condition.`
+    );
+  }
+  if (baselineScreenPrototype && !(baselineScreenPrototype.states ?? []).includes(exploration.target?.state)) {
+    errors.push(`${label}.target state "${exploration.target?.state}" is not declared by the baseline prototype.`);
+  }
+  if (baseline?.prototype) {
+    validateExplorationPrototype(errors, bundle, exploration, 'baseline', baseline.prototype);
+  }
+  try {
+    const digest = computeExplorationBaselineDigest(bundle, exploration.id);
+    if (digest !== exploration.target?.baseDigest) {
+      errors.push(`${label}.target.baseDigest is stale for the persisted baseline sources.`);
+    }
+  } catch (error) {
+    errors.push(`${label}.target baseline cannot be digested: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  requireArray(errors, `${label}.candidates`, exploration.candidates);
+  if (!Array.isArray(exploration.candidates) || exploration.candidates.length < 2 || exploration.candidates.length > 5) {
+    errors.push(`${label}.candidates must contain between 2 and 5 candidates.`);
+  }
+  const candidateIds = new Set<string>();
+  const candidateLabels = new Set<string>();
+  for (const candidate of exploration.candidates ?? []) {
+    requireString(errors, `${label}.candidate.id`, candidate.id);
+    if (!isSafeExplorationId(candidate.id)) {
+      errors.push(`${label}.candidate id "${candidate.id}" must use 1-64 lowercase letters, numbers, or internal hyphens.`);
+    }
+    if (candidateIds.has(candidate.id)) {
+      errors.push(`${label} has duplicate candidate id "${candidate.id}".`);
+    }
+    candidateIds.add(candidate.id);
+    requireSafeHumanLabel(errors, `${label}.candidate.${candidate.id}.label`, candidate.label);
+    const normalizedLabel = candidate.label?.trim().toLocaleLowerCase();
+    if (candidateLabels.has(normalizedLabel)) {
+      errors.push(`${label} has duplicate candidate label "${candidate.label}".`);
+    }
+    candidateLabels.add(normalizedLabel);
+    requireObject(errors, `${label}.candidate.${candidate.id}.prototype`, candidate.prototype);
+    if (candidate.prototype) {
+      validateExplorationPrototype(errors, bundle, exploration, candidate.id, candidate.prototype);
+    }
+  }
+
+  const selected = exploration.selectedCandidateId;
+  const promotedScreen = exploration.promotedScreenId;
+  if (exploration.lifecycle === 'promoted') {
+    if (!selected || !candidateIds.has(selected)) {
+      errors.push(`${label}.selectedCandidateId must reference a candidate when lifecycle is "promoted".`);
+    }
+    if (!promotedScreen || !screenIds.has(promotedScreen)) {
+      errors.push(`${label}.promotedScreenId must reference a canonical screen when lifecycle is "promoted".`);
+    }
+  } else if (selected !== undefined || promotedScreen !== undefined) {
+    errors.push(`${label} may declare selectedCandidateId and promotedScreenId only when lifecycle is "promoted".`);
+  }
+}
+
+function validateExplorationPrototype(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  exploration: ExplorationDefinition,
+  ownerId: string,
+  prototype: ExplorationPrototypeSource
+): void {
+  const label = `exploration.${exploration.id}.${ownerId}.prototype`;
+  requireString(errors, `${label}.source`, prototype.source);
+  requireArray(errors, `${label}.styles`, prototype.styles);
+  requireArray(errors, `${label}.assetRefs`, prototype.assetRefs);
+  const textRefs = [prototype.source, ...(prototype.styles ?? [])];
+  for (const sourceRef of textRefs) {
+    if (!isSafeRelativeRef(sourceRef)) {
+      errors.push(`${label} source "${sourceRef}" escapes or points outside the Blueprint source root.`);
+      continue;
+    }
+    if (!hasExplorationSourceMarker(sourceRef, exploration.id, ownerId)) {
+      errors.push(`${label} source "${sourceRef}" is not owned by this screen-local exploration entry.`);
+    }
+    const content = bundle.prototypeSourceContents[sourceRef];
+    if (typeof content !== 'string' || content.length === 0) {
+      errors.push(`${label} source "${sourceRef}" is missing or empty.`);
+    }
+  }
+  for (const assetRef of prototype.assetRefs ?? []) {
+    if (!isSafeRelativeRef(assetRef)) {
+      errors.push(`${label} asset "${assetRef}" escapes or points outside the Blueprint source root.`);
+      continue;
+    }
+    if (!isControlledAssetRef(bundle, assetRef)) {
+      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+    }
+    if (!(assetRef in bundle.prototypeAssetContents)) {
+      errors.push(`${label} asset "${assetRef}" is missing.`);
+    }
+  }
+}
+
+function hasExplorationSourceMarker(sourceRef: string, explorationId: string, ownerId: string): boolean {
+  const extension = path.posix.extname(sourceRef.replace(/\\/g, '/'));
+  const withoutExtension = extension ? sourceRef.slice(0, -extension.length) : sourceRef;
+  return withoutExtension.endsWith(`.exploration-${explorationId}-${ownerId}`);
+}
+
+function isSafeExplorationId(value: string): boolean {
+  return /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(value);
+}
+
+function requireSafeHumanLabel(errors: string[], label: string, value: unknown): void {
+  requireString(errors, label, value);
+  if (typeof value === 'string' && (value.length > 160 || /[\u0000-\u001f\u007f]/.test(value))) {
+    errors.push(`${label} must be at most 160 characters and contain no control characters.`);
   }
 }
 

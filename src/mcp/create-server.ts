@@ -1,9 +1,11 @@
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
 import {
   captureBlueprint,
+  exploreBlueprint,
   extractBlueprint,
   indexBlueprint,
   initializeBlueprint,
+  promoteBlueprint,
   queryBlueprint,
   serveBlueprint,
   validateBlueprint,
@@ -12,12 +14,16 @@ import {
 import {
   captureInputSchema,
   captureOutputSchema,
+  exploreInputSchema,
+  exploreOutputSchema,
   extractInputSchema,
   extractOutputSchema,
   indexInputSchema,
   indexOutputSchema,
   initInputSchema,
   initOutputSchema,
+  promoteInputSchema,
+  promoteOutputSchema,
   queryInputSchema,
   queryOutputSchema,
   serveInputSchema,
@@ -28,14 +34,24 @@ import {
 
 export const BLUEPRINT_MCP_SERVER_NAME = 'blueprint';
 export const BLUEPRINT_MCP_SERVER_VERSION = '0.1.0';
-export const BLUEPRINT_MCP_TOOL_NAMES = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve'] as const;
+export const BLUEPRINT_MCP_TOOL_NAMES = [
+  'init',
+  'validate',
+  'index',
+  'query',
+  'extract',
+  'capture',
+  'serve',
+  'explore',
+  'promote'
+] as const;
 
 export function createBlueprintMcpServer(): McpServer {
   const server = new McpServer(
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint is an agent-only, app-owned design sidecar. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. The seven tools preserve the former local interface without adding boundary-level mutation behavior.'
+        'Blueprint MCP is the agent-facing control surface for an app-owned design sidecar; the Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations preserve non-canonical alternatives; promotion requires explicit compare-and-swap digests and retains canonical history.'
     }
   );
   const activeServeHandles = new Set<BlueprintServeHandle>();
@@ -85,7 +101,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Query Blueprint',
       description:
-        'Run exactly one typed show, uses, used-by, sections, or prototype-only query against one Blueprint project. When out is provided, also writes the returned JSON to that path.',
+        'Run exactly one typed boundary, section, prototype-only, exploration-list, or exploration-inspection query against one Blueprint project. When out is provided, also writes the returned JSON to that path.',
       inputSchema: queryInputSchema,
       outputSchema: queryOutputSchema
     },
@@ -133,9 +149,46 @@ export function createBlueprintMcpServer(): McpServer {
           command: handle.command,
           project: handle.project,
           port: handle.port,
-          url: handle.url
+          url: handle.url,
+          ...(handle.selection ? { selection: handle.selection } : {})
         });
       })
+  );
+
+  server.registerTool(
+    'explore',
+    {
+      title: 'Manage Blueprint Exploration',
+      description:
+        'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline.',
+      inputSchema: exploreInputSchema,
+      outputSchema: exploreOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (input, context) => executeTool(() => exploreBlueprint(input, context.mcpReq.signal))
+  );
+
+  server.registerTool(
+    'promote',
+    {
+      title: 'Promote Blueprint Exploration Candidate',
+      description:
+        'Promote one explicitly selected exploration candidate into the next canonical screen version. Requires the inspected baseline, current-screen, and candidate digests and preserves both prior canonical history and the exploration.',
+      inputSchema: promoteInputSchema,
+      outputSchema: promoteOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (input, context) => executeTool(() => promoteBlueprint(input, context.mcpReq.signal))
   );
 
   const closeProtocolServer = server.close.bind(server);

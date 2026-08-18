@@ -11,7 +11,8 @@
     "tokens": { "$ref": "#/$defs/tokenFile" },
     "primitives": { "$ref": "#/$defs/primitiveFile" },
     "components": { "$ref": "#/$defs/componentFile" },
-    "screens": { "$ref": "#/$defs/screenFile" }
+    "screens": { "$ref": "#/$defs/screenFile" },
+    "explorations": { "$ref": "#/$defs/explorationFile" }
   },
   "$defs": {
     "manifest": {
@@ -225,6 +226,74 @@
           "type": "array",
           "items": { "$ref": "#/$defs/screen" }
         }
+      }
+    },
+    "explorationFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "explorations"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "explorations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exploration" }
+        }
+      }
+    },
+    "exploration": {
+      "type": "object",
+      "required": ["id", "title", "intent", "lifecycle", "target", "candidates"],
+      "properties": {
+        "id": { "$ref": "#/$defs/safeId" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "intent": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "lifecycle": { "enum": ["active", "archived", "promoted"] },
+        "target": { "$ref": "#/$defs/explorationTarget" },
+        "candidates": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/explorationCandidate" }
+        },
+        "selectedCandidateId": { "$ref": "#/$defs/safeId" },
+        "promotedScreenId": { "type": "string" }
+      }
+    },
+    "explorationTarget": {
+      "type": "object",
+      "required": ["screenId", "state", "framePresetId", "baseDigest", "baseline"],
+      "properties": {
+        "screenId": { "type": "string" },
+        "state": { "type": "string" },
+        "framePresetId": { "type": "string" },
+        "baseDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "baseline": { "$ref": "#/$defs/explorationBaseline" }
+      }
+    },
+    "explorationBaseline": {
+      "type": "object",
+      "required": ["screen", "prototype"],
+      "properties": {
+        "screen": { "$ref": "#/$defs/screen" },
+        "prototype": { "$ref": "#/$defs/explorationPrototype" }
+      }
+    },
+    "explorationCandidate": {
+      "type": "object",
+      "required": ["id", "label", "prototype"],
+      "properties": {
+        "id": { "$ref": "#/$defs/safeId" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "prototype": { "$ref": "#/$defs/explorationPrototype" }
+      }
+    },
+    "explorationPrototype": {
+      "type": "object",
+      "required": ["source", "styles", "assetRefs"],
+      "properties": {
+        "source": { "type": "string" },
+        "styles": { "$ref": "#/$defs/stringArray" },
+        "assetRefs": { "$ref": "#/$defs/stringArray" }
       }
     },
     "componentFile": {
@@ -494,6 +563,10 @@
     "stringArray": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
     }
   }
 }

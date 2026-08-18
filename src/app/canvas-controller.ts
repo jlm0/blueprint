@@ -18,6 +18,7 @@ export interface CanvasController {
 export interface CanvasOptions {
   minScale: number;
   maxScale: number;
+  readableScale: number;
   fallbackWidth: number;
   fallbackHeight: number;
   beforeWheel?: (event: WheelEvent) => boolean | void;
@@ -33,6 +34,7 @@ export function createCanvasController({
   world,
   minScale = 0.08,
   maxScale = 3,
+  readableScale = 0.55,
   fallbackWidth = 400,
   fallbackHeight = 200,
   beforeWheel
@@ -40,6 +42,7 @@ export function createCanvasController({
   const options: CanvasOptions = {
     minScale,
     maxScale,
+    readableScale,
     fallbackWidth,
     fallbackHeight,
     beforeWheel
@@ -153,9 +156,8 @@ export function createCanvasController({
     const nextScale = Math.min((window.innerWidth - 80) / width, (window.innerHeight - 140) / height, 1.18);
     // Wide boards never fit below a readable floor: land on the first groups
     // at review size and let pan reveal the rest instead of a distant strip.
-    const readableScale = 0.55;
-    if (nextScale < readableScale) {
-      view.s = readableScale;
+    if (nextScale < options.readableScale) {
+      view.s = options.readableScale;
       view.x = 60 - minX * view.s;
       view.y = Math.max(24, (window.innerHeight - height * view.s) / 2 - minY * view.s + 24);
       apply();
