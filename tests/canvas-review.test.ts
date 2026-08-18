@@ -54,7 +54,7 @@ describe('Blueprint canvas-to-contract review loop', () => {
     assert.match(stale.errors.join('\n'), /nova-care\/section\/home\/missing/);
   });
 
-  it('creates machine-readable review manifests with optional handoff command linkage', async () => {
+  it('creates machine-readable review manifests with optional MCP handoff linkage', async () => {
     const bundle = await loadProjectFromFs(novaRoot);
     const records: VisibleBoundaryRecord[] = [
       { id: 'nova-care/screen/home', kind: 'screen', board: 'screens', label: 'Care Home', screenId: 'home' },
@@ -66,7 +66,7 @@ describe('Blueprint canvas-to-contract review loop', () => {
       board: 'screens',
       screenId: 'home',
       screenshotPath: '.agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/screenshots/blueprint-screens-desktop.png',
-      packetCommandBase: 'blueprint extract'
+      packetToolName: 'extract'
     });
 
     assert.equal(manifest.projectId, 'nova-care');
@@ -76,7 +76,14 @@ describe('Blueprint canvas-to-contract review loop', () => {
     assert.equal(manifest.screenshot.status, 'captured');
     assert.equal(manifest.boundaries.length, 2);
     assert.equal(manifest.boundaries[1]?.boundaryId, 'nova-care/section/home/next-action');
-    assert.match(manifest.boundaries[1]?.packet.command ?? '', /blueprint extract --project fixtures\/app-owned\/nova-care\/design\/blueprint --boundary section:home\/next-action --mode deep/);
+    assert.deepEqual(manifest.boundaries[1]?.packet.tool, {
+      name: 'extract',
+      arguments: {
+        project: 'fixtures/app-owned/nova-care/design/blueprint',
+        boundary: 'section:home/next-action',
+        mode: 'deep'
+      }
+    });
   });
 
   it('records an unresolved prototype capture with exact source, state, and viewport context', async () => {
@@ -96,7 +103,7 @@ describe('Blueprint canvas-to-contract review loop', () => {
         framePresetId: 'desktop',
         conditionId: 'desktop-initial'
       },
-      packetCommandBase: 'blueprint extract'
+      packetToolName: 'extract'
     });
 
     assert.deepEqual(manifest.capture, {

@@ -646,9 +646,10 @@ async function assertBoundaryAffordances(page: import('playwright').Page): Promi
   const chip = frame.locator('xpath=..').locator('[data-boundary-action="copy-id"]').first();
   await chip.waitFor({ timeout: 5000 });
 
-  const command = await frame.getAttribute('data-handoff-command');
-  if (!command?.includes('blueprint extract') || !command.includes('--boundary screen:')) {
-    throw new Error(`Screen frame should expose an honest extraction command, received ${command}.`);
+  const encodedTool = await frame.getAttribute('data-handoff-tool');
+  const tool = encodedTool ? JSON.parse(encodedTool) as { name?: string; arguments?: { boundary?: string } } : undefined;
+  if (tool?.name !== 'extract' || !tool.arguments?.boundary?.startsWith('screen:')) {
+    throw new Error(`Screen frame should expose an honest MCP extraction tool call, received ${encodedTool}.`);
   }
 
   await chip.click();

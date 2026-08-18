@@ -67,3 +67,25 @@ export {
   summarizeScreenSections,
   validateVisibleBoundaryRecords
 } from './core/review';
+export {
+  BLUEPRINT_MCP_SERVER_NAME,
+  BLUEPRINT_MCP_SERVER_VERSION,
+  BLUEPRINT_MCP_TOOL_NAMES,
+  createBlueprintMcpServer
+} from './mcp/create-server';
+export type {
+  CaptureInput,
+  CaptureOutput,
+  ExtractInput,
+  ExtractOutput,
+  IndexInput,
+  IndexOutput,
+  InitInput,
+  InitOutput,
+  QueryInput,
+  QueryOutput,
+  ServeInput,
+  ServeOutput,
+  ValidateInput,
+  ValidateOutput
+} from './mcp/schemas';

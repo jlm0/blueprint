@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,7 +16,8 @@ import type {
 import { createReadinessReport, validateProject } from '../src/core/validate';
 import { compilePrototypeDocument, PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
 import { applyPrototypeIframeIsolation } from '../src/prototype/host-policy';
-import { createBlueprintResponseHeaders } from '../src/cli/prototype-host-policy';
+import { createBlueprintResponseHeaders } from '../src/prototype/host-policy';
+import { captureInputSchema } from '../src/mcp/schemas';
 
 const fixtureRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 
@@ -142,14 +142,9 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     assert.match(strict.errors.join('\n'), /waitlist.*prototype.*source.*(?:missing|exist)/i);
   });
 
-  it('T2/R1-R2 selects the app-owned source ahead of the labeled legacy fallback for prototype-backed primitives', () => {
-    const query = spawnSync(
-      process.execPath,
-      ['--import', 'tsx', 'src/cli.ts', 'query', '--project', fixtureRoot, '--type', 'show', '--boundary', 'primitive:action-button'],
-      { cwd: process.cwd(), encoding: 'utf8' }
-    );
-    assert.equal(query.status, 0, query.stderr);
-    const packet = JSON.parse(query.stdout) as CanonicalPrimitivePacket;
+  it('T2/R1-R2 selects the app-owned source ahead of the labeled legacy fallback for prototype-backed primitives', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const packet = showBoundary(bundle, 'primitive:action-button') as CanonicalPrimitivePacket;
 
     assert.deepEqual(
       packet.rendering,
@@ -216,32 +211,30 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     );
   });
 
-  it('T5/R5 exposes deterministic state and viewport selection on the public capture command', () => {
-    const help = spawnSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', '--help'], {
-      cwd: process.cwd(),
-      encoding: 'utf8'
-    });
-    assert.equal(help.status, 0, help.stderr);
-    assert.match(
-      help.stdout,
-      /capture[^\n]*--state[^\n]*--viewport/,
-      'T5 CLI gap: capture must expose explicit named-state and viewport selection before browser rendering begins'
-    );
+  it('T5/R5 exposes deterministic state and viewport selection on the public capture tool', () => {
+    assert.equal(captureInputSchema.safeParse({
+      project: fixtureRoot,
+      boundary: 'screen:waitlist',
+      state: 'initial',
+      viewport: 'desktop-reference',
+      out: '.blueprint-artifacts/waitlist.png'
+    }).success, true);
   });
 
   it('T6/R6 keeps the Blueprint runtime free of NowWhat-specific rendering branches', async () => {
     const runtimeFiles = [
       'src/app/main.ts',
       'src/app/fixture-projects.ts',
-      'src/cli.ts',
-      'src/cli/prototype-host-policy.ts',
-      'src/cli/prototype-network-guard.ts',
-      'src/cli/prototype-review.ts',
       'src/core/load.ts',
       'src/core/query.ts',
       'src/core/review.ts',
       'src/core/validate.ts',
+      'src/mcp/create-server.ts',
+      'src/mcp/operations.ts',
+      'src/mcp/schemas.ts',
+      'src/mcp/server.ts',
       'src/prototype/compiler.ts',
+      'src/prototype/browser-preflight.ts',
       'src/prototype/host-policy.ts'
     ];
     const runtimeSource = (await Promise.all(runtimeFiles.map(file => readFile(file, 'utf8')))).join('\n');
@@ -281,12 +274,12 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     assert.equal(
       existsSync(path.join('starter', 'design', 'blueprint', 'components.json')),
       true,
-      'T8 starter gap: blueprint init cannot produce the new composition contract until the starter includes components.json'
+      'T8 starter gap: the init tool cannot produce the new composition contract until the starter includes components.json'
     );
     assert.equal(
       existsSync(path.join('starter', 'design', 'blueprint', 'prototype')),
       true,
-      'T8 starter gap: blueprint init must include governed canonical and screen prototype source roots'
+      'T8 starter gap: the init tool must include governed canonical and screen prototype source roots'
     );
   });
 

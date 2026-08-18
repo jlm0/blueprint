@@ -79,10 +79,12 @@ describe('starter and high-fidelity portability contract', () => {
     const runtime = (await Promise.all([
       'src/app/main.ts',
       'src/prototype/compiler.ts',
-      'src/cli.ts',
       'src/core/load.ts',
       'src/core/query.ts',
-      'src/core/validate.ts'
+      'src/core/validate.ts',
+      'src/mcp/create-server.ts',
+      'src/mcp/operations.ts',
+      'src/mcp/schemas.ts'
     ].map(file => readFile(file, 'utf8')))).join('\n');
     assert.doesNotMatch(runtime, /dense-ops|service-health-table|Dense Ops/i);
   });

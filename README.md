@@ -22,7 +22,7 @@ High-fidelity projects also carry a locked universal base set: the 27 base primi
 
 For a high-fidelity sidecar, the Primitives board and every component or screen consumer instantiate the same app-owned canonical primitive source. Blueprint materializes token JSON as CSS custom properties, recursively replaces `<blueprint-use kind="primitive|component" ref="…">` declarations with the referenced app roots, annotates those roots directly without layout wrappers, and mounts each screen document in an isolated frame. Screen-local HTML/CSS can use ordinary browser grid, flex, positioning, overlays, responsive rules, typography, and controlled sidecar assets; Blueprint does not translate a restricted layout-keyword language into the final screen. Generic family renderers remain an explicitly labeled fallback for baseline-compatible projects only.
 
-Visible affordances stay minimal. Primitive cards do not render copy or terminal controls; their boundary IDs and extraction commands remain machine-readable metadata for agents and review artifacts. The screen frame keeps its existing compact copy/screenshot/save controls. Browser smoke also writes machine-readable review manifests and canvas-side style evidence artifacts, linking project ID, boundary ID, board/screen context, explicit captured/capture-ready/unresolved capture status, exact governed source/state/viewport context when available, optional packet command, rendered snippet, computed-style summary, and unresolved/captured style evidence status. By default local evidence goes under `.blueprint-artifacts/`; set `BLUEPRINT_ARTIFACT_ROOT` to route evidence into a workstream artifact folder. These artifacts connect what a person reviewed to the structured graph and canonical app-owned sources without treating screenshots or canvas DOM as editable source.
+Visible affordances stay minimal. Primitive cards do not render copy or terminal controls; their boundary IDs and typed extraction tool calls remain machine-readable metadata for agents and review artifacts. The screen frame keeps its existing compact copy/screenshot/save controls. Browser smoke also writes machine-readable review manifests and canvas-side style evidence artifacts, linking project ID, boundary ID, board/screen context, explicit captured/capture-ready/unresolved capture status, exact governed source/state/viewport context when available, an optional MCP packet tool call, rendered snippet, computed-style summary, and unresolved/captured style evidence status. By default local evidence goes under `.blueprint-artifacts/`; set `BLUEPRINT_ARTIFACT_ROOT` to route evidence into a workstream artifact folder. These artifacts connect what a person reviewed to the structured graph and canonical app-owned sources without treating screenshots or canvas DOM as editable source.
 
 The initial reference input is the reference canvas at:
 
@@ -39,7 +39,8 @@ The first implementation is a browser-native TypeScript template with no runtime
 ```text
 src/core/        typed schema, validation, boundary IDs, queries, extraction packets
 src/app/         browser-native reference-style canvas template and placement helpers
-src/scripts/     validation, query, extraction, scope, and smoke commands
+src/mcp/         typed MCP schemas, seven parity tools, and stdio server lifecycle
+src/scripts/     repository validation, extraction, scope, and browser-smoke harnesses
 fixtures/        app-owned proof fixtures and invalid fixture
 starter/         copyable design/blueprint starter shape
 docs/            kit, query, screen-composition, and reference-import guidance
@@ -52,38 +53,36 @@ npm run dev
 npm run typecheck
 npm run check:fixtures
 npm test
-npm run query -- show --project fixtures/app-owned/nova-care/design/blueprint --boundary screen:home
-npm run query -- used-by --project fixtures/app-owned/nova-care/design/blueprint --boundary primitive:action-button
-npm run query -- extract --project fixtures/app-owned/nova-care/design/blueprint --boundary screen:home --mode deep
 npm run extract:artifacts
 npm run scan:scope
+npm run build
 npm run smoke:browser
 npm run qa
 ```
 
-## Local CLI
+## Agent MCP
 
-Blueprint also exposes a local package/bin surface for app-owned sidecars. Build the CLI and static site with:
+Blueprint exposes one local stdio MCP server for agents. Build the server and static review site with:
 
 ```text
 npm run build
 ```
 
-Then use the generated `blueprint` command shape from an app repo or local package link:
+Configure the agent host to start `blueprint-mcp` from the app repo root. The server exposes exactly seven typed tools:
 
-```text
-blueprint init --project-id my-app --name "My App" --out design/blueprint
-blueprint validate --project design/blueprint
-blueprint validate --project design/blueprint --mode readiness
-blueprint serve
-blueprint serve --project design/blueprint
-blueprint index --project design/blueprint
-blueprint query --project design/blueprint --type show --boundary screen:home
-blueprint extract --project design/blueprint --boundary screen:home --out packet.json
-blueprint capture --project design/blueprint --boundary screen:<id> --state <state> --viewport <frame-preset-id> --out screen.png
+```json
+{
+  "init": { "projectId": "my-app", "name": "My App", "out": "design/blueprint", "force": false },
+  "validate": { "project": "design/blueprint", "mode": "baseline | readiness | strict" },
+  "index": { "project": "design/blueprint" },
+  "query": { "project": "design/blueprint", "query": { "type": "show", "boundary": "screen:home" } },
+  "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "focused | deep" },
+  "capture": { "project": "design/blueprint", "boundary": "screen:<id>", "state": "<state>", "viewport": "<frame-preset-id>", "out": ".blueprint-artifacts/screen.png" },
+  "serve": { "project": "design/blueprint", "port": 4173 }
+}
 ```
 
-The CLI is single-project by design: every command works against one app-owned project path. `serve` defaults to `design/blueprint` from the current app repo root and reloads structured and governed source edits without an app-specific runtime branch. `init` preserves a neutral token, canonical primitive, and reusable component foundation while leaving the `home` phone and `web-home` browser screens intentionally empty. `validate --mode readiness` reports the fidelity tier and evidence state; `validate --mode strict` checks the production handoff contract. `capture` selects an explicit screen, named state, and declared viewport, waits for controlled fonts/media, and writes a screen PNG. Missing browser support must fail during preflight with remediation rather than after rendering starts. Query and extraction packets expose source refs and the dependency graph; captures remain corroborating evidence under ignored `.blueprint-artifacts/`.
+The MCP interface is single-project by design: every tool call works against one app-owned project path. `serve` defaults to `design/blueprint` from the server process working directory and reloads structured and governed source edits without an app-specific runtime branch. `init` preserves a neutral token, canonical primitive, and reusable component foundation while leaving the `home` phone and `web-home` browser screens intentionally empty. Readiness validation reports the fidelity tier and evidence state; strict validation checks the production handoff contract. `capture` selects an explicit screen, named state, and declared viewport, waits for controlled fonts/media, and writes a screen PNG. Missing browser support fails during preflight with remediation rather than after rendering starts. Query and extraction packets expose source refs and the dependency graph; captures remain corroborating evidence under ignored `.blueprint-artifacts/`.
 
 `npm run extract:artifacts` writes canonical primitive and screen packets under `.blueprint-artifacts/extraction-query/` by default. `npm run smoke:browser` renders the dark Blueprint canvas, verifies the Primitives board is driven by starter, Nova Care, and Atlas Pay sidecar data, verifies the Screens board renders structured screen sections inside reusable mobile and desktop frames without restoring the rejected metadata-card projection, proves visible-boundary synchronization, review-loop affordances, no-dashboard constraints, and single-project rendering, then writes screenshots, review manifests, and canvas-side style evidence under `.blueprint-artifacts/browser-smoke/` by default. Set `BLUEPRINT_ARTIFACT_ROOT=<path>` to place either command's evidence under a caller-provided artifact root.
 

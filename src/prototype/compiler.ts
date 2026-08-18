@@ -188,7 +188,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
 
 /**
  * Compiles every declared canonical boundary/state without a browser so validation,
- * readiness, the canvas, and the CLI share one governed-source contract.
+ * readiness, the canvas, and MCP share one governed-source contract.
  */
 export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): PrototypeSourceGraphIssue[] {
   const targets: Array<{ target: PrototypeCompileTarget; state: string }> = [];

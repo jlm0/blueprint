@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isAllowedPrototypeDocumentUrl } from '../src/cli/prototype-network-guard';
+import { isAllowedPrototypeDocumentUrl } from '../src/prototype/network-guard';
 import { applyPrototypeIframeIsolation, PROTOTYPE_IFRAME_SANDBOX } from '../src/prototype/host-policy';
-import type { PrototypeNetworkGuardRoute } from '../src/cli/prototype-network-guard';
+import type { PrototypeNetworkGuardRoute } from '../src/prototype/network-guard';
 
 describe('prototype capture network policy', () => {
   it('allows only the self-contained capture document and controlled data resources', () => {
@@ -42,7 +42,7 @@ describe('prototype capture network policy', () => {
       currentUrl: () => currentUrl
     };
 
-    const { installPrototypeNetworkGuard } = await import('../src/cli/prototype-network-guard');
+    const { installPrototypeNetworkGuard } = await import('../src/prototype/network-guard');
     const guard = await installPrototypeNetworkGuard(page);
     assert.ok(routeHandler);
     await routeHandler({

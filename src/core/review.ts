@@ -42,7 +42,8 @@ export interface ReviewManifestOptions {
   captureReason?: string;
   /** Exact governed source, state, and viewport selected for a prototype review. */
   prototypeReview?: PrototypeReviewManifestContext;
-  packetCommandBase?: string;
+  /** MCP tool to expose for a boundary handoff packet. Omit when unavailable. */
+  packetToolName?: 'extract';
 }
 
 export interface PrototypeReviewManifestContext {
@@ -70,7 +71,14 @@ export interface BoundaryReviewManifestEntry {
   screenshot: ReviewCaptureRecord;
   packet: {
     status: 'available' | 'unavailable';
-    command?: string;
+    tool?: {
+      name: 'extract';
+      arguments: {
+        project: string;
+        boundary: string;
+        mode: 'deep';
+      };
+    };
   };
 }
 
@@ -180,7 +188,7 @@ export function createReviewManifest(
         screenId: record.screenId,
         capture,
         screenshot: capture,
-        packet: createPacketLink(bundle, record.kind, localId, options.packetCommandBase)
+        packet: createPacketLink(bundle, record.kind, localId, options.packetToolName)
       };
     })
   };
@@ -251,9 +259,9 @@ function createPacketLink(
   bundle: BlueprintProjectBundle,
   kind: BoundaryKind,
   localId: string,
-  packetCommandBase: string | undefined
+  packetToolName: 'extract' | undefined
 ): BoundaryReviewManifestEntry['packet'] {
-  if (!packetCommandBase) {
+  if (!packetToolName) {
     return {
       status: 'unavailable'
     };
@@ -261,7 +269,14 @@ function createPacketLink(
 
   return {
     status: 'available',
-    command: `${packetCommandBase} --project ${bundle.sourceRoot} --boundary ${kind}:${localId} --mode deep`
+    tool: {
+      name: packetToolName,
+      arguments: {
+        project: bundle.sourceRoot,
+        boundary: `${kind}:${localId}`,
+        mode: 'deep'
+      }
+    }
   };
 }
 

@@ -664,7 +664,10 @@ describe('Blueprint data-driven primitives canvas', () => {
       const manifestSections = manifest.boundaries.filter(boundary => boundary.kind === 'section');
       assert.equal(manifestSections.length, expectedSectionBoundaries.length);
       assert.ok(
-        manifestSections.every(boundary => boundary.screenId && boundary.packet.status === 'available' && boundary.packet.command?.includes('--boundary section:')),
+        manifestSections.every(boundary => boundary.screenId
+          && boundary.packet.status === 'available'
+          && boundary.packet.tool?.name === 'extract'
+          && boundary.packet.tool.arguments.boundary.startsWith('section:')),
         'Section manifest entries should include screenId and extraction packet commands'
       );
 

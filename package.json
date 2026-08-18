@@ -3,15 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
-    "blueprint": "./dist/cli/cli.js"
+    "blueprint-mcp": "./dist/mcp/server.js"
   },
   "exports": {
-    ".": "./dist/cli/index.js",
+    ".": "./dist/mcp/index.js",
     "./schema/blueprint-project.schema.json": "./schema/blueprint-project.schema.json"
   },
   "files": [
-    "dist/cli",
+    "dist/mcp",
     "dist/site",
     "docs",
     "schema",
@@ -24,18 +27,20 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "check:fixtures": "node --import tsx src/scripts/validate-fixtures.ts",
     "scan:scope": "node --import tsx src/scripts/scope-scan.ts",
-    "query": "node --import tsx src/scripts/query.ts",
     "extract:artifacts": "node --import tsx src/scripts/create-extraction-artifacts.ts",
     "smoke:browser": "node --import tsx src/scripts/browser-smoke.ts",
     "build:site": "vite build",
-    "build:cli": "vite build --config vite.cli.config.ts && chmod +x dist/cli/cli.js",
-    "build": "npm run build:site && npm run build:cli",
+    "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js",
+    "build": "npm run build:site && npm run build:mcp",
     "qa": "npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
   },
   "dependencies": {
-    "html-to-image": "^1.11.13"
+    "@modelcontextprotocol/server": "^2.0.0",
+    "html-to-image": "^1.11.13",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",

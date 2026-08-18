@@ -2,7 +2,7 @@ import { compilePrototypeDocument, selectPrototypeReviewCondition } from '../pro
 import { boundaryId } from '../core/address';
 import type { BlueprintProjectBundle } from '../core/types';
 
-/** URL- or CLI-level intent for one declared browser-native screen review. */
+/** URL- or MCP-level intent for one declared browser-native screen review. */
 export interface PrototypeReviewRequest {
   /** App-owned local screen ID. */
   screenId: string;

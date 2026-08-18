@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "tests", "vite.config.ts", "vite.cli.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "vite.mcp.config.ts"]
 }

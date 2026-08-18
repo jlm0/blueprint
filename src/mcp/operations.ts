@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,9 +5,9 @@ import { existsSync } from 'node:fs';
 import { createServer as createHttpServer, type Server as HttpServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Page } from 'playwright';
-import { boundaryId, parseBoundarySelector } from './core/address';
-import { loadProjectFromFs } from './core/load';
-import { createReadinessReport, validateProject } from './core/validate';
+import { boundaryId, parseBoundarySelector } from '../core/address';
+import { loadProjectFromFs } from '../core/load';
+import { createReadinessReport, validateProject } from '../core/validate';
 import {
   createExtractionPacket,
   listBoundaryReferences,
@@ -17,242 +16,183 @@ import {
   queryUsedBy,
   queryUses,
   showBoundary
-} from './core/query';
-import type { ValidationMode } from './core/types';
+} from '../core/query';
 import {
   compilePrototypeReview,
   parsePrototypeReviewRequest,
   resolvePrototypeReviewSelection
-} from './cli/prototype-review';
-import { assertChromiumExecutableAvailable, createChromiumDependencyError } from './cli/browser-preflight';
-import { installPrototypeNetworkGuard } from './cli/prototype-network-guard';
-import { createBlueprintResponseHeaders, evaluateLoopbackHost } from './cli/prototype-host-policy';
-import { PROTOTYPE_CONTENT_SECURITY_POLICY } from './prototype/compiler';
-
-type Command = 'init' | 'validate' | 'index' | 'query' | 'extract' | 'capture' | 'serve';
-type QueryType = 'show' | 'uses' | 'used-by' | 'sections' | 'prototype-only';
-type ExtractMode = 'focused' | 'deep';
-type CliValidationMode = ValidationMode | 'readiness';
-
-const defaultProjectPath = 'design/blueprint';
+} from '../prototype/review';
+import { assertChromiumExecutableAvailable, createChromiumDependencyError } from '../prototype/browser-preflight';
+import { installPrototypeNetworkGuard } from '../prototype/network-guard';
+import { createBlueprintResponseHeaders, evaluateLoopbackHost } from '../prototype/host-policy';
+import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
+import {
+  captureOutputSchema,
+  extractOutputSchema,
+  indexOutputSchema,
+  initOutputSchema,
+  queryOutputSchema,
+  serveOutputSchema,
+  validateOutputSchema,
+  type CaptureInput,
+  type CaptureOutput,
+  type ExtractInput,
+  type ExtractOutput,
+  type IndexInput,
+  type IndexOutput,
+  type InitInput,
+  type InitOutput,
+  type QueryInput,
+  type QueryOutput,
+  type ServeInput,
+  type ServeOutput,
+  type ValidateInput,
+  type ValidateOutput
+} from './schemas';
 
 interface CaptureServer {
   url: string;
   close: () => Promise<void>;
 }
 
-interface ServeServer extends CaptureServer {
+interface LocalServeServer extends CaptureServer {
   port: number;
 }
 
-interface Args {
-  command?: Command;
-  project?: string;
-  projectId?: string;
-  name?: string;
-  out?: string;
-  boundary?: string;
-  screen?: string;
-  type?: QueryType;
-  mode?: string;
-  port?: string;
-  state?: string;
-  viewport?: string;
-  force: boolean;
-  help: boolean;
+export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
+  port: number;
 }
 
 const packageRoot = findPackageRoot();
 const runtimeImport = new Function('specifier', 'return import(specifier)') as <T>(specifier: string) => Promise<T>;
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help || !args.command) {
-    process.stdout.write(helpText());
-    return;
-  }
-
-  if (args.command === 'init') {
-    await commandInit(args);
-    return;
-  }
-
-  if (args.command === 'validate') {
-    await commandValidate(args);
-    return;
-  }
-
-  if (args.command === 'index') {
-    await commandIndex(args);
-    return;
-  }
-
-  if (args.command === 'query') {
-    await commandQuery(args);
-    return;
-  }
-
-  if (args.command === 'extract') {
-    await commandExtract(args);
-    return;
-  }
-
-  if (args.command === 'capture') {
-    await commandCapture(args);
-    return;
-  }
-
-  if (args.command === 'serve') {
-    await commandServe(args);
-    return;
-  }
-}
-
-async function commandInit(args: Args): Promise<void> {
-  const out = requireArg(args.out, '--out');
-  const projectId = requireArg(args.projectId, '--project-id');
-  const name = requireArg(args.name, '--name');
+export async function initializeBlueprint(input: InitInput, signal?: AbortSignal): Promise<InitOutput> {
+  throwIfAborted(signal);
+  const { out, projectId, name } = input;
   const destination = path.resolve(out);
 
   if (existsSync(destination)) {
     const entries = await readdir(destination);
-    if (entries.length > 0 && !args.force) {
-      throw new Error(`Destination is not empty: ${normalize(destination)}. Re-run with --force to overwrite Blueprint starter files in place.`);
+    if (entries.length > 0 && !input.force) {
+      throw new Error(`Destination is not empty: ${normalize(destination)}. Retry with force=true to overwrite Blueprint starter files in place.`);
     }
   }
 
+  throwIfAborted(signal);
   const starterRoot = path.join(packageRoot, 'starter', 'design', 'blueprint');
   await mkdir(destination, { recursive: true });
   await cp(starterRoot, destination, { recursive: true, force: true });
   await rewriteStarterProject(destination, projectId, name);
 
+  throwIfAborted(signal);
   const bundle = await loadProjectFromFs(destination);
   const validation = validateProject(bundle);
   if (!validation.ok) {
     throw new Error(`Initialized project failed baseline validation:\n${validation.errors.join('\n')}`);
   }
 
-  await writeOutput(
-    {
-      command: 'init',
-      projectId,
-      name,
-      out: normalize(destination),
-      files: (await readdir(destination)).sort(),
-      validation,
-      nextCommands: [
-        `blueprint validate --project ${normalize(destination)}`,
-        `blueprint serve --project ${normalize(destination)}`,
-        `blueprint index --project ${normalize(destination)}`,
-        `blueprint query --project ${normalize(destination)} --type show --boundary screen:home`,
-        `blueprint extract --project ${normalize(destination)} --boundary screen:home --out packet.json`
-      ]
-    },
-    undefined
-  );
+  return initOutputSchema.parse({
+    command: 'init',
+    projectId,
+    name,
+    out: normalize(destination),
+    files: (await readdir(destination)).sort(),
+    validation
+  });
 }
 
-async function commandValidate(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
-  const mode = validationMode(args.mode);
+export async function validateBlueprint(input: ValidateInput, signal?: AbortSignal): Promise<ValidateOutput> {
+  throwIfAborted(signal);
+  const { project, mode } = input;
   const bundle = await loadProjectFromFs(project);
   if (mode === 'readiness') {
     const baseline = validateProject(bundle);
     const readiness = createReadinessReport(bundle);
     const ok = baseline.ok && readiness.tier !== 'blocked';
-    await writeOutput(
-      {
-        command: 'validate',
-        project: normalize(path.resolve(project)),
-        projectId: bundle.manifest.project.id,
-        mode,
-        ok,
-        errors: baseline.errors,
-        readiness
-      },
-      args.out
-    );
-    if (!ok) {
-      process.exitCode = 1;
-    }
-    return;
-  }
-
-  const result = validateProject(bundle, { mode });
-  await writeOutput(
-    {
+    const output = validateOutputSchema.parse({
       command: 'validate',
       project: normalize(path.resolve(project)),
       projectId: bundle.manifest.project.id,
       mode,
-      ...result
-    },
-    args.out
-  );
-  if (!result.ok) {
-    process.exitCode = 1;
+      ok,
+      errors: baseline.errors,
+      readiness
+    });
+    await writeOptionalJsonArtifact(output, input.out);
+    return output;
   }
+
+  const result = validateProject(bundle, { mode });
+  const output = validateOutputSchema.parse({
+    command: 'validate',
+    project: normalize(path.resolve(project)),
+    projectId: bundle.manifest.project.id,
+    mode,
+    ...result
+  });
+  await writeOptionalJsonArtifact(output, input.out);
+  return output;
 }
 
-async function commandIndex(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
+export async function indexBlueprint(input: IndexInput, signal?: AbortSignal): Promise<IndexOutput> {
+  throwIfAborted(signal);
+  const { project } = input;
   const bundle = await loadProjectFromFs(project);
-  await writeOutput(
-    {
-      command: 'index',
-      project: normalize(path.resolve(project)),
-      projectId: bundle.manifest.project.id,
-      results: listBoundaryReferences(bundle)
-    },
-    args.out
-  );
+  const output = indexOutputSchema.parse({
+    command: 'index',
+    project: normalize(path.resolve(project)),
+    projectId: bundle.manifest.project.id,
+    results: listBoundaryReferences(bundle)
+  });
+  await writeOptionalJsonArtifact(output, input.out);
+  return output;
 }
 
-async function commandQuery(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
-  const type = requireQueryType(args.type);
+export async function queryBlueprint(input: QueryInput, signal?: AbortSignal): Promise<QueryOutput> {
+  throwIfAborted(signal);
+  const { project, query } = input;
   const bundle = await loadProjectFromFs(project);
   let output: unknown;
 
-  if (type === 'show') {
-    output = showBoundary(bundle, requireArg(args.boundary, '--boundary'));
-  }
-  if (type === 'uses') {
-    output = queryUses(bundle, requireArg(args.boundary, '--boundary'));
-  }
-  if (type === 'used-by') {
-    output = queryUsedBy(bundle, requireArg(args.boundary, '--boundary'));
-  }
-  if (type === 'sections') {
-    output = querySections(bundle, requireArg(args.screen, '--screen'));
-  }
-  if (type === 'prototype-only') {
-    output = queryPrototypeOnly(bundle);
+  switch (query.type) {
+    case 'show':
+      output = showBoundary(bundle, query.boundary);
+      break;
+    case 'uses':
+      output = queryUses(bundle, query.boundary);
+      break;
+    case 'used-by':
+      output = queryUsedBy(bundle, query.boundary);
+      break;
+    case 'sections':
+      output = querySections(bundle, query.screen);
+      break;
+    case 'prototype-only':
+      output = queryPrototypeOnly(bundle);
+      break;
   }
 
-  await writeOutput(output, args.out);
+  const parsed = queryOutputSchema.parse(output);
+  await writeOptionalJsonArtifact(parsed, input.out);
+  return parsed;
 }
 
-async function commandExtract(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
-  const boundary = requireArg(args.boundary, '--boundary');
-  const mode = extractMode(args.mode);
+export async function extractBlueprint(input: ExtractInput, signal?: AbortSignal): Promise<ExtractOutput> {
+  throwIfAborted(signal);
+  const { project, boundary, mode } = input;
   const bundle = await loadProjectFromFs(project);
   const packet = createExtractionPacket(bundle, boundary, { mode });
-  if (args.out) {
-    await writeOutput(packet, args.out, { printOutSummary: true });
-    return;
-  }
-  await writeOutput(packet, undefined);
+  const output = extractOutputSchema.parse(packet);
+  await writeOptionalJsonArtifact(output, input.out);
+  return output;
 }
 
-async function commandCapture(args: Args): Promise<void> {
-  const project = requireArg(args.project, '--project');
-  const boundary = requireArg(args.boundary, '--boundary');
-  const out = requireArg(args.out, '--out');
+export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal): Promise<CaptureOutput> {
+  throwIfAborted(signal);
+  const { project, boundary, out } = input;
   const selector = parseBoundarySelector(boundary);
   if (selector.kind !== 'screen') {
-    throw new Error(`blueprint capture currently supports screen boundaries. Received ${selector.kind}:${selector.id}.`);
+    throw new Error(`The capture tool currently supports screen boundaries. Received ${selector.kind}:${selector.id}.`);
   }
 
   const bundle = await loadProjectFromFs(project);
@@ -265,14 +205,14 @@ async function commandCapture(args: Args): Promise<void> {
   if (selectedScreen.prototype) {
     const selection = resolvePrototypeReviewSelection(bundle, {
       screenId: selectedScreen.id,
-      state: args.state,
-      viewport: args.viewport
+      state: input.state,
+      viewport: input.viewport
     });
     const chromium = await preflightChromium();
     let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 
     try {
-      browser = await chromium.launch();
+      browser = await withAbort(chromium.launch(), signal);
       const compiled = compilePrototypeReview(bundle, selection);
       const page = await browser.newPage({
         viewport: { width: selection.width, height: selection.height },
@@ -294,57 +234,53 @@ async function commandCapture(args: Args): Promise<void> {
         },
         currentUrl: () => page.url()
       });
-      await page.setContent(compiled.html, { waitUntil: 'load' });
+      await withAbort(page.setContent(compiled.html, { waitUntil: 'load' }), signal);
       networkGuard.assertClean();
-      await waitForPrototypeCaptureReadiness(page);
+      await withAbort(waitForPrototypeCaptureReadiness(page), signal);
       networkGuard.assertClean();
 
       const resolvedOut = path.resolve(out);
       await mkdir(path.dirname(resolvedOut), { recursive: true });
-      await page.screenshot({
+      await withAbort(page.screenshot({
         path: resolvedOut,
         type: 'png',
         fullPage: false,
         animations: 'disabled',
         caret: 'hide',
         scale: 'css'
-      });
+      }), signal);
 
-      await writeOutput(
-        {
-          command: 'capture',
-          project: normalize(path.resolve(project)),
-          projectId: bundle.manifest.project.id,
-          boundary: selection.boundaryId,
-          state: selection.state,
-          viewport: selection.framePresetId,
-          reviewCondition: selection.conditionId,
-          dimensions: { width: selection.width, height: selection.height },
-          out: normalize(resolvedOut),
-          mediaType: 'image/png',
-          source: {
-            context: 'source-focused',
-            captureTarget: 'compiled-prototype-document',
-            method: 'browser-page-screenshot',
-            editorChrome: false,
-            readiness: {
-              fonts: 'ready',
-              images: 'decoded',
-              layout: 'stable'
-            },
-            observedBoundaryIds: compiled.observedBoundaryIds
-          }
-        },
-        undefined
-      );
+      return captureOutputSchema.parse({
+        command: 'capture',
+        project: normalize(path.resolve(project)),
+        projectId: bundle.manifest.project.id,
+        boundary: selection.boundaryId,
+        state: selection.state,
+        viewport: selection.framePresetId,
+        reviewCondition: selection.conditionId,
+        dimensions: { width: selection.width, height: selection.height },
+        out: normalize(resolvedOut),
+        mediaType: 'image/png',
+        source: {
+          context: 'source-focused',
+          captureTarget: 'compiled-prototype-document',
+          method: 'browser-page-screenshot',
+          editorChrome: false,
+          readiness: {
+            fonts: 'ready',
+            images: 'decoded',
+            layout: 'stable'
+          },
+          observedBoundaryIds: compiled.observedBoundaryIds
+        }
+      });
     } finally {
       await browser?.close();
     }
-    return;
   }
 
-  if (args.state || args.viewport) {
-    throw new Error('--state and --viewport require a screen with declared browser-native prototype review conditions.');
+  if (input.state || input.viewport) {
+    throw new Error('state and viewport require a screen with declared browser-native prototype review conditions.');
   }
 
   const renderBundle = {
@@ -360,8 +296,8 @@ async function commandCapture(args: Args): Promise<void> {
   let captureServer: CaptureServer | undefined;
 
   try {
-    browser = await chromium.launch();
-    captureServer = await startCaptureServer();
+    browser = await withAbort(chromium.launch(), signal);
+    captureServer = await withAbort(startCaptureServer(), signal);
     const resolvedOut = path.resolve(out);
     await mkdir(path.dirname(resolvedOut), { recursive: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
@@ -372,9 +308,9 @@ async function commandCapture(args: Args): Promise<void> {
       });
     }, renderBundle);
 
-    await page.goto(`${captureServer.url}?board=screens`);
+    await withAbort(page.goto(`${captureServer.url}?board=screens`), signal);
     const frame = page.locator(`[data-boundary-id="${cssAttr(fullBoundaryId)}"]`).first();
-    await frame.waitFor({ state: 'visible', timeout: 10000 });
+    await withAbort(frame.waitFor({ state: 'visible', timeout: 10000 }), signal);
     const expectedSectionBoundaries = selectedScreen.sections
       .map(section => boundaryId(bundle.manifest.project.id, 'section', `${selectedScreen.id}/${section.id}`))
       .sort();
@@ -390,46 +326,49 @@ async function commandCapture(args: Args): Promise<void> {
     }
     // Frame tools hang from the unclipped frame slot (sibling of the frame), not the frame itself.
     const save = frame.locator('xpath=..').locator('.frame-save').first();
-    await save.waitFor({ state: 'visible', timeout: 5000 });
+    await withAbort(save.waitFor({ state: 'visible', timeout: 5000 }), signal);
 
     const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
     await save.click();
-    const download = await downloadPromise;
-    await download.saveAs(resolvedOut);
+    const download = await withAbort(downloadPromise, signal);
+    await withAbort(download.saveAs(resolvedOut), signal);
 
-    await writeOutput(
-      {
-        command: 'capture',
-        project: normalize(path.resolve(project)),
-        projectId: bundle.manifest.project.id,
-        boundary: fullBoundaryId,
-        out: normalize(resolvedOut),
-        mediaType: 'image/png',
-        source: {
-          board: 'screens',
-          captureTarget: 'screen-frame',
-          method: 'browser-rendered-frame-save',
-          preDownloadDomAssertion: 'passed',
-          visibleSectionBoundaries
-        }
-      },
-      undefined
-    );
+    return captureOutputSchema.parse({
+      command: 'capture',
+      project: normalize(path.resolve(project)),
+      projectId: bundle.manifest.project.id,
+      boundary: fullBoundaryId,
+      out: normalize(resolvedOut),
+      mediaType: 'image/png',
+      source: {
+        board: 'screens',
+        captureTarget: 'screen-frame',
+        method: 'browser-rendered-frame-save',
+        preDownloadDomAssertion: 'passed',
+        visibleSectionBoundaries
+      }
+    });
   } finally {
     await browser?.close();
     await captureServer?.close();
   }
 }
 
-async function commandServe(args: Args): Promise<void> {
-  const project = args.project ?? defaultProjectPath;
-  const port = servePort(args.port);
+export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): Promise<BlueprintServeHandle> {
+  throwIfAborted(signal);
+  const project = input.project;
+  const port = input.port;
   const projectRoot = path.resolve(project);
   assertBlueprintProjectPath(projectRoot);
 
   const server = await startServeServer(projectRoot, port);
-  process.stdout.write(`Blueprint serve ready: ${server.url}\n`);
-  await waitForShutdown(server);
+  const output = serveOutputSchema.parse({
+    command: 'serve',
+    project: normalize(projectRoot),
+    port: server.port,
+    url: server.url
+  });
+  return { ...output, close: server.close };
 }
 
 async function preflightChromium(): Promise<(typeof import('playwright'))['chromium']> {
@@ -536,17 +475,13 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
   await Promise.all(writes);
 }
 
-async function writeOutput(value: unknown, out?: string, options: { printOutSummary?: boolean } = {}): Promise<void> {
-  if (out) {
-    const resolved = path.resolve(out);
-    await mkdir(path.dirname(resolved), { recursive: true });
-    await writeJsonFile(resolved, value);
-    if (options.printOutSummary) {
-      process.stdout.write(`${JSON.stringify({ ok: true, out: normalize(resolved) }, null, 2)}\n`);
-    }
+async function writeOptionalJsonArtifact(value: unknown, out?: string): Promise<void> {
+  if (!out) {
     return;
   }
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+  const resolved = path.resolve(out);
+  await mkdir(path.dirname(resolved), { recursive: true });
+  await writeJsonFile(resolved, value);
 }
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
@@ -563,119 +498,6 @@ function assertBlueprintProjectPath(projectRoot: string): void {
       throw new Error(`Missing Blueprint project file: ${normalize(filePath)}.`);
     }
   }
-}
-
-function parseArgs(argv: string[]): Args {
-  const [maybeCommand, ...rest] = argv;
-  const args: Args = {
-    command: isCommand(maybeCommand) ? maybeCommand : undefined,
-    force: false,
-    help: maybeCommand === '--help' || maybeCommand === '-h'
-  };
-
-  if (maybeCommand && !args.command && !args.help) {
-    throw new Error(`Unknown command "${maybeCommand}".\n${helpText()}`);
-  }
-
-  for (let index = 0; index < rest.length; index += 1) {
-    const key = rest[index];
-    if (key === '--force') {
-      args.force = true;
-      continue;
-    }
-    if (key === '--help' || key === '-h') {
-      args.help = true;
-      continue;
-    }
-    if (!key?.startsWith('--')) {
-      throw new Error(`Unexpected argument "${key}".`);
-    }
-    const value = rest[index + 1];
-    if (!value) {
-      throw new Error(`Missing value for ${key}.`);
-    }
-    index += 1;
-
-    if (key === '--project') {
-      args.project = value;
-    } else if (key === '--project-id') {
-      args.projectId = value;
-    } else if (key === '--name') {
-      args.name = value;
-    } else if (key === '--out') {
-      args.out = value;
-    } else if (key === '--boundary') {
-      args.boundary = value;
-    } else if (key === '--screen') {
-      args.screen = value;
-    } else if (key === '--type') {
-      args.type = value as QueryType;
-    } else if (key === '--mode') {
-      args.mode = value;
-    } else if (key === '--port') {
-      args.port = value;
-    } else if (key === '--state') {
-      args.state = value;
-    } else if (key === '--viewport') {
-      args.viewport = value;
-    } else {
-      throw new Error(`Unknown argument ${key}.`);
-    }
-  }
-
-  return args;
-}
-
-function isCommand(value: string | undefined): value is Command {
-  return value === 'init' || value === 'validate' || value === 'index' || value === 'query' || value === 'extract' || value === 'capture' || value === 'serve';
-}
-
-function requireArg(value: string | undefined, name: string): string {
-  if (!value) {
-    throw new Error(`Missing ${name}.`);
-  }
-  return value;
-}
-
-function requireQueryType(value: string | undefined): QueryType {
-  if (value === 'show' || value === 'uses' || value === 'used-by' || value === 'sections' || value === 'prototype-only') {
-    return value;
-  }
-  throw new Error('--type must be one of show, uses, used-by, sections, prototype-only.');
-}
-
-function validationMode(value: string | undefined): CliValidationMode {
-  if (!value || value === 'baseline') {
-    return 'baseline';
-  }
-  if (value === 'strict') {
-    return 'strict';
-  }
-  if (value === 'readiness') {
-    return 'readiness';
-  }
-  throw new Error('--mode must be "baseline", "strict", or "readiness".');
-}
-
-function extractMode(value: string | undefined): ExtractMode {
-  if (!value || value === 'focused') {
-    return 'focused';
-  }
-  if (value === 'deep') {
-    return 'deep';
-  }
-  throw new Error('--mode must be "focused" or "deep".');
-}
-
-function servePort(value: string | undefined): number {
-  if (!value) {
-    return 4173;
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
-    throw new Error('--port must be an integer between 0 and 65535.');
-  }
-  return parsed;
 }
 
 function findPackageRoot(): string {
@@ -719,7 +541,7 @@ async function startCaptureServer(): Promise<CaptureServer> {
   return startStaticSiteServer(siteRoot);
 }
 
-async function startServeServer(projectRoot: string, port: number): Promise<ServeServer> {
+async function startServeServer(projectRoot: string, port: number): Promise<LocalServeServer> {
   const siteRoot = path.join(packageRoot, 'dist', 'site');
   const indexPath = path.join(siteRoot, 'index.html');
   if (!existsSync(indexPath)) {
@@ -930,7 +752,7 @@ function listen(server: HttpServer, port = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (error: NodeJS.ErrnoException): void => {
       if (error.code === 'EADDRINUSE') {
-        reject(new Error(`EADDRINUSE: port ${port} is already in use for blueprint serve.`));
+        reject(new Error(`EADDRINUSE: port ${port} is already in use for the Blueprint review server.`));
         return;
       }
       reject(error);
@@ -972,18 +794,6 @@ function admitLoopbackRequest(server: HttpServer, hostHeader: string | undefined
   return false;
 }
 
-function waitForShutdown(server: ServeServer): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const close = (): void => {
-      process.off('SIGINT', close);
-      process.off('SIGTERM', close);
-      server.close().then(resolve, reject);
-    };
-    process.once('SIGINT', close);
-    process.once('SIGTERM', close);
-  });
-}
-
 function contentType(filePath: string): string {
   if (filePath.endsWith('.html')) {
     return 'text/html; charset=utf-8';
@@ -1011,21 +821,31 @@ function cssAttr(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function helpText(): string {
-  return `blueprint <command>
-
-Commands:
-  init --project-id <id> --name <name> --out <design/blueprint> [--force]
-  validate --project <path> [--mode baseline|readiness|strict] [--out file]
-  index --project <path> [--out file]
-  query --project <path> --type <show|uses|used-by|sections|prototype-only> [--boundary kind:id] [--screen id] [--out file]
-  extract --project <path> --boundary kind:id [--mode focused|deep] [--out file]
-  capture --project <path> --boundary screen:id [--state id] [--viewport preset] --out file.png
-  serve [--project design/blueprint] [--port 4173]
-`;
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.');
+  }
 }
 
-main().catch(error => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+function withAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) {
+    return operation;
+  }
+  throwIfAborted(signal);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => {
+      reject(signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    operation.then(
+      value => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      error => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      }
+    );
+  });
+}

@@ -5,7 +5,7 @@ import {
   createBlueprintResponseHeaders,
   evaluateLoopbackHost,
   LOOPBACK_HOSTNAME
-} from '../src/cli/prototype-host-policy';
+} from '../src/prototype/host-policy';
 
 describe('prototype loopback host isolation', () => {
   it('admits only the exact advertised loopback Host and port', () => {

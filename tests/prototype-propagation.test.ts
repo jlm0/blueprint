@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { compilePrototypeDocument } from '../src/prototype/compiler';
-import { compilePrototypeReview, resolvePrototypeReviewSelection } from '../src/cli/prototype-review';
+import { compilePrototypeReview, resolvePrototypeReviewSelection } from '../src/prototype/review';
 import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, queryUsedBy, showBoundary } from '../src/core/query';
 import type { BoundaryReference, DeepHandoffPacket } from '../src/core/types';

@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 import {
   assertChromiumExecutableAvailable,
   CHROMIUM_INSTALL_COMMAND
-} from '../src/cli/browser-preflight';
+} from '../src/prototype/browser-preflight';
 import {
   compilePrototypeReview,
   parsePrototypeReviewRequest,
   resolvePrototypeReviewSelection
-} from '../src/cli/prototype-review';
+} from '../src/prototype/review';
 import { loadProjectFromFs } from '../src/core/load';
+import { captureInputSchema } from '../src/mcp/schemas';
 
 const fixtureRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 
-describe('source-focused prototype CLI contract', () => {
+describe('source-focused prototype MCP contract', () => {
   it('resolves only declared state and viewport combinations at exact CSS-pixel dimensions', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const desktop = resolvePrototypeReviewSelection(bundle, {
@@ -99,17 +99,18 @@ describe('source-focused prototype CLI contract', () => {
     );
   });
 
-  it('publishes state and viewport capture options plus the source-focused capture path', async () => {
-    const help = spawnSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', '--help'], {
-      cwd: process.cwd(),
-      encoding: 'utf8'
-    });
-    assert.equal(help.status, 0, help.stderr);
-    assert.match(help.stdout, /capture[^\n]*--state[^\n]*--viewport/);
+  it('publishes typed state and viewport capture inputs plus the source-focused capture path', async () => {
+    assert.equal(captureInputSchema.safeParse({
+      project: fixtureRoot,
+      boundary: 'screen:waitlist',
+      state: 'initial',
+      viewport: 'phone-review',
+      out: '.blueprint-artifacts/waitlist.png'
+    }).success, true);
 
-    const cliSource = await readFile('src/cli.ts', 'utf8');
-    assert.match(cliSource, /\/__blueprint\/prototype/);
-    assert.match(cliSource, /page\.setContent\(compiled\.html/);
-    assert.match(cliSource, /editorChrome:\s*false/);
+    const operationsSource = await readFile('src/mcp/operations.ts', 'utf8');
+    assert.match(operationsSource, /\/__blueprint\/prototype/);
+    assert.match(operationsSource, /page\.setContent\(compiled\.html/);
+    assert.match(operationsSource, /editorChrome:\s*false/);
   });
 });

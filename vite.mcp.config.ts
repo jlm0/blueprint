@@ -1,20 +1,21 @@
 import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 
-const nodeBuiltins = [...builtinModules, ...builtinModules.map(moduleName => `node:${moduleName}`)];
+const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map(moduleName => `node:${moduleName}`)]);
+const runtimePackages = new Set(['@modelcontextprotocol/server', '@modelcontextprotocol/server/stdio', 'zod/v4']);
 
 export default defineConfig({
   build: {
-    target: 'node22',
-    outDir: 'dist/cli',
+    target: 'node20',
+    outDir: 'dist/mcp',
     emptyOutDir: true,
     sourcemap: false,
     minify: false,
     rollupOptions: {
       preserveEntrySignatures: 'exports-only',
-      external: nodeBuiltins,
+      external: id => nodeBuiltins.has(id) || runtimePackages.has(id),
       input: {
-        cli: 'src/cli.ts',
+        server: 'src/mcp/server.ts',
         index: 'src/index.ts'
       },
       output: {

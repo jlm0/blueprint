@@ -2510,7 +2510,7 @@ function createPrototypeFrame(
 
   if (screen.prototype) {
     // Canonical screens render inside device/browser chrome that lives OUTSIDE the
-    // captured screen host, keeping CLI/canvas captures at exact preset content pixels.
+    // captured screen host, keeping MCP/canvas captures at exact preset content pixels.
     const canonicalScreen = createCanonicalPrototypeScreen(bundle, screen, preset, prototypeSelection, selectionError);
     const screenEl = canonicalScreen.element;
     wireFrameCapture({
@@ -3190,7 +3190,7 @@ function refreshCanvasReviewState(boardId: BoardId): void {
     manifest: createReviewManifest(project, records, {
       board: boardId,
       screenId,
-      packetCommandBase: 'blueprint extract'
+      packetToolName: 'extract'
     }),
     styleEvidence: createCanvasStyleEvidence(project, records)
   };
@@ -3221,7 +3221,14 @@ function setBoundary(element: HTMLElement, kind: BoundaryKind, localId: string, 
   element.dataset.boundaryKind = kind;
   element.dataset.boundaryLocalId = localId;
   element.dataset.boundaryLabel = label;
-  element.dataset.handoffCommand = `blueprint extract --project ${project.sourceRoot} --boundary ${kind}:${localId} --mode deep`;
+  element.dataset.handoffTool = JSON.stringify({
+    name: 'extract',
+    arguments: {
+      project: project.sourceRoot,
+      boundary: `${kind}:${localId}`,
+      mode: 'deep'
+    }
+  });
 }
 
 async function copyText(text: string): Promise<void> {

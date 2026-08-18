@@ -4,7 +4,7 @@ import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, showBoundary } from '../src/core/query';
 import { createCanvasStyleEvidence, createReviewManifest } from '../src/core/review';
 import { createReadinessReport, validateProject } from '../src/core/validate';
-import { compilePrototypeReview, resolvePrototypeReviewSelection } from '../src/cli/prototype-review';
+import { compilePrototypeReview, resolvePrototypeReviewSelection } from '../src/prototype/review';
 import type {
   BlueprintProjectBundle,
   BoundaryPacket,
@@ -65,7 +65,7 @@ describe('Blueprint production handoff contract', () => {
         framePresetId: selection.framePresetId,
         conditionId: selection.conditionId
       },
-      packetCommandBase: 'blueprint extract'
+      packetToolName: 'extract'
     });
     const styleEvidence = createCanvasStyleEvidence(bundle, [record], {
       generatedAt: '2026-07-15T06:41:07.000Z'
