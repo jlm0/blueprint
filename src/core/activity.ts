@@ -1,4 +1,4 @@
-import type { BoundaryKind } from './types';
+import type { BlueprintProjectBundle, BoundaryKind } from './types';
 
 export type BlueprintAgentActivityPhase = 'started' | 'completed' | 'failed';
 
@@ -26,10 +26,17 @@ export interface BlueprintProjectChangedEvent {
   version: 1;
   revision: string;
   changedAt: string;
+  changedPaths: string[];
 }
 
 export interface BlueprintProjectErrorEvent {
   version: 1;
   message: string;
   changedAt: string;
+}
+
+export interface BlueprintProjectSnapshot {
+  version: 1;
+  revision: string;
+  bundle: BlueprintProjectBundle;
 }

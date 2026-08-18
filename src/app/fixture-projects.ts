@@ -151,7 +151,7 @@ declare global {
   interface Window {
     __BLUEPRINT_PROJECT_BUNDLE__?: BlueprintProjectBundle;
     __BLUEPRINT_REVIEW__?: CanvasReviewRuntimeState;
-    __BLUEPRINT_LIVE_RUNTIME__?: { eventsPath: string };
+    __BLUEPRINT_LIVE_RUNTIME__?: { eventsPath: string; snapshotPath: string };
     __BLUEPRINT_AGENT_ACTIVITY__?: BlueprintAgentActivityEvent;
   }
 }

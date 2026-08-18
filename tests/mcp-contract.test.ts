@@ -40,7 +40,7 @@ describe('Blueprint MCP typed contract', () => {
     });
     assert.equal(validateInputSchema.parse({ project: 'design/blueprint' }).mode, 'baseline');
     assert.equal(extractInputSchema.parse({ project: 'design/blueprint', boundary: 'screen:home' }).mode, 'focused');
-    assert.deepEqual(serveInputSchema.parse({}), { project: 'design/blueprint', port: 4173 });
+    assert.deepEqual(serveInputSchema.parse({}), { project: 'design/blueprint' });
     assert.equal(validateInputSchema.safeParse({ project: 'design/blueprint', surprise: true }).success, false);
   });
 

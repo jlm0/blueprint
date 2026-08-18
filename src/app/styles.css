@@ -16,6 +16,7 @@
   --bp-chrome-agent-glow: rgba(76, 154, 255, 0.34);
   --bp-chrome-destructive: #e66b6b;
   --bp-chrome-success: #73b98f;
+  --bp-chrome-warning: #d7a760;
   --bp-chrome-shadow: rgba(0, 0, 0, 0.28);
   --bp-chrome-shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.34);
   font-synthesis: none;
@@ -329,19 +330,52 @@ body {
   display: none;
 }
 
-.bp-chrome-agent-status-dot {
-  width: 8px;
-  height: 8px;
+.bp-chrome-agent-status-mark {
+  display: grid;
+  width: 18px;
+  height: 18px;
   flex: none;
-  border-radius: 50%;
-  background: var(--bp-chrome-agent);
-  box-shadow: 0 0 0 0 var(--bp-chrome-agent-glow);
-  animation: bp-agent-pulse 1.25s ease-out infinite;
+  grid-template-columns: repeat(3, 4px);
+  grid-template-rows: repeat(3, 4px);
+  gap: 3px;
 }
 
-.bp-chrome-agent-status[data-phase='completed'] .bp-chrome-agent-status-dot {
+.bp-chrome-agent-status-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: hsl(var(--bp-agent-dot-hue) 92% 68%);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--bp-chrome-agent) 52%, transparent);
+  animation: bp-agent-grid-wave 1.18s ease-in-out infinite;
+  animation-delay: calc(var(--bp-agent-dot-index) * -90ms);
+}
+
+.bp-chrome-agent-status[data-phase='thinking'] .bp-chrome-agent-status-dot {
+  animation-direction: reverse;
+  animation-duration: 1.42s;
+}
+
+.bp-chrome-agent-status[data-phase='applying'] .bp-chrome-agent-status-dot {
+  animation-name: bp-agent-grid-apply;
+  animation-duration: 900ms;
+}
+
+.bp-chrome-agent-status[data-phase='complete'] .bp-chrome-agent-status-dot {
   background: var(--bp-chrome-success);
-  animation: none;
+  box-shadow: 0 0 7px color-mix(in srgb, var(--bp-chrome-success) 48%, transparent);
+  animation: bp-agent-grid-resolve 520ms ease-out both;
+  animation-delay: calc(var(--bp-agent-dot-index) * 22ms);
+}
+
+.bp-chrome-agent-status[data-phase='waiting'] {
+  border-color: color-mix(in srgb, var(--bp-chrome-warning) 58%, transparent);
+}
+
+.bp-chrome-agent-status[data-phase='waiting'] .bp-chrome-agent-status-dot {
+  background: var(--bp-chrome-warning);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--bp-chrome-warning) 42%, transparent);
+  animation: bp-agent-grid-wait 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--bp-agent-dot-index) * -70ms);
 }
 
 .bp-chrome-agent-status[data-phase='failed'] {
@@ -350,6 +384,7 @@ body {
 
 .bp-chrome-agent-status[data-phase='failed'] .bp-chrome-agent-status-dot {
   background: var(--bp-chrome-destructive);
+  box-shadow: none;
   animation: none;
 }
 
@@ -360,14 +395,53 @@ body {
   white-space: nowrap;
 }
 
-@keyframes bp-agent-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(76, 154, 255, 0.34);
+@keyframes bp-agent-grid-wave {
+  0%,
+  68%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.68);
   }
 
-  70%,
+  34% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes bp-agent-grid-apply {
+  0%,
   100% {
-    box-shadow: 0 0 0 8px rgba(76, 154, 255, 0);
+    opacity: 0.3;
+    transform: scale(0.7) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.22) rotate(90deg);
+  }
+}
+
+@keyframes bp-agent-grid-resolve {
+  from {
+    opacity: 0.35;
+    transform: scale(0.55);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bp-agent-grid-wait {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.9;
   }
 }
 
@@ -424,6 +498,31 @@ body {
   animation: none;
 }
 
+.bp-chrome-agent-focus-context {
+  z-index: 8;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--bp-chrome-agent) 24%, transparent));
+}
+
+.bp-chrome-live-frame-updating {
+  opacity: 0.72;
+  transition: opacity 140ms ease-out;
+}
+
+.bp-chrome-live-frame-enter,
+.bp-chrome-live-board-enter {
+  animation: bp-chrome-live-enter 180ms ease-out both;
+}
+
+@keyframes bp-chrome-live-enter {
+  from {
+    opacity: 0.72;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes bp-agent-focus-breathe {
   0%,
   100% {
@@ -437,7 +536,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .bp-chrome-agent-status-dot,
-  .bp-chrome-agent-focus {
+  .bp-chrome-agent-focus,
+  .bp-chrome-live-frame-enter,
+  .bp-chrome-live-board-enter {
     animation: none;
   }
 }

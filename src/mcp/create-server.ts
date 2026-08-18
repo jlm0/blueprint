@@ -1,6 +1,7 @@
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
 import {
   captureBlueprint,
+  blueprintServeRuntimeKey,
   exploreBlueprint,
   extractBlueprint,
   indexBlueprint,
@@ -55,10 +56,11 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for an app-owned design sidecar; the Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
+        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
-  const activeServeHandles = new Set<BlueprintServeHandle>();
+  const activeServeHandles = new Map<string, BlueprintServeHandle>();
+  const activeServeStarts = new Map<string, Promise<BlueprintServeHandle>>();
 
   server.registerTool(
     'init',
@@ -141,19 +143,38 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Serve Blueprint Review',
       description:
-        'Start the existing loopback-only Blueprint review server for one project and return its URL. The listener remains alive for this MCP connection and closes when the connection closes.',
+        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. Omitted ports allocate from 4173; separate projects receive separate listeners. Runtimes remain alive for this MCP connection and close with it.',
       inputSchema: serveInputSchema,
       outputSchema: serveOutputSchema
     },
     async (input, context) =>
       executeTool(async () => {
-        const handle = await serveBlueprint(input, context.mcpReq.signal);
-        activeServeHandles.add(handle);
+        const runtimeKey = await blueprintServeRuntimeKey(input.project);
+        let handle: BlueprintServeHandle;
+        const existing = activeServeHandles.get(runtimeKey);
+        if (existing) {
+          handle = await serveBlueprint(input, context.mcpReq.signal, existing);
+        } else {
+          const pending = activeServeStarts.get(runtimeKey);
+          if (pending) {
+            handle = await serveBlueprint(input, context.mcpReq.signal, await pending);
+          } else {
+            const start = serveBlueprint(input, context.mcpReq.signal);
+            activeServeStarts.set(runtimeKey, start);
+            try {
+              handle = await start;
+              activeServeHandles.set(runtimeKey, handle);
+            } finally {
+              activeServeStarts.delete(runtimeKey);
+            }
+          }
+        }
         return toolResult({
           command: handle.command,
           project: handle.project,
           port: handle.port,
           url: handle.url,
+          runtime: handle.runtime,
           ...(handle.selection ? { selection: handle.selection } : {})
         });
       })
@@ -215,9 +236,14 @@ export function createBlueprintMcpServer(): McpServer {
 
   const closeProtocolServer = server.close.bind(server);
   server.close = async (): Promise<void> => {
-    const handles = [...activeServeHandles];
+    const pending = await Promise.allSettled(activeServeStarts.values());
+    const handles = new Set([
+      ...activeServeHandles.values(),
+      ...pending.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
+    ]);
     activeServeHandles.clear();
-    const closures = await Promise.allSettled(handles.map(handle => handle.close()));
+    activeServeStarts.clear();
+    const closures = await Promise.allSettled([...handles].map(handle => handle.close()));
     await closeProtocolServer();
     const rejected = closures.find((result): result is PromiseRejectedResult => result.status === 'rejected');
     if (rejected) {

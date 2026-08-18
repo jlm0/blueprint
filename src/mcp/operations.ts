@@ -60,6 +60,7 @@ import {
   BLUEPRINT_ACTIVITY_POST_PATH,
   BLUEPRINT_ACTIVITY_STREAM_PATH,
   BLUEPRINT_ACTIVITY_TOKEN_HEADER,
+  BLUEPRINT_PROJECT_SNAPSHOT_PATH,
   BlueprintActivityHub,
   createBlueprintAgentActivityEvent,
   parseBlueprintHookBridgeEvent,
@@ -124,6 +125,7 @@ interface ProjectFileTransaction {
 
 export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
   port: number;
+  baseUrl: string;
 }
 
 const packageRoot = findPackageRoot();
@@ -575,12 +577,25 @@ export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal
   return output;
 }
 
-export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): Promise<BlueprintServeHandle> {
-  throwIfAborted(signal);
-  const project = input.project;
-  const port = input.port;
+export async function blueprintServeRuntimeKey(project: string): Promise<string> {
   const projectRoot = path.resolve(project);
   assertBlueprintProjectPath(projectRoot);
+  return normalize(await realpath(projectRoot));
+}
+
+export async function serveBlueprint(
+  input: ServeInput,
+  signal?: AbortSignal,
+  existing?: BlueprintServeHandle
+): Promise<BlueprintServeHandle> {
+  throwIfAborted(signal);
+  const project = input.project;
+  const projectRoot = path.resolve(project);
+  assertBlueprintProjectPath(projectRoot);
+  const projectKey = await blueprintServeRuntimeKey(projectRoot);
+  if (existing && await blueprintServeRuntimeKey(existing.project) !== projectKey) {
+    throw new Error('Cannot reuse a Blueprint review runtime for a different project.');
+  }
 
   let selection: ServeOutput['selection'];
   if (input.explorationId) {
@@ -597,8 +612,9 @@ export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): P
     };
   }
 
-  const server = await startServeServer(projectRoot, port);
-  const selectedUrl = new URL(server.url);
+  const server = existing ?? await startServeServer(projectRoot, input.port);
+  const baseUrl = existing?.baseUrl ?? server.url;
+  const selectedUrl = new URL(baseUrl);
   if (selection) {
     selectedUrl.searchParams.set('board', 'screens');
     selectedUrl.searchParams.set('exploration', selection.explorationId);
@@ -608,12 +624,13 @@ export async function serveBlueprint(input: ServeInput, signal?: AbortSignal): P
       command: 'serve',
       project: normalize(projectRoot),
       port: server.port,
-      url: selection ? selectedUrl.toString() : server.url,
+      url: selection ? selectedUrl.toString() : baseUrl,
+      runtime: existing ? 'reused' : 'started',
       ...(selection ? { selection } : {})
     });
-    return { ...output, close: server.close };
+    return { ...output, baseUrl, close: server.close };
   } catch (error) {
-    await server.close();
+    if (!existing) await server.close();
     throw error;
   }
 }
@@ -1002,7 +1019,7 @@ async function startCaptureServer(): Promise<CaptureServer> {
   return startStaticSiteServer(siteRoot);
 }
 
-async function startServeServer(projectRoot: string, port: number): Promise<LocalServeServer> {
+async function startServeServer(projectRoot: string, requestedPort?: number): Promise<LocalServeServer> {
   const siteRoot = path.join(packageRoot, 'dist', 'site');
   const indexPath = path.join(siteRoot, 'index.html');
   if (!existsSync(indexPath)) {
@@ -1017,6 +1034,7 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
   let lastLoadError: string | undefined;
   let publishedFingerprint: string | undefined;
   let publishedError: string | undefined;
+  let publishedRevision = randomUUID();
   let runtime: RegisteredBlueprintActivityRuntime | undefined;
   const activityHub = new BlueprintActivityHub();
 
@@ -1105,6 +1123,30 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
       return;
     }
 
+    if (pathname === BLUEPRINT_PROJECT_SNAPSHOT_PATH) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'GET, HEAD' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+      const snapshot = await readBundleSnapshot();
+      if (!snapshot.bundle) {
+        response.writeHead(503, createBlueprintResponseHeaders({ contentType: 'application/problem+json; charset=utf-8' }));
+        response.end(JSON.stringify({ message: snapshot.error ?? 'Blueprint project is unavailable.' }));
+        return;
+      }
+      response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
+      response.end(request.method === 'HEAD' ? undefined : JSON.stringify({
+        version: 1,
+        revision: publishedRevision,
+        bundle: snapshot.bundle
+      }));
+      return;
+    }
+
     if (pathname === '/__blueprint/prototype') {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         response.writeHead(405, createBlueprintResponseHeaders({
@@ -1178,7 +1220,7 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
     }
   });
 
-  await listen(server, port);
+  await listenForBlueprintServe(server, requestedPort);
   const address = server.address() as AddressInfo;
   try {
     const initial = await readBundleSnapshot();
@@ -1196,7 +1238,9 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
   }
 
   let reloadTimer: NodeJS.Timeout | undefined;
-  const stopWatching = watchBlueprintProject(projectRoot, () => {
+  const changedPaths = new Set<string>();
+  const stopWatching = watchBlueprintProject(projectRoot, changedPath => {
+    changedPaths.add(changedPath);
     if (reloadTimer) clearTimeout(reloadTimer);
     reloadTimer = setTimeout(() => {
       reloadTimer = undefined;
@@ -1215,15 +1259,19 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
         }
         const nextFingerprint = JSON.stringify(snapshot.bundle);
         if (nextFingerprint === publishedFingerprint && publishedError === undefined) {
+          changedPaths.clear();
           return;
         }
         publishedFingerprint = nextFingerprint;
         publishedError = undefined;
+        publishedRevision = randomUUID();
         activityHub.publish('project-changed', {
           version: 1,
-          revision: randomUUID(),
-          changedAt: new Date().toISOString()
+          revision: publishedRevision,
+          changedAt: new Date().toISOString(),
+          changedPaths: [...changedPaths].sort()
         });
+        changedPaths.clear();
       });
     }, 120);
     reloadTimer.unref();
@@ -1245,7 +1293,10 @@ function injectProjectBundle(indexHtml: string, bundle: Awaited<ReturnType<typeo
   const injection = [
     '<script>',
     `window.__BLUEPRINT_PROJECT_BUNDLE__=${serializeForInlineScript(bundle)};`,
-    `window.__BLUEPRINT_LIVE_RUNTIME__=${serializeForInlineScript({ eventsPath: BLUEPRINT_ACTIVITY_STREAM_PATH })};`,
+    `window.__BLUEPRINT_LIVE_RUNTIME__=${serializeForInlineScript({
+      eventsPath: BLUEPRINT_ACTIVITY_STREAM_PATH,
+      snapshotPath: BLUEPRINT_PROJECT_SNAPSHOT_PATH
+    })};`,
     loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript({ message: loadError })};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
     '</script>'
   ].join('');
@@ -1263,7 +1314,7 @@ function createServeErrorHtml(message: string): string {
   return `<!doctype html><html><head><meta charset="UTF-8"><title>Blueprint serve error</title></head><body><main id="blueprint-serve-error"><h1>Blueprint project error</h1><pre>${escapeHtml(message)}</pre></main></body></html>`;
 }
 
-function watchBlueprintProject(projectRoot: string, onChange: () => void): () => void {
+function watchBlueprintProject(projectRoot: string, onChange: (changedPath: string) => void): () => void {
   const watcher = watch(projectRoot, { recursive: true }, (_eventType, fileName) => {
     const normalized = String(fileName ?? '').replaceAll('\\', '/');
     if (
@@ -1272,7 +1323,7 @@ function watchBlueprintProject(projectRoot: string, onChange: () => void): () =>
     ) {
       return;
     }
-    onChange();
+    onChange(normalized);
   });
   return () => watcher.close();
 }
@@ -1366,6 +1417,22 @@ function listen(server: HttpServer, port = 0): Promise<void> {
       resolve();
     });
   });
+}
+
+async function listenForBlueprintServe(server: HttpServer, requestedPort?: number): Promise<void> {
+  if (requestedPort !== undefined) {
+    await listen(server, requestedPort);
+    return;
+  }
+  for (let candidate = 4173; candidate <= 4273; candidate += 1) {
+    try {
+      await listen(server, candidate);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('EADDRINUSE')) throw error;
+    }
+  }
+  throw new Error('Blueprint could not find an available review port between 4173 and 4273.');
 }
 
 function closeHttpServer(server: HttpServer): Promise<void> {

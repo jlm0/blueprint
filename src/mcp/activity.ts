@@ -14,6 +14,7 @@ import type { BlueprintProjectBundle, BoundaryKind } from '../core/types';
 
 export const BLUEPRINT_ACTIVITY_STREAM_PATH = '/__blueprint/events';
 export const BLUEPRINT_ACTIVITY_POST_PATH = '/__blueprint/agent-activity';
+export const BLUEPRINT_PROJECT_SNAPSHOT_PATH = '/__blueprint/project';
 export const BLUEPRINT_ACTIVITY_TOKEN_HEADER = 'x-blueprint-activity-token';
 export const BLUEPRINT_ACTIVITY_RUNTIME_VERSION = 1;
 
@@ -329,7 +330,7 @@ function activityLabel(
     return `Codex could not finish ${target}`;
   }
   if (phase === 'completed') {
-    return `Codex finished ${target}`;
+    return `Codex is reviewing ${target}`;
   }
   return `Codex is looking at ${target}`;
 }

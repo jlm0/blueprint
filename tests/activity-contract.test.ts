@@ -42,6 +42,9 @@ describe('Codex activity contract', () => {
 
     assert.equal(resolveActivityFocus(bundle, { command: 'apply screens.json' }).localId, 'screens');
     assert.equal(resolveActivityFocus(bundle, { command: 'npm test' }).kind, 'project');
+    assert.equal(resolveActivityFocus(bundle, {
+      source: `await tools.apply_patch('*** Update File: ${screen.prototype.source}')`
+    }).localId, screen.id);
   });
 
   it('creates stable started/completed events and rejects malformed bridge payloads', async () => {
@@ -88,6 +91,20 @@ describe('Codex activity contract', () => {
         toolInput: { project: 'design/blueprint', query: { type: 'show', boundary: 'screen:home' } }
       }).map(candidate => candidate.activityUrl),
       ['http://127.0.0.1:4100/__blueprint/agent-activity']
+    );
+  });
+
+  it('keeps Desktop wrapper activity inside the repository that owns the sidecar', () => {
+    const descriptors: BlueprintActivityRuntimeDescriptor[] = [
+      descriptor('/workspace/repo-a/design/blueprint', 4174),
+      descriptor('/workspace/repo-b/design/blueprint', 4175)
+    ];
+    assert.deepEqual(
+      selectBlueprintActivityRuntimes(descriptors, {
+        cwd: '/workspace/repo-a',
+        toolInput: 'await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.css")'
+      }).map(candidate => candidate.projectRoot),
+      ['/workspace/repo-a/design/blueprint']
     );
   });
 

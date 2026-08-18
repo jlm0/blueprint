@@ -64,7 +64,8 @@ export type {
   BlueprintAgentActivityFocus,
   BlueprintAgentActivityPhase,
   BlueprintProjectChangedEvent,
-  BlueprintProjectErrorEvent
+  BlueprintProjectErrorEvent,
+  BlueprintProjectSnapshot
 } from './core/activity';
 
 export { boundaryId, parseBoundarySelector } from './core/address';

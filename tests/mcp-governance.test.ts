@@ -16,6 +16,7 @@ const codexHookPath = path.join(projectRoot, 'dist/mcp/codex-activity-hook.js');
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
 const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'explore', 'promote', 'restore'];
 
 interface McpSession {
@@ -491,7 +492,7 @@ describe('Blueprint MCP and template governance', () => {
   it('streams Codex focus, applies file changes live, retains last-good content, and closes listeners with the MCP session', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(novaRoot, projectCopy, { recursive: true });
+      await cp(stillRoot, projectCopy, { recursive: true });
       const manifestPath = path.join(projectCopy, 'manifest.json');
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
       manifest.project.name = 'Serve Copy';
@@ -504,10 +505,16 @@ describe('Blueprint MCP and template governance', () => {
         const served = await call(session, 'serve', { port: 0 });
         url = served.url as string;
         assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/$/);
-        const response = await fetch(url);
+          const response = await fetch(url);
         assert.equal(response.status, 200);
         assert.equal(response.headers.get('cache-control'), 'no-store');
-        assert.match(await response.text(), /window\.__BLUEPRINT_PROJECT_BUNDLE__/);
+          assert.match(await response.text(), /window\.__BLUEPRINT_PROJECT_BUNDLE__/);
+          const liveSnapshot = await (await fetch(new URL('/__blueprint/project', url))).json() as {
+            version?: number;
+            bundle?: { manifest?: { project?: { name?: string } } };
+          };
+          assert.equal(liveSnapshot.version, 1);
+          assert.equal(liveSnapshot.bundle?.manifest?.project?.name, 'Serve Copy');
 
         const { chromium } = await import('playwright');
         const browser = await chromium.launch();
@@ -515,6 +522,9 @@ describe('Blueprint MCP and template governance', () => {
           const page = await browser.newPage();
           await page.goto(url);
           assert.equal(await servedProjectName(page), 'Serve Copy');
+          await page.evaluate(() => {
+            (window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }).__BLUEPRINT_STABLE_DOCUMENT__ = 'same-document';
+          });
           const rejectedActivity = await fetch(new URL('/__blueprint/agent-activity', url), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -534,17 +544,64 @@ describe('Blueprint MCP and template governance', () => {
               query: { type: 'show', boundary: 'screen:home' }
             }
           });
-          await page.locator('[data-boundary-id="nova-care/screen/home"].bp-chrome-agent-focus').first().waitFor();
+          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-agent-focus').first().waitFor();
           assert.equal(await page.locator('.board-screens').getAttribute('hidden'), null);
-          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at Care Home/);
+          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at Today/);
+
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-focus',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-live-button-focus',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`
+          });
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .some(frame => frame.srcdoc.includes('data-blueprint-agent-focus') &&
+              frame.srcdoc.includes('[data-blueprint-boundary-id="still-meditation/primitive/button"]')));
+          assert.equal(await page.locator('.board-screens').getAttribute('hidden'), null);
+          assert.equal(await page.locator('.bp-chrome-agent-status-mark .bp-chrome-agent-status-dot').count(), 9);
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-focus',
+            cwd: tempDir,
+            hook_event_name: 'PostToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-live-button-focus',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`,
+            tool_response: { isError: false }
+          });
+          await page.locator('.bp-chrome-agent-status[data-phase="thinking"]').waitFor();
+          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is reviewing Button/);
+
+          await page.locator('#viewport').dispatchEvent('wheel', {
+            deltaY: -320,
+            clientX: 620,
+            clientY: 420
+          });
+          await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
+          const preservedTransform = await page.locator('#world').getAttribute('style');
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/home.css');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.still-home { --blueprint-live-test: 1; }\n`, 'utf8');
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .some(frame => frame.srcdoc.includes('--blueprint-live-test: 1')));
+          assert.equal(await page.locator('#world').getAttribute('style'), preservedTransform);
+          assert.equal(await page.evaluate(() => (
+            window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }
+          ).__BLUEPRINT_STABLE_DOCUMENT__), 'same-document');
 
           manifest.project.name = 'Serve Refreshed </script> Name';
           await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
           const refreshedHtml = await (await fetch(url)).text();
           assert.equal(refreshedHtml.includes('Serve Refreshed </script>'), false);
           await assertEventuallyServedProjectName(page, manifest.project.name);
+          assert.equal(await page.evaluate(() => (
+            window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }
+          ).__BLUEPRINT_STABLE_DOCUMENT__), 'same-document');
+          assert.equal(await page.locator('#world').getAttribute('style'), preservedTransform);
           await writeFile(manifestPath, '{ "project": ', 'utf8');
-          await page.locator('.bp-chrome-agent-status[data-phase="failed"]').waitFor();
+          await page.locator('.bp-chrome-agent-status[data-phase="waiting"]').waitFor();
           assert.equal(await servedProjectName(page), manifest.project.name);
           await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
           await assertEventuallyServedProjectName(page, manifest.project.name);
@@ -555,6 +612,39 @@ describe('Blueprint MCP and template governance', () => {
         await session.close();
       }
       await assertEventuallyUnreachable(url);
+    });
+  });
+
+  it('reuses one stable runtime per project while isolating other project ports', async () => {
+    await withTempDir(async tempDir => {
+      const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');
+      const repoB = path.join(tempDir, 'repo-b', 'design', 'blueprint');
+      await cp(novaRoot, repoA, { recursive: true });
+      await cp(explorationRoot, repoB, { recursive: true });
+      const session = await openSession(tempDir);
+      try {
+        const concurrentA = await Promise.all([
+          call(session, 'serve', { project: repoA }),
+          call(session, 'serve', { project: repoA })
+        ]);
+        const firstA = concurrentA.find(result => result.runtime === 'started');
+        const joinedA = concurrentA.find(result => result.runtime === 'reused');
+        assert.ok(firstA);
+        assert.ok(joinedA);
+        assert.equal(joinedA.port, firstA.port);
+        assert.equal(joinedA.url, firstA.url);
+        const repeatedA = await call(session, 'serve', { project: repoA, port: 65530 });
+        assert.equal(repeatedA.runtime, 'reused');
+        assert.equal(repeatedA.port, firstA.port);
+        assert.equal(repeatedA.url, firstA.url);
+
+        const firstB = await call(session, 'serve', { project: repoB });
+        assert.equal(firstB.runtime, 'started');
+        assert.notEqual(firstB.port, firstA.port);
+        assert.notEqual(firstB.url, firstA.url);
+      } finally {
+        await session.close();
+      }
     });
   });
 
@@ -610,6 +700,7 @@ describe('Blueprint MCP and template governance', () => {
       const registration = hooks.hooks?.[eventName]?.[0];
       assert.match(registration?.matcher ?? '', /mcp__blueprint__/);
       assert.match(registration?.matcher ?? '', /apply_patch/);
+      assert.match(registration?.matcher ?? '', /functions\\\.exec/);
       assert.equal(registration?.hooks?.[0]?.async, undefined);
       assert.match(registration?.hooks?.[0]?.command ?? '', /codex-activity-hook/);
     }
@@ -725,7 +816,7 @@ async function assertEventuallyServedProjectName(
     try {
       if (await servedProjectName(page) === expected) return;
     } catch {
-      // The execution context is expected to disappear during automatic reload.
+      // The page may still be applying the fetched snapshot; keep polling the stable document.
     }
     await new Promise(resolve => setTimeout(resolve, 50));
   }

@@ -3,7 +3,9 @@ import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
 import type {
   BlueprintAgentActivityEvent,
-  BlueprintProjectErrorEvent
+  BlueprintProjectChangedEvent,
+  BlueprintProjectErrorEvent,
+  BlueprintProjectSnapshot
 } from '../core/activity';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
@@ -30,6 +32,7 @@ import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
 import { loadConfiguredProject } from './fixture-projects';
+import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
   selectPrototypeReviewCondition,
@@ -68,7 +71,7 @@ if (!app) {
   throw new Error('Blueprint app root is missing.');
 }
 
-const project = loadConfiguredProject();
+let project = loadConfiguredProject();
 const shell = el('div');
 shell.id = 'app-shell';
 shell.className = 'bp-chrome-shell';
@@ -107,6 +110,7 @@ const canvas = createCanvasController({
   fallbackWidth: 320,
   fallbackHeight: 260
 });
+const prototypeDocumentByFrame = new WeakMap<HTMLIFrameElement, string>();
 
 // Quiet chrome verb: jump back out to a fitted view of the active board.
 const fitButton = el('button', 'bp-chrome-fit') as HTMLButtonElement;
@@ -125,9 +129,16 @@ const agentStatus = el('div', 'bp-chrome-agent-status');
 agentStatus.hidden = true;
 agentStatus.setAttribute('role', 'status');
 agentStatus.setAttribute('aria-live', 'polite');
-const agentStatusDot = el('span', 'bp-chrome-agent-status-dot');
+const agentStatusMark = el('span', 'bp-chrome-agent-status-mark');
+agentStatusMark.setAttribute('aria-hidden', 'true');
+for (let index = 0; index < 9; index += 1) {
+  const dot = el('span', 'bp-chrome-agent-status-dot');
+  dot.style.setProperty('--bp-agent-dot-index', String(index));
+  dot.style.setProperty('--bp-agent-dot-hue', String(206 + (index * 7)));
+  agentStatusMark.append(dot);
+}
 const agentStatusLabel = el('span', 'bp-chrome-agent-status-label');
-agentStatus.append(agentStatusDot, agentStatusLabel);
+agentStatus.append(agentStatusMark, agentStatusLabel);
 shell.append(agentStatus);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
@@ -146,25 +157,45 @@ const boardConfigs: Record<BoardId, BoardConfig> = {
 const boardState = new Map<BoardId, MountedBoard>();
 let activeBoardId: BoardId | null = null;
 
-for (const board of project.manifest.boards.filter(isVisibleBoard)) {
-  const button = el('button', '', board.name) as HTMLButtonElement;
-  button.type = 'button';
-  button.dataset.board = board.id;
-  button.addEventListener('click', () => showBoard(board.id));
-  switcher.append(button);
-}
-
 // Screens board flow subpages: one pill per declared flow; each subpage is a
 // fresh canvas showing only that flow's frames. The first flow is the default
 // canvas — grouping is intentional, there is no catch-all page.
-const screenFlows = [
-  ...new Set(
-    project.screens.screens
+let screenFlows = projectScreenFlows(project);
+let activeScreenFlow: string | null = null;
+
+function projectScreenFlows(bundle: BlueprintProjectBundle): string[] {
+  return [...new Set(
+    bundle.screens.screens
       .map(screen => screen.flow)
       .filter((flow): flow is string => typeof flow === 'string' && flow.length > 0)
-  )
-];
-let activeScreenFlow: string | null = null;
+  )];
+}
+
+function refreshBoardSwitcher(): void {
+  switcher.replaceChildren();
+  for (const board of project.manifest.boards.filter(isVisibleBoard)) {
+    const button = el('button', '', board.name) as HTMLButtonElement;
+    button.type = 'button';
+    button.dataset.board = board.id;
+    button.setAttribute('aria-pressed', String(board.id === activeBoardId));
+    button.addEventListener('click', () => showBoard(board.id));
+    switcher.append(button);
+  }
+}
+
+function refreshFlowSwitcher(): void {
+  flowSwitcher.replaceChildren();
+  if (screenFlows.length === 0) return;
+  flowSwitcher.append(el('span', 'bp-chrome-flow-label', 'Pages'));
+  for (const flow of screenFlows) {
+    const button = el('button', '', flow) as HTMLButtonElement;
+    button.type = 'button';
+    button.dataset.flow = flow;
+    button.addEventListener('click', () => setScreenFlow(flow));
+    flowSwitcher.append(button);
+  }
+  refreshFlowPills();
+}
 
 function requestedScreenFlow(): string | null {
   const param = new URLSearchParams(location.search).get('flow');
@@ -247,20 +278,9 @@ function openHistory(screenId: string, state: string, framePresetId: string): vo
   remountBoard('screens');
 }
 
-if (screenFlows.length > 0) {
-  // The switcher reads as canvas pages (Figma-style): each page is its own
-  // canvas grouping that flow's screens.
-  flowSwitcher.append(el('span', 'bp-chrome-flow-label', 'Pages'));
-  for (const flow of screenFlows) {
-    const button = el('button', '', flow) as HTMLButtonElement;
-    button.type = 'button';
-    button.dataset.flow = flow;
-    button.addEventListener('click', () => setScreenFlow(flow));
-    flowSwitcher.append(button);
-  }
-}
 activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
-refreshFlowPills();
+refreshBoardSwitcher();
+refreshFlowSwitcher();
 
 const requestedBoard = new URLSearchParams(location.search).get('board');
 const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
@@ -334,6 +354,47 @@ function remountBoard(id: BoardId): void {
     activeBoardId = null;
     showBoard(id);
   }
+}
+
+async function replaceMountedBoard(id: BoardId): Promise<void> {
+  const current = boardState.get(id);
+  if (!current) return;
+  const config = boardConfigs[id];
+  const isActive = activeBoardId === id;
+  const view = isActive ? canvas.snapshot() : current.view;
+  const nextRoot = el('section', `${config.className} bp-chrome-live-board-next`);
+  nextRoot.dataset.boardRoot = id;
+  nextRoot.hidden = !isActive;
+  nextRoot.setAttribute('aria-label', config.label);
+  nextRoot.setAttribute('aria-busy', 'true');
+  nextRoot.style.visibility = 'hidden';
+  world.append(nextRoot);
+  const mounted = config.mount({ root: nextRoot, canvas, project });
+  if (isActive) await waitForPrototypeFrames(nextRoot);
+
+  current.root.remove();
+  nextRoot.style.removeProperty('visibility');
+  nextRoot.removeAttribute('aria-busy');
+  nextRoot.classList.remove('bp-chrome-live-board-next');
+  nextRoot.classList.add('bp-chrome-live-board-enter');
+  const nextState: MountedBoard = { root: nextRoot, mounted, view };
+  boardState.set(id, nextState);
+  if (isActive) {
+    mounted.configure();
+    if (view) canvas.setView(view);
+    refreshCanvasReviewState(id);
+  }
+}
+
+async function waitForPrototypeFrames(root: HTMLElement): Promise<void> {
+  const frames = [...root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')];
+  if (frames.length === 0) return;
+  await Promise.race([
+    Promise.all(frames.map(frame => new Promise<void>(resolve => {
+      frame.addEventListener('load', () => resolve(), { once: true });
+    }))),
+    new Promise<void>(resolve => window.setTimeout(resolve, 500))
+  ]);
 }
 
 function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
@@ -739,6 +800,7 @@ function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: st
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${context.primitive.name} · ${variant ? `${variant} · ` : ''}${state}`;
     iframe.srcdoc = compiled.html;
+    prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     item.append(iframe);
@@ -2787,6 +2849,7 @@ function createExplorationPrototypeScreen(
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${label} · ${screen.name} · ${selection.state} · ${preset.name}`;
     iframe.srcdoc = compiled.html;
+    prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     host.append(iframe);
@@ -3037,6 +3100,7 @@ function createPrototypeFrame(
   const slot = el('div', 'frame-slot');
   slot.style.left = `${x}px`;
   slot.style.top = `${y}px`;
+  slot.dataset.liveFrameKey = liveFrameKey(screen.id, preset.id, prototypeSelection);
   const frame = el('article', 'frame');
   frame.style.setProperty('--frame-width', `${preset.width}px`);
   frame.style.setProperty('--frame-height', `${preset.height}px`);
@@ -3151,6 +3215,14 @@ function createPrototypeFrame(
   return slot;
 }
 
+function liveFrameKey(
+  screenId: string,
+  framePresetId: string,
+  selection?: SelectedPrototypeReviewCondition
+): string {
+  return [screenId, framePresetId, selection?.state ?? '', selection?.conditionId ?? ''].join('\u0000');
+}
+
 function createFrameHomeIndicator(): HTMLElement {
   const strip = el('div', 'frame-home-indicator');
   strip.append(el('span', 'frame-home-indicator-pill'));
@@ -3182,6 +3254,7 @@ function createCanonicalPrototypeScreen(
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${screen.name} · ${selection.state} · ${preset.name}`;
     iframe.srcdoc = compiled.html;
+    prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     host.append(iframe);
@@ -3808,7 +3881,18 @@ function refreshCanvasReviewState(boardId: BoardId): void {
 let focusedActivityElement: HTMLElement | undefined;
 let activeActivityKey: string | undefined;
 let activityClearTimer: number | undefined;
-let projectReloadTimer: number | undefined;
+let lastAgentActivity: BlueprintAgentActivityEvent | undefined;
+let lastAppliedRevision: string | undefined;
+let projectApplyQueue = Promise.resolve();
+const focusedPrototypeFrames = new Set<HTMLIFrameElement>();
+
+type AgentStatusState = 'working' | 'thinking' | 'applying' | 'complete' | 'waiting' | 'failed';
+
+function setAgentStatus(state: AgentStatusState, label: string): void {
+  agentStatus.hidden = false;
+  agentStatus.dataset.phase = state;
+  agentStatusLabel.textContent = label;
+}
 
 function connectBlueprintLiveRuntime(): void {
   const runtime = window.__BLUEPRINT_LIVE_RUNTIME__;
@@ -3821,43 +3905,203 @@ function connectBlueprintLiveRuntime(): void {
     window.__BLUEPRINT_AGENT_ACTIVITY__ = event;
     showAgentActivity(event);
   });
-  source.addEventListener('project-changed', () => {
-    agentStatus.hidden = false;
-    agentStatus.dataset.phase = 'started';
-    agentStatusLabel.textContent = 'Blueprint is applying the latest changes';
-    if (projectReloadTimer !== undefined) window.clearTimeout(projectReloadTimer);
-    projectReloadTimer = window.setTimeout(() => window.location.reload(), 100);
+  source.addEventListener('project-changed', message => {
+    const event = parseLiveEvent<BlueprintProjectChangedEvent>(message);
+    if (!event || event.version !== 1) return;
+    projectApplyQueue = projectApplyQueue
+      .then(() => applyProjectChange(event, runtime.snapshotPath))
+      .catch(error => {
+        setAgentStatus('waiting', errorMessage(error));
+      });
   });
   source.addEventListener('project-error', message => {
     const event = parseLiveEvent<BlueprintProjectErrorEvent>(message);
-    agentStatus.hidden = false;
-    agentStatus.dataset.phase = 'failed';
-    agentStatusLabel.textContent = event?.message
+    if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+    setAgentStatus('waiting', event?.message
       ? 'Blueprint is waiting for the current edit to become valid'
-      : 'Blueprint could not apply the latest edit';
+      : 'Blueprint could not apply the latest edit');
   });
 }
 
+async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotPath: string): Promise<void> {
+  if (event.revision === lastAppliedRevision) return;
+  const preservedView = activeBoardId ? canvas.snapshot() : undefined;
+  setAgentStatus('applying', 'Blueprint is applying the latest changes');
+  markFocusedBoundaryBusy(true);
+  const requestUrl = new URL(snapshotPath, window.location.href);
+  requestUrl.searchParams.set('revision', event.revision);
+  const response = await fetch(requestUrl, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Blueprint could not load revision ${event.revision}.`);
+  const snapshot = await response.json() as BlueprintProjectSnapshot;
+  if (snapshot.version !== 1 || !snapshot.bundle) throw new Error('Blueprint returned an invalid live project snapshot.');
+  if (snapshot.revision === lastAppliedRevision) return;
+  const changedPaths = snapshot.revision === event.revision ? event.changedPaths : [];
+  const advancedPastEvent = snapshot.revision !== event.revision;
+
+  const previousProjectId = project.manifest.project.id;
+  project = createConfiguredProjectBundle(snapshot.bundle);
+  window.__BLUEPRINT_PROJECT_BUNDLE__ = snapshot.bundle;
+  screenFlows = projectScreenFlows(project);
+  if (!activeScreenFlow || !screenFlows.includes(activeScreenFlow)) {
+    activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
+  }
+  refreshBoardSwitcher();
+  refreshFlowSwitcher();
+
+  const updates: Promise<void>[] = [];
+  if (boardState.has('primitives') && (advancedPastEvent || pathsAffectPrimitives(changedPaths))) {
+    updates.push(replaceMountedBoard('primitives'));
+  }
+  if (boardState.has('screens')) {
+    const reconciled = !advancedPastEvent && previousProjectId === project.manifest.project.id
+      ? await reconcileScreenFrames(changedPaths)
+      : false;
+    if (!reconciled) updates.push(replaceMountedBoard('screens'));
+  }
+  await Promise.all(updates);
+  if (activeBoardId) {
+    boardState.get(activeBoardId)?.mounted.configure();
+    if (preservedView) canvas.setView(preservedView);
+  }
+  lastAppliedRevision = snapshot.revision;
+  if (lastAgentActivity) focusAgentBoundary(lastAgentActivity);
+  markFocusedBoundaryBusy(lastAgentActivity?.phase === 'started' || lastAgentActivity?.phase === 'completed');
+  restoreAgentStatusAfterApply();
+}
+
+function pathsAffectPrimitives(changedPaths: string[]): boolean {
+  return changedPaths.some(changedPath => (
+    changedPath === 'manifest.json' ||
+    changedPath === 'tokens.json' ||
+    changedPath === 'primitives.json' ||
+    changedPath === 'components.json' ||
+    changedPath.startsWith('prototype/primitives/') ||
+    changedPath.startsWith('prototype/components/')
+  ));
+}
+
+async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
+  if (focusedReviewIsRequested()) return false;
+  const state = boardState.get('screens');
+  if (!state) return true;
+  const affected = affectedScreenIds(changedPaths);
+  if (!affected || affected.size === 0) return false;
+  const params = new URLSearchParams(location.search);
+  const request: PrototypeReviewSelectionRequest = {
+    state: params.get('state') ?? undefined,
+    viewport: params.get('viewport') ?? undefined
+  };
+  const flowFilter = request.state || request.viewport ? undefined : (activeScreenFlow ?? undefined);
+  const layouts = layoutScreenFrames(project, request, flowFilter).filter(layout => affected.has(layout.screen.id));
+  const oldFrames = new Map(
+    [...state.root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')]
+      .map(frame => [frame.dataset.liveFrameKey ?? '', frame] as const)
+  );
+  const nextKeys = layouts.map(layout => liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection));
+  if (nextKeys.some(key => !oldFrames.has(key))) return false;
+  const currentKeys = [...oldFrames.entries()]
+    .filter(([, frame]) => affected.has(frame.querySelector<HTMLElement>('.frame')?.dataset.screenId ?? ''))
+    .map(([key]) => key);
+  if (currentKeys.length !== nextKeys.length) return false;
+
+  const tokenIndex = createTokenIndex(project);
+  await Promise.all(layouts.map(async layout => {
+    const key = liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection);
+    const previous = oldFrames.get(key);
+    if (!previous) return;
+    previous.classList.add('bp-chrome-live-frame-updating');
+    previous.setAttribute('aria-busy', 'true');
+    const next = createPrototypeFrame(
+      project,
+      tokenIndex,
+      layout.screen,
+      layout.preset,
+      layout.x,
+      layout.y,
+      layout.prototypeSelection,
+      layout.selectionError
+    );
+    next.style.visibility = 'hidden';
+    state.root.append(next);
+    await waitForPrototypeFrames(next);
+    next.style.removeProperty('visibility');
+    next.classList.add('bp-chrome-live-frame-enter');
+    previous.replaceWith(next);
+  }));
+  if (activeBoardId === 'screens') refreshCanvasReviewState('screens');
+  return true;
+}
+
+function affectedScreenIds(changedPaths: string[]): Set<string> | undefined {
+  const screenIds = new Set<string>();
+  for (const changedPath of changedPaths) {
+    if (
+      changedPath === 'manifest.json' || changedPath === 'screens.json' ||
+      changedPath.startsWith('explorations/') || changedPath.startsWith('history/')
+    ) return undefined;
+    if (
+      changedPath === 'tokens.json' || changedPath === 'primitives.json' || changedPath === 'components.json' ||
+      changedPath.startsWith('prototype/primitives/') || changedPath.startsWith('prototype/components/')
+    ) {
+      project.screens.screens.forEach(screen => screenIds.add(screen.id));
+      continue;
+    }
+    const owner = project.screens.screens.find(screen => screen.prototype && [
+      screen.prototype.source,
+      ...screen.prototype.styles,
+      ...screen.prototype.assetRefs
+    ].includes(changedPath));
+    if (!owner) return undefined;
+    screenIds.add(owner.id);
+  }
+  return screenIds;
+}
+
 function showAgentActivity(event: BlueprintAgentActivityEvent): void {
+  lastAgentActivity = event;
   if (event.phase === 'started') {
     activeActivityKey = agentActivityKey(event);
     if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
-    agentStatus.hidden = false;
-    agentStatus.dataset.phase = event.phase;
-    agentStatusLabel.textContent = event.label;
+    setAgentStatus('working', event.label);
     focusAgentBoundary(event);
+    markFocusedBoundaryBusy(true);
     return;
   }
 
   if (activeActivityKey !== agentActivityKey(event)) return;
-  agentStatus.dataset.phase = event.phase;
-  agentStatusLabel.textContent = event.label;
-  focusedActivityElement?.classList.toggle('bp-chrome-agent-focus-failed', event.phase === 'failed');
-  activityClearTimer = window.setTimeout(clearAgentActivity, event.phase === 'failed' ? 1_800 : 900);
+  if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+  if (event.phase === 'failed') {
+    setAgentStatus('failed', event.label);
+    setFocusedActivityFailed(true);
+    markFocusedBoundaryBusy(false);
+    activityClearTimer = window.setTimeout(clearAgentActivity, 1_800);
+    return;
+  }
+  setAgentStatus('thinking', event.label);
+  activityClearTimer = window.setTimeout(() => {
+    setAgentStatus('complete', 'Changes are up to date');
+    markFocusedBoundaryBusy(false);
+    activityClearTimer = window.setTimeout(clearAgentActivity, 700);
+  }, 3_200);
 }
 
 function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
   clearAgentFocus();
+  const visibleRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  const prototypeConsumers = visibleRoot && activeBoardId === 'screens' &&
+    (event.focus.kind === 'primitive' || event.focus.kind === 'component')
+    ? prototypeFramesUsingBoundary(visibleRoot, event.focus.boundaryId)
+    : [];
+  if (prototypeConsumers.length > 0) {
+    for (const frame of prototypeConsumers) applyPrototypeFrameFocus(frame, event.focus.boundaryId, event.phase === 'failed');
+    const context = prototypeConsumers[0]?.closest<HTMLElement>('.frame');
+    if (context) {
+      focusedActivityElement = context;
+      context.classList.add('bp-chrome-agent-focus-context');
+      context.dataset.agentActivityLabel = event.label;
+    }
+    return;
+  }
   const requestedBoard = event.focus.kind === 'board' && isBoardId(event.focus.localId)
     ? event.focus.localId
     : event.focus.board;
@@ -3879,8 +4123,6 @@ function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
   focusedActivityElement = target;
   target.classList.add('bp-chrome-agent-focus');
   target.dataset.agentActivityLabel = event.label;
-  const fitTarget = target.closest<HTMLElement>('.frame-slot') ?? target;
-  requestAnimationFrame(() => canvas.fitTo([fitTarget]));
 }
 
 function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undefined {
@@ -3890,6 +4132,7 @@ function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undef
 
 function clearAgentActivity(): void {
   activeActivityKey = undefined;
+  lastAgentActivity = undefined;
   window.__BLUEPRINT_AGENT_ACTIVITY__ = undefined;
   agentStatus.hidden = true;
   delete agentStatus.dataset.phase;
@@ -3897,15 +4140,84 @@ function clearAgentActivity(): void {
 }
 
 function agentActivityKey(event: BlueprintAgentActivityEvent): string {
-  return `${event.sessionId}\u0000${event.toolUseId}`;
+  return `${event.sessionId}\u0000${event.turnId ?? event.toolUseId}`;
 }
 
 function clearAgentFocus(): void {
   viewport.classList.remove('bp-agent-project-focus');
-  if (!focusedActivityElement) return;
-  focusedActivityElement.classList.remove('bp-chrome-agent-focus', 'bp-chrome-agent-focus-failed');
-  delete focusedActivityElement.dataset.agentActivityLabel;
+  for (const frame of focusedPrototypeFrames) {
+    const original = prototypeDocumentByFrame.get(frame);
+    if (original) frame.srcdoc = original;
+  }
+  focusedPrototypeFrames.clear();
+  if (focusedActivityElement) {
+    focusedActivityElement.classList.remove(
+      'bp-chrome-agent-focus',
+      'bp-chrome-agent-focus-context',
+      'bp-chrome-agent-focus-failed'
+    );
+    focusedActivityElement.removeAttribute('aria-busy');
+    delete focusedActivityElement.dataset.agentActivityLabel;
+  }
   focusedActivityElement = undefined;
+}
+
+function prototypeFramesUsingBoundary(root: HTMLElement, focusBoundaryId: string): HTMLIFrameElement[] {
+  return [...root.querySelectorAll<HTMLIFrameElement>('iframe[data-prototype-target-boundary]')].filter(frame => {
+    if (frame.dataset.prototypeTargetBoundary === focusBoundaryId) return true;
+    try {
+      const uses = JSON.parse(frame.dataset.prototypeObservedUses ?? '[]') as Array<{ targetBoundaryId?: string }>;
+      return uses.some(use => use.targetBoundaryId === focusBoundaryId);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function applyPrototypeFrameFocus(frame: HTMLIFrameElement, focusBoundaryId: string, failed: boolean): void {
+  const original = prototypeDocumentByFrame.get(frame);
+  if (!original) return;
+  const selectorValue = focusBoundaryId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const color = failed ? '#e66b6b' : '#4c9aff';
+  const focusStyles = `<style data-blueprint-agent-focus>
+[data-blueprint-boundary-id="${selectorValue}"] {
+  position: relative !important;
+  outline: 3px solid ${color} !important;
+  outline-offset: 5px !important;
+  filter: drop-shadow(0 0 13px color-mix(in srgb, ${color} 42%, transparent)) !important;
+  animation: blueprint-agent-focus 1.25s ease-in-out infinite !important;
+}
+@keyframes blueprint-agent-focus { 50% { outline-offset: 8px; } }
+@media (prefers-reduced-motion: reduce) { [data-blueprint-boundary-id="${selectorValue}"] { animation: none !important; } }
+</style>`;
+  frame.srcdoc = original.replace('</head>', `${focusStyles}</head>`);
+  focusedPrototypeFrames.add(frame);
+}
+
+function setFocusedActivityFailed(failed: boolean): void {
+  focusedActivityElement?.classList.toggle('bp-chrome-agent-focus-failed', failed);
+  if (!lastAgentActivity) return;
+  for (const frame of focusedPrototypeFrames) applyPrototypeFrameFocus(frame, lastAgentActivity.focus.boundaryId, failed);
+}
+
+function markFocusedBoundaryBusy(busy: boolean): void {
+  if (focusedActivityElement) focusedActivityElement.setAttribute('aria-busy', String(busy));
+}
+
+function restoreAgentStatusAfterApply(): void {
+  if (!lastAgentActivity) {
+    setAgentStatus('complete', 'Changes are live');
+    if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+    activityClearTimer = window.setTimeout(clearAgentActivity, 900);
+    return;
+  }
+  if (lastAgentActivity.phase === 'failed') {
+    setAgentStatus('failed', lastAgentActivity.label);
+  } else if (lastAgentActivity.phase === 'completed') {
+    setAgentStatus('thinking', lastAgentActivity.label);
+  } else {
+    setAgentStatus('working', lastAgentActivity.label);
+  }
 }
 
 function parseLiveEvent<T>(message: Event): T | undefined {

@@ -139,7 +139,9 @@ export const captureInputSchema = z
 export const serveInputSchema = z
   .object({
     project: projectPathSchema.default('design/blueprint'),
-    port: z.number().int().min(0).max(65535).default(4173),
+    port: z.number().int().min(0).max(65535).optional().describe(
+      'Stable port for this project runtime. When omitted, Blueprint starts at 4173 and selects the next available port.'
+    ),
     explorationId: nonEmptyString.optional().describe('Saved exploration to open as an isolated Screens review view.')
   })
   .strict();
@@ -405,6 +407,7 @@ export const serveOutputSchema = z
     project: z.string(),
     port: z.number().int().min(0).max(65535),
     url: z.string().url(),
+    runtime: z.enum(['started', 'reused']),
     selection: z
       .object({
         kind: z.literal('exploration'),
