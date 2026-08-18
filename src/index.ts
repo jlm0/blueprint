@@ -59,6 +59,13 @@ export type {
   VisibleBoundaryRecord,
   VisibleBoundarySyncResult
 } from './core/review';
+export type {
+  BlueprintAgentActivityEvent,
+  BlueprintAgentActivityFocus,
+  BlueprintAgentActivityPhase,
+  BlueprintProjectChangedEvent,
+  BlueprintProjectErrorEvent
+} from './core/activity';
 
 export { boundaryId, parseBoundarySelector } from './core/address';
 export { createProjectBundle } from './core/bundle';

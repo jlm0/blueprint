@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto';
+import { watch } from 'node:fs';
 import { cp, mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
-import { createServer as createHttpServer, type Server as HttpServer, type ServerResponse } from 'node:http';
+import {
+  createServer as createHttpServer,
+  type IncomingMessage,
+  type Server as HttpServer,
+  type ServerResponse
+} from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Page } from 'playwright';
 import type {
@@ -50,6 +56,16 @@ import { assertChromiumExecutableAvailable, createChromiumDependencyError } from
 import { installPrototypeNetworkGuard } from '../prototype/network-guard';
 import { createBlueprintResponseHeaders, evaluateLoopbackHost } from '../prototype/host-policy';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
+import {
+  BLUEPRINT_ACTIVITY_POST_PATH,
+  BLUEPRINT_ACTIVITY_STREAM_PATH,
+  BLUEPRINT_ACTIVITY_TOKEN_HEADER,
+  BlueprintActivityHub,
+  createBlueprintAgentActivityEvent,
+  parseBlueprintHookBridgeEvent,
+  registerBlueprintActivityRuntime,
+  type RegisteredBlueprintActivityRuntime
+} from './activity';
 import {
   captureOutputSchema,
   exploreOutputSchema,
@@ -999,6 +1015,10 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
 
   let lastGoodBundle: Awaited<ReturnType<typeof loadProjectFromFs>> | undefined;
   let lastLoadError: string | undefined;
+  let publishedFingerprint: string | undefined;
+  let publishedError: string | undefined;
+  let runtime: RegisteredBlueprintActivityRuntime | undefined;
+  const activityHub = new BlueprintActivityHub();
 
   const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string }> => {
     try {
@@ -1025,6 +1045,63 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
     if (!pathname) {
       response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
       response.end('Bad request');
+      return;
+    }
+
+    if (pathname === BLUEPRINT_ACTIVITY_STREAM_PATH) {
+      if (request.method !== 'GET') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'GET' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+      response.writeHead(200, createBlueprintResponseHeaders({
+        contentType: 'text/event-stream; charset=utf-8',
+        additionalHeaders: {
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no'
+        }
+      }));
+      activityHub.connect(response);
+      return;
+    }
+
+    if (pathname === BLUEPRINT_ACTIVITY_POST_PATH) {
+      if (request.method !== 'POST') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'POST' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+      if (!runtime || request.headers[BLUEPRINT_ACTIVITY_TOKEN_HEADER] !== runtime.descriptor.token) {
+        response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end('Forbidden');
+        return;
+      }
+      try {
+        const event = parseBlueprintHookBridgeEvent(await readJsonRequest(request));
+        if (!event) {
+          response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+          response.end('Invalid Blueprint activity event');
+          return;
+        }
+        const snapshot = await readBundleSnapshot();
+        if (!snapshot.bundle) {
+          response.writeHead(409, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+          response.end(snapshot.error ?? 'Blueprint project is unavailable');
+          return;
+        }
+        activityHub.publishActivity(createBlueprintAgentActivityEvent(snapshot.bundle, event));
+        response.writeHead(202, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
+        response.end('{"accepted":true}\n');
+      } catch (error) {
+        response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end(error instanceof Error ? error.message : String(error));
+      }
       return;
     }
 
@@ -1103,10 +1180,64 @@ async function startServeServer(projectRoot: string, port: number): Promise<Loca
 
   await listen(server, port);
   const address = server.address() as AddressInfo;
+  try {
+    const initial = await readBundleSnapshot();
+    if (initial.bundle && !initial.error) {
+      publishedFingerprint = JSON.stringify(initial.bundle);
+    }
+    runtime = await registerBlueprintActivityRuntime(
+      projectRoot,
+      `http://127.0.0.1:${address.port}${BLUEPRINT_ACTIVITY_POST_PATH}`
+    );
+  } catch (error) {
+    activityHub.close();
+    await closeHttpServer(server);
+    throw error;
+  }
+
+  let reloadTimer: NodeJS.Timeout | undefined;
+  const stopWatching = watchBlueprintProject(projectRoot, () => {
+    if (reloadTimer) clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      reloadTimer = undefined;
+      void readBundleSnapshot().then(snapshot => {
+        if (!snapshot.bundle || snapshot.error) {
+          const message = snapshot.error ?? 'Blueprint project is unavailable.';
+          if (message !== publishedError) {
+            publishedError = message;
+            activityHub.publish('project-error', {
+              version: 1,
+              message,
+              changedAt: new Date().toISOString()
+            });
+          }
+          return;
+        }
+        const nextFingerprint = JSON.stringify(snapshot.bundle);
+        if (nextFingerprint === publishedFingerprint && publishedError === undefined) {
+          return;
+        }
+        publishedFingerprint = nextFingerprint;
+        publishedError = undefined;
+        activityHub.publish('project-changed', {
+          version: 1,
+          revision: randomUUID(),
+          changedAt: new Date().toISOString()
+        });
+      });
+    }, 120);
+    reloadTimer.unref();
+  });
+
   return {
     port: address.port,
     url: `http://127.0.0.1:${address.port}/`,
-    close: () => closeHttpServer(server)
+    close: async () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      stopWatching();
+      activityHub.close();
+      await Promise.all([runtime?.close(), closeHttpServer(server)]);
+    }
   };
 }
 
@@ -1114,6 +1245,7 @@ function injectProjectBundle(indexHtml: string, bundle: Awaited<ReturnType<typeo
   const injection = [
     '<script>',
     `window.__BLUEPRINT_PROJECT_BUNDLE__=${serializeForInlineScript(bundle)};`,
+    `window.__BLUEPRINT_LIVE_RUNTIME__=${serializeForInlineScript({ eventsPath: BLUEPRINT_ACTIVITY_STREAM_PATH })};`,
     loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript({ message: loadError })};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
     '</script>'
   ].join('');
@@ -1129,6 +1261,32 @@ function serializeForInlineScript(value: unknown): string {
 
 function createServeErrorHtml(message: string): string {
   return `<!doctype html><html><head><meta charset="UTF-8"><title>Blueprint serve error</title></head><body><main id="blueprint-serve-error"><h1>Blueprint project error</h1><pre>${escapeHtml(message)}</pre></main></body></html>`;
+}
+
+function watchBlueprintProject(projectRoot: string, onChange: () => void): () => void {
+  const watcher = watch(projectRoot, { recursive: true }, (_eventType, fileName) => {
+    const normalized = String(fileName ?? '').replaceAll('\\', '/');
+    if (
+      normalized.length === 0 ||
+      normalized.split('/').some(part => part === '.git' || part === '.blueprint-artifacts' || part === 'node_modules')
+    ) {
+      return;
+    }
+    onChange();
+  });
+  return () => watcher.close();
+}
+
+async function readJsonRequest(request: IncomingMessage, maximumBytes = 256 * 1024): Promise<unknown> {
+  let body = '';
+  request.setEncoding('utf8');
+  for await (const chunk of request) {
+    body += chunk;
+    if (Buffer.byteLength(body) > maximumBytes) {
+      throw new Error(`Blueprint activity request exceeded ${maximumBytes} bytes.`);
+    }
+  }
+  return JSON.parse(body);
 }
 
 function writePrototypeRouteError(response: ServerResponse, status: number, error: unknown): void {

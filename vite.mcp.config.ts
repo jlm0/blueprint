@@ -16,7 +16,8 @@ export default defineConfig({
       external: id => nodeBuiltins.has(id) || runtimePackages.has(id),
       input: {
         server: 'src/mcp/server.ts',
-        index: 'src/index.ts'
+        index: 'src/index.ts',
+        'codex-activity-hook': 'src/hooks/codex-activity-hook.ts'
       },
       output: {
         format: 'es',

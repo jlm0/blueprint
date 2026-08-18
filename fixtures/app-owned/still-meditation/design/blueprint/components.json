@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "still-meditation",
+  "components": [
+    {
+      "id": "action-cluster",
+      "name": "Action Cluster",
+      "description": "Neutral reusable composition showing how an app-owned component consumes the canonical button primitive.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Canonical command rendered inside the reusable action region.",
+          "binding": {
+            "slot": "primary-action",
+            "state": "normal",
+            "variant": "primary"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "space"
+      ],
+      "prototype": {
+        "source": "prototype/components/action-cluster.html",
+        "styles": [
+          "prototype/components/action-cluster.css"
+        ],
+        "slots": [
+          "primary-action"
+        ],
+        "states": [
+          "normal"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    }
+  ]
+}

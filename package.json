@@ -7,7 +7,8 @@
     "node": ">=20"
   },
   "bin": {
-    "blueprint-mcp": "./dist/mcp/server.js"
+    "blueprint-mcp": "./dist/mcp/server.js",
+    "blueprint-codex-hook": "./dist/mcp/codex-activity-hook.js"
   },
   "exports": {
     ".": "./dist/mcp/index.js",
@@ -30,7 +31,7 @@
     "extract:artifacts": "node --import tsx src/scripts/create-extraction-artifacts.ts",
     "smoke:browser": "node --import tsx src/scripts/browser-smoke.ts",
     "build:site": "vite build",
-    "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js",
+    "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js dist/mcp/codex-activity-hook.js",
     "build": "npm run build:site && npm run build:mcp",
     "qa": "npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
   },

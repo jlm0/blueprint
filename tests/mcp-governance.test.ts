@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { cp, mkdtemp, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
@@ -12,6 +12,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
+const codexHookPath = path.join(projectRoot, 'dist/mcp/codex-activity-hook.js');
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
@@ -38,12 +39,16 @@ describe('Blueprint MCP and template governance', () => {
       engines?: Record<string, string>;
     };
 
-    assert.deepEqual(packageJson.bin, { 'blueprint-mcp': './dist/mcp/server.js' });
+    assert.deepEqual(packageJson.bin, {
+      'blueprint-mcp': './dist/mcp/server.js',
+      'blueprint-codex-hook': './dist/mcp/codex-activity-hook.js'
+    });
     assert.equal(packageJson.engines?.node, '>=20');
     assert.ok(packageJson.exports?.['.']);
     assert.equal(packageJson.scripts?.['build:cli'], undefined);
     assert.ok(packageJson.scripts?.['build:mcp']);
     assert.equal((await stat(mcpPath)).isFile(), true);
+    assert.equal((await stat(codexHookPath)).isFile(), true);
     assert.equal((await stat(path.join(projectRoot, 'dist/site/index.html'))).isFile(), true);
     assert.equal(existsSync(path.join(projectRoot, 'dist/cli')), false);
 
@@ -483,7 +488,7 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
-  it('serves, live-reloads, retains last-good content, and closes listeners with the MCP session', async () => {
+  it('streams Codex focus, applies file changes live, retains last-good content, and closes listeners with the MCP session', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
       await cp(novaRoot, projectCopy, { recursive: true });
@@ -510,15 +515,39 @@ describe('Blueprint MCP and template governance', () => {
           const page = await browser.newPage();
           await page.goto(url);
           assert.equal(await servedProjectName(page), 'Serve Copy');
+          const rejectedActivity = await fetch(new URL('/__blueprint/agent-activity', url), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+          });
+          assert.equal(rejectedActivity.status, 403);
+
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-focus',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'mcp__blueprint__query',
+            tool_use_id: 'tool-live-focus',
+            tool_input: {
+              project: 'design/blueprint',
+              query: { type: 'show', boundary: 'screen:home' }
+            }
+          });
+          await page.locator('[data-boundary-id="nova-care/screen/home"].bp-chrome-agent-focus').first().waitFor();
+          assert.equal(await page.locator('.board-screens').getAttribute('hidden'), null);
+          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at Care Home/);
+
           manifest.project.name = 'Serve Refreshed </script> Name';
           await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
           const refreshedHtml = await (await fetch(url)).text();
           assert.equal(refreshedHtml.includes('Serve Refreshed </script>'), false);
-          await page.reload();
-          assert.equal(await servedProjectName(page), manifest.project.name);
+          await assertEventuallyServedProjectName(page, manifest.project.name);
           await writeFile(manifestPath, '{ "project": ', 'utf8');
-          await page.reload();
+          await page.locator('.bp-chrome-agent-status[data-phase="failed"]').waitFor();
           assert.equal(await servedProjectName(page), manifest.project.name);
+          await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          await assertEventuallyServedProjectName(page, manifest.project.name);
         } finally {
           await browser.close();
         }
@@ -573,6 +602,17 @@ describe('Blueprint MCP and template governance', () => {
     assert.match(docs, /structured JSON.*owns|JSON owns/i);
     assert.doesNotMatch(docs, /Local CLI|blueprint (?:init|validate|index|query|extract|capture|serve)/i);
     assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);
+
+    const hooks = JSON.parse(await readFile('.codex/hooks.json', 'utf8')) as {
+      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ async?: boolean; command?: string }> }>>;
+    };
+    for (const eventName of ['PreToolUse', 'PostToolUse']) {
+      const registration = hooks.hooks?.[eventName]?.[0];
+      assert.match(registration?.matcher ?? '', /mcp__blueprint__/);
+      assert.match(registration?.matcher ?? '', /apply_patch/);
+      assert.equal(registration?.hooks?.[0]?.async, undefined);
+      assert.match(registration?.hooks?.[0]?.command ?? '', /codex-activity-hook/);
+    }
   });
 });
 
@@ -674,6 +714,45 @@ async function servedProjectName(page: { evaluate: <T>(fn: () => T) => Promise<T
   return page.evaluate(() => {
     type ServedWindow = Window & { __BLUEPRINT_PROJECT_BUNDLE__?: { manifest?: { project?: { name?: string } } } };
     return (window as ServedWindow).__BLUEPRINT_PROJECT_BUNDLE__?.manifest?.project?.name;
+  });
+}
+
+async function assertEventuallyServedProjectName(
+  page: { evaluate: <T>(fn: () => T) => Promise<T> },
+  expected: string
+): Promise<void> {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    try {
+      if (await servedProjectName(page) === expected) return;
+    } catch {
+      // The execution context is expected to disappear during automatic reload.
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.equal(await servedProjectName(page), expected);
+}
+
+function runCodexHook(cwd: string, input: Record<string, unknown>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [codexHookPath], {
+      cwd,
+      env: { ...process.env, NO_COLOR: '1' },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    let stderr = '';
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', chunk => {
+      stderr += chunk;
+    });
+    child.once('error', reject);
+    child.once('close', code => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(stderr || `Blueprint Codex hook exited with code ${code}.`));
+    });
+    child.stdin.end(JSON.stringify(input));
   });
 }
 

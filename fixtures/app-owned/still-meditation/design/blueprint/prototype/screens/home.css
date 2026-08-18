@@ -1,0 +1,517 @@
+* {
+  box-sizing: border-box;
+}
+
+[data-blueprint-screen="home"] {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 100%;
+  overflow: hidden;
+  color: var(--app-color-foreground);
+  background:
+    radial-gradient(circle at 94% 5%, color-mix(in srgb, var(--app-color-accent) 18%, transparent) 0, transparent 27%),
+    radial-gradient(circle at -12% 58%, color-mix(in srgb, var(--app-color-secondary) 65%, transparent) 0, transparent 35%),
+    var(--app-color-background);
+  font: var(--app-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.still-home__atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in srgb, var(--app-color-foreground) 12%, transparent) 0.55px, transparent 0.65px);
+  background-size: 5px 5px;
+  opacity: 0.14;
+}
+
+.still-home__content {
+  position: relative;
+  z-index: 1;
+  padding: 58px 20px 112px;
+}
+
+.topbar,
+.brand,
+.profile,
+.featured__footer,
+.duration,
+.rhythm,
+.rhythm__copy,
+.rhythm__days,
+.section-heading,
+.practice-row,
+.tabbar,
+.tabbar__item {
+  display: flex;
+  align-items: center;
+}
+
+.topbar {
+  height: 38px;
+  justify-content: space-between;
+}
+
+.brand {
+  gap: 8px;
+  color: var(--app-color-foreground);
+  font-family: ui-serif, Georgia, serif;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+}
+
+.brand__mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--app-color-primary);
+  background: color-mix(in srgb, var(--app-color-secondary) 76%, var(--app-color-surface));
+}
+
+.brand__mark svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.profile {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid color-mix(in srgb, var(--app-color-surface) 72%, transparent);
+  border-radius: 50%;
+  color: var(--app-color-surface);
+  background: linear-gradient(145deg, #6f8b79, var(--app-color-primary));
+  font: var(--app-type-label);
+  font-size: 11px;
+  box-shadow: 0 5px 15px color-mix(in srgb, var(--app-color-primary) 18%, transparent);
+}
+
+.profile__presence {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--app-color-background);
+  border-radius: 50%;
+  background: var(--app-color-success);
+}
+
+.welcome {
+  margin-top: 21px;
+}
+
+.eyebrow,
+.featured__kicker,
+.featured__description {
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--app-color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+}
+
+.welcome h1 {
+  margin: 6px 0 0;
+  font: var(--app-type-display);
+  font-size: 37px;
+  letter-spacing: -0.045em;
+}
+
+.featured {
+  position: relative;
+  min-height: 238px;
+  margin-top: 18px;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--app-color-surface) 10%, transparent);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-surface);
+  background:
+    linear-gradient(132deg, color-mix(in srgb, var(--app-color-primary) 95%, black) 0%, #203c34 62%, #172e29 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 18px 45px color-mix(in srgb, var(--app-color-primary) 23%, transparent);
+}
+
+.featured__wash {
+  position: absolute;
+  inset: auto -55px -82px 60px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--app-color-accent) 28%, transparent), transparent 66%);
+  filter: blur(3px);
+}
+
+.featured__copy {
+  position: relative;
+  z-index: 2;
+}
+
+.featured [data-blueprint-primitive="badge"] {
+  min-height: 22px;
+  margin: 0;
+  border-color: color-mix(in srgb, var(--app-color-surface) 22%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--app-color-surface) 88%, transparent);
+  background: color-mix(in srgb, var(--app-color-surface) 12%, transparent);
+  letter-spacing: 0.08em;
+}
+
+.featured [data-blueprint-primitive="badge"] .badge__dot {
+  background: #d4b7e7;
+}
+
+.featured__kicker {
+  margin-top: 22px;
+  color: color-mix(in srgb, var(--app-color-surface) 61%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.featured h2 {
+  margin: 5px 0 0;
+  color: var(--app-color-surface);
+  font-family: ui-serif, Georgia, serif;
+  font-size: 29px;
+  font-weight: 550;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.featured__description {
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--app-color-surface) 62%, transparent);
+  font-size: 11px;
+}
+
+.breath-orb {
+  position: absolute;
+  top: 20px;
+  right: -12px;
+  width: 156px;
+  height: 156px;
+}
+
+.breath-orb__ring,
+.breath-orb__core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.breath-orb__ring {
+  border: 1px solid color-mix(in srgb, var(--app-color-surface) 17%, transparent);
+}
+
+.breath-orb__ring--outer {
+  width: 148px;
+  height: 148px;
+}
+
+.breath-orb__ring--middle {
+  width: 112px;
+  height: 112px;
+  border-color: color-mix(in srgb, var(--app-color-accent) 35%, transparent);
+}
+
+.breath-orb__core {
+  width: 72px;
+  height: 72px;
+  background:
+    radial-gradient(circle at 38% 33%, rgba(255,255,255,0.68), transparent 21%),
+    radial-gradient(circle at 48% 45%, #cfb6df, #9072ab 67%, #654f7c 100%);
+  box-shadow:
+    0 0 0 9px color-mix(in srgb, var(--app-color-accent) 9%, transparent),
+    0 18px 38px rgba(13, 24, 21, 0.26),
+    inset -8px -10px 20px rgba(59, 39, 78, 0.32);
+}
+
+.featured__footer {
+  position: absolute;
+  z-index: 3;
+  right: 18px;
+  bottom: 16px;
+  left: 18px;
+  justify-content: space-between;
+}
+
+.duration {
+  gap: 6px;
+  color: color-mix(in srgb, var(--app-color-surface) 72%, transparent);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.duration svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.featured [data-blueprint-primitive="button"] {
+  min-width: 102px;
+  min-height: 42px;
+  border-color: color-mix(in srgb, var(--app-color-surface) 62%, transparent);
+  border-radius: 999px;
+  color: var(--app-color-primary);
+  background: var(--app-color-surface);
+  font-size: 12px;
+  font-weight: 720;
+  box-shadow: 0 8px 20px rgba(8, 21, 17, 0.22);
+}
+
+.rhythm {
+  min-height: 61px;
+  margin-top: 13px;
+  justify-content: space-between;
+  padding: 10px 13px 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+  border-radius: 19px;
+  background: color-mix(in srgb, var(--app-color-surface) 81%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--app-color-foreground) 5%, transparent);
+}
+
+.rhythm__copy {
+  gap: 9px;
+}
+
+.rhythm__copy > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.rhythm__copy strong,
+.practice-row__copy strong {
+  color: var(--app-color-foreground);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.rhythm__copy small,
+.practice-row__copy small {
+  color: var(--app-color-muted);
+  font-size: 9.5px;
+}
+
+.rhythm__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--app-color-primary);
+  background: var(--app-color-secondary);
+  font-size: 13px;
+}
+
+.rhythm__days {
+  gap: 4px;
+}
+
+.rhythm__days i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--app-color-muted) 40%, transparent);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.rhythm__days .is-complete {
+  border-color: var(--app-color-primary);
+  background: var(--app-color-primary);
+}
+
+.moment {
+  margin-top: 16px;
+}
+
+.section-heading {
+  justify-content: space-between;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: var(--app-color-foreground);
+  font-family: ui-serif, Georgia, serif;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.section-heading a {
+  color: var(--app-color-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.practice-row {
+  width: 100%;
+  min-height: 68px;
+  margin-top: 8px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 7%, transparent);
+  border-radius: 20px;
+  color: inherit;
+  background: color-mix(in srgb, var(--app-color-surface) 84%, transparent);
+  text-align: left;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--app-color-foreground) 4%, transparent);
+}
+
+.practice-row__art {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 15px;
+  color: #5f4c70;
+  background:
+    radial-gradient(circle at 74% 24%, rgba(255,255,255,0.42) 0 8%, transparent 9%),
+    linear-gradient(145deg, #d8c1e5, #9bb6aa);
+}
+
+.practice-row__art svg {
+  width: 42px;
+  height: 42px;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.practice-row__copy {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  margin-left: 11px;
+}
+
+.practice-row__play {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--app-color-primary) 14%, transparent);
+  border-radius: 50%;
+  color: var(--app-color-primary);
+  background: color-mix(in srgb, var(--app-color-secondary) 65%, transparent);
+}
+
+.practice-row__play svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.tabbar {
+  position: absolute;
+  z-index: 4;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  height: 78px;
+  justify-content: space-around;
+  padding: 8px 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
+  border-radius: 27px;
+  background: color-mix(in srgb, var(--app-color-surface) 94%, transparent);
+  box-shadow:
+    0 18px 46px color-mix(in srgb, var(--app-color-foreground) 14%, transparent),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+  backdrop-filter: blur(18px);
+}
+
+.tabbar__item {
+  min-width: 68px;
+  height: 57px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 20px;
+  color: color-mix(in srgb, var(--app-color-muted) 83%, transparent);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  text-decoration: none;
+}
+
+.tabbar__item svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tabbar__item.is-active {
+  color: var(--app-color-primary);
+  background: color-mix(in srgb, var(--app-color-secondary) 54%, transparent);
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--app-color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .breath-orb__core {
+    animation: still-breathe 5.5s ease-in-out infinite;
+  }
+
+  .breath-orb__ring--middle {
+    animation: still-ring 5.5s ease-in-out infinite;
+  }
+}
+
+@keyframes still-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes still-ring {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}

@@ -1,4 +1,5 @@
 import { createConfiguredProjectBundle, createProjectBundle } from '../core/bundle';
+import type { BlueprintAgentActivityEvent } from '../core/activity';
 import type { CanvasStyleEvidenceArtifact, ReviewManifest, VisibleBoundarySyncResult } from '../core/review';
 import type {
   BlueprintManifest,
@@ -150,6 +151,8 @@ declare global {
   interface Window {
     __BLUEPRINT_PROJECT_BUNDLE__?: BlueprintProjectBundle;
     __BLUEPRINT_REVIEW__?: CanvasReviewRuntimeState;
+    __BLUEPRINT_LIVE_RUNTIME__?: { eventsPath: string };
+    __BLUEPRINT_AGENT_ACTIVITY__?: BlueprintAgentActivityEvent;
   }
 }
 

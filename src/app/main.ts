@@ -1,6 +1,10 @@
 import './styles.css';
 import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
+import type {
+  BlueprintAgentActivityEvent,
+  BlueprintProjectErrorEvent
+} from '../core/activity';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
   createCanvasStyleEvidence,
@@ -116,6 +120,15 @@ fitButton.addEventListener('click', () => {
   }
 });
 shell.append(fitButton);
+
+const agentStatus = el('div', 'bp-chrome-agent-status');
+agentStatus.hidden = true;
+agentStatus.setAttribute('role', 'status');
+agentStatus.setAttribute('aria-live', 'polite');
+const agentStatusDot = el('span', 'bp-chrome-agent-status-dot');
+const agentStatusLabel = el('span', 'bp-chrome-agent-status-label');
+agentStatus.append(agentStatusDot, agentStatusLabel);
+shell.append(agentStatus);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
@@ -3792,6 +3805,118 @@ function refreshCanvasReviewState(boardId: BoardId): void {
   };
 }
 
+let focusedActivityElement: HTMLElement | undefined;
+let activeActivityKey: string | undefined;
+let activityClearTimer: number | undefined;
+let projectReloadTimer: number | undefined;
+
+function connectBlueprintLiveRuntime(): void {
+  const runtime = window.__BLUEPRINT_LIVE_RUNTIME__;
+  if (!runtime || typeof EventSource === 'undefined') return;
+
+  const source = new EventSource(runtime.eventsPath);
+  source.addEventListener('agent-activity', message => {
+    const event = parseLiveEvent<BlueprintAgentActivityEvent>(message);
+    if (!event || event.version !== 1) return;
+    window.__BLUEPRINT_AGENT_ACTIVITY__ = event;
+    showAgentActivity(event);
+  });
+  source.addEventListener('project-changed', () => {
+    agentStatus.hidden = false;
+    agentStatus.dataset.phase = 'started';
+    agentStatusLabel.textContent = 'Blueprint is applying the latest changes';
+    if (projectReloadTimer !== undefined) window.clearTimeout(projectReloadTimer);
+    projectReloadTimer = window.setTimeout(() => window.location.reload(), 100);
+  });
+  source.addEventListener('project-error', message => {
+    const event = parseLiveEvent<BlueprintProjectErrorEvent>(message);
+    agentStatus.hidden = false;
+    agentStatus.dataset.phase = 'failed';
+    agentStatusLabel.textContent = event?.message
+      ? 'Blueprint is waiting for the current edit to become valid'
+      : 'Blueprint could not apply the latest edit';
+  });
+}
+
+function showAgentActivity(event: BlueprintAgentActivityEvent): void {
+  if (event.phase === 'started') {
+    activeActivityKey = agentActivityKey(event);
+    if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+    agentStatus.hidden = false;
+    agentStatus.dataset.phase = event.phase;
+    agentStatusLabel.textContent = event.label;
+    focusAgentBoundary(event);
+    return;
+  }
+
+  if (activeActivityKey !== agentActivityKey(event)) return;
+  agentStatus.dataset.phase = event.phase;
+  agentStatusLabel.textContent = event.label;
+  focusedActivityElement?.classList.toggle('bp-chrome-agent-focus-failed', event.phase === 'failed');
+  activityClearTimer = window.setTimeout(clearAgentActivity, event.phase === 'failed' ? 1_800 : 900);
+}
+
+function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
+  clearAgentFocus();
+  const requestedBoard = event.focus.kind === 'board' && isBoardId(event.focus.localId)
+    ? event.focus.localId
+    : event.focus.board;
+  if (requestedBoard && activeBoardId !== requestedBoard) {
+    showBoard(requestedBoard);
+  }
+
+  const activeRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  let target = activeRoot ? findBoundaryElement(activeRoot, event.focus.boundaryId) : undefined;
+  if (!target && event.focus.screenId && activeRoot) {
+    target = findBoundaryElement(activeRoot, boundaryId(project.manifest.project.id, 'screen', event.focus.screenId));
+  }
+
+  if (!target) {
+    viewport.classList.add('bp-agent-project-focus');
+    return;
+  }
+
+  focusedActivityElement = target;
+  target.classList.add('bp-chrome-agent-focus');
+  target.dataset.agentActivityLabel = event.label;
+  const fitTarget = target.closest<HTMLElement>('.frame-slot') ?? target;
+  requestAnimationFrame(() => canvas.fitTo([fitTarget]));
+}
+
+function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undefined {
+  return [...root.querySelectorAll<HTMLElement>('[data-boundary-id]')]
+    .find(element => element.dataset.boundaryId === id);
+}
+
+function clearAgentActivity(): void {
+  activeActivityKey = undefined;
+  window.__BLUEPRINT_AGENT_ACTIVITY__ = undefined;
+  agentStatus.hidden = true;
+  delete agentStatus.dataset.phase;
+  clearAgentFocus();
+}
+
+function agentActivityKey(event: BlueprintAgentActivityEvent): string {
+  return `${event.sessionId}\u0000${event.toolUseId}`;
+}
+
+function clearAgentFocus(): void {
+  viewport.classList.remove('bp-agent-project-focus');
+  if (!focusedActivityElement) return;
+  focusedActivityElement.classList.remove('bp-chrome-agent-focus', 'bp-chrome-agent-focus-failed');
+  delete focusedActivityElement.dataset.agentActivityLabel;
+  focusedActivityElement = undefined;
+}
+
+function parseLiveEvent<T>(message: Event): T | undefined {
+  if (!(message instanceof MessageEvent) || typeof message.data !== 'string') return undefined;
+  try {
+    return JSON.parse(message.data) as T;
+  } catch {
+    return undefined;
+  }
+}
+
 function collectVisibleBoundaryRecords(root: HTMLElement, board: BoardId): VisibleBoundaryRecord[] {
   return [...root.querySelectorAll<HTMLElement>('[data-boundary-id][data-boundary-kind]')].map(element => {
     const computed = window.getComputedStyle(element);
@@ -3860,3 +3985,4 @@ function el(tag: string, className = '', text = ''): HTMLElement {
 }
 
 showBoard(isBoardId(requestedBoard) ? requestedBoard : defaultBoard);
+connectBlueprintLiveRuntime();
