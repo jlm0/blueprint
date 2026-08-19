@@ -648,6 +648,71 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('shares one stable project runtime across independent MCP processes', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(novaRoot, projectCopy, { recursive: true });
+      const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
+      let ownerIndex = -1;
+      try {
+        const served = await Promise.all(sessions.map(session => call(session, 'serve', { project: projectCopy })));
+        assert.deepEqual(served.map(result => result.runtime).sort(), ['reused', 'started']);
+        assert.equal(served[0]?.port, served[1]?.port);
+        assert.equal(served[0]?.url, served[1]?.url);
+
+        ownerIndex = served.findIndex(result => result.runtime === 'started');
+        assert.notEqual(ownerIndex, -1);
+        const borrowerIndex = ownerIndex === 0 ? 1 : 0;
+        const url = served[ownerIndex]?.url as string;
+        await sessions[borrowerIndex]?.close();
+        assert.equal((await fetch(url)).status, 200);
+        await sessions[ownerIndex]?.close();
+        await assertEventuallyUnreachable(url);
+      } finally {
+        await Promise.allSettled(sessions.map(session => session.close()));
+      }
+    });
+  });
+
+  it('closes an owned review listener promptly when the stdio connection ends', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(novaRoot, projectCopy, { recursive: true });
+      const session = await openSession(tempDir);
+      const served = await call(session, 'serve', { project: projectCopy, port: 0 });
+      const startedAt = Date.now();
+      await session.close();
+      const closeDurationMs = Date.now() - startedAt;
+      assert.ok(closeDurationMs < 1_500, `Expected stdio EOF cleanup before signal fallback; close took ${closeDurationMs}ms.`);
+      await assertEventuallyUnreachable(served.url as string);
+    });
+  });
+
+  it('replaces a borrowed handle after its owning MCP process disconnects', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(novaRoot, projectCopy, { recursive: true });
+      const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
+      try {
+        const served = await Promise.all(sessions.map(session => call(session, 'serve', { project: projectCopy, port: 0 })));
+        const ownerIndex = served.findIndex(result => result.runtime === 'started');
+        assert.notEqual(ownerIndex, -1);
+        const borrowerIndex = ownerIndex === 0 ? 1 : 0;
+        const borrowerSession = sessions[borrowerIndex];
+        assert.ok(borrowerSession);
+        const originalUrl = served[ownerIndex]?.url as string;
+
+        await sessions[ownerIndex]?.close();
+        await assertEventuallyUnreachable(originalUrl);
+        const restarted = await call(borrowerSession, 'serve', { project: projectCopy, port: 0 });
+        assert.equal(restarted.runtime, 'started');
+        assert.equal((await fetch(restarted.url as string)).status, 200);
+      } finally {
+        await Promise.allSettled(sessions.map(session => session.close()));
+      }
+    });
+  });
+
   it('returns honest serve errors for occupied ports and missing projects', async () => {
     const occupied = await occupyPort(0);
     const address = occupied.address();

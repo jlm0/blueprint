@@ -143,7 +143,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Serve Blueprint Review',
       description:
-        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. Omitted ports allocate from 4173; separate projects receive separate listeners. Runtimes remain alive for this MCP connection and close with it.',
+        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. Omitted ports allocate from 4173; separate projects receive separate listeners. Independent MCP connections share the repository runtime; its owning connection closes it.',
       inputSchema: serveInputSchema,
       outputSchema: serveOutputSchema
     },
@@ -169,6 +169,7 @@ export function createBlueprintMcpServer(): McpServer {
             }
           }
         }
+        activeServeHandles.set(runtimeKey, handle);
         return toolResult({
           command: handle.command,
           project: handle.project,

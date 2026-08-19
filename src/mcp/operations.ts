@@ -62,9 +62,13 @@ import {
   BLUEPRINT_ACTIVITY_TOKEN_HEADER,
   BLUEPRINT_PROJECT_SNAPSHOT_PATH,
   BlueprintActivityHub,
+  blueprintActivityRuntimeBaseUrl,
   createBlueprintAgentActivityEvent,
+  findLiveBlueprintActivityRuntime,
   parseBlueprintHookBridgeEvent,
   registerBlueprintActivityRuntime,
+  withBlueprintServeRuntimeLock,
+  type BlueprintActivityRuntimeDescriptor,
   type RegisteredBlueprintActivityRuntime
 } from './activity';
 import {
@@ -107,6 +111,9 @@ interface CaptureServer {
 
 interface LocalServeServer extends CaptureServer {
   port: number;
+  baseUrl: string;
+  ownership: 'owned' | 'borrowed';
+  isAvailable: () => Promise<boolean>;
 }
 
 interface ProjectFileWrite {
@@ -126,6 +133,8 @@ interface ProjectFileTransaction {
 export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
   port: number;
   baseUrl: string;
+  ownership: 'owned' | 'borrowed';
+  isAvailable: () => Promise<boolean>;
 }
 
 const packageRoot = findPackageRoot();
@@ -597,6 +606,12 @@ export async function serveBlueprint(
     throw new Error('Cannot reuse a Blueprint review runtime for a different project.');
   }
 
+  let reusable = existing;
+  if (reusable && !await reusable.isAvailable()) {
+    await reusable.close().catch(() => undefined);
+    reusable = undefined;
+  }
+
   let selection: ServeOutput['selection'];
   if (input.explorationId) {
     const bundle = await loadProjectFromFs(projectRoot);
@@ -612,8 +627,17 @@ export async function serveBlueprint(
     };
   }
 
-  const server = existing ?? await startServeServer(projectRoot, input.port);
-  const baseUrl = existing?.baseUrl ?? server.url;
+  const acquisition = reusable
+    ? { server: reusable, reused: true }
+    : await withBlueprintServeRuntimeLock(projectKey, signal, async () => {
+      const discovered = await findLiveBlueprintActivityRuntime(projectKey);
+      if (discovered) {
+        return { server: borrowedServeServer(projectKey, discovered), reused: true };
+      }
+      return { server: await startServeServer(projectRoot, input.port), reused: false };
+    });
+  const server = acquisition.server;
+  const baseUrl = server.baseUrl;
   const selectedUrl = new URL(baseUrl);
   if (selection) {
     selectedUrl.searchParams.set('board', 'screens');
@@ -625,14 +649,42 @@ export async function serveBlueprint(
       project: normalize(projectRoot),
       port: server.port,
       url: selection ? selectedUrl.toString() : baseUrl,
-      runtime: existing ? 'reused' : 'started',
+      runtime: acquisition.reused ? 'reused' : 'started',
       ...(selection ? { selection } : {})
     });
-    return { ...output, baseUrl, close: server.close };
+    return {
+      ...output,
+      baseUrl,
+      close: server.close,
+      ownership: server.ownership,
+      isAvailable: server.isAvailable
+    };
   } catch (error) {
-    if (!existing) await server.close();
+    if (!acquisition.reused) await server.close();
     throw error;
   }
+}
+
+function borrowedServeServer(
+  projectRoot: string,
+  descriptor: BlueprintActivityRuntimeDescriptor
+): LocalServeServer {
+  const url = blueprintActivityRuntimeBaseUrl(descriptor);
+  const port = Number(new URL(url).port);
+  if (!Number.isSafeInteger(port) || port <= 0) {
+    throw new Error('Blueprint runtime descriptor does not contain a valid review port.');
+  }
+  return {
+    port,
+    url,
+    baseUrl: url,
+    ownership: 'borrowed',
+    isAvailable: async () => {
+      const current = await findLiveBlueprintActivityRuntime(projectRoot);
+      return current?.pid === descriptor.pid && current.activityUrl === descriptor.activityUrl;
+    },
+    close: async () => undefined
+  };
 }
 
 async function preflightChromium(): Promise<(typeof import('playwright'))['chromium']> {
@@ -1277,14 +1329,22 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     reloadTimer.unref();
   });
 
+  const baseUrl = `http://127.0.0.1:${address.port}/`;
+  let closePromise: Promise<void> | undefined;
   return {
     port: address.port,
-    url: `http://127.0.0.1:${address.port}/`,
-    close: async () => {
-      if (reloadTimer) clearTimeout(reloadTimer);
-      stopWatching();
-      activityHub.close();
-      await Promise.all([runtime?.close(), closeHttpServer(server)]);
+    url: baseUrl,
+    baseUrl,
+    ownership: 'owned',
+    isAvailable: async () => server.listening,
+    close: () => {
+      closePromise ??= (async () => {
+        if (reloadTimer) clearTimeout(reloadTimer);
+        stopWatching();
+        activityHub.close();
+        await Promise.all([runtime?.close(), closeHttpServer(server)]);
+      })();
+      return closePromise;
     }
   };
 }

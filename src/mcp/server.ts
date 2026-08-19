@@ -8,12 +8,20 @@ const handle = serveStdio(() => createBlueprintMcpServer(), {
   }
 });
 
-const close = (): void => {
-  void handle.close().catch(error => {
+let closing: Promise<void> | undefined;
+const close = (): Promise<void> => {
+  closing ??= handle.close().catch(error => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   });
+  return closing;
 };
 
-process.once('SIGINT', close);
-process.once('SIGTERM', close);
+const requestClose = (): void => {
+  void close();
+};
+
+process.stdin.once('end', requestClose);
+process.stdin.once('close', requestClose);
+process.once('SIGINT', requestClose);
+process.once('SIGTERM', requestClose);

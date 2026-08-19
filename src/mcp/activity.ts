@@ -1,8 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
-import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { ServerResponse } from 'node:http';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import type {
@@ -19,7 +20,11 @@ export const BLUEPRINT_ACTIVITY_TOKEN_HEADER = 'x-blueprint-activity-token';
 export const BLUEPRINT_ACTIVITY_RUNTIME_VERSION = 1;
 
 const runtimeDirectory = path.join(tmpdir(), 'blueprint-agent-activity-v1');
+const runtimeLockDirectory = path.join(runtimeDirectory, 'locks');
 const terminalActivityRetentionMs = 2_000;
+const runtimeProbeTimeoutMs = 750;
+const runtimeLockTimeoutMs = 15_000;
+const incompleteLockRetentionMs = 2_000;
 
 export interface BlueprintActivityRuntimeDescriptor {
   version: 1;
@@ -34,6 +39,16 @@ export interface RegisteredBlueprintActivityRuntime {
   descriptor: BlueprintActivityRuntimeDescriptor;
   filePath: string;
   close: () => Promise<void>;
+}
+
+interface BlueprintActivityRuntimeRecord {
+  descriptor: BlueprintActivityRuntimeDescriptor;
+  filePath: string;
+}
+
+interface BlueprintRuntimeLockOwner {
+  pid: number;
+  createdAt: string;
 }
 
 export interface BlueprintHookBridgeEvent {
@@ -138,6 +153,89 @@ export async function registerBlueprintActivityRuntime(
 }
 
 export async function readBlueprintActivityRuntimeDescriptors(): Promise<BlueprintActivityRuntimeDescriptor[]> {
+  const records = await readBlueprintActivityRuntimeRecords();
+  const descriptors: BlueprintActivityRuntimeDescriptor[] = [];
+  for (const record of records) {
+    if (isProcessAlive(record.descriptor.pid)) {
+      descriptors.push(record.descriptor);
+    } else {
+      await rm(record.filePath, { force: true }).catch(() => undefined);
+    }
+  }
+  return descriptors;
+}
+
+export async function findLiveBlueprintActivityRuntime(
+  projectRoot: string
+): Promise<BlueprintActivityRuntimeDescriptor | undefined> {
+  const canonicalProjectRoot = canonicalPath(projectRoot);
+  const records = (await readBlueprintActivityRuntimeRecords())
+    .filter(record => canonicalPath(record.descriptor.projectRoot) === canonicalProjectRoot)
+    .sort((left, right) => left.descriptor.createdAt.localeCompare(right.descriptor.createdAt));
+
+  for (const record of records) {
+    if (isProcessAlive(record.descriptor.pid) && await probeBlueprintActivityRuntime(record.descriptor)) {
+      return record.descriptor;
+    }
+    await rm(record.filePath, { force: true }).catch(() => undefined);
+  }
+  return undefined;
+}
+
+export function blueprintActivityRuntimeBaseUrl(descriptor: BlueprintActivityRuntimeDescriptor): string {
+  const activityUrl = new URL(descriptor.activityUrl);
+  if (
+    activityUrl.protocol !== 'http:' ||
+    activityUrl.hostname !== '127.0.0.1' ||
+    activityUrl.pathname !== BLUEPRINT_ACTIVITY_POST_PATH
+  ) {
+    throw new Error('Blueprint runtime descriptor contains an invalid loopback activity URL.');
+  }
+  activityUrl.pathname = '/';
+  activityUrl.search = '';
+  activityUrl.hash = '';
+  return activityUrl.toString();
+}
+
+export async function withBlueprintServeRuntimeLock<T>(
+  projectRoot: string,
+  signal: AbortSignal | undefined,
+  operation: () => Promise<T>
+): Promise<T> {
+  await mkdir(runtimeLockDirectory, { recursive: true, mode: 0o700 });
+  const canonicalProjectRoot = canonicalPath(projectRoot);
+  const lockId = createHash('sha256').update(canonicalProjectRoot).digest('hex');
+  const lockPath = path.join(runtimeLockDirectory, lockId);
+  const ownerPath = path.join(lockPath, 'owner.json');
+  const deadline = Date.now() + runtimeLockTimeoutMs;
+  let acquired = false;
+
+  try {
+    while (!acquired) {
+      throwIfSignalAborted(signal);
+      try {
+        await mkdir(lockPath, { mode: 0o700 });
+        acquired = true;
+        const owner: BlueprintRuntimeLockOwner = { pid: process.pid, createdAt: new Date().toISOString() };
+        await writeFile(ownerPath, `${JSON.stringify(owner)}\n`, { encoding: 'utf8', mode: 0o600 });
+      } catch (error) {
+        if (!isNodeError(error, 'EEXIST')) throw error;
+        if (await removeAbandonedRuntimeLock(lockPath, ownerPath)) continue;
+        if (Date.now() >= deadline) {
+          throw new Error(`Timed out waiting for the active Blueprint runtime lease for ${canonicalProjectRoot}.`);
+        }
+        await delay(25, undefined, signal ? { signal } : undefined);
+      }
+    }
+    return await operation();
+  } finally {
+    if (acquired) {
+      await rm(lockPath, { recursive: true, force: true }).catch(() => undefined);
+    }
+  }
+}
+
+async function readBlueprintActivityRuntimeRecords(): Promise<BlueprintActivityRuntimeRecord[]> {
   let entries: string[];
   try {
     entries = await readdir(runtimeDirectory);
@@ -145,19 +243,68 @@ export async function readBlueprintActivityRuntimeDescriptors(): Promise<Bluepri
     return [];
   }
 
-  const descriptors: BlueprintActivityRuntimeDescriptor[] = [];
+  const records: BlueprintActivityRuntimeRecord[] = [];
   for (const entry of entries.filter(candidate => candidate.endsWith('.json'))) {
+    const filePath = path.join(runtimeDirectory, entry);
     try {
-      const parsed = JSON.parse(await readFile(path.join(runtimeDirectory, entry), 'utf8')) as unknown;
+      const parsed = JSON.parse(await readFile(filePath, 'utf8')) as unknown;
       if (isBlueprintActivityRuntimeDescriptor(parsed)) {
-        descriptors.push(parsed);
+        records.push({ descriptor: parsed, filePath });
       }
     } catch {
       // Runtime discovery is best-effort. A stale or partially removed file
       // must never fail the Codex tool call that triggered the hook.
     }
   }
-  return descriptors;
+  return records;
+}
+
+async function probeBlueprintActivityRuntime(descriptor: BlueprintActivityRuntimeDescriptor): Promise<boolean> {
+  try {
+    const response = await fetch(new URL(BLUEPRINT_PROJECT_SNAPSHOT_PATH, blueprintActivityRuntimeBaseUrl(descriptor)), {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(runtimeProbeTimeoutMs)
+    });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+async function removeAbandonedRuntimeLock(lockPath: string, ownerPath: string): Promise<boolean> {
+  try {
+    const owner = JSON.parse(await readFile(ownerPath, 'utf8')) as Partial<BlueprintRuntimeLockOwner>;
+    if (typeof owner.pid === 'number' && isProcessAlive(owner.pid)) return false;
+  } catch {
+    try {
+      const lockStat = await stat(lockPath);
+      if (Date.now() - lockStat.mtimeMs < incompleteLockRetentionMs) return false;
+    } catch {
+      return true;
+    }
+  }
+  await rm(lockPath, { recursive: true, force: true }).catch(() => undefined);
+  return true;
+}
+
+function isProcessAlive(pid: number): boolean {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return isNodeError(error, 'EPERM');
+  }
+}
+
+function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoException {
+  return error instanceof Error && (error as NodeJS.ErrnoException).code === code;
+}
+
+function throwIfSignalAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Operation aborted.');
+  }
 }
 
 export function selectBlueprintActivityRuntimes(
