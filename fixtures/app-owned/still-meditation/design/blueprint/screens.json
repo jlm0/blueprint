@@ -18,7 +18,7 @@
         }
       ],
       "notes": [
-        "The ambient breathing artwork and warm paper backdrop are screen-local art direction; the practice command and status chip remain canonical primitives."
+        "The ambient breathing artwork and cool dawn backdrop are screen-local art direction; the practice command and status chip remain canonical primitives."
       ],
       "prototypeOnly": false,
       "implementationHints": [
@@ -79,7 +79,7 @@
         "localValueExceptions": [
           {
             "property": "background",
-            "value": "layered warm-paper ambient gradients",
+            "value": "layered cool-dawn ambient gradients",
             "reason": "The atmosphere is unique to the Today screen and does not define a reusable surface role."
           },
           {
@@ -156,7 +156,7 @@
                 "slot": "label",
                 "state": "default",
                 "variant": "tonal",
-                "copy": "Morning"
+                "copy": "Focus"
               }
             },
             {
@@ -167,14 +167,14 @@
                 "slot": "label",
                 "state": "normal",
                 "variant": "primary",
-                "copy": "Begin"
+                "copy": "Start"
               }
             }
           ],
           "prototypeOnly": false,
           "notes": [],
           "implementationHints": [
-            "Connect Begin to the player while retaining the practice title and duration in the transition."
+            "Connect Start to the player while retaining the practice title and duration in the transition."
           ],
           "implementationTargets": [
             {

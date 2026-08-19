@@ -21,25 +21,36 @@
     </header>
 
     <section class="welcome" aria-labelledby="welcome-title">
-      <p class="eyebrow">Good morning, Maya</p>
-      <h1 id="welcome-title">How do you want<br />to feel?</h1>
+      <div class="welcome__copy">
+        <p class="eyebrow">Morning practice · Maya</p>
+        <h1 id="welcome-title">Your pause<br />is ready.</h1>
+      </div>
+      <div class="welcome__date" aria-label="August 18">
+        <strong>18</strong>
+        <span>Aug</span>
+      </div>
     </section>
 
     <section class="featured" aria-labelledby="featured-title">
       <div class="featured__wash" aria-hidden="true"></div>
-      <div class="breath-orb" aria-hidden="true">
-        <span class="breath-orb__ring breath-orb__ring--outer"></span>
-        <span class="breath-orb__ring breath-orb__ring--middle"></span>
-        <span class="breath-orb__core"></span>
+      <div class="featured__topline">
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
+          <span slot="label">Focus</span>
+        </blueprint-use>
+        <span class="featured__index" aria-hidden="true">01 / 05</span>
       </div>
 
-      <div class="featured__copy">
-        <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
-          <span slot="label">Morning</span>
-        </blueprint-use>
-        <p class="featured__kicker">Daily practice</p>
-        <h2 id="featured-title">Return to<br />your breath</h2>
-        <p class="featured__description">A gentle reset with Elena</p>
+      <div class="featured__body">
+        <div class="featured__copy">
+          <p class="featured__kicker">Today's guided practice</p>
+          <h2 id="featured-title">Find your<br />center</h2>
+          <p class="featured__description">Breathwork · with Elena</p>
+        </div>
+        <div class="breath-orb" aria-hidden="true">
+          <span class="breath-orb__ring breath-orb__ring--outer"></span>
+          <span class="breath-orb__ring breath-orb__ring--middle"></span>
+          <span class="breath-orb__core"></span>
+        </div>
       </div>
 
       <div class="featured__footer">
@@ -51,50 +62,55 @@
           10 min
         </span>
         <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
-          <span slot="label">Begin</span>
+          <span slot="label">Start</span>
         </blueprint-use>
       </div>
     </section>
 
-    <section class="rhythm" aria-label="Weekly practice rhythm">
-      <div class="rhythm__copy">
-        <span class="rhythm__icon" aria-hidden="true">✦</span>
-        <span>
-          <strong>4 day rhythm</strong>
-          <small>One quiet moment at a time</small>
-        </span>
-      </div>
-      <div class="rhythm__days" aria-label="Four of five practice days complete">
-        <i class="is-complete"></i>
-        <i class="is-complete"></i>
-        <i class="is-complete"></i>
-        <i class="is-complete"></i>
-        <i></i>
-      </div>
-    </section>
+    <div class="practice-grid">
+      <section class="rhythm" aria-label="Weekly practice rhythm">
+        <div class="rhythm__top">
+          <span class="rhythm__icon" aria-hidden="true">✦</span>
+          <strong class="rhythm__score">4 / 5</strong>
+        </div>
+        <div class="rhythm__copy">
+          <span>
+            <strong>Weekly rhythm</strong>
+            <small>Four days settled</small>
+          </span>
+        </div>
+        <div class="rhythm__days" aria-label="Four of five practice days complete">
+          <i class="is-complete"></i>
+          <i class="is-complete"></i>
+          <i class="is-complete"></i>
+          <i class="is-complete"></i>
+          <i></i>
+        </div>
+      </section>
 
-    <section class="moment" aria-labelledby="moment-title">
-      <div class="section-heading">
-        <h2 id="moment-title">For this moment</h2>
-        <a href="#">See all</a>
-      </div>
-      <button class="practice-row" type="button">
-        <span class="practice-row__art" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none">
-            <path d="M9 28c8-13 17-16 30-8" />
-            <path d="M11 34c10-10 19-11 28-3" />
-            <circle cx="32.5" cy="14.5" r="4.5" />
-          </svg>
-        </span>
-        <span class="practice-row__copy">
-          <strong>Quiet the noise</strong>
-          <small>7 min · Deep calm</small>
-        </span>
-        <span class="practice-row__play" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="m9.5 7 7 5-7 5Z"></path></svg>
-        </span>
-      </button>
-    </section>
+      <section class="moment" aria-labelledby="moment-title">
+        <div class="section-heading">
+          <h2 id="moment-title">Next up</h2>
+          <a href="#">Library</a>
+        </div>
+        <button class="practice-row" type="button">
+          <span class="practice-row__art" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none">
+              <path d="M9 28c8-13 17-16 30-8" />
+              <path d="M11 34c10-10 19-11 28-3" />
+              <circle cx="32.5" cy="14.5" r="4.5" />
+            </svg>
+          </span>
+          <span class="practice-row__copy">
+            <strong>Release the rush</strong>
+            <small>6 min · Grounding</small>
+          </span>
+          <span class="practice-row__play" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m9.5 7 7 5-7 5Z"></path></svg>
+          </span>
+        </button>
+      </section>
+    </div>
   </div>
 
   <nav class="tabbar" aria-label="Primary navigation">
