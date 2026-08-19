@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "rules": {
+    "eslint/no-control-regex": "off"
+  },
+  "ignorePatterns": ["dist/**", ".blueprint-artifacts/**", "node_modules/**"],
+  "options": {
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  }
+}

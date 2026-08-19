@@ -24,6 +24,8 @@
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "check:fixtures": "node --import tsx src/scripts/validate-fixtures.ts",
@@ -33,7 +35,7 @@
     "build:site": "vite build",
     "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js dist/mcp/codex-activity-hook.js",
     "build": "npm run build:site && npm run build:mcp",
-    "qa": "npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
+    "qa": "npm run lint && npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
@@ -44,6 +46,7 @@
     "@modelcontextprotocol/client": "^2.0.0",
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
+    "oxlint": "^1.79.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.6"

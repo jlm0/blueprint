@@ -47,7 +47,6 @@ export function listBoundaryReferences(bundle: BlueprintProjectBundle): Boundary
 
 export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: BoundarySelector | string): BoundaryPacket {
   const selector = typeof selectorOrInput === 'string' ? parseQueryBoundarySelector(selectorOrInput) : selectorOrInput;
-  const projectId = bundle.manifest.project.id;
 
   switch (selector.kind) {
     case 'project':

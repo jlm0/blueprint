@@ -15,7 +15,6 @@ import type {
 
 const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
-const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 
 type ExtractionOptions = { mode?: 'focused' | 'deep' };

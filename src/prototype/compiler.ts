@@ -440,10 +440,10 @@ function addStyleRefs(context: CompilerContext, styleRefs: string[]): void {
 
 function loadAndRewriteStyle(context: CompilerContext, styleRef: string): string {
   const css = requireSource(context.bundle, styleRef, `prototype stylesheet ${styleRef}`);
-  if (/\@import\b/i.test(css)) {
+  if (/@import\b/i.test(css)) {
     throw new Error(`Prototype stylesheet "${styleRef}" cannot import external or undeclared stylesheets.`);
   }
-  return css.replace(/url\(\s*(['"]?)([^'"\)]+)\1\s*\)/gi, (_match, _quote: string, value: string) => {
+  return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (_match, _quote: string, value: string) => {
     const dataUrl = resolveAssetDataUrl(context, styleRef, value.trim());
     return `url("${dataUrl}")`;
   });

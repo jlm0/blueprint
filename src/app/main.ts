@@ -414,7 +414,6 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     fallbackWidth: 400,
     fallbackHeight: 220
   });
-  const projectId = bundle.manifest.project.id;
   const tokenIndex = createTokenIndex(bundle);
 
   addGroupHeading(root, controller, {
@@ -2087,7 +2086,7 @@ function mergeVisualStates(primary: PrimitiveState, secondary: PrimitiveState): 
     id: `${primary.id}-${secondary.id}`,
     name: `${primary.name} ${secondary.name}`,
     tokens: uniqueStrings([...(primary.tokens ?? []), ...(secondary.tokens ?? [])]),
-    tokenRoles: { ...(primary.tokenRoles ?? {}), ...(secondary.tokenRoles ?? {}) },
+    tokenRoles: { ...primary.tokenRoles, ...secondary.tokenRoles },
     prototypeOnly: primary.prototypeOnly || secondary.prototypeOnly,
     notes: [...(primary.notes ?? []), ...(secondary.notes ?? [])],
     implementationHints: [...(primary.implementationHints ?? []), ...(secondary.implementationHints ?? [])]
