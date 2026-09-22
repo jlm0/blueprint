@@ -1,11 +1,13 @@
 import './styles.css';
 import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
-import type {
-  BlueprintAgentActivityEvent,
-  BlueprintProjectChangedEvent,
-  BlueprintProjectErrorEvent,
-  BlueprintProjectSnapshot
+import {
+  activityFocusesForChangedPaths,
+  type BlueprintAgentActivityEvent,
+  type BlueprintAgentActivityFocus,
+  type BlueprintProjectChangedEvent,
+  type BlueprintProjectErrorEvent,
+  type BlueprintProjectSnapshot
 } from '../core/activity';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
@@ -3878,7 +3880,9 @@ function refreshCanvasReviewState(boardId: BoardId): void {
   };
 }
 
-let focusedActivityElement: HTMLElement | undefined;
+let focusedActivityElements: HTMLElement[] = [];
+const inFlightToolFocuses = new Map<string, BlueprintAgentActivityFocus[]>();
+let changedBoundaryFocuses: BlueprintAgentActivityFocus[] = [];
 let activeActivityKey: string | undefined;
 let activityClearTimer: number | undefined;
 let lastAgentActivity: BlueprintAgentActivityEvent | undefined;
@@ -3965,7 +3969,9 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
     if (preservedView) canvas.setView(preservedView);
   }
   lastAppliedRevision = snapshot.revision;
-  if (lastAgentActivity) focusAgentBoundary(lastAgentActivity);
+  const changedFocuses = activityFocusesForChangedPaths(project, changedPaths);
+  changedBoundaryFocuses = activeActivityKey ? uniqueAgentFocuses([...changedBoundaryFocuses, ...changedFocuses]) : changedFocuses;
+  renderAgentFocus();
   markFocusedBoundaryBusy(lastAgentActivity?.phase === 'started' || lastAgentActivity?.phase === 'completed');
   restoreAgentStatusAfterApply();
 }
@@ -4059,21 +4065,28 @@ function affectedScreenIds(changedPaths: string[]): Set<string> | undefined {
 }
 
 function showAgentActivity(event: BlueprintAgentActivityEvent): void {
-  lastAgentActivity = event;
   if (event.phase === 'started') {
+    if (activeActivityKey !== agentActivityKey(event)) {
+      inFlightToolFocuses.clear();
+      changedBoundaryFocuses = [];
+    }
+    lastAgentActivity = event;
     activeActivityKey = agentActivityKey(event);
+    inFlightToolFocuses.set(event.toolUseId, event.focuses);
     if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
     setAgentStatus('working', event.label);
-    focusAgentBoundary(event);
+    renderAgentFocus();
     markFocusedBoundaryBusy(true);
     return;
   }
 
   if (activeActivityKey !== agentActivityKey(event)) return;
+  inFlightToolFocuses.delete(event.toolUseId);
+  lastAgentActivity = event;
   if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+  renderAgentFocus();
   if (event.phase === 'failed') {
     setAgentStatus('failed', event.label);
-    setFocusedActivityFailed(true);
     markFocusedBoundaryBusy(false);
     activityClearTimer = window.setTimeout(clearAgentActivity, 1_800);
     return;
@@ -4086,44 +4099,73 @@ function showAgentActivity(event: BlueprintAgentActivityEvent): void {
   }, 3_200);
 }
 
-function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
+function currentAgentFocuses(): BlueprintAgentActivityFocus[] {
+  const focuses = uniqueAgentFocuses([
+    ...lastAgentActivity?.focuses ?? [],
+    ...[...inFlightToolFocuses.values()].reverse().flat(),
+    ...changedBoundaryFocuses
+  ]);
+  const specific = focuses.filter(focus => focus.kind !== 'project' && focus.kind !== 'board');
+  return specific.length > 0 ? specific : focuses;
+}
+
+function uniqueAgentFocuses(focuses: BlueprintAgentActivityFocus[]): BlueprintAgentActivityFocus[] {
+  return [...new Map(focuses.map(focus => [focus.boundaryId, focus] as const)).values()];
+}
+
+function renderAgentFocus(): void {
   clearAgentFocus();
+  const focuses = currentAgentFocuses();
+  if (focuses.length === 0) return;
+  const label = lastAgentActivity?.label ?? 'Changes are live';
   const visibleRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
-  const prototypeConsumers = visibleRoot && activeBoardId === 'screens' &&
-    (event.focus.kind === 'primitive' || event.focus.kind === 'component' || event.focus.kind === 'section')
-    ? prototypeFramesUsingBoundary(visibleRoot, event.focus)
-    : [];
-  if (prototypeConsumers.length > 0) {
-    for (const frame of prototypeConsumers) applyPrototypeFrameFocus(frame, event.focus.boundaryId);
-    const context = prototypeConsumers[0]?.closest<HTMLElement>('.frame');
-    if (context) {
-      focusedActivityElement = context;
-      context.classList.add('bp-chrome-agent-focus-context');
-      context.dataset.agentActivityLabel = event.label;
-    }
-    return;
+  const frameFocus = new Map<HTMLIFrameElement, Set<string>>();
+  const canvasFocuses: BlueprintAgentActivityFocus[] = [];
+  for (const focus of focuses) {
+    const consumers = visibleRoot && activeBoardId === 'screens' &&
+      (focus.kind === 'primitive' || focus.kind === 'component' || focus.kind === 'section')
+      ? prototypeFramesUsingBoundary(visibleRoot, focus)
+      : [];
+    if (consumers.length === 0) canvasFocuses.push(focus);
+    for (const frame of consumers) frameFocus.set(frame, new Set([...frameFocus.get(frame) ?? [], focus.boundaryId]));
   }
-  const requestedBoard = event.focus.kind === 'board' && isBoardId(event.focus.localId)
-    ? event.focus.localId
-    : event.focus.board;
-  if (requestedBoard && activeBoardId !== requestedBoard) {
-    showBoard(requestedBoard);
+
+  for (const [frame, boundaryIds] of frameFocus) {
+    applyPrototypeFrameFocus(frame, boundaryIds);
+    const context = frame.closest<HTMLElement>('.frame');
+    if (context && !focusedActivityElements.includes(context)) {
+      context.classList.add('bp-chrome-agent-focus-context');
+      context.dataset.agentActivityLabel = label;
+      focusedActivityElements.push(context);
+    }
+  }
+  if (canvasFocuses.length > 0) renderCanvasAgentFocus(canvasFocuses, label, frameFocus.size > 0);
+  setFocusedActivityFailed(lastAgentActivity?.phase === 'failed');
+}
+
+function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], label: string, framesFocused: boolean): void {
+  if (!framesFocused && lastAgentActivity) {
+    const primary = canvasFocuses[0];
+    const requestedBoard = primary.kind === 'board' && isBoardId(primary.localId) ? primary.localId : primary.board;
+    if (requestedBoard && activeBoardId !== requestedBoard) {
+      showBoard(requestedBoard);
+    }
   }
 
   const activeRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
-  let target = activeRoot ? findBoundaryElement(activeRoot, event.focus.boundaryId) : undefined;
-  if (!target && event.focus.screenId && activeRoot) {
-    target = findBoundaryElement(activeRoot, boundaryId(project.manifest.project.id, 'screen', event.focus.screenId));
+  for (const focus of canvasFocuses) {
+    let target = activeRoot ? findBoundaryElement(activeRoot, focus.boundaryId) : undefined;
+    if (!target && focus.screenId && activeRoot) {
+      target = findBoundaryElement(activeRoot, boundaryId(project.manifest.project.id, 'screen', focus.screenId));
+    }
+    if (!target) continue;
+    target.classList.add('bp-chrome-agent-focus');
+    target.dataset.agentActivityLabel = label;
+    if (!focusedActivityElements.includes(target)) focusedActivityElements.push(target);
   }
-
-  if (!target) {
+  if (focusedActivityElements.length === 0) {
     viewport.classList.add('bp-agent-project-focus');
-    return;
   }
-
-  focusedActivityElement = target;
-  target.classList.add('bp-chrome-agent-focus');
-  target.dataset.agentActivityLabel = event.label;
 }
 
 function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undefined {
@@ -4134,6 +4176,8 @@ function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undef
 function clearAgentActivity(): void {
   activeActivityKey = undefined;
   lastAgentActivity = undefined;
+  inFlightToolFocuses.clear();
+  changedBoundaryFocuses = [];
   window.__BLUEPRINT_AGENT_ACTIVITY__ = undefined;
   agentStatus.hidden = true;
   delete agentStatus.dataset.phase;
@@ -4149,19 +4193,19 @@ function clearAgentFocus(): void {
   agentFrameFocusGeneration += 1;
   for (const layer of document.querySelectorAll('.bp-chrome-agent-frame-focus')) layer.remove();
   focusedPrototypeFrames.clear();
-  if (focusedActivityElement) {
-    focusedActivityElement.classList.remove(
+  for (const element of focusedActivityElements) {
+    element.classList.remove(
       'bp-chrome-agent-focus',
       'bp-chrome-agent-focus-context',
       'bp-chrome-agent-focus-failed'
     );
-    focusedActivityElement.removeAttribute('aria-busy');
-    delete focusedActivityElement.dataset.agentActivityLabel;
+    element.removeAttribute('aria-busy');
+    delete element.dataset.agentActivityLabel;
   }
-  focusedActivityElement = undefined;
+  focusedActivityElements = [];
 }
 
-function prototypeFramesUsingBoundary(root: HTMLElement, focus: BlueprintAgentActivityEvent['focus']): HTMLIFrameElement[] {
+function prototypeFramesUsingBoundary(root: HTMLElement, focus: BlueprintAgentActivityFocus): HTMLIFrameElement[] {
   const focusBoundaryId = focus.boundaryId;
   return [...root.querySelectorAll<HTMLIFrameElement>('iframe[data-prototype-target-boundary]')].filter(frame => {
     if (focus.kind === 'section') {
@@ -4177,18 +4221,18 @@ function prototypeFramesUsingBoundary(root: HTMLElement, focus: BlueprintAgentAc
   });
 }
 
-function applyPrototypeFrameFocus(frame: HTMLIFrameElement, focusBoundaryId: string): void {
+function applyPrototypeFrameFocus(frame: HTMLIFrameElement, boundaryIds: ReadonlySet<string>): void {
   const html = prototypeDocumentByFrame.get(frame);
   const host = frame.parentElement;
   if (!html || !host) return;
   focusedPrototypeFrames.add(frame);
   const generation = agentFrameFocusGeneration;
-  void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, new Set([focusBoundaryId])).then(extents => {
+  void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, boundaryIds).then(extents => {
     if (generation !== agentFrameFocusGeneration || !frame.isConnected) return;
     host.querySelector(':scope > .bp-chrome-agent-frame-focus')?.remove();
     const layer = el('div', 'bp-chrome-agent-frame-focus');
     layer.setAttribute('aria-hidden', 'true');
-    layer.dataset.focusBoundaryId = focusBoundaryId;
+    layer.dataset.focusBoundaryIds = [...boundaryIds].join(' ');
     layer.classList.toggle('bp-chrome-agent-focus-failed', lastAgentActivity?.phase === 'failed');
     for (const extent of extents) {
       const box = el('div', 'bp-chrome-agent-frame-focus-box');
@@ -4237,14 +4281,14 @@ function measurePrototypeBoundaryExtents(
 }
 
 function setFocusedActivityFailed(failed: boolean): void {
-  focusedActivityElement?.classList.toggle('bp-chrome-agent-focus-failed', failed);
+  for (const element of focusedActivityElements) element.classList.toggle('bp-chrome-agent-focus-failed', failed);
   for (const layer of document.querySelectorAll('.bp-chrome-agent-frame-focus')) {
     layer.classList.toggle('bp-chrome-agent-focus-failed', failed);
   }
 }
 
 function markFocusedBoundaryBusy(busy: boolean): void {
-  if (focusedActivityElement) focusedActivityElement.setAttribute('aria-busy', String(busy));
+  for (const element of focusedActivityElements) element.setAttribute('aria-busy', String(busy));
 }
 
 function restoreAgentStatusAfterApply(): void {

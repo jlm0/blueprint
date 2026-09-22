@@ -1,3 +1,4 @@
+import { boundaryId } from './address';
 import type { BlueprintProjectBundle, BoundaryKind } from './types';
 
 export type BlueprintAgentActivityPhase = 'started' | 'completed' | 'failed';
@@ -20,6 +21,7 @@ export interface BlueprintAgentActivityEvent {
   label: string;
   emittedAt: string;
   focus: BlueprintAgentActivityFocus;
+  focuses: BlueprintAgentActivityFocus[];
 }
 
 export interface BlueprintProjectChangedEvent {
@@ -39,4 +41,95 @@ export interface BlueprintProjectSnapshot {
   version: 1;
   revision: string;
   bundle: BlueprintProjectBundle;
+}
+
+interface SourceReferenceOwner {
+  kind: BoundaryKind;
+  id: string;
+}
+
+export function activityFocusForBoundary(
+  bundle: BlueprintProjectBundle,
+  kind: BoundaryKind,
+  localId: string
+): BlueprintAgentActivityFocus {
+  const screenId = kind === 'section' ? localId.split('/')[0] : kind === 'screen' ? localId : undefined;
+  return {
+    boundaryId: boundaryId(bundle.manifest.project.id, kind, localId),
+    kind,
+    localId,
+    board: boardForBoundary(kind),
+    ...(screenId ? { screenId } : {})
+  };
+}
+
+/**
+ * Every boundary whose governed source path appears in free-form tool input.
+ * Longer paths are consumed first so a path is never also credited to a shorter one it contains.
+ */
+export function activityFocusesForSourceText(bundle: BlueprintProjectBundle, text: string): BlueprintAgentActivityFocus[] {
+  let remaining = text.replaceAll('\\', '/');
+  const owners: SourceReferenceOwner[] = [];
+  const references = [...sourceReferenceOwners(bundle)].sort(([left], [right]) => right.length - left.length);
+  for (const [ref, refOwners] of references) {
+    if (!remaining.includes(ref)) continue;
+    remaining = remaining.replaceAll(ref, '\u0000');
+    owners.push(...refOwners);
+  }
+  return uniqueFocuses(bundle, owners);
+}
+
+export function activityFocusesForChangedPaths(
+  bundle: BlueprintProjectBundle,
+  changedPaths: string[]
+): BlueprintAgentActivityFocus[] {
+  const references = sourceReferenceOwners(bundle);
+  return uniqueFocuses(bundle, changedPaths.flatMap(changedPath => references.get(changedPath.replaceAll('\\', '/')) ?? []));
+}
+
+function sourceReferenceOwners(bundle: BlueprintProjectBundle): Map<string, SourceReferenceOwner[]> {
+  const references = new Map<string, SourceReferenceOwner[]>();
+  const add = (refs: string[], kind: BoundaryKind, id: string): void => {
+    for (const ref of refs) {
+      const normalized = ref.replaceAll('\\', '/');
+      references.set(normalized, [...references.get(normalized) ?? [], { kind, id }]);
+    }
+  };
+  for (const primitive of bundle.primitives.primitives) {
+    if (primitive.prototype) add([primitive.prototype.source, ...primitive.prototype.styles], 'primitive', primitive.id);
+  }
+  for (const component of bundle.components.components) {
+    if (component.prototype) add([component.prototype.source, ...component.prototype.styles], 'component', component.id);
+  }
+  for (const screen of bundle.screens.screens) {
+    if (screen.prototype) {
+      add([screen.prototype.source, ...screen.prototype.styles, ...screen.prototype.assetRefs], 'screen', screen.id);
+    }
+  }
+  for (const exploration of bundle.explorations.explorations) {
+    for (const prototype of [exploration.target.baseline.prototype, ...exploration.candidates.map(candidate => candidate.prototype)]) {
+      add([prototype.source, ...prototype.styles, ...prototype.assetRefs], 'screen', exploration.target.screenId);
+    }
+  }
+  for (const entry of bundle.history.entries) {
+    if (entry.screen.prototype) {
+      add([entry.screen.prototype.source, ...entry.screen.prototype.styles, ...entry.screen.prototype.assetRefs], 'screen', entry.screenId);
+    }
+  }
+  return references;
+}
+
+function uniqueFocuses(bundle: BlueprintProjectBundle, owners: SourceReferenceOwner[]): BlueprintAgentActivityFocus[] {
+  const focuses = new Map<string, BlueprintAgentActivityFocus>();
+  for (const owner of owners) {
+    const focus = activityFocusForBoundary(bundle, owner.kind, owner.id);
+    if (!focuses.has(focus.boundaryId)) focuses.set(focus.boundaryId, focus);
+  }
+  return [...focuses.values()];
+}
+
+function boardForBoundary(kind: BoundaryKind): 'primitives' | 'screens' | null {
+  if (kind === 'screen' || kind === 'section') return 'screens';
+  if (kind === 'board' || kind === 'project') return null;
+  return 'primitives';
 }

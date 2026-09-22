@@ -557,7 +557,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-button-focus',
             tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`
           });
-          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-id="still-meditation/primitive/button"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/primitive/button"] .bp-chrome-agent-frame-focus-box').first().waitFor();
           const buttonFocus = await page.evaluate(() => {
             const layer = document.querySelector<HTMLElement>('.bp-chrome-agent-frame-focus');
             const frame = layer?.parentElement?.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
@@ -597,8 +597,22 @@ describe('Blueprint MCP and template governance', () => {
               query: { type: 'show', boundary: 'section:home/featured-practice' }
             }
           });
-          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-id="still-meditation/section/home/featured-practice"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/section/home/featured-practice"] .bp-chrome-agent-frame-focus-box').first().waitFor();
           assert.equal(await page.locator('.bp-chrome-agent-frame-focus-box').count(), 1);
+
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-multi-focus',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-live-multi-focus',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css\n*** Update File: design/blueprint/prototype/primitives/badge.css")`
+          });
+          const multiFocus = page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/primitive/button"][data-focus-boundary-ids~="still-meditation/primitive/badge"]');
+          await multiFocus.locator('.bp-chrome-agent-frame-focus-box').first().waitFor();
+          assert.ok(await multiFocus.locator('.bp-chrome-agent-frame-focus-box').count() >= 2);
+          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at (Button and Badge|Badge and Button)/);
 
           await page.locator('#viewport').dispatchEvent('wheel', {
             deltaY: -320,
@@ -611,6 +625,7 @@ describe('Blueprint MCP and template governance', () => {
           await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.still-home { --blueprint-live-test: 1; }\n`, 'utf8');
           await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
             .some(frame => frame.srcdoc.includes('--blueprint-live-test: 1')));
+          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-agent-focus').first().waitFor();
           assert.equal(await page.locator('#world').getAttribute('style'), preservedTransform);
           assert.equal(await page.evaluate(() => (
             window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }

@@ -1,17 +1,20 @@
 import assert from 'node:assert/strict';
 import type { ServerResponse } from 'node:http';
 import { describe, it } from 'node:test';
+import { activityFocusesForChangedPaths, activityFocusesForSourceText } from '../src/core/activity';
 import { loadProjectFromFs } from '../src/core/load';
 import {
   BlueprintActivityHub,
   createBlueprintAgentActivityEvent,
   parseBlueprintHookBridgeEvent,
   resolveActivityFocus,
+  resolveActivityFocuses,
   selectBlueprintActivityRuntimes,
   type BlueprintActivityRuntimeDescriptor
 } from '../src/mcp/activity';
 
 const projectRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
 
 describe('Codex activity contract', () => {
   it('resolves typed MCP boundaries and governed source paths to visible canvas focus', async () => {
@@ -75,9 +78,66 @@ describe('Codex activity contract', () => {
         localId: 'waitlist',
         board: 'screens',
         screenId: 'waitlist'
-      }
+      },
+      focuses: [{
+        boundaryId: 'high-fidelity-red/screen/waitlist',
+        kind: 'screen',
+        localId: 'waitlist',
+        board: 'screens',
+        screenId: 'waitlist'
+      }]
     });
     assert.equal(parseBlueprintHookBridgeEvent({ version: 1, sessionId: 'missing-fields' }), undefined);
+  });
+
+  it('focuses every boundary a multi-file edit or shared stylesheet touches', async () => {
+    const bundle = await loadProjectFromFs(stillRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    const badge = bundle.primitives.primitives.find(primitive => primitive.id === 'badge');
+    assert.ok(button?.prototype && badge?.prototype);
+    const buttonCss = button.prototype.styles[0];
+    const badgeCss = badge.prototype.styles[0];
+
+    const patch = `*** Update File: design/blueprint/${buttonCss}\n*** Update File: design/blueprint/${badgeCss}`;
+    assert.deepEqual(
+      resolveActivityFocuses(bundle, { command: patch }).map(focus => focus.boundaryId).sort(),
+      ['still-meditation/primitive/badge', 'still-meditation/primitive/button']
+    );
+
+    badge.prototype.styles.push(buttonCss);
+    assert.deepEqual(
+      resolveActivityFocuses(bundle, { command: `apply_patch ${buttonCss}` }).map(focus => focus.boundaryId).sort(),
+      ['still-meditation/primitive/badge', 'still-meditation/primitive/button']
+    );
+
+    const event = createBlueprintAgentActivityEvent(bundle, {
+      version: 1,
+      sessionId: 'session-1',
+      toolUseId: 'tool-1',
+      toolName: 'functions.exec',
+      phase: 'started',
+      emittedAt: '2026-08-18T12:00:00.000Z',
+      toolInput: patch
+    });
+    assert.equal(event.focus.boundaryId, event.focuses[0]?.boundaryId);
+    assert.match(event.label, /^Codex is looking at (Button and Badge|Badge and Button)$/);
+
+    assert.deepEqual(
+      activityFocusesForChangedPaths(bundle, [buttonCss, 'screens.json', 'prototype/screens/home.html']).map(focus => focus.boundaryId),
+      ['still-meditation/primitive/button', 'still-meditation/primitive/badge', 'still-meditation/screen/home']
+    );
+  });
+
+  it('credits a source path only to the longest governed reference that contains it', async () => {
+    const bundle = await loadProjectFromFs(stillRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    const badge = bundle.primitives.primitives.find(primitive => primitive.id === 'badge');
+    assert.ok(button?.prototype && badge?.prototype);
+    badge.prototype.styles = [`${button.prototype.styles[0]}.theme.css`];
+    assert.deepEqual(
+      activityFocusesForSourceText(bundle, `edit ${badge.prototype.styles[0]}`).map(focus => focus.boundaryId),
+      ['still-meditation/primitive/badge']
+    );
   });
 
   it('routes an explicit project only to its matching live review runtime', () => {

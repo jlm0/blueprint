@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { ServerResponse } from 'node:http';
-import { boundaryId, parseBoundarySelector } from '../core/address';
-import type {
-  BlueprintAgentActivityEvent,
-  BlueprintAgentActivityFocus,
-  BlueprintAgentActivityPhase
+import { parseBoundarySelector } from '../core/address';
+import {
+  activityFocusForBoundary,
+  activityFocusesForSourceText,
+  type BlueprintAgentActivityEvent,
+  type BlueprintAgentActivityFocus,
+  type BlueprintAgentActivityPhase
 } from '../core/activity';
 import type { BlueprintProjectBundle, BoundaryKind } from '../core/types';
 
@@ -359,7 +361,8 @@ export function createBlueprintAgentActivityEvent(
   bundle: BlueprintProjectBundle,
   event: BlueprintHookBridgeEvent
 ): BlueprintAgentActivityEvent {
-  const focus = resolveActivityFocus(bundle, event.toolInput);
+  const focuses = resolveActivityFocuses(bundle, event.toolInput);
+  const focus = focuses[0];
   return {
     version: 1,
     sessionId: event.sessionId,
@@ -367,13 +370,18 @@ export function createBlueprintAgentActivityEvent(
     toolUseId: event.toolUseId,
     toolName: event.toolName,
     phase: event.phase,
-    label: activityLabel(bundle, focus, event.phase),
+    label: activityLabel(bundle, focuses, event.phase),
     emittedAt: event.emittedAt,
-    focus
+    focus,
+    focuses
   };
 }
 
 export function resolveActivityFocus(bundle: BlueprintProjectBundle, toolInput: unknown): BlueprintAgentActivityFocus {
+  return resolveActivityFocuses(bundle, toolInput)[0];
+}
+
+export function resolveActivityFocuses(bundle: BlueprintProjectBundle, toolInput: unknown): [BlueprintAgentActivityFocus, ...BlueprintAgentActivityFocus[]] {
   const input = asRecord(toolInput);
   const query = asRecord(input?.query);
   const operation = asRecord(input?.operation);
@@ -381,98 +389,45 @@ export function resolveActivityFocus(bundle: BlueprintProjectBundle, toolInput: 
   if (directSelector) {
     const parsed = safeBoundarySelector(directSelector);
     if (parsed) {
-      return focusForBoundary(bundle, parsed.kind, parsed.id);
+      return [activityFocusForBoundary(bundle, parsed.kind, parsed.id)];
     }
   }
 
   const screenId = firstString(input?.screenId, query?.screenId, query?.screen, operation?.screenId);
   if (screenId) {
-    return focusForBoundary(bundle, 'screen', screenId);
+    return [activityFocusForBoundary(bundle, 'screen', screenId)];
   }
 
   const explorationId = firstString(input?.explorationId, query?.explorationId, operation?.explorationId);
   if (explorationId) {
     const exploration = bundle.explorations.explorations.find(candidate => candidate.id === explorationId);
     if (exploration) {
-      return focusForBoundary(bundle, 'screen', exploration.target.screenId);
+      return [activityFocusForBoundary(bundle, 'screen', exploration.target.screenId)];
     }
   }
 
   const inputText = collectStrings(toolInput).join('\n').replaceAll('\\', '/');
-  const sourceFocus = focusForSourceReference(bundle, inputText);
-  if (sourceFocus) {
-    return sourceFocus;
+  const [firstSourceFocus, ...otherSourceFocuses] = activityFocusesForSourceText(bundle, inputText);
+  if (firstSourceFocus) {
+    return [firstSourceFocus, ...otherSourceFocuses];
   }
 
   if (inputText.includes('screens.json')) {
-    return focusForBoundary(bundle, 'board', 'screens');
+    return [activityFocusForBoundary(bundle, 'board', 'screens')];
   }
   if (inputText.includes('tokens.json') || inputText.includes('primitives.json') || inputText.includes('components.json')) {
-    return focusForBoundary(bundle, 'board', 'primitives');
+    return [activityFocusForBoundary(bundle, 'board', 'primitives')];
   }
-  return focusForBoundary(bundle, 'project', bundle.manifest.project.id);
-}
-
-function focusForSourceReference(bundle: BlueprintProjectBundle, inputText: string): BlueprintAgentActivityFocus | undefined {
-  const candidates: Array<{ ref: string; kind: BoundaryKind; id: string }> = [];
-  for (const primitive of bundle.primitives.primitives) {
-    if (primitive.prototype) {
-      for (const ref of [primitive.prototype.source, ...primitive.prototype.styles]) {
-        candidates.push({ ref, kind: 'primitive', id: primitive.id });
-      }
-    }
-  }
-  for (const component of bundle.components.components) {
-    if (component.prototype) {
-      for (const ref of [component.prototype.source, ...component.prototype.styles]) {
-        candidates.push({ ref, kind: 'component', id: component.id });
-      }
-    }
-  }
-  for (const screen of bundle.screens.screens) {
-    if (screen.prototype) {
-      for (const ref of [screen.prototype.source, ...screen.prototype.styles, ...screen.prototype.assetRefs]) {
-        candidates.push({ ref, kind: 'screen', id: screen.id });
-      }
-    }
-  }
-  for (const exploration of bundle.explorations.explorations) {
-    for (const prototype of [exploration.target.baseline.prototype, ...exploration.candidates.map(candidate => candidate.prototype)]) {
-      for (const ref of [prototype.source, ...prototype.styles, ...prototype.assetRefs]) {
-        candidates.push({ ref, kind: 'screen', id: exploration.target.screenId });
-      }
-    }
-  }
-  for (const entry of bundle.history.entries) {
-    if (entry.screen.prototype) {
-      for (const ref of [entry.screen.prototype.source, ...entry.screen.prototype.styles, ...entry.screen.prototype.assetRefs]) {
-        candidates.push({ ref, kind: 'screen', id: entry.screenId });
-      }
-    }
-  }
-
-  candidates.sort((left, right) => right.ref.length - left.ref.length);
-  const matched = candidates.find(candidate => inputText.includes(candidate.ref.replaceAll('\\', '/')));
-  return matched ? focusForBoundary(bundle, matched.kind, matched.id) : undefined;
-}
-
-function focusForBoundary(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): BlueprintAgentActivityFocus {
-  const screenId = kind === 'section' ? localId.split('/')[0] : kind === 'screen' ? localId : undefined;
-  return {
-    boundaryId: boundaryId(bundle.manifest.project.id, kind, localId),
-    kind,
-    localId,
-    board: boardForBoundary(kind),
-    ...(screenId ? { screenId } : {})
-  };
+  return [activityFocusForBoundary(bundle, 'project', bundle.manifest.project.id)];
 }
 
 function activityLabel(
   bundle: BlueprintProjectBundle,
-  focus: BlueprintAgentActivityFocus,
+  focuses: BlueprintAgentActivityFocus[],
   phase: BlueprintAgentActivityPhase
 ): string {
-  const target = boundaryName(bundle, focus);
+  const names = focuses.map(focus => boundaryName(bundle, focus));
+  const target = names.length > 2 ? `${names[0]} and ${names.length - 1} more` : names.join(' and ');
   if (phase === 'failed') {
     return `Codex could not finish ${target}`;
   }
@@ -510,12 +465,6 @@ function boundaryName(bundle: BlueprintProjectBundle, focus: BlueprintAgentActiv
       ?.stateSets.find(candidate => candidate.id === stateSetId)?.name ?? focus.localId;
   }
   return focus.localId;
-}
-
-function boardForBoundary(kind: BoundaryKind): 'primitives' | 'screens' | null {
-  if (kind === 'screen' || kind === 'section') return 'screens';
-  if (kind === 'board' || kind === 'project') return null;
-  return 'primitives';
 }
 
 function safeBoundarySelector(value: string): { kind: BoundaryKind; id: string } | undefined {
