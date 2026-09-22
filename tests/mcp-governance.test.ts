@@ -626,6 +626,43 @@ describe('Blueprint MCP and template governance', () => {
           await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
             .some(frame => frame.srcdoc.includes('--blueprint-live-test: 1')));
           await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-agent-focus').first().waitFor();
+
+          await page.evaluate(() => {
+            const status = document.querySelector<HTMLElement>('.bp-chrome-agent-status');
+            const record = window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean };
+            new MutationObserver(() => {
+              if (status?.dataset.phase !== 'complete' || record.__BLUEPRINT_COMPLETE_SAW_EDIT__ !== undefined) return;
+              record.__BLUEPRINT_COMPLETE_SAW_EDIT__ = [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+                .some(frame => frame.srcdoc.includes('--blueprint-complete-test: 1'));
+            }).observe(status!, { attributes: true, attributeFilter: ['data-phase'] });
+          });
+          const editPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.css")`;
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-complete',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-live-complete',
+            tool_input: editPatch
+          });
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.still-home { --blueprint-complete-test: 1; }\n`, 'utf8');
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-complete',
+            cwd: tempDir,
+            hook_event_name: 'PostToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-live-complete',
+            tool_input: editPatch,
+            tool_response: { isError: false }
+          });
+          await page.waitForFunction(() => (
+            window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean }
+          ).__BLUEPRINT_COMPLETE_SAW_EDIT__ !== undefined);
+          assert.equal(await page.evaluate(() => (
+            window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean }
+          ).__BLUEPRINT_COMPLETE_SAW_EDIT__), true);
           assert.equal(await page.locator('#world').getAttribute('style'), preservedTransform);
           assert.equal(await page.evaluate(() => (
             window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }

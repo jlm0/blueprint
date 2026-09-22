@@ -22,6 +22,8 @@ export interface BlueprintAgentActivityEvent {
   emittedAt: string;
   focus: BlueprintAgentActivityFocus;
   focuses: BlueprintAgentActivityFocus[];
+  revision?: string;
+  projectValid?: boolean;
 }
 
 export interface BlueprintProjectChangedEvent {

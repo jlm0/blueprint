@@ -3881,7 +3881,12 @@ function refreshCanvasReviewState(boardId: BoardId): void {
 }
 
 let focusedActivityElements: HTMLElement[] = [];
-const inFlightToolFocuses = new Map<string, BlueprintAgentActivityFocus[]>();
+const inFlightToolFocuses = new Map<string, { focuses: BlueprintAgentActivityFocus[]; startedAt: string }>();
+const announcedRevisions: string[] = [];
+let pendingProjectApplies = 0;
+let projectErrorActive = false;
+let completionRevision: string | undefined;
+let completionDwellUntil = 0;
 let changedBoundaryFocuses: BlueprintAgentActivityFocus[] = [];
 let activeActivityKey: string | undefined;
 let activityClearTimer: number | undefined;
@@ -3913,14 +3918,26 @@ function connectBlueprintLiveRuntime(): void {
   source.addEventListener('project-changed', message => {
     const event = parseLiveEvent<BlueprintProjectChangedEvent>(message);
     if (!event || event.version !== 1) return;
+    announcedRevisions.push(event.revision);
+    pendingProjectApplies += 1;
+    if (lastAgentActivity?.phase === 'completed' && activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
     projectApplyQueue = projectApplyQueue
       .then(() => applyProjectChange(event, runtime.snapshotPath))
+      .then(() => {
+        announcedRevisions.splice(0, announcedRevisions.indexOf(event.revision) + 1);
+        projectErrorActive = false;
+      })
       .catch(error => {
         setAgentStatus('waiting', errorMessage(error));
+      })
+      .finally(() => {
+        pendingProjectApplies -= 1;
+        checkAgentCompletion();
       });
   });
   source.addEventListener('project-error', message => {
     const event = parseLiveEvent<BlueprintProjectErrorEvent>(message);
+    projectErrorActive = true;
     if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
     setAgentStatus('waiting', event?.message
       ? 'Blueprint is waiting for the current edit to become valid'
@@ -4072,7 +4089,7 @@ function showAgentActivity(event: BlueprintAgentActivityEvent): void {
     }
     lastAgentActivity = event;
     activeActivityKey = agentActivityKey(event);
-    inFlightToolFocuses.set(event.toolUseId, event.focuses);
+    inFlightToolFocuses.set(event.toolUseId, { focuses: event.focuses, startedAt: event.emittedAt });
     if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
     setAgentStatus('working', event.label);
     renderAgentFocus();
@@ -4081,7 +4098,12 @@ function showAgentActivity(event: BlueprintAgentActivityEvent): void {
   }
 
   if (activeActivityKey !== agentActivityKey(event)) return;
+  const startedAt = inFlightToolFocuses.get(event.toolUseId)?.startedAt ?? event.emittedAt;
   inFlightToolFocuses.delete(event.toolUseId);
+  if ([...inFlightToolFocuses.values()].some(tool => tool.startedAt > startedAt)) {
+    renderAgentFocus();
+    return;
+  }
   lastAgentActivity = event;
   if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
   renderAgentFocus();
@@ -4092,17 +4114,30 @@ function showAgentActivity(event: BlueprintAgentActivityEvent): void {
     return;
   }
   setAgentStatus('thinking', event.label);
+  completionRevision = event.revision;
+  completionDwellUntil = Date.now() + 800;
+  checkAgentCompletion();
+}
+
+function checkAgentCompletion(): void {
+  if (lastAgentActivity?.phase !== 'completed') return;
+  if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
+  if (pendingProjectApplies > 0 || (completionRevision !== undefined && announcedRevisions.includes(completionRevision))) return;
+  if (projectErrorActive || lastAgentActivity.projectValid === false) {
+    setAgentStatus('waiting', 'Blueprint is waiting for the current edit to become valid');
+    return;
+  }
   activityClearTimer = window.setTimeout(() => {
-    setAgentStatus('complete', 'Changes are up to date');
+    setAgentStatus('complete', 'Changes are live');
     markFocusedBoundaryBusy(false);
     activityClearTimer = window.setTimeout(clearAgentActivity, 700);
-  }, 3_200);
+  }, Math.max(0, completionDwellUntil - Date.now()));
 }
 
 function currentAgentFocuses(): BlueprintAgentActivityFocus[] {
   const focuses = uniqueAgentFocuses([
     ...lastAgentActivity?.focuses ?? [],
-    ...[...inFlightToolFocuses.values()].reverse().flat(),
+    ...[...inFlightToolFocuses.values()].reverse().flatMap(tool => tool.focuses),
     ...changedBoundaryFocuses
   ]);
   const specific = focuses.filter(focus => focus.kind !== 'project' && focus.kind !== 'board');
@@ -4178,6 +4213,7 @@ function clearAgentActivity(): void {
   lastAgentActivity = undefined;
   inFlightToolFocuses.clear();
   changedBoundaryFocuses = [];
+  completionRevision = undefined;
   window.__BLUEPRINT_AGENT_ACTIVITY__ = undefined;
   agentStatus.hidden = true;
   delete agentStatus.dataset.phase;

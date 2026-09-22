@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { watch } from 'node:fs';
 import { cp, mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import {
@@ -103,6 +104,10 @@ import {
   type ValidateInput,
   type ValidateOutput
 } from './schemas';
+
+const watcherDebounceMs = 120;
+const watcherEventGraceMs = 200;
+const watcherSettleTimeoutMs = 5_000;
 
 interface CaptureServer {
   url: string;
@@ -1088,7 +1093,18 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   let publishedError: string | undefined;
   let publishedRevision = randomUUID();
   let runtime: RegisteredBlueprintActivityRuntime | undefined;
+  let reloadTimer: NodeJS.Timeout | undefined;
+  let reloadsInFlight = 0;
   const activityHub = new BlueprintActivityHub();
+
+  const settledRevision = async (): Promise<{ revision: string; projectValid: boolean }> => {
+    await delay(watcherEventGraceMs);
+    const deadline = Date.now() + watcherSettleTimeoutMs;
+    while ((reloadTimer || reloadsInFlight > 0) && Date.now() < deadline) {
+      await delay(25);
+    }
+    return { revision: publishedRevision, projectValid: publishedError === undefined };
+  };
 
   const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string }> => {
     try {
@@ -1165,7 +1181,12 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
           response.end(snapshot.error ?? 'Blueprint project is unavailable');
           return;
         }
-        activityHub.publishActivity(createBlueprintAgentActivityEvent(snapshot.bundle, event));
+        const activity = createBlueprintAgentActivityEvent(snapshot.bundle, event);
+        if (activity.phase === 'started') {
+          activityHub.publishActivity(activity);
+        } else {
+          void settledRevision().then(settled => activityHub.publishActivity({ ...activity, ...settled }));
+        }
         response.writeHead(202, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
         response.end('{"accepted":true}\n');
       } catch (error) {
@@ -1289,13 +1310,13 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     throw error;
   }
 
-  let reloadTimer: NodeJS.Timeout | undefined;
   const changedPaths = new Set<string>();
   const stopWatching = watchBlueprintProject(projectRoot, changedPath => {
     changedPaths.add(changedPath);
     if (reloadTimer) clearTimeout(reloadTimer);
     reloadTimer = setTimeout(() => {
       reloadTimer = undefined;
+      reloadsInFlight += 1;
       void readBundleSnapshot().then(snapshot => {
         if (!snapshot.bundle || snapshot.error) {
           const message = snapshot.error ?? 'Blueprint project is unavailable.';
@@ -1324,8 +1345,10 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
           changedPaths: [...changedPaths].sort()
         });
         changedPaths.clear();
+      }).finally(() => {
+        reloadsInFlight -= 1;
       });
-    }, 120);
+    }, watcherDebounceMs);
     reloadTimer.unref();
   });
 
