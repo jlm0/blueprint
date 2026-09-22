@@ -774,6 +774,72 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('marks what the latest agent turn changed and shows the canvas before it', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(stillRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0 });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens`);
+          await page.locator('iframe.canonical-prototype-iframe').first().waitFor();
+          const homeHtml = path.join(projectCopy, 'prototype/screens/home.html');
+          const buttonCss = path.join(projectCopy, 'prototype/primitives/button.css');
+          const firstPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.html")`;
+          const hookBase = { session_id: 'thread-diff', cwd: tempDir, tool_name: 'functions.exec' };
+          await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-a', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-a', tool_input: firstPatch });
+          await writeFile(homeHtml, (await readFile(homeHtml, 'utf8')).replace('Find your', 'Find our'), 'utf8');
+          await writeFile(buttonCss, `${await readFile(buttonCss, 'utf8')}\n/* live diff */\n`, 'utf8');
+          await runCodexHook(tempDir, {
+            ...hookBase,
+            turn_id: 'turn-diff-a',
+            hook_event_name: 'PostToolUse',
+            tool_use_id: 'tool-diff-a',
+            tool_input: firstPatch,
+            tool_response: { isError: false }
+          });
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Featured Practice');
+          const changeLayer = page.locator('.bp-chrome-change-layer[data-change-boundary-ids~="still-meditation/primitive/button"][data-change-boundary-ids~="still-meditation/section/home/featured-practice"]');
+          await changeLayer.locator('.bp-chrome-change-box').first().waitFor();
+          assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
+
+          const frameShowsEdit = (): Promise<boolean> => page.evaluate(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .every(frame => frame.srcdoc.includes('Find our')));
+          await page.locator('.bp-chrome-changes-toggle').click();
+          await page.locator('.bp-chrome-changes-toggle[aria-pressed="true"]').waitFor();
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .every(frame => frame.srcdoc.includes('Find your')));
+          await page.locator('.bp-chrome-changes-toggle').click();
+          await page.locator('.bp-chrome-changes-toggle[aria-pressed="false"]').waitFor();
+          await assertEventually(frameShowsEdit);
+
+          const homeCss = path.join(projectCopy, 'prototype/screens/home.css');
+          const secondPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.css")`;
+          await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-b', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-b', tool_input: secondPatch });
+          await writeFile(homeCss, `${await readFile(homeCss, 'utf8')}\n.still-home { --blueprint-diff-test: 1; }\n`, 'utf8');
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Today');
+          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-changed').first().waitFor();
+
+          await page.locator('.bp-chrome-changes-dismiss').click();
+          await page.locator('.bp-chrome-changes').waitFor({ state: 'hidden' });
+          assert.equal(await page.locator('.bp-chrome-changed, .bp-chrome-change-layer').count(), 0);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
   it('reuses one stable runtime per project while isolating other project ports', async () => {
     await withTempDir(async tempDir => {
       const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');

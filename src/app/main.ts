@@ -2,6 +2,7 @@ import './styles.css';
 import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
 import {
+  activityFocusForBoundary,
   activityFocusesForChangedPaths,
   boundaryDisplayName,
   type BlueprintAgentActivityEvent,
@@ -10,6 +11,7 @@ import {
   type BlueprintProjectErrorEvent,
   type BlueprintProjectSnapshot
 } from '../core/activity';
+import { changedBoundaries } from '../core/change';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
   isSelectableBoundaryKind,
@@ -170,6 +172,24 @@ selectionClear.setAttribute('aria-label', 'Clear selection');
 selectionClear.addEventListener('click', () => setCanvasSelection(undefined));
 selectionBar.append(selectionPath, selectionHint, selectionClear);
 shell.append(selectionBar);
+
+const changeBar = el('div', 'bp-chrome-changes');
+changeBar.hidden = true;
+changeBar.setAttribute('role', 'group');
+changeBar.setAttribute('aria-label', 'Latest changes');
+const changeLabel = el('span', 'bp-chrome-changes-label');
+const changeToggle = el('button', 'bp-chrome-changes-toggle', 'Before') as HTMLButtonElement;
+changeToggle.type = 'button';
+changeToggle.title = 'Show the canvas before these changes';
+changeToggle.setAttribute('aria-pressed', 'false');
+changeToggle.addEventListener('click', () => queueChangeBaselineView(!viewingChangeBaseline));
+const changeDismiss = el('button', 'bp-chrome-changes-dismiss', '×') as HTMLButtonElement;
+changeDismiss.type = 'button';
+changeDismiss.title = 'Dismiss change markers';
+changeDismiss.setAttribute('aria-label', 'Dismiss change markers');
+changeDismiss.addEventListener('click', dismissChanges);
+changeBar.append(el('span', 'bp-chrome-changes-mark'), changeLabel, changeToggle, changeDismiss);
+shell.append(changeBar);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
@@ -352,7 +372,7 @@ function showBoard(id: BoardId): void {
   }
 
   refreshCanvasReviewState(id);
-  renderCanvasSelection();
+  renderCanvasAnnotations();
 }
 
 function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
@@ -414,7 +434,7 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
     mounted.configure();
     if (view) canvas.setView(view);
     refreshCanvasReviewState(id);
-    renderCanvasSelection();
+    renderCanvasAnnotations();
   }
 }
 
@@ -3987,9 +4007,14 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   if (snapshot.version !== 1 || !snapshot.bundle) throw new Error('Blueprint returned an invalid live project snapshot.');
   if (snapshot.revision === lastAppliedRevision) return;
   const changedPaths = snapshot.revision === event.revision ? event.changedPaths : [];
-  const advancedPastEvent = snapshot.revision !== event.revision;
+  const leftChangeBaseline = viewingChangeBaseline;
+  if (leftChangeBaseline) project = exitChangeBaselineView();
+  const advancedPastEvent = snapshot.revision !== event.revision || leftChangeBaseline;
 
   const previousProjectId = project.manifest.project.id;
+  if (!changeBaseline || changeBaseline.activityKey !== activeActivityKey) {
+    changeBaseline = { bundle: project, activityKey: activeActivityKey };
+  }
   project = createConfiguredProjectBundle(snapshot.bundle);
   window.__BLUEPRINT_PROJECT_BUNDLE__ = snapshot.bundle;
   screenFlows = projectScreenFlows(project);
@@ -4015,6 +4040,8 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
     if (preservedView) canvas.setView(preservedView);
   }
   lastAppliedRevision = snapshot.revision;
+  latestChanges = narrowScreenChangesToSections(changeBaseline.bundle, project, changedBoundaries(changeBaseline.bundle, project));
+  renderChangeAnnotations();
   const changedFocuses = activityFocusesForChangedPaths(project, changedPaths);
   changedBoundaryFocuses = activeActivityKey ? uniqueAgentFocuses([...changedBoundaryFocuses, ...changedFocuses]) : changedFocuses;
   renderAgentFocus();
@@ -4083,7 +4110,7 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
   }));
   if (activeBoardId === 'screens') {
     refreshCanvasReviewState('screens');
-    renderCanvasSelection();
+    renderCanvasAnnotations();
   }
   return true;
 }
@@ -4383,6 +4410,134 @@ function restoreAgentStatusAfterApply(): void {
   } else {
     setAgentStatus('working', lastAgentActivity.label);
   }
+}
+
+function renderCanvasAnnotations(): void {
+  renderCanvasSelection();
+  renderChangeAnnotations();
+}
+
+let changeBaseline: { bundle: BlueprintProjectBundle; activityKey: string | undefined } | undefined;
+let latestChanges: BlueprintAgentActivityFocus[] = [];
+let viewingChangeBaseline = false;
+let liveProjectDuringBaselineView: BlueprintProjectBundle | undefined;
+let changeAnnotationGeneration = 0;
+
+function narrowScreenChangesToSections(
+  previous: BlueprintProjectBundle,
+  next: BlueprintProjectBundle,
+  focuses: BlueprintAgentActivityFocus[]
+): BlueprintAgentActivityFocus[] {
+  return focuses.flatMap(focus => {
+    if (focus.kind !== 'screen') return [focus];
+    const before = previous.screens.screens.find(screen => screen.id === focus.localId);
+    const after = next.screens.screens.find(screen => screen.id === focus.localId);
+    if (!before?.prototype || !after?.prototype || JSON.stringify(before) !== JSON.stringify(after)) return [focus];
+    const ownedFiles = [...after.prototype.styles, ...after.prototype.assetRefs];
+    if (ownedFiles.some(file => previous.prototypeSourceContents[file] !== next.prototypeSourceContents[file])) return [focus];
+    const beforeMarkup = sectionMarkup(previous.prototypeSourceContents[before.prototype.source]);
+    const afterMarkup = sectionMarkup(next.prototypeSourceContents[after.prototype.source]);
+    if (!beforeMarkup || !afterMarkup || beforeMarkup.outside !== afterMarkup.outside) return [focus];
+    const sectionIds = [...afterMarkup.sections.keys()].filter(id => afterMarkup.sections.get(id) !== beforeMarkup.sections.get(id));
+    return sectionIds.length > 0
+      ? sectionIds.map(id => activityFocusForBoundary(next, 'section', `${focus.localId}/${id}`))
+      : [focus];
+  });
+}
+
+function sectionMarkup(source: string | undefined): { outside: string; sections: Map<string, string> } | undefined {
+  if (source === undefined) return undefined;
+  const parsed = new DOMParser().parseFromString(source, 'text/html');
+  const markers = [...parsed.querySelectorAll('[data-blueprint-section]')];
+  const sections = new Map(markers.map(marker => [marker.getAttribute('data-blueprint-section') ?? '', marker.outerHTML] as const));
+  for (const marker of markers) marker.replaceWith(parsed.createComment(marker.getAttribute('data-blueprint-section') ?? ''));
+  return { outside: parsed.documentElement.outerHTML, sections };
+}
+
+function renderChangeAnnotations(): void {
+  const generation = ++changeAnnotationGeneration;
+  for (const layer of document.querySelectorAll('.bp-chrome-change-layer')) layer.remove();
+  for (const element of document.querySelectorAll('.bp-chrome-changed')) element.classList.remove('bp-chrome-changed');
+  renderChangeBar();
+  const root = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  if (!root || latestChanges.length === 0) return;
+  const frameChanges = new Map<HTMLIFrameElement, Set<string>>();
+  for (const change of latestChanges) {
+    const frames = activeBoardId === 'screens' && (change.kind === 'primitive' || change.kind === 'component' || change.kind === 'section')
+      ? prototypeFramesUsingBoundary(root, change)
+      : [];
+    for (const frame of frames) frameChanges.set(frame, new Set([...frameChanges.get(frame) ?? [], change.boundaryId]));
+    if (frames.length > 0) continue;
+    for (const element of root.querySelectorAll<HTMLElement>('[data-boundary-id]')) {
+      if (element.dataset.boundaryId === change.boundaryId) element.classList.add('bp-chrome-changed');
+    }
+  }
+  for (const [frame, boundaryIds] of frameChanges) {
+    const html = prototypeDocumentByFrame.get(frame);
+    if (!html) continue;
+    void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, boundaryIds).then(extents => {
+      const host = frame.parentElement;
+      if (generation !== changeAnnotationGeneration || !host || !frame.isConnected) return;
+      const layer = el('div', 'bp-chrome-change-layer');
+      layer.setAttribute('aria-hidden', 'true');
+      layer.dataset.changeBoundaryIds = [...boundaryIds].join(' ');
+      for (const extent of extents) {
+        const box = el('div', 'bp-chrome-change-box');
+        box.style.left = `${extent.left}px`;
+        box.style.top = `${extent.top}px`;
+        box.style.width = `${extent.right - extent.left}px`;
+        box.style.height = `${extent.bottom - extent.top}px`;
+        layer.append(box);
+      }
+      host.append(layer);
+    });
+  }
+}
+
+function renderChangeBar(): void {
+  changeBar.hidden = latestChanges.length === 0;
+  const liveProject = liveProjectDuringBaselineView ?? project;
+  const names = latestChanges.map(change => boundaryDisplayName(liveProject, change.kind, change.localId));
+  const listed = names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+  changeLabel.textContent = `${latestChanges.length === 1 ? '1 change' : `${latestChanges.length} changes`}: ${listed}`;
+  changeLabel.title = names.join(', ');
+  changeToggle.setAttribute('aria-pressed', String(viewingChangeBaseline));
+  changeToggle.textContent = viewingChangeBaseline ? 'After' : 'Before';
+  changeToggle.title = viewingChangeBaseline ? 'Show the canvas with these changes' : 'Show the canvas before these changes';
+  changeBar.classList.toggle('bp-chrome-changes-before', viewingChangeBaseline);
+}
+
+function queueChangeBaselineView(show: boolean): void {
+  projectApplyQueue = projectApplyQueue.then(async () => {
+    if (show === viewingChangeBaseline || !changeBaseline || latestChanges.length === 0) return;
+    if (show) {
+      liveProjectDuringBaselineView = project;
+      project = changeBaseline.bundle;
+      viewingChangeBaseline = true;
+    } else {
+      project = exitChangeBaselineView();
+    }
+    await Promise.all([...boardState.keys()].map(id => replaceMountedBoard(id)));
+    renderChangeBar();
+  }).catch(error => {
+    setAgentStatus('waiting', errorMessage(error));
+  });
+}
+
+function exitChangeBaselineView(): BlueprintProjectBundle {
+  const liveProject = liveProjectDuringBaselineView ?? project;
+  liveProjectDuringBaselineView = undefined;
+  viewingChangeBaseline = false;
+  return liveProject;
+}
+
+function dismissChanges(): void {
+  if (viewingChangeBaseline) queueChangeBaselineView(false);
+  projectApplyQueue = projectApplyQueue.then(() => {
+    changeBaseline = undefined;
+    latestChanges = [];
+    renderChangeAnnotations();
+  }, () => undefined);
 }
 
 interface SelectionNode extends BlueprintSelectedBoundary {

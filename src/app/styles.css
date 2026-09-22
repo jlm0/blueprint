@@ -676,6 +676,107 @@ body {
   line-height: 1;
 }
 
+.bp-chrome-changed {
+  outline: 2px dashed var(--bp-chrome-success);
+  outline-offset: 6px;
+}
+
+.bp-chrome-change-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bp-chrome-change-box {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+  outline: 2px dashed var(--bp-chrome-success);
+  outline-offset: 3px;
+}
+
+.bp-chrome-changes {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 22;
+  display: flex;
+  max-width: min(420px, calc(50vw - 200px));
+  height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--bp-chrome-success) 45%, transparent);
+  border-radius: 999px;
+  background: var(--bp-chrome-surface);
+  backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow: var(--bp-chrome-shadow-lg);
+  color: var(--bp-chrome-fg);
+  font-size: 12px;
+}
+
+.bp-chrome-changes[hidden] {
+  display: none;
+}
+
+.bp-chrome-changes-mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bp-chrome-success);
+}
+
+.bp-chrome-changes-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-chrome-changes-toggle {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--bp-chrome-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--bp-chrome-fg);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.bp-chrome-changes-toggle[aria-pressed="true"] {
+  border-color: var(--bp-chrome-warning);
+  color: var(--bp-chrome-warning);
+}
+
+.bp-chrome-changes.bp-chrome-changes-before {
+  border-color: color-mix(in srgb, var(--bp-chrome-warning) 55%, transparent);
+}
+
+.bp-chrome-changes-dismiss {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bp-chrome-surface-hover);
+  color: var(--bp-chrome-fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.bp-chrome-changes-toggle:focus-visible,
+.bp-chrome-changes-dismiss:focus-visible {
+  outline: 2px solid var(--bp-chrome-focus);
+  outline-offset: 1px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bp-chrome-agent-status-dot,
   .bp-chrome-agent-focus,
