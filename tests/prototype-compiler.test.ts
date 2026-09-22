@@ -260,6 +260,49 @@ describe('canonical prototype compiler', () => {
     );
   });
 
+  it('annotates declared section markers, including markers forwarded through blueprint-use', async () => {
+    const waitlist = compilePrototypeDocument({
+      bundle: await loadProjectFromFs(fixtureRoot),
+      target: { kind: 'screen', id: 'waitlist' },
+      state: 'initial'
+    });
+    assert.match(waitlist.html, /<section class="hero" data-blueprint-section="hero" data-blueprint-section-boundary-id="high-fidelity-red\/section\/waitlist\/hero">/);
+
+    const dense = compilePrototypeDocument({
+      bundle: await loadProjectFromFs('fixtures/app-owned/dense-ops/design/blueprint'),
+      target: { kind: 'screen', id: 'service-health' }
+    });
+    const sectionRoot = dense.html.match(/<[^>]*data-blueprint-section="service-table"[^>]*>/)?.[0] ?? '';
+    assert.match(sectionRoot, /data-blueprint-section-boundary-id="dense-ops\/section\/service-health\/service-table"/);
+    assert.match(sectionRoot, /data-blueprint-boundary-id="dense-ops\/component\/service-health-table"/);
+  });
+
+  it('rejects undeclared or repeated section markers and reports unmarked sections for strict handoff', async () => {
+    const original = await loadProjectFromFs(fixtureRoot);
+    const source = 'prototype/screens/waitlist.html';
+
+    const undeclared = structuredClone(original);
+    undeclared.prototypeSourceContents[source] = undeclared.prototypeSourceContents[source].replace('<header>', '<header data-blueprint-section="masthead">');
+    assert.throws(
+      () => compilePrototypeDocument({ bundle: undeclared, target: { kind: 'screen', id: 'waitlist' } }),
+      /marks undeclared section "masthead"/
+    );
+
+    const repeated = structuredClone(original);
+    repeated.prototypeSourceContents[source] = repeated.prototypeSourceContents[source].replace('<header>', '<header data-blueprint-section="hero">');
+    assert.throws(
+      () => compilePrototypeDocument({ bundle: repeated, target: { kind: 'screen', id: 'waitlist' } }),
+      /marks section "hero" more than once/
+    );
+
+    const unmarked = structuredClone(original);
+    unmarked.prototypeSourceContents[source] = unmarked.prototypeSourceContents[source].replace(' data-blueprint-section="hero"', '');
+    assert.doesNotMatch(validateProject(unmarked).errors.join('\n'), /data-blueprint-section/);
+    assert.match(validateProject(unmarked, { mode: 'strict' }).errors.join('\n'), /screen\.waitlist\.section\.hero needs a data-blueprint-section="hero" marker/);
+    assert.ok(createReadinessReport(unmarked).blockers.some(item => item.path === 'screen.waitlist.section.hero.marker'));
+    assert.equal(createReadinessReport(original).items.some(item => item.path.endsWith('.marker')), false);
+  });
+
   it('parses component selectors through the public boundary-address contract', () => {
     assert.deepEqual(parseBoundarySelector('component:email-signup'), {
       kind: 'component',

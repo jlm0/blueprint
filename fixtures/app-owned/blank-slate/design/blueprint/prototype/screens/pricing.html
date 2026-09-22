@@ -1,7 +1,7 @@
 <main data-blueprint-screen="pricing" data-blueprint-state="initial">
-  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--pricing"></blueprint-use>
+  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--pricing" data-blueprint-section="chrome"></blueprint-use>
 
-  <header class="phead wrap">
+  <header class="phead wrap" data-blueprint-section="head">
     <blueprint-use kind="component" ref="section-head" state="initial">
       <span slot="eyebrow">Pricing</span>
       <span slot="title">Pricing that scales with your agents.</span>
@@ -17,7 +17,7 @@
     </div>
   </header>
 
-  <section class="tiers wrap">
+  <section class="tiers wrap" data-blueprint-section="tiers">
     <blueprint-use kind="component" ref="pricing-card" state="initial">
       <span slot="tier">Starter</span>
       <span slot="price">$0</span>
@@ -55,7 +55,7 @@
     </blueprint-use>
   </section>
 
-  <section class="includes wrap">
+  <section class="includes wrap" data-blueprint-section="includes">
     <span class="includes__label">Every plan includes</span>
     <div class="includes__row">
       <span class="includes__item">
@@ -85,7 +85,7 @@
     </div>
   </section>
 
-  <section class="ent wrap">
+  <section class="ent wrap" data-blueprint-section="enterprise">
     <div class="ent__band">
       <span class="ent__icon">
         <blueprint-use kind="primitive" ref="icon" state="default" variant="accent">
@@ -102,7 +102,7 @@
     </div>
   </section>
 
-  <section class="faq wrap">
+  <section class="faq wrap" data-blueprint-section="faq">
     <h2 class="faq__title">Questions, answered.</h2>
     <div class="faq__grid">
       <div class="faq__item">
@@ -132,7 +132,7 @@
     </div>
   </section>
 
-  <div class="cta-wrap wrap">
+  <div class="cta-wrap wrap" data-blueprint-section="cta">
     <blueprint-use kind="component" ref="cta-band" state="initial">
       <span slot="title">Start shipping agents today.</span>
       <span slot="sub">Free tier includes 1,000 runs a month — no credit card required.</span>
@@ -141,5 +141,5 @@
     </blueprint-use>
   </div>
 
-  <blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>
+  <blueprint-use kind="component" ref="site-footer" state="initial" data-blueprint-section="footer"></blueprint-use>
 </main>

@@ -4090,8 +4090,8 @@ function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
   clearAgentFocus();
   const visibleRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
   const prototypeConsumers = visibleRoot && activeBoardId === 'screens' &&
-    (event.focus.kind === 'primitive' || event.focus.kind === 'component')
-    ? prototypeFramesUsingBoundary(visibleRoot, event.focus.boundaryId)
+    (event.focus.kind === 'primitive' || event.focus.kind === 'component' || event.focus.kind === 'section')
+    ? prototypeFramesUsingBoundary(visibleRoot, event.focus)
     : [];
   if (prototypeConsumers.length > 0) {
     for (const frame of prototypeConsumers) applyPrototypeFrameFocus(frame, event.focus.boundaryId);
@@ -4161,8 +4161,12 @@ function clearAgentFocus(): void {
   focusedActivityElement = undefined;
 }
 
-function prototypeFramesUsingBoundary(root: HTMLElement, focusBoundaryId: string): HTMLIFrameElement[] {
+function prototypeFramesUsingBoundary(root: HTMLElement, focus: BlueprintAgentActivityEvent['focus']): HTMLIFrameElement[] {
+  const focusBoundaryId = focus.boundaryId;
   return [...root.querySelectorAll<HTMLIFrameElement>('iframe[data-prototype-target-boundary]')].filter(frame => {
+    if (focus.kind === 'section') {
+      return prototypeDocumentByFrame.get(frame)?.includes(`data-blueprint-section-boundary-id="${focusBoundaryId}"`) ?? false;
+    }
     if (frame.dataset.prototypeTargetBoundary === focusBoundaryId) return true;
     try {
       const uses = JSON.parse(frame.dataset.prototypeObservedUses ?? '[]') as Array<{ targetBoundaryId?: string }>;

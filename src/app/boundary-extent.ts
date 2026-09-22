@@ -9,8 +9,9 @@ export function measureBoundaryExtents(document: Document, boundaryIds: Readonly
   const view = document.defaultView;
   if (!view) return [];
   const viewportExtent: BoundaryExtent = { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight };
-  return [...document.querySelectorAll('[data-blueprint-boundary-id]')]
-    .filter(element => boundaryIds.has(element.getAttribute('data-blueprint-boundary-id') ?? ''))
+  return [...document.querySelectorAll('[data-blueprint-boundary-id], [data-blueprint-section-boundary-id]')]
+    .filter(element => boundaryIds.has(element.getAttribute('data-blueprint-boundary-id') ?? '') ||
+      boundaryIds.has(element.getAttribute('data-blueprint-section-boundary-id') ?? ''))
     .map(element => measureElementExtent(element, view, viewportExtent))
     .filter((extent): extent is BoundaryExtent => extent !== undefined);
 }

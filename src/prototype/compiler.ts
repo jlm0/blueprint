@@ -123,6 +123,7 @@ interface ForwardedInvocationAttributes {
   className?: string;
   variant?: string;
   href?: string;
+  section?: string;
 }
 
 export const PROTOTYPE_CONTENT_SECURITY_POLICY = [
@@ -344,7 +345,38 @@ function compileBoundaryFragment(
   }
 
   assertRenderedUses(boundary, context.observedUses.filter(use => use.sourceBoundaryId === currentBoundaryId));
+  if (boundary.kind === 'screen') {
+    fragment = applySectionMetadata(context.bundle, boundary, fragment);
+  }
   return applyBoundaryMetadata(fragment, boundary, currentBoundaryId, state);
+}
+
+/**
+ * Lists the section IDs a screen source marks with `data-blueprint-section`,
+ * including markers forwarded through `<blueprint-use>`.
+ */
+export function findSectionMarkers(source: string): string[] {
+  return [...source.matchAll(sectionMarkerPattern())].map(match => match[4]);
+}
+
+function sectionMarkerPattern(): RegExp {
+  return /<([a-zA-Z][\w:-]*)(\s[^>]*?\bdata-blueprint-section\s*=\s*(['"])(.*?)\3[^>]*)>/g;
+}
+
+function applySectionMetadata(bundle: BlueprintProjectBundle, boundary: SourceBoundary, fragment: string): string {
+  const sectionIds = new Set(bundle.screens.screens.find(screen => screen.id === boundary.id)?.sections.map(section => section.id) ?? []);
+  const marked = new Set<string>();
+  return fragment.replace(sectionMarkerPattern(), (_tag, tagName: string, attributes: string, _quote: string, sectionId: string) => {
+    if (!sectionIds.has(sectionId)) {
+      throw new Error(`screen "${boundary.id}" marks undeclared section "${sectionId}".`);
+    }
+    if (marked.has(sectionId)) {
+      throw new Error(`screen "${boundary.id}" marks section "${sectionId}" more than once.`);
+    }
+    marked.add(sectionId);
+    const sectionBoundaryId = `${bundle.manifest.project.id}/section/${boundary.id}/${sectionId}`;
+    return `<${tagName}${setRootAttribute(attributes, 'data-blueprint-section-boundary-id', sectionBoundaryId)}>`;
+  });
 }
 
 function resolveBoundary(bundle: BlueprintProjectBundle, target: PrototypeCompileTarget): SourceBoundary {
@@ -718,7 +750,7 @@ function resolveForwardedInvocationAttributes(
   attributes: Map<string, string>,
   target: SourceBoundary
 ): ForwardedInvocationAttributes {
-  const allowed = new Set(['kind', 'ref', 'state', 'class', 'variant', 'href']);
+  const allowed = new Set(['kind', 'ref', 'state', 'class', 'variant', 'href', 'data-blueprint-section']);
   for (const name of attributes.keys()) {
     if (!allowed.has(name) || name.startsWith('on') || name === 'style') {
       throw new Error(`${target.kind} "${target.id}" received unsupported <blueprint-use> attribute "${name}".`);
@@ -742,10 +774,12 @@ function resolveForwardedInvocationAttributes(
   if (href && !isSafePrototypeHref(href)) {
     throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}".`);
   }
+  const section = attributes.get('data-blueprint-section');
   return {
     ...(className ? { className } : {}),
     ...(variant ? { variant } : {}),
-    ...(href ? { href } : {})
+    ...(href ? { href } : {}),
+    ...(section ? { section } : {})
   };
 }
 
@@ -754,7 +788,7 @@ function applyInvocationAttributes(
   attributes: ForwardedInvocationAttributes,
   boundary: SourceBoundary
 ): string {
-  if (!attributes.className && !attributes.variant && !attributes.href) {
+  if (!attributes.className && !attributes.variant && !attributes.href && !attributes.section) {
     return fragment;
   }
   const rootPattern = /<([a-zA-Z][\w:-]*)([^>]*)>/;
@@ -781,6 +815,9 @@ function applyInvocationAttributes(
       throw new Error(`${boundary.kind} "${boundary.id}" cannot receive href because its root element is <${tagName}>.`);
     }
     rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-href', attributes.href);
+  }
+  if (attributes.section) {
+    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-section', attributes.section);
   }
   const openingTag = `<${tagName}${rootAttributes}>`;
   return `${fragment.slice(0, match.index)}${openingTag}${fragment.slice(match.index + match[0].length)}`;

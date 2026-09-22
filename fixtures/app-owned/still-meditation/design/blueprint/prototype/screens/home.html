@@ -20,7 +20,7 @@
       </button>
     </header>
 
-    <section class="welcome" aria-labelledby="welcome-title">
+    <section class="welcome" data-blueprint-section="welcome" aria-labelledby="welcome-title">
       <div class="welcome__copy">
         <p class="eyebrow">Morning practice · Maya</p>
         <h1 id="welcome-title">Your pause<br />is ready.</h1>
@@ -31,7 +31,7 @@
       </div>
     </section>
 
-    <section class="featured" aria-labelledby="featured-title">
+    <section class="featured" data-blueprint-section="featured-practice" aria-labelledby="featured-title">
       <div class="featured__wash" aria-hidden="true"></div>
       <div class="featured__topline">
         <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
@@ -68,7 +68,7 @@
     </section>
 
     <div class="practice-grid">
-      <section class="rhythm" aria-label="Weekly practice rhythm">
+      <section class="rhythm" data-blueprint-section="daily-rhythm" aria-label="Weekly practice rhythm">
         <div class="rhythm__top">
           <span class="rhythm__icon" aria-hidden="true">✦</span>
           <strong class="rhythm__score">4 / 5</strong>
@@ -88,7 +88,7 @@
         </div>
       </section>
 
-      <section class="moment" aria-labelledby="moment-title">
+      <section class="moment" data-blueprint-section="recommendation" aria-labelledby="moment-title">
         <div class="section-heading">
           <h2 id="moment-title">Next up</h2>
           <a href="#">Library</a>
@@ -113,7 +113,7 @@
     </div>
   </div>
 
-  <nav class="tabbar" aria-label="Primary navigation">
+  <nav class="tabbar" data-blueprint-section="navigation" aria-label="Primary navigation">
     <a class="tabbar__item is-active" href="#" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 10.2 12 4l7 6.2V20h-5v-5h-4v5H5Z"></path></svg>
       <span>Today</span>

@@ -585,6 +585,21 @@ describe('Blueprint MCP and template governance', () => {
           await page.locator('.bp-chrome-agent-status[data-phase="thinking"]').waitFor();
           assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is reviewing Button/);
 
+          await runCodexHook(tempDir, {
+            session_id: 'thread-live-focus',
+            turn_id: 'turn-live-section-focus',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'mcp__blueprint__query',
+            tool_use_id: 'tool-live-section-focus',
+            tool_input: {
+              project: 'design/blueprint',
+              query: { type: 'show', boundary: 'section:home/featured-practice' }
+            }
+          });
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-id="still-meditation/section/home/featured-practice"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          assert.equal(await page.locator('.bp-chrome-agent-frame-focus-box').count(), 1);
+
           await page.locator('#viewport').dispatchEvent('wheel', {
             deltaY: -320,
             clientX: 620,

@@ -1,8 +1,8 @@
 <main data-blueprint-screen="home" data-blueprint-state="initial">
   <img class="hero-glow" src="../assets/hero-glow.svg" alt="" aria-hidden="true" />
-  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--home"></blueprint-use>
+  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--home" data-blueprint-section="chrome"></blueprint-use>
 
-  <section class="hero wrap">
+  <section class="hero wrap" data-blueprint-section="hero">
     <div class="hero__copy">
       <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
         <span slot="label">Public beta · v0.9</span>
@@ -118,7 +118,7 @@
     </div>
   </section>
 
-  <section class="logos wrap">
+  <section class="logos wrap" data-blueprint-section="logos">
     <span class="logos__label">Powering agent teams at</span>
     <div class="logos__viewport">
       <div class="logos__row">
@@ -142,7 +142,7 @@
     </div>
   </section>
 
-  <section class="features wrap">
+  <section class="features wrap" data-blueprint-section="features">
     <blueprint-use kind="component" ref="section-head" state="initial">
       <span slot="eyebrow">Control plane</span>
       <span slot="title">Everything between the prompt and production.</span>
@@ -167,7 +167,7 @@
     </div>
   </section>
 
-  <section class="proof wrap">
+  <section class="proof wrap" data-blueprint-section="proof">
     <blueprint-use kind="component" ref="testimonial-card" state="initial">
       <span slot="quote">Harness gave us the confidence to put agents in front of customers. We trace every run, cap every dollar, and sleep at night.</span>
       <span slot="name">Maya Chen</span>
@@ -176,7 +176,7 @@
     </blueprint-use>
   </section>
 
-  <div class="cta-wrap wrap">
+  <div class="cta-wrap wrap" data-blueprint-section="cta">
     <blueprint-use kind="component" ref="cta-band" state="initial">
       <span slot="title">Ship agents you can trust.</span>
       <span slot="sub">Start free — your first 1,000 runs each month are on us.</span>
@@ -185,5 +185,5 @@
     </blueprint-use>
   </div>
 
-  <blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>
+  <blueprint-use kind="component" ref="site-footer" state="initial" data-blueprint-section="footer"></blueprint-use>
 </main>

@@ -23,7 +23,7 @@ import type {
 } from './types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { findSectionMarkers, inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
@@ -227,6 +227,14 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
         section.styleRefs,
         section.styleEvidence
       );
+    }
+    for (const sectionId of unmarkedSectionIds(bundle, screen)) {
+      items.push({
+        path: `screen.${screen.id}.section.${sectionId}.marker`,
+        severity: 'blocker',
+        source: 'synthesized-missing',
+        message: `Prototype source has no data-blueprint-section="${sectionId}" marker, so the section cannot be addressed on the canvas.`
+      });
     }
   }
 
@@ -1205,7 +1213,19 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
       validateStyleEvidence(errors, `screen.${screen.id}.section.${section.id}.styleEvidence`, section.styleRefs, section.styleEvidence);
       validateCompositionBindings(errors, screen, section);
     }
+    for (const sectionId of unmarkedSectionIds(bundle, screen)) {
+      errors.push(`screen.${screen.id}.section.${sectionId} needs a data-blueprint-section="${sectionId}" marker in its prototype source for strict handoff readiness.`);
+    }
   }
+}
+
+function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {
+  const source = screen.prototype ? bundle.prototypeSourceContents[screen.prototype.source] : undefined;
+  if (source === undefined) return [];
+  const marked = new Set(findSectionMarkers(source));
+  return (screen.sections ?? [])
+    .filter(section => !section.prototypeOnly && !marked.has(section.id))
+    .map(section => section.id);
 }
 
 function validateProductionRelationship(errors: string[], label: string, relationship: ProductionRelationship | undefined): void {

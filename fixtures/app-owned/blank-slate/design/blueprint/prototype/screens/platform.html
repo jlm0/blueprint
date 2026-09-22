@@ -1,7 +1,7 @@
 <main data-blueprint-screen="platform" data-blueprint-state="initial">
-  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--platform"></blueprint-use>
+  <blueprint-use kind="component" ref="site-nav" state="initial" class="site-nav--platform" data-blueprint-section="chrome"></blueprint-use>
 
-  <header class="phead wrap">
+  <header class="phead wrap" data-blueprint-section="head">
     <blueprint-use kind="component" ref="section-head" state="initial">
       <span slot="eyebrow">Platform</span>
       <span slot="title">One control plane for the whole agent lifecycle.</span>
@@ -9,7 +9,7 @@
     </blueprint-use>
   </header>
 
-  <section class="prow wrap">
+  <section class="prow wrap" data-blueprint-section="define">
     <div class="prow__copy">
       <span class="prow__index">01 · Define</span>
       <h3 class="prow__title">Agents as code, not as prompts in a doc</h3>
@@ -34,7 +34,7 @@
     </blueprint-use>
   </section>
 
-  <section class="prow prow--flip wrap">
+  <section class="prow prow--flip wrap" data-blueprint-section="observe">
     <div class="runview prow__visual">
       <div class="runview__head">
         <div class="runview__id">
@@ -96,7 +96,7 @@
     </div>
   </section>
 
-  <section class="prow wrap">
+  <section class="prow wrap" data-blueprint-section="govern">
     <div class="prow__copy">
       <span class="prow__index">03 · Govern</span>
       <h3 class="prow__title">Draw the lines. We enforce them.</h3>
@@ -136,7 +136,7 @@
     </div>
   </section>
 
-  <section class="caps wrap">
+  <section class="caps wrap" data-blueprint-section="capabilities">
     <blueprint-use kind="component" ref="section-head" state="initial">
       <span slot="eyebrow">Capabilities</span>
       <span slot="title">The full lifecycle, covered.</span>
@@ -166,7 +166,7 @@
     </div>
   </section>
 
-  <div class="cta-wrap wrap">
+  <div class="cta-wrap wrap" data-blueprint-section="cta">
     <blueprint-use kind="component" ref="cta-band" state="initial">
       <span slot="title">Ship agents you can trust.</span>
       <span slot="sub">Start free — your first 1,000 runs each month are on us.</span>
@@ -175,5 +175,5 @@
     </blueprint-use>
   </div>
 
-  <blueprint-use kind="component" ref="site-footer" state="initial"></blueprint-use>
+  <blueprint-use kind="component" ref="site-footer" state="initial" data-blueprint-section="footer"></blueprint-use>
 </main>
