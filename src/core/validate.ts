@@ -25,6 +25,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { findSectionMarkers, inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
+import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
 import { storageRecordSegment } from './storage-records';
@@ -252,6 +253,15 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
       component.styleRefs ?? [],
       component.styleEvidence
     );
+  }
+
+  for (const issue of lintLocalStyleValues(bundle)) {
+    items.push({
+      path: `${issue.boundary}.localValues.${issue.styleRef}.${issue.property}`,
+      severity: 'blocker',
+      source: 'declared',
+      message: localStyleValueMessage(issue)
+    });
   }
 
   const blockers = items.filter(item => item.severity === 'blocker');
@@ -1171,6 +1181,10 @@ function validateStateTokenReferences(
 }
 
 function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProjectBundle): void {
+  for (const issue of lintLocalStyleValues(bundle)) {
+    errors.push(`${issue.boundary} ${issue.styleRef} ${localStyleValueMessage(issue)}`);
+  }
+
   if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {
     if (!bundle.manifest.handoffContractVersion) {
       errors.push(`manifest.handoffContractVersion must be "${supportedHandoffContractVersion}" for strict handoff readiness.`);
@@ -1217,6 +1231,14 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
       errors.push(`screen.${screen.id}.section.${sectionId} needs a data-blueprint-section="${sectionId}" marker in its prototype source for strict handoff readiness.`);
     }
   }
+}
+
+function localStyleValueMessage(issue: LocalStyleValueIssue): string {
+  const value = issue.value.length > 80 ? `${issue.value.slice(0, 77)}...` : issue.value;
+  const remedy = issue.tokenStyleRef
+    ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
+    : 'uses a literal color; use a token custom property';
+  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions.`;
 }
 
 function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {

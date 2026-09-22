@@ -19,7 +19,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: 22px 14px;
+  padding: 22px var(--ops-space-cell);
   border-right: 1px solid var(--ops-color-line);
   background: var(--ops-color-rail);
 }
@@ -83,7 +83,7 @@ body {
   align-items: center;
   gap: 9px;
   margin-top: auto;
-  padding: 12px 8px 0;
+  padding: var(--ops-space-control-x) 8px 0;
   border-top: 1px solid var(--ops-color-line);
 }
 
