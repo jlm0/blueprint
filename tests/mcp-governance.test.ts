@@ -840,6 +840,47 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('marks design findings on screens and their components and refreshes them as the agent fixes them', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(explorationRoot, projectCopy, { recursive: true });
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0 });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens`);
+          const homeBadge = page.locator('[data-findings-screen-id="home"]');
+          await homeBadge.waitFor();
+          await page.locator('.bp-chrome-finding-layer[data-finding-boundary-ids~="blank-slate-proof/component/site-footer"] .bp-chrome-finding-box').first().waitFor();
+
+          await homeBadge.click();
+          const items = page.locator('.bp-chrome-findings-item');
+          await items.first().waitFor();
+          const initialCount = await items.count();
+          assert.match(await homeBadge.innerText(), new RegExp(`^${initialCount} findings$`));
+          const footerLiteral = page.locator('.bp-chrome-findings-item[data-finding-boundary-id="blank-slate-proof/component/site-footer"]', { hasText: '#000' });
+          assert.equal(await footerLiteral.count(), 1);
+
+          const footerCss = path.join(projectCopy, 'prototype/components/site-footer.css');
+          await writeFile(footerCss, (await readFile(footerCss, 'utf8')).replace('88%, #000)', '88%, var(--app-color-foreground))'), 'utf8');
+          await page.waitForFunction(count => document.querySelectorAll('.bp-chrome-findings-item').length === count - 1, initialCount);
+          assert.equal(await footerLiteral.count(), 0);
+          assert.match(await page.locator('[data-findings-screen-id="home"]').innerText(), new RegExp(`^${initialCount - 1} findings$`));
+
+          await page.keyboard.press('Escape');
+          await page.locator('.bp-chrome-findings').waitFor({ state: 'hidden' });
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
   it('reuses one stable runtime per project while isolating other project ports', async () => {
     await withTempDir(async tempDir => {
       const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');

@@ -23,10 +23,11 @@ import type {
 } from './types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { findSectionMarkers, inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
-import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
-import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
+import { lintHandBuiltControls } from './control-lint';
+import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
+import { lintLocalStyleValues } from './style-lint';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
 import { storageRecordSegment } from './storage-records';
@@ -1244,27 +1245,6 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
       errors.push(`screen.${screen.id}.section.${sectionId} needs a data-blueprint-section="${sectionId}" marker in its prototype source for strict handoff readiness.`);
     }
   }
-}
-
-function localStyleValueMessage(issue: LocalStyleValueIssue): string {
-  const value = issue.value.length > 80 ? `${issue.value.slice(0, 77)}...` : issue.value;
-  const remedy = issue.tokenStyleRef
-    ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
-    : 'uses a literal color; use a token custom property';
-  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions.`;
-}
-
-function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
-  return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>".`;
-}
-
-function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {
-  const source = screen.prototype ? bundle.prototypeSourceContents[screen.prototype.source] : undefined;
-  if (source === undefined) return [];
-  const marked = new Set(findSectionMarkers(source));
-  return (screen.sections ?? [])
-    .filter(section => !section.prototypeOnly && !marked.has(section.id))
-    .map(section => section.id);
 }
 
 function validateProductionRelationship(errors: string[], label: string, relationship: ProductionRelationship | undefined): void {

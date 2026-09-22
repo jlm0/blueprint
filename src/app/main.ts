@@ -12,6 +12,7 @@ import {
   type BlueprintProjectSnapshot
 } from '../core/activity';
 import { changedBoundaries } from '../core/change';
+import { collectDesignFindings, designFindingReference, type DesignFinding } from '../core/findings';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
   isSelectableBoundaryKind,
@@ -190,6 +191,11 @@ changeDismiss.setAttribute('aria-label', 'Dismiss change markers');
 changeDismiss.addEventListener('click', dismissChanges);
 changeBar.append(el('span', 'bp-chrome-changes-mark'), changeLabel, changeToggle, changeDismiss);
 shell.append(changeBar);
+
+const findingsPanel = el('aside', 'bp-chrome-findings');
+findingsPanel.hidden = true;
+findingsPanel.setAttribute('aria-label', 'Design findings');
+shell.append(findingsPanel);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
@@ -3237,6 +3243,16 @@ function createPrototypeFrame(
     // captured screen host, keeping MCP/canvas captures at exact preset content pixels.
     const canonicalScreen = createCanonicalPrototypeScreen(bundle, screen, preset, prototypeSelection, selectionError);
     const screenEl = canonicalScreen.element;
+    const findingBoundaryIds = frameFindingBoundaryIds(bundle, screen, screenEl);
+    const findingCount = designFindings(bundle).filter(finding => findingBoundaryIds.includes(finding.boundaryId)).length;
+    if (findingCount > 0) {
+      const findingsButton = el('button', 'bp-chrome-frame-findings', findingCount === 1 ? '1 finding' : `${findingCount} findings`) as HTMLButtonElement;
+      findingsButton.type = 'button';
+      findingsButton.title = `Show design findings for ${screen.name}`;
+      findingsButton.dataset.findingsScreenId = screen.id;
+      findingsButton.addEventListener('click', () => openFindingsPanel({ title: screen.name, boundaryIds: findingBoundaryIds }));
+      head.append(findingsButton);
+    }
     wireFrameCapture({
       screenEl,
       shot,
@@ -4415,6 +4431,130 @@ function restoreAgentStatusAfterApply(): void {
 function renderCanvasAnnotations(): void {
   renderCanvasSelection();
   renderChangeAnnotations();
+  renderFindingAnnotations();
+}
+
+const designFindingsByBundle = new WeakMap<BlueprintProjectBundle, DesignFinding[]>();
+let findingsPanelState: { title: string; boundaryIds: string[] } | undefined;
+let findingAnnotationGeneration = 0;
+
+function designFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
+  let findings = designFindingsByBundle.get(bundle);
+  if (!findings) {
+    findings = collectDesignFindings(bundle);
+    designFindingsByBundle.set(bundle, findings);
+  }
+  return findings;
+}
+
+function frameFindingBoundaryIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition, screenEl: HTMLElement): string[] {
+  const iframe = screenEl.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
+  return [...new Set([
+    boundaryId(bundle.manifest.project.id, 'screen', screen.id),
+    ...iframe ? observedBoundaryIds(iframe) : []
+  ])];
+}
+
+function observedBoundaryIds(iframe: HTMLIFrameElement): string[] {
+  try {
+    const uses = JSON.parse(iframe.dataset.prototypeObservedUses ?? '[]') as Array<{ targetBoundaryId?: string }>;
+    return uses.flatMap(use => use.targetBoundaryId ? [use.targetBoundaryId] : []);
+  } catch {
+    return [];
+  }
+}
+
+function renderFindingAnnotations(): void {
+  const generation = ++findingAnnotationGeneration;
+  for (const layer of document.querySelectorAll('.bp-chrome-finding-layer')) layer.remove();
+  renderFindingsPanel();
+  const root = activeBoardId === 'screens' ? boardState.get('screens')?.root : undefined;
+  if (!root) return;
+  const componentIds = new Set(designFindings(project).filter(finding => finding.kind === 'component').map(finding => finding.boundaryId));
+  if (componentIds.size === 0) return;
+  for (const frame of root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')) {
+    const html = prototypeDocumentByFrame.get(frame);
+    const flagged = new Set(observedBoundaryIds(frame).filter(id => componentIds.has(id)));
+    if (!html || flagged.size === 0) continue;
+    void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, flagged).then(extents => {
+      const host = frame.parentElement;
+      if (generation !== findingAnnotationGeneration || !host || !frame.isConnected) return;
+      const layer = el('div', 'bp-chrome-finding-layer');
+      layer.setAttribute('aria-hidden', 'true');
+      layer.dataset.findingBoundaryIds = [...flagged].join(' ');
+      for (const extent of extents) {
+        const box = el('div', 'bp-chrome-finding-box');
+        box.style.left = `${extent.left}px`;
+        box.style.top = `${extent.top}px`;
+        box.style.width = `${extent.right - extent.left}px`;
+        box.style.height = `${extent.bottom - extent.top}px`;
+        layer.append(box);
+      }
+      host.append(layer);
+    });
+  }
+}
+
+function openFindingsPanel(state: { title: string; boundaryIds: string[] }): void {
+  findingsPanelState = state;
+  renderFindingsPanel();
+}
+
+function closeFindingsPanel(): void {
+  findingsPanelState = undefined;
+  renderFindingsPanel();
+}
+
+function renderFindingsPanel(): void {
+  findingsPanel.replaceChildren();
+  findingsPanel.hidden = !findingsPanelState;
+  if (!findingsPanelState) return;
+  const { boundaryIds, title } = findingsPanelState;
+  const findings = designFindings(project).filter(finding => boundaryIds.includes(finding.boundaryId));
+  const header = el('header', 'bp-chrome-findings-header');
+  const heading = el('div', 'bp-chrome-findings-title');
+  heading.append(el('strong', '', title), el('span', '', findings.length === 1 ? '1 finding' : `${findings.length} findings`));
+  const copyAll = el('button', 'bp-chrome-findings-copy', 'Copy all') as HTMLButtonElement;
+  copyAll.type = 'button';
+  copyAll.disabled = findings.length === 0;
+  copyAll.addEventListener('click', () => {
+    void copyText(findings.map(designFindingReference).join('\n')).then(() => flashCopied(copyAll));
+  });
+  const close = el('button', 'bp-chrome-findings-close', '×') as HTMLButtonElement;
+  close.type = 'button';
+  close.title = 'Close findings';
+  close.setAttribute('aria-label', 'Close findings');
+  close.addEventListener('click', closeFindingsPanel);
+  header.append(heading, copyAll, close);
+  const list = el('ol', 'bp-chrome-findings-list');
+  for (const finding of findings) {
+    const item = el('li', 'bp-chrome-findings-item');
+    item.dataset.findingBoundaryId = finding.boundaryId;
+    item.dataset.findingRule = finding.rule;
+    const meta = el('div', 'bp-chrome-findings-meta');
+    meta.append(
+      el('span', 'bp-chrome-findings-boundary', boundaryDisplayName(project, finding.kind, finding.localId)),
+      el('code', 'bp-chrome-findings-location', finding.location)
+    );
+    const copy = el('button', 'bp-chrome-findings-copy', 'Copy') as HTMLButtonElement;
+    copy.type = 'button';
+    copy.title = 'Copy this finding for the agent';
+    copy.addEventListener('click', () => {
+      void copyText(designFindingReference(finding)).then(() => flashCopied(copy));
+    });
+    item.append(meta, el('p', 'bp-chrome-findings-message', finding.message), copy);
+    list.append(item);
+  }
+  if (findings.length === 0) list.append(el('li', 'bp-chrome-findings-empty', 'No findings remain.'));
+  findingsPanel.append(header, list);
+}
+
+function flashCopied(button: HTMLButtonElement): void {
+  const label = button.textContent;
+  button.textContent = 'Copied';
+  window.setTimeout(() => {
+    button.textContent = label;
+  }, 1_000);
 }
 
 let changeBaseline: { bundle: BlueprintProjectBundle; activityKey: string | undefined } | undefined;
@@ -4567,7 +4707,12 @@ viewport.addEventListener('click', event => {
   void selectAtPointer(event);
 });
 window.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && canvasSelectionState) setCanvasSelection(undefined);
+  if (event.key !== 'Escape') return;
+  if (findingsPanelState) {
+    closeFindingsPanel();
+  } else if (canvasSelectionState) {
+    setCanvasSelection(undefined);
+  }
 });
 
 async function selectAtPointer(event: MouseEvent): Promise<void> {
