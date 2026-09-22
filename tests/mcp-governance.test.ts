@@ -765,6 +765,37 @@ describe('Blueprint MCP and template governance', () => {
           await page.keyboard.press('Escape');
           await page.locator('.bp-chrome-selection').waitFor({ state: 'hidden' });
           await assertEventually(async () => (await call(session, 'selection', {})).selection === null);
+
+          await call(session, 'explore', {
+            project: 'design/blueprint',
+            operation: {
+              type: 'create',
+              id: 'home-hero',
+              screenId: 'home',
+              state: 'default',
+              framePresetId: 'phone',
+              title: 'Home hero',
+              intent: 'Compare hero directions.',
+              candidateLabels: ['Calm', 'Bold']
+            }
+          });
+          await page.goto(`${url}?board=screens&exploration=home-hero`);
+          const boldFrame = page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] iframe.canonical-prototype-iframe');
+          await boldFrame.waitFor();
+          await page.waitForFunction(() => document.querySelectorAll('.exploration-frame-slot iframe.canonical-prototype-iframe').length === 3);
+          const boldBox = await boldFrame.boundingBox();
+          assert.ok(boldBox);
+          await page.mouse.click(boldBox.x + boldBox.width / 2, boldBox.y + boldBox.height * 0.52);
+          await assertEventually(async () => (await call(session, 'selection', {})).selection !== null);
+          const inCandidate = (await call(session, 'selection', {})).selection as Record<string, unknown>;
+          assert.equal(inCandidate.candidateId, 'bold');
+          assert.match(inCandidate.reference as string, / in screen:home in exploration:home-hero candidate:bold$/);
+          assert.equal(await page.locator('.exploration-frame-slot:not([data-exploration-candidate-id="bold"]) :is(.bp-chrome-selection-layer, .bp-chrome-selected)').count(), 0);
+          await page.locator('.bp-chrome-selection-crumb').first().click();
+          await page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] .frame.bp-chrome-selected').waitFor();
+          const candidateScreen = (await call(session, 'selection', {})).selection as Record<string, unknown>;
+          assert.equal(candidateScreen.reference, 'screen:home in exploration:home-hero candidate:bold');
+          assert.ok((candidateScreen.files as string[]).every(file => file.includes('exploration-home-hero-bold')));
         } finally {
           await browser.close();
         }

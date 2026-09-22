@@ -2836,6 +2836,7 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
   if (historyVersion !== undefined) {
     slot.dataset.historyVersion = String(historyVersion);
   }
+  slot.dataset.selectionFrameKey = [exploration?.id ?? '', role, candidateId ?? '', historyVersion ?? ''].join('\u0000');
 
   const frame = el('article', 'frame frame-canonical exploration-frame');
   frame.style.setProperty('--frame-width', `${preset.width}px`);
@@ -4690,7 +4691,7 @@ interface CanvasSelectionState {
   index: number;
   frameKey?: string;
   measuredFrame?: HTMLIFrameElement;
-  frame: Pick<BlueprintCanvasSelection, 'screenId' | 'state' | 'framePresetId'>;
+  frame: Omit<BlueprintCanvasSelection, keyof BlueprintSelectedBoundary | 'context'>;
 }
 
 let canvasSelectionState: CanvasSelectionState | undefined;
@@ -4751,17 +4752,27 @@ async function selectInPrototypeFrame(iframe: HTMLIFrameElement, clientX: number
     if (!node) return [];
     return [node.kind === 'screen' ? node : { ...node, instance: hit.instance, extent: hit.extent }];
   });
-  if (chain.length === 0 || chain[0].kind === 'screen') {
+  if (chain.length === 0 || (chain[0].kind === 'screen' && frameElement.dataset.boundaryId)) {
     setCanvasSelection(domSelectionState(frameElement), true);
     return;
   }
+  const frameLabel = frameElement.dataset.explorationRole
+    ? iframe.closest('.frame-slot')?.querySelector('.frame-note .frame-name')?.textContent
+    : undefined;
   setCanvasSelection({
-    chain,
+    chain: frameLabel
+      ? chain.map(node => node.kind === 'screen' ? { ...node, label: `${node.label} · ${frameLabel}` } : node)
+      : chain,
     index: 0,
-    frameKey: iframe.closest<HTMLElement>('.frame-slot')?.dataset.liveFrameKey,
+    frameKey: selectionFrameKey(iframe),
     measuredFrame: iframe,
     frame: frameSelectionContext(frameElement)
   }, true);
+}
+
+function selectionFrameKey(element: Element): string | undefined {
+  const slot = element.closest<HTMLElement>('.frame-slot');
+  return slot?.dataset.liveFrameKey ?? slot?.dataset.selectionFrameKey;
 }
 
 function domSelectionState(element: HTMLElement): CanvasSelectionState {
@@ -4775,17 +4786,23 @@ function domSelectionState(element: HTMLElement): CanvasSelectionState {
   return {
     chain,
     index: 0,
-    frameKey: element.closest<HTMLElement>('.frame-slot')?.dataset.liveFrameKey,
+    frameKey: selectionFrameKey(element),
     frame: frameSelectionContext(element)
   };
 }
 
 function frameSelectionContext(element: HTMLElement): CanvasSelectionState['frame'] {
   const frame = element.closest<HTMLElement>('.frame');
+  const role = frame?.dataset.explorationRole;
+  const historyVersion = Number(frame?.dataset.historyVersion);
   return {
     ...(frame?.dataset.screenId ? { screenId: frame.dataset.screenId } : {}),
     ...(frame?.dataset.reviewState ? { state: frame.dataset.reviewState } : {}),
-    ...(frame?.dataset.framePresetId ? { framePresetId: frame.dataset.framePresetId } : {})
+    ...(frame?.dataset.framePresetId ? { framePresetId: frame.dataset.framePresetId } : {}),
+    ...(frame?.dataset.explorationId ? { explorationId: frame.dataset.explorationId } : {}),
+    ...(role === 'current' || role === 'version' || role === 'baseline' || role === 'candidate' ? { explorationRole: role } : {}),
+    ...(frame?.dataset.explorationCandidateId ? { candidateId: frame.dataset.explorationCandidateId } : {}),
+    ...(Number.isSafeInteger(historyVersion) && historyVersion > 0 ? { historyVersion } : {})
   };
 }
 
@@ -4849,11 +4866,12 @@ function renderCanvasSelection(): void {
   if (!state || !root) return;
   const node = state.chain[state.index];
   const scope = state.frameKey
-    ? [...root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')].find(slot => slot.dataset.liveFrameKey === state.frameKey)
+    ? [...root.querySelectorAll<HTMLElement>('.frame-slot')].find(slot => selectionFrameKey(slot) === state.frameKey)
     : root;
   if (!scope) return;
   if (node.instance === undefined) {
-    findBoundaryElement(scope, node.boundaryId)?.classList.add('bp-chrome-selected');
+    const element = findBoundaryElement(scope, node.boundaryId) ?? (node.kind === 'screen' ? scope.querySelector<HTMLElement>('.frame') : null);
+    element?.classList.add('bp-chrome-selected');
     return;
   }
   const iframe = scope.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
