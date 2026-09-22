@@ -22,6 +22,12 @@ import type {
 } from '../core/types';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import { loadProjectFromFs } from '../core/load';
+import {
+  parseCanvasSelection,
+  selectionReference,
+  selectionSourceFiles,
+  type BlueprintCanvasSelection
+} from '../core/selection';
 import { createReadinessReport, validateProject } from '../core/validate';
 import {
   archiveExploration,
@@ -61,7 +67,9 @@ import {
   BLUEPRINT_ACTIVITY_POST_PATH,
   BLUEPRINT_ACTIVITY_STREAM_PATH,
   BLUEPRINT_ACTIVITY_TOKEN_HEADER,
+  BLUEPRINT_CANVAS_TOKEN_HEADER,
   BLUEPRINT_PROJECT_SNAPSHOT_PATH,
+  BLUEPRINT_SELECTION_PATH,
   BlueprintActivityHub,
   blueprintActivityRuntimeBaseUrl,
   createBlueprintAgentActivityEvent,
@@ -81,6 +89,7 @@ import {
   promoteOutputSchema,
   queryOutputSchema,
   restoreOutputSchema,
+  selectionOutputSchema,
   serveOutputSchema,
   validateOutputSchema,
   type CaptureInput,
@@ -99,6 +108,8 @@ import {
   type QueryOutput,
   type RestoreInput,
   type RestoreOutput,
+  type SelectionInput,
+  type SelectionOutput,
   type ServeInput,
   type ServeOutput,
   type ValidateInput,
@@ -119,6 +130,11 @@ interface LocalServeServer extends CaptureServer {
   baseUrl: string;
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
+}
+
+interface StoredCanvasSelection extends BlueprintCanvasSelection {
+  selectedAt: string;
+  revision: string;
 }
 
 interface ProjectFileWrite {
@@ -670,6 +686,33 @@ export async function serveBlueprint(
   }
 }
 
+export async function readBlueprintSelection(input: SelectionInput, signal?: AbortSignal): Promise<SelectionOutput> {
+  throwIfAborted(signal);
+  const projectRoot = path.resolve(input.project);
+  assertBlueprintProjectPath(projectRoot);
+  const runtime = await findLiveBlueprintActivityRuntime(await blueprintServeRuntimeKey(projectRoot));
+  if (!runtime) {
+    throw new Error('No Blueprint review runtime is running for this project. Call serve, then select a boundary in the canvas.');
+  }
+  const response = await withAbort(fetch(new URL(BLUEPRINT_SELECTION_PATH, blueprintActivityRuntimeBaseUrl(runtime)), {
+    headers: { [BLUEPRINT_ACTIVITY_TOKEN_HEADER]: runtime.token },
+    signal
+  }), signal);
+  if (!response.ok) {
+    throw new Error(`Blueprint review runtime refused the selection request with status ${response.status}.`);
+  }
+  const payload = await response.json() as { selection?: StoredCanvasSelection | null };
+  const selection = payload.selection ?? null;
+  const bundle = selection ? await loadProjectFromFs(projectRoot) : undefined;
+  return selectionOutputSchema.parse({
+    command: 'selection',
+    project: normalize(projectRoot),
+    selection: selection && bundle
+      ? { ...selection, reference: selectionReference(selection), files: selectionSourceFiles(bundle, selection) }
+      : null
+  });
+}
+
 function borrowedServeServer(
   projectRoot: string,
   descriptor: BlueprintActivityRuntimeDescriptor
@@ -1095,6 +1138,8 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   let runtime: RegisteredBlueprintActivityRuntime | undefined;
   let reloadTimer: NodeJS.Timeout | undefined;
   let reloadsInFlight = 0;
+  let canvasSelection: StoredCanvasSelection | undefined;
+  const canvasToken = randomUUID();
   const activityHub = new BlueprintActivityHub();
 
   const settledRevision = async (): Promise<{ revision: string; projectValid: boolean }> => {
@@ -1196,6 +1241,50 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
       return;
     }
 
+    if (pathname === BLUEPRINT_SELECTION_PATH) {
+      if (request.method === 'GET') {
+        if (!runtime || request.headers[BLUEPRINT_ACTIVITY_TOKEN_HEADER] !== runtime.descriptor.token) {
+          response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+          response.end('Forbidden');
+          return;
+        }
+        response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
+        response.end(JSON.stringify({ version: 1, selection: canvasSelection ?? null }));
+        return;
+      }
+      if (request.method !== 'PUT') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'GET, PUT' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+      if (request.headers[BLUEPRINT_CANVAS_TOKEN_HEADER] !== canvasToken) {
+        response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end('Forbidden');
+        return;
+      }
+      try {
+        const body = await readJsonRequest(request, 64 * 1024) as { selection?: unknown };
+        const selection = body?.selection === null ? null : parseCanvasSelection(body?.selection);
+        if (selection === undefined) {
+          response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+          response.end('Invalid Blueprint canvas selection');
+          return;
+        }
+        canvasSelection = selection
+          ? { ...selection, selectedAt: new Date().toISOString(), revision: publishedRevision }
+          : undefined;
+        response.writeHead(204, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end();
+      } catch (error) {
+        response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end(error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
     if (pathname === BLUEPRINT_PROJECT_SNAPSHOT_PATH) {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         response.writeHead(405, createBlueprintResponseHeaders({
@@ -1272,7 +1361,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error));
+      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error, canvasToken));
       return;
     }
 
@@ -1372,13 +1461,20 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   };
 }
 
-function injectProjectBundle(indexHtml: string, bundle: Awaited<ReturnType<typeof loadProjectFromFs>>, loadError: string | undefined): string {
+function injectProjectBundle(
+  indexHtml: string,
+  bundle: Awaited<ReturnType<typeof loadProjectFromFs>>,
+  loadError: string | undefined,
+  canvasToken: string
+): string {
   const injection = [
     '<script>',
     `window.__BLUEPRINT_PROJECT_BUNDLE__=${serializeForInlineScript(bundle)};`,
     `window.__BLUEPRINT_LIVE_RUNTIME__=${serializeForInlineScript({
       eventsPath: BLUEPRINT_ACTIVITY_STREAM_PATH,
-      snapshotPath: BLUEPRINT_PROJECT_SNAPSHOT_PATH
+      snapshotPath: BLUEPRINT_PROJECT_SNAPSHOT_PATH,
+      selectionPath: BLUEPRINT_SELECTION_PATH,
+      canvasToken
     })};`,
     loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript({ message: loadError })};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
     '</script>'

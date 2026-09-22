@@ -5,15 +5,58 @@ export interface BoundaryExtent {
   bottom: number;
 }
 
+export interface BoundaryHit {
+  boundaryId: string;
+  instance: number;
+  extent?: BoundaryExtent;
+}
+
+const boundaryAttributes = ['data-blueprint-boundary-id', 'data-blueprint-section-boundary-id'] as const;
+
 export function measureBoundaryExtents(document: Document, boundaryIds: ReadonlySet<string>): BoundaryExtent[] {
   const view = document.defaultView;
   if (!view) return [];
-  const viewportExtent: BoundaryExtent = { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight };
-  return [...document.querySelectorAll('[data-blueprint-boundary-id], [data-blueprint-section-boundary-id]')]
-    .filter(element => boundaryIds.has(element.getAttribute('data-blueprint-boundary-id') ?? '') ||
-      boundaryIds.has(element.getAttribute('data-blueprint-section-boundary-id') ?? ''))
-    .map(element => measureElementExtent(element, view, viewportExtent))
+  return boundaryElements(document)
+    .filter(element => boundaryAttributes.some(attribute => boundaryIds.has(element.getAttribute(attribute) ?? '')))
+    .map(element => measureElementExtent(element, view, viewportExtent(view)))
     .filter((extent): extent is BoundaryExtent => extent !== undefined);
+}
+
+export function boundaryHitsAtPoint(document: Document, x: number, y: number): BoundaryHit[] {
+  const view = document.defaultView;
+  if (!view) return [];
+  const hits: BoundaryHit[] = [];
+  for (let element = document.elementFromPoint(x, y); element; element = element.parentElement) {
+    for (const attribute of boundaryAttributes) {
+      const boundaryId = element.getAttribute(attribute);
+      if (!boundaryId) continue;
+      hits.push({
+        boundaryId,
+        instance: boundaryInstances(document, boundaryId).indexOf(element),
+        extent: measureElementExtent(element, view, viewportExtent(view))
+      });
+    }
+  }
+  return hits;
+}
+
+export function measureBoundaryInstance(document: Document, boundaryId: string, instance: number): BoundaryExtent | undefined {
+  const view = document.defaultView;
+  const element = boundaryInstances(document, boundaryId)[instance];
+  return view && element ? measureElementExtent(element, view, viewportExtent(view)) : undefined;
+}
+
+function boundaryInstances(document: Document, boundaryId: string): Element[] {
+  return boundaryElements(document)
+    .filter(element => boundaryAttributes.some(attribute => element.getAttribute(attribute) === boundaryId));
+}
+
+function boundaryElements(document: Document): Element[] {
+  return [...document.querySelectorAll(boundaryAttributes.map(attribute => `[${attribute}]`).join(', '))];
+}
+
+function viewportExtent(view: Window): BoundaryExtent {
+  return { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight };
 }
 
 function measureElementExtent(element: Element, view: Window, clip: BoundaryExtent | undefined): BoundaryExtent | undefined {

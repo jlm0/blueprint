@@ -17,7 +17,7 @@ const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
-const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'explore', 'promote', 'restore'];
+const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
 interface McpSession {
   client: Client;
@@ -692,6 +692,88 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('shares the canvas selection with agents through the selection tool', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(stillRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const noRuntime = await session.client.callTool({ name: 'selection', arguments: {} }) as CallToolResult;
+        assert.equal(noRuntime.isError, true);
+        const served = await call(session, 'serve', { port: 0 });
+        const url = served.url as string;
+        assert.deepEqual((await call(session, 'selection', {})).selection, null);
+        const forged = await fetch(new URL('/__blueprint/selection', url), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{"selection":null}'
+        });
+        assert.equal(forged.status, 403);
+        assert.equal((await fetch(new URL('/__blueprint/selection', url))).status, 403);
+
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${url}?board=screens`);
+          await runCodexHook(tempDir, {
+            session_id: 'thread-selection',
+            turn_id: 'turn-selection',
+            cwd: tempDir,
+            hook_event_name: 'PreToolUse',
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-selection-focus',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`
+          });
+          const focusBox = page.locator('.bp-chrome-agent-frame-focus-box').first();
+          await focusBox.waitFor();
+          const point = await focusBox.evaluate(box => {
+            const rect = box.getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          });
+          await page.mouse.click(point.x, point.y);
+          await page.locator('.bp-chrome-selection-box').waitFor();
+          const boxes = await page.evaluate(() => [
+            '.bp-chrome-selection-box',
+            '.bp-chrome-agent-frame-focus-box'
+          ].map(selector => {
+            const box = document.querySelector<HTMLElement>(selector);
+            return [box?.style.left, box?.style.top, box?.style.width, box?.style.height];
+          }));
+          assert.deepEqual(boxes[0], boxes[1]);
+          assert.deepEqual(
+            await page.locator('.bp-chrome-selection-crumb').allInnerTexts(),
+            ['Today', 'Featured Practice', 'Button']
+          );
+
+          const selected = (await call(session, 'selection', {})).selection as Record<string, unknown>;
+          assert.equal(selected.boundaryId, 'still-meditation/primitive/button');
+          assert.equal(selected.reference, 'primitive:button in section:home/featured-practice in screen:home');
+          assert.deepEqual(selected.files, ['prototype/primitives/button.html', 'prototype/primitives/button.css']);
+          assert.equal(selected.screenId, 'home');
+          assert.equal(selected.framePresetId, 'phone');
+
+          await page.locator('.bp-chrome-selection-crumb', { hasText: 'Featured Practice' }).click();
+          await page.locator('.bp-chrome-selection-layer[data-selection-boundary-id="still-meditation/section/home/featured-practice"]').waitFor();
+          const ancestor = (await call(session, 'selection', {})).selection as Record<string, unknown>;
+          assert.equal(ancestor.reference, 'section:home/featured-practice in screen:home');
+
+          await page.keyboard.press('Escape');
+          await page.locator('.bp-chrome-selection').waitFor({ state: 'hidden' });
+          await assertEventually(async () => (await call(session, 'selection', {})).selection === null);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
   it('reuses one stable runtime per project while isolating other project ports', async () => {
     await withTempDir(async tempDir => {
       const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');
@@ -924,6 +1006,14 @@ async function assertEventuallyUnreachable(url: string): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 25));
   }
   assert.fail(`Expected MCP-owned review listener to close: ${url}`);
+}
+
+async function assertEventually(condition: () => Promise<boolean>): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (await condition()) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.fail('Expected condition to become true.');
 }
 
 function occupyPort(port: number): Promise<NetServer> {

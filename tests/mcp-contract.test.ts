@@ -23,6 +23,7 @@ describe('Blueprint MCP typed contract', () => {
       'extract',
       'capture',
       'serve',
+      'selection',
       'explore',
       'promote',
       'restore'

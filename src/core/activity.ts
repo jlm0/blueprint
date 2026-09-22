@@ -89,6 +89,36 @@ export function activityFocusesForChangedPaths(
   return uniqueFocuses(bundle, changedPaths.flatMap(changedPath => references.get(changedPath.replaceAll('\\', '/')) ?? []));
 }
 
+export function boundaryDisplayName(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): string {
+  if (kind === 'project') return bundle.manifest.project.name;
+  if (kind === 'board') return localId === 'screens' ? 'Screens' : 'Primitives';
+  if (kind === 'token-group') {
+    return bundle.tokens.tokenGroups.find(candidate => candidate.id === localId)?.name ?? localId;
+  }
+  if (kind === 'primitive') {
+    return bundle.primitives.primitives.find(candidate => candidate.id === localId)?.name ?? localId;
+  }
+  if (kind === 'component') {
+    return bundle.components.components.find(candidate => candidate.id === localId)?.name ?? localId;
+  }
+  if (kind === 'screen') {
+    return bundle.screens.screens.find(candidate => candidate.id === localId)?.name ?? localId;
+  }
+  if (kind === 'section') {
+    const [screenId, sectionId] = localId.split('/');
+    return bundle.screens.screens
+      .find(candidate => candidate.id === screenId)
+      ?.sections.find(candidate => candidate.id === sectionId)?.name ?? localId;
+  }
+  if (kind === 'state-set') {
+    const [primitiveId, stateSetId] = localId.split('/');
+    return bundle.primitives.primitives
+      .find(candidate => candidate.id === primitiveId)
+      ?.stateSets.find(candidate => candidate.id === stateSetId)?.name ?? localId;
+  }
+  return localId;
+}
+
 function sourceReferenceOwners(bundle: BlueprintProjectBundle): Map<string, SourceReferenceOwner[]> {
   const references = new Map<string, SourceReferenceOwner[]>();
   const add = (refs: string[], kind: BoundaryKind, id: string): void => {

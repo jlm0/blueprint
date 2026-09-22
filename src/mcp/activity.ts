@@ -9,6 +9,7 @@ import { parseBoundarySelector } from '../core/address';
 import {
   activityFocusForBoundary,
   activityFocusesForSourceText,
+  boundaryDisplayName,
   type BlueprintAgentActivityEvent,
   type BlueprintAgentActivityFocus,
   type BlueprintAgentActivityPhase
@@ -18,6 +19,8 @@ import type { BlueprintProjectBundle, BoundaryKind } from '../core/types';
 export const BLUEPRINT_ACTIVITY_STREAM_PATH = '/__blueprint/events';
 export const BLUEPRINT_ACTIVITY_POST_PATH = '/__blueprint/agent-activity';
 export const BLUEPRINT_PROJECT_SNAPSHOT_PATH = '/__blueprint/project';
+export const BLUEPRINT_SELECTION_PATH = '/__blueprint/selection';
+export const BLUEPRINT_CANVAS_TOKEN_HEADER = 'x-blueprint-canvas-token';
 export const BLUEPRINT_ACTIVITY_TOKEN_HEADER = 'x-blueprint-activity-token';
 export const BLUEPRINT_ACTIVITY_RUNTIME_VERSION = 1;
 
@@ -426,7 +429,7 @@ function activityLabel(
   focuses: BlueprintAgentActivityFocus[],
   phase: BlueprintAgentActivityPhase
 ): string {
-  const names = focuses.map(focus => boundaryName(bundle, focus));
+  const names = focuses.map(focus => boundaryDisplayName(bundle, focus.kind, focus.localId));
   const target = names.length > 2 ? `${names[0]} and ${names.length - 1} more` : names.join(' and ');
   if (phase === 'failed') {
     return `Codex could not finish ${target}`;
@@ -435,36 +438,6 @@ function activityLabel(
     return `Codex is reviewing ${target}`;
   }
   return `Codex is looking at ${target}`;
-}
-
-function boundaryName(bundle: BlueprintProjectBundle, focus: BlueprintAgentActivityFocus): string {
-  if (focus.kind === 'project') return bundle.manifest.project.name;
-  if (focus.kind === 'board') return focus.localId === 'screens' ? 'Screens' : 'Primitives';
-  if (focus.kind === 'token-group') {
-    return bundle.tokens.tokenGroups.find(candidate => candidate.id === focus.localId)?.name ?? focus.localId;
-  }
-  if (focus.kind === 'primitive') {
-    return bundle.primitives.primitives.find(candidate => candidate.id === focus.localId)?.name ?? focus.localId;
-  }
-  if (focus.kind === 'component') {
-    return bundle.components.components.find(candidate => candidate.id === focus.localId)?.name ?? focus.localId;
-  }
-  if (focus.kind === 'screen') {
-    return bundle.screens.screens.find(candidate => candidate.id === focus.localId)?.name ?? focus.localId;
-  }
-  if (focus.kind === 'section') {
-    const [screenId, sectionId] = focus.localId.split('/');
-    return bundle.screens.screens
-      .find(candidate => candidate.id === screenId)
-      ?.sections.find(candidate => candidate.id === sectionId)?.name ?? focus.localId;
-  }
-  if (focus.kind === 'state-set') {
-    const [primitiveId, stateSetId] = focus.localId.split('/');
-    return bundle.primitives.primitives
-      .find(candidate => candidate.id === primitiveId)
-      ?.stateSets.find(candidate => candidate.id === stateSetId)?.name ?? focus.localId;
-  }
-  return focus.localId;
 }
 
 function safeBoundarySelector(value: string): { kind: BoundaryKind; id: string } | undefined {

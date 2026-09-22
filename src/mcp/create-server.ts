@@ -8,6 +8,7 @@ import {
   initializeBlueprint,
   promoteBlueprint,
   queryBlueprint,
+  readBlueprintSelection,
   restoreBlueprint,
   serveBlueprint,
   validateBlueprint,
@@ -30,6 +31,8 @@ import {
   queryOutputSchema,
   restoreInputSchema,
   restoreOutputSchema,
+  selectionInputSchema,
+  selectionOutputSchema,
   serveInputSchema,
   serveOutputSchema,
   validateInputSchema,
@@ -46,6 +49,7 @@ export const BLUEPRINT_MCP_TOOL_NAMES = [
   'extract',
   'capture',
   'serve',
+  'selection',
   'explore',
   'promote',
   'restore'
@@ -179,6 +183,24 @@ export function createBlueprintMcpServer(): McpServer {
           ...(handle.selection ? { selection: handle.selection } : {})
         });
       })
+  );
+
+  server.registerTool(
+    'selection',
+    {
+      title: 'Read Blueprint Canvas Selection',
+      description:
+        'Return the boundary the person last selected in the served Blueprint canvas, with its enclosing boundaries, owning source files, and a kind:id reference. Resolve "this" or "the selected" in the person\'s feedback with this tool. Returns a null selection when nothing is selected.',
+      inputSchema: selectionInputSchema,
+      outputSchema: selectionOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+    async (input, context) => executeTool(() => readBlueprintSelection(input, context.mcpReq.signal))
   );
 
   server.registerTool(

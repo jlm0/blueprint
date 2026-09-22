@@ -3,6 +3,7 @@ import { toBlob } from 'html-to-image';
 import { boundaryId } from '../core/address';
 import {
   activityFocusesForChangedPaths,
+  boundaryDisplayName,
   type BlueprintAgentActivityEvent,
   type BlueprintAgentActivityFocus,
   type BlueprintProjectChangedEvent,
@@ -10,6 +11,12 @@ import {
   type BlueprintProjectSnapshot
 } from '../core/activity';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
+import {
+  isSelectableBoundaryKind,
+  selectionReference,
+  type BlueprintCanvasSelection,
+  type BlueprintSelectedBoundary
+} from '../core/selection';
 import {
   createCanvasStyleEvidence,
   createReviewManifest,
@@ -33,7 +40,12 @@ import type {
 import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
-import { measureBoundaryExtents, type BoundaryExtent } from './boundary-extent';
+import {
+  boundaryHitsAtPoint,
+  measureBoundaryExtents,
+  measureBoundaryInstance,
+  type BoundaryExtent
+} from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
@@ -143,6 +155,21 @@ for (let index = 0; index < 9; index += 1) {
 const agentStatusLabel = el('span', 'bp-chrome-agent-status-label');
 agentStatus.append(agentStatusMark, agentStatusLabel);
 shell.append(agentStatus);
+
+const selectionBar = el('div', 'bp-chrome-selection');
+selectionBar.hidden = true;
+selectionBar.setAttribute('role', 'group');
+selectionBar.setAttribute('aria-label', 'Canvas selection');
+const selectionPath = el('div', 'bp-chrome-selection-path');
+const selectionHint = el('span', 'bp-chrome-selection-hint');
+selectionHint.setAttribute('aria-live', 'polite');
+const selectionClear = el('button', 'bp-chrome-selection-clear', '×') as HTMLButtonElement;
+selectionClear.type = 'button';
+selectionClear.title = 'Clear selection';
+selectionClear.setAttribute('aria-label', 'Clear selection');
+selectionClear.addEventListener('click', () => setCanvasSelection(undefined));
+selectionBar.append(selectionPath, selectionHint, selectionClear);
+shell.append(selectionBar);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
@@ -325,6 +352,7 @@ function showBoard(id: BoardId): void {
   }
 
   refreshCanvasReviewState(id);
+  renderCanvasSelection();
 }
 
 function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
@@ -386,6 +414,7 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
     mounted.configure();
     if (view) canvas.setView(view);
     refreshCanvasReviewState(id);
+    renderCanvasSelection();
   }
 }
 
@@ -3125,11 +3154,11 @@ function createPrototypeFrame(
   const head = el('div', 'frame-head bp-chrome-frame-head');
   const chip = el('button', 'frame-chip bp-chrome-frame-chip') as HTMLButtonElement;
   chip.type = 'button';
-  chip.title = 'Copy screen boundary id';
+  chip.title = 'Select screen and copy its reference';
   chip.dataset.boundaryAction = 'copy-id';
   chip.append(el('span', 'dot'), el('span', 'frame-name', screenFrameLabel(screen)));
   chip.addEventListener('click', () => {
-    void copyText(boundaryId(bundle.manifest.project.id, 'screen', screen.id));
+    setCanvasSelection(domSelectionState(frame), true);
     const name = chip.querySelector<HTMLElement>('.frame-name');
     const original = name?.textContent ?? '';
     if (name) {
@@ -4052,7 +4081,10 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
     next.classList.add('bp-chrome-live-frame-enter');
     previous.replaceWith(next);
   }));
-  if (activeBoardId === 'screens') refreshCanvasReviewState('screens');
+  if (activeBoardId === 'screens') {
+    refreshCanvasReviewState('screens');
+    renderCanvasSelection();
+  }
   return true;
 }
 
@@ -4282,17 +4314,27 @@ function applyPrototypeFrameFocus(frame: HTMLIFrameElement, boundaryIds: Readonl
   });
 }
 
-/**
- * The visible frame keeps its empty-permission sandbox, so boundary geometry is
- * read from a short-lived same-origin twin rendering the same no-script document.
- */
 function measurePrototypeBoundaryExtents(
   html: string,
   width: number,
   height: number,
   boundaryIds: ReadonlySet<string>
 ): Promise<BoundaryExtent[]> {
-  if (width <= 0 || height <= 0) return Promise.resolve([]);
+  return readPrototypeTwin(html, width, height, twinDocument => measureBoundaryExtents(twinDocument, boundaryIds), []);
+}
+
+/**
+ * The visible frame keeps its empty-permission sandbox, so boundary geometry is
+ * read from a short-lived same-origin twin rendering the same no-script document.
+ */
+function readPrototypeTwin<T>(
+  html: string,
+  width: number,
+  height: number,
+  read: (twinDocument: Document) => T,
+  fallback: T
+): Promise<T> {
+  if (width <= 0 || height <= 0) return Promise.resolve(fallback);
   return new Promise(resolve => {
     const twin = document.createElement('iframe');
     twin.style.cssText = `position:fixed;left:-${width + 100}px;top:0;width:${width}px;height:${height}px;border:0;pointer-events:none;`;
@@ -4302,13 +4344,13 @@ function measurePrototypeBoundaryExtents(
     twin.addEventListener('load', () => {
       const twinDocument = twin.contentDocument;
       const measured = twinDocument
-        ? twinDocument.fonts.ready.then(() => measureBoundaryExtents(twinDocument, boundaryIds))
-        : Promise.resolve([]);
+        ? twinDocument.fonts.ready.then(() => read(twinDocument))
+        : Promise.resolve(fallback);
       void measured
-        .catch(() => [])
-        .then(extents => {
+        .catch(() => fallback)
+        .then(result => {
           twin.remove();
-          resolve(extents);
+          resolve(result);
         });
     }, { once: true });
     twin.srcdoc = html;
@@ -4340,6 +4382,221 @@ function restoreAgentStatusAfterApply(): void {
     setAgentStatus('thinking', lastAgentActivity.label);
   } else {
     setAgentStatus('working', lastAgentActivity.label);
+  }
+}
+
+interface SelectionNode extends BlueprintSelectedBoundary {
+  instance?: number;
+  extent?: BoundaryExtent;
+}
+
+interface CanvasSelectionState {
+  chain: SelectionNode[];
+  index: number;
+  frameKey?: string;
+  measuredFrame?: HTMLIFrameElement;
+  frame: Pick<BlueprintCanvasSelection, 'screenId' | 'state' | 'framePresetId'>;
+}
+
+let canvasSelectionState: CanvasSelectionState | undefined;
+let selectionPointerStart: { x: number; y: number } | undefined;
+let selectionHitGeneration = 0;
+let selectionRenderGeneration = 0;
+let selectionHintTimer: number | undefined;
+let selectionPublishQueue = Promise.resolve();
+
+viewport.addEventListener('pointerdown', event => {
+  selectionPointerStart = { x: event.clientX, y: event.clientY };
+}, { capture: true });
+viewport.addEventListener('click', event => {
+  void selectAtPointer(event);
+});
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && canvasSelectionState) setCanvasSelection(undefined);
+});
+
+async function selectAtPointer(event: MouseEvent): Promise<void> {
+  const start = selectionPointerStart;
+  if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('button, a, input, select, textarea, label')) return;
+  const activeRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  if (!target || !activeRoot?.contains(target)) {
+    setCanvasSelection(undefined);
+    return;
+  }
+  const iframe = target.closest('.canonical-prototype-screen')
+    ?.querySelector<HTMLIFrameElement>(':scope > iframe.canonical-prototype-iframe');
+  if (iframe) {
+    await selectInPrototypeFrame(iframe, event.clientX, event.clientY);
+    return;
+  }
+  const element = target.closest<HTMLElement>('[data-boundary-id]');
+  setCanvasSelection(element ? domSelectionState(element) : undefined, element !== null);
+}
+
+async function selectInPrototypeFrame(iframe: HTMLIFrameElement, clientX: number, clientY: number): Promise<void> {
+  const html = prototypeDocumentByFrame.get(iframe);
+  const frameElement = iframe.closest<HTMLElement>('.frame');
+  if (!html || !frameElement) return;
+  const rect = iframe.getBoundingClientRect();
+  const scale = iframe.clientWidth > 0 ? rect.width / iframe.clientWidth : 1;
+  const x = (clientX - rect.left) / scale;
+  const y = (clientY - rect.top) / scale;
+  const generation = ++selectionHitGeneration;
+  const hits = await readPrototypeTwin(html, iframe.clientWidth, iframe.clientHeight, twinDocument => boundaryHitsAtPoint(twinDocument, x, y), []);
+  if (generation !== selectionHitGeneration || !iframe.isConnected) return;
+  const chain = hits.flatMap(hit => {
+    const node = selectionNodeForBoundaryId(hit.boundaryId);
+    if (!node) return [];
+    return [node.kind === 'screen' ? node : { ...node, instance: hit.instance, extent: hit.extent }];
+  });
+  if (chain.length === 0 || chain[0].kind === 'screen') {
+    setCanvasSelection(domSelectionState(frameElement), true);
+    return;
+  }
+  setCanvasSelection({
+    chain,
+    index: 0,
+    frameKey: iframe.closest<HTMLElement>('.frame-slot')?.dataset.liveFrameKey,
+    measuredFrame: iframe,
+    frame: frameSelectionContext(frameElement)
+  }, true);
+}
+
+function domSelectionState(element: HTMLElement): CanvasSelectionState {
+  const chain: SelectionNode[] = [];
+  for (let node: HTMLElement | null = element; node; node = node.parentElement?.closest<HTMLElement>('[data-boundary-id]') ?? null) {
+    const kind = node.dataset.boundaryKind ?? '';
+    const localId = node.dataset.boundaryLocalId;
+    if (!node.dataset.boundaryId || !localId || !isSelectableBoundaryKind(kind)) continue;
+    chain.push({ boundaryId: node.dataset.boundaryId, kind, localId, label: node.dataset.boundaryLabel ?? localId });
+  }
+  return {
+    chain,
+    index: 0,
+    frameKey: element.closest<HTMLElement>('.frame-slot')?.dataset.liveFrameKey,
+    frame: frameSelectionContext(element)
+  };
+}
+
+function frameSelectionContext(element: HTMLElement): CanvasSelectionState['frame'] {
+  const frame = element.closest<HTMLElement>('.frame');
+  return {
+    ...(frame?.dataset.screenId ? { screenId: frame.dataset.screenId } : {}),
+    ...(frame?.dataset.reviewState ? { state: frame.dataset.reviewState } : {}),
+    ...(frame?.dataset.framePresetId ? { framePresetId: frame.dataset.framePresetId } : {})
+  };
+}
+
+function selectionNodeForBoundaryId(id: string): SelectionNode | undefined {
+  const prefix = `${project.manifest.project.id}/`;
+  if (!id.startsWith(prefix)) return undefined;
+  const [kind, ...localIdParts] = id.slice(prefix.length).split('/');
+  const localId = localIdParts.join('/');
+  if (!localId || !isSelectableBoundaryKind(kind)) return undefined;
+  return { boundaryId: id, kind, localId, label: boundaryDisplayName(project, kind, localId) };
+}
+
+function setCanvasSelection(state: CanvasSelectionState | undefined, copyReference = false): void {
+  canvasSelectionState = state && state.chain.length > 0 ? state : undefined;
+  const selection = canvasSelectionState ? canvasSelectionPayload(canvasSelectionState) : undefined;
+  renderCanvasSelection();
+  publishCanvasSelection(selection);
+  if (selection && copyReference) {
+    void copyText(selectionReference(selection)).then(() => flashSelectionHint('Reference copied'));
+  }
+}
+
+function canvasSelectionPayload(state: CanvasSelectionState): BlueprintCanvasSelection {
+  const [target, ...context] = state.chain.slice(state.index).map(({ boundaryId: id, kind, localId, label }) => ({
+    boundaryId: id,
+    kind,
+    localId,
+    label
+  }));
+  return { ...target, context, ...state.frame };
+}
+
+function publishCanvasSelection(selection: BlueprintCanvasSelection | undefined): void {
+  const runtime = window.__BLUEPRINT_LIVE_RUNTIME__;
+  if (!runtime?.selectionPath || !runtime.canvasToken) return;
+  const request = {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Blueprint-Canvas-Token': runtime.canvasToken },
+    body: JSON.stringify({ selection: selection ?? null })
+  };
+  selectionPublishQueue = selectionPublishQueue
+    .then(() => fetch(runtime.selectionPath!, request))
+    .then(() => undefined, () => undefined);
+}
+
+function flashSelectionHint(text: string): void {
+  selectionHint.textContent = text;
+  if (selectionHintTimer !== undefined) window.clearTimeout(selectionHintTimer);
+  selectionHintTimer = window.setTimeout(() => {
+    selectionHint.textContent = '';
+  }, 1_400);
+}
+
+function renderCanvasSelection(): void {
+  const generation = ++selectionRenderGeneration;
+  for (const layer of document.querySelectorAll('.bp-chrome-selection-layer')) layer.remove();
+  for (const element of document.querySelectorAll('.bp-chrome-selected')) element.classList.remove('bp-chrome-selected');
+  renderSelectionBar();
+  const state = canvasSelectionState;
+  const root = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  if (!state || !root) return;
+  const node = state.chain[state.index];
+  const scope = state.frameKey
+    ? [...root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')].find(slot => slot.dataset.liveFrameKey === state.frameKey)
+    : root;
+  if (!scope) return;
+  if (node.instance === undefined) {
+    findBoundaryElement(scope, node.boundaryId)?.classList.add('bp-chrome-selected');
+    return;
+  }
+  const iframe = scope.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
+  const html = iframe ? prototypeDocumentByFrame.get(iframe) : undefined;
+  if (!iframe || !html) return;
+  const draw = (extent: BoundaryExtent | undefined): void => {
+    const host = iframe.parentElement;
+    if (generation !== selectionRenderGeneration || !extent || !host || !iframe.isConnected) return;
+    const layer = el('div', 'bp-chrome-selection-layer');
+    layer.setAttribute('aria-hidden', 'true');
+    layer.dataset.selectionBoundaryId = node.boundaryId;
+    const box = el('div', 'bp-chrome-selection-box');
+    box.style.left = `${extent.left}px`;
+    box.style.top = `${extent.top}px`;
+    box.style.width = `${extent.right - extent.left}px`;
+    box.style.height = `${extent.bottom - extent.top}px`;
+    layer.append(box);
+    host.append(layer);
+  };
+  const instance = node.instance;
+  if (state.measuredFrame === iframe && node.extent) {
+    draw(node.extent);
+  } else {
+    void readPrototypeTwin(html, iframe.clientWidth, iframe.clientHeight, twinDocument => (
+      measureBoundaryInstance(twinDocument, node.boundaryId, instance)
+    ), undefined).then(draw);
+  }
+}
+
+function renderSelectionBar(): void {
+  const state = canvasSelectionState;
+  selectionBar.hidden = !state;
+  selectionPath.replaceChildren();
+  if (!state) return;
+  for (let index = state.chain.length - 1; index >= 0; index -= 1) {
+    const node = state.chain[index];
+    const crumb = el('button', 'bp-chrome-selection-crumb', node.label) as HTMLButtonElement;
+    crumb.type = 'button';
+    crumb.title = `${node.kind}:${node.localId}`;
+    crumb.dataset.selectionBoundaryId = node.boundaryId;
+    crumb.setAttribute('aria-pressed', String(index === state.index));
+    crumb.addEventListener('click', () => setCanvasSelection({ ...state, index }, true));
+    selectionPath.append(crumb);
   }
 }
 

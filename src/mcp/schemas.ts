@@ -146,6 +146,12 @@ export const serveInputSchema = z
   })
   .strict();
 
+export const selectionInputSchema = z
+  .object({
+    project: projectPathSchema.default('design/blueprint')
+  })
+  .strict();
+
 const createExplorationOperationSchema = z
   .object({
     type: z.literal('create'),
@@ -461,6 +467,35 @@ const explorationOutputSchema = z
   })
   .strict();
 
+const selectedBoundarySchema = z
+  .object({
+    boundaryId: z.string(),
+    kind: boundaryKindSchema,
+    localId: z.string(),
+    label: z.string()
+  })
+  .strict();
+
+export const selectionOutputSchema = z
+  .object({
+    command: z.literal('selection'),
+    project: z.string(),
+    selection: selectedBoundarySchema
+      .extend({
+        context: z.array(selectedBoundarySchema).describe('Enclosing boundaries, innermost first.'),
+        screenId: z.string().optional(),
+        state: z.string().optional(),
+        framePresetId: z.string().optional(),
+        reference: z.string().describe('The boundary and its enclosing boundaries in kind:id form, as copied by the canvas.'),
+        files: z.array(z.string()).describe('Sidecar-relative prototype source and style files that own the selected boundary.'),
+        selectedAt: z.string(),
+        revision: z.string()
+      })
+      .strict()
+      .nullable()
+  })
+  .strict();
+
 export const exploreOutputSchema = z
   .object({
     command: z.literal('explore'),
@@ -518,6 +553,7 @@ export type QueryInput = z.infer<typeof queryInputSchema>;
 export type ExtractInput = z.infer<typeof extractInputSchema>;
 export type CaptureInput = z.infer<typeof captureInputSchema>;
 export type ServeInput = z.infer<typeof serveInputSchema>;
+export type SelectionInput = z.infer<typeof selectionInputSchema>;
 export type ExploreInput = z.infer<typeof exploreInputSchema>;
 export type PromoteInput = z.infer<typeof promoteInputSchema>;
 export type RestoreInput = z.infer<typeof restoreInputSchema>;
@@ -529,6 +565,7 @@ export type QueryOutput = z.infer<typeof queryOutputSchema>;
 export type ExtractOutput = z.infer<typeof extractOutputSchema>;
 export type CaptureOutput = z.infer<typeof captureOutputSchema>;
 export type ServeOutput = z.infer<typeof serveOutputSchema>;
+export type SelectionOutput = z.infer<typeof selectionOutputSchema>;
 export type ExploreOutput = z.infer<typeof exploreOutputSchema>;
 export type PromoteOutput = z.infer<typeof promoteOutputSchema>;
 export type RestoreOutput = z.infer<typeof restoreOutputSchema>;
