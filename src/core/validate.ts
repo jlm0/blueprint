@@ -25,6 +25,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { findSectionMarkers, inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
+import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
 import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
@@ -261,6 +262,15 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
       severity: 'blocker',
       source: 'declared',
       message: localStyleValueMessage(issue)
+    });
+  }
+
+  for (const issue of lintHandBuiltControls(bundle)) {
+    items.push({
+      path: `${issue.boundary}.controls.${issue.sourceRef}:${issue.line}`,
+      severity: 'blocker',
+      source: 'declared',
+      message: handBuiltControlMessage(issue)
     });
   }
 
@@ -1184,6 +1194,9 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
   for (const issue of lintLocalStyleValues(bundle)) {
     errors.push(`${issue.boundary} ${issue.styleRef} ${localStyleValueMessage(issue)}`);
   }
+  for (const issue of lintHandBuiltControls(bundle)) {
+    errors.push(`${issue.boundary} ${issue.sourceRef}:${issue.line} ${handBuiltControlMessage(issue)}`);
+  }
 
   if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {
     if (!bundle.manifest.handoffContractVersion) {
@@ -1239,6 +1252,10 @@ function localStyleValueMessage(issue: LocalStyleValueIssue): string {
     ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
     : 'uses a literal color; use a token custom property';
   return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions.`;
+}
+
+function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
+  return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>".`;
 }
 
 function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {
