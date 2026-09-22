@@ -503,6 +503,35 @@ body {
   filter: drop-shadow(0 0 12px color-mix(in srgb, var(--bp-chrome-agent) 24%, transparent));
 }
 
+.bp-chrome-agent-frame-focus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bp-chrome-agent-frame-focus-box {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px;
+  outline: 3px solid var(--bp-chrome-agent);
+  outline-offset: 5px;
+  box-shadow: 0 0 18px var(--bp-chrome-agent-glow);
+  animation: bp-chrome-agent-frame-focus 1.25s ease-in-out infinite;
+}
+
+.bp-chrome-agent-frame-focus.bp-chrome-agent-focus-failed .bp-chrome-agent-frame-focus-box {
+  outline-color: var(--bp-chrome-destructive);
+  box-shadow: 0 0 18px rgba(230, 107, 107, 0.3);
+  animation: none;
+}
+
+@keyframes bp-chrome-agent-frame-focus {
+  50% {
+    outline-offset: 8px;
+  }
+}
+
 .bp-chrome-live-frame-updating {
   opacity: 0.72;
   transition: opacity 140ms ease-out;
@@ -537,6 +566,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bp-chrome-agent-status-dot,
   .bp-chrome-agent-focus,
+  .bp-chrome-agent-frame-focus-box,
   .bp-chrome-live-frame-enter,
   .bp-chrome-live-board-enter {
     animation: none;

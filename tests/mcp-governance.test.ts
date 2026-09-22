@@ -557,9 +557,19 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-button-focus',
             tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`
           });
-          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
-            .some(frame => frame.srcdoc.includes('data-blueprint-agent-focus') &&
-              frame.srcdoc.includes('[data-blueprint-boundary-id="still-meditation/primitive/button"]')));
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-id="still-meditation/primitive/button"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          const buttonFocus = await page.evaluate(() => {
+            const layer = document.querySelector<HTMLElement>('.bp-chrome-agent-frame-focus');
+            const frame = layer?.parentElement?.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
+            const box = layer?.querySelector<HTMLElement>('.bp-chrome-agent-frame-focus-box');
+            return {
+              frameUnchanged: frame?.srcdoc.includes('data-blueprint-agent-focus') === false,
+              width: box ? parseFloat(box.style.width) : 0,
+              height: box ? parseFloat(box.style.height) : 0
+            };
+          });
+          assert.equal(buttonFocus.frameUnchanged, true);
+          assert.ok(buttonFocus.width > 0 && buttonFocus.height > 0);
           assert.equal(await page.locator('.board-screens').getAttribute('hidden'), null);
           assert.equal(await page.locator('.bp-chrome-agent-status-mark .bp-chrome-agent-status-dot').count(), 9);
           await runCodexHook(tempDir, {

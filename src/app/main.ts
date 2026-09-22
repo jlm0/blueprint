@@ -31,6 +31,7 @@ import type {
 import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
 import { createCanvasItemLayout } from './canvas-layout';
+import { measureBoundaryExtents, type BoundaryExtent } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
@@ -3884,6 +3885,7 @@ let lastAgentActivity: BlueprintAgentActivityEvent | undefined;
 let lastAppliedRevision: string | undefined;
 let projectApplyQueue = Promise.resolve();
 const focusedPrototypeFrames = new Set<HTMLIFrameElement>();
+let agentFrameFocusGeneration = 0;
 
 type AgentStatusState = 'working' | 'thinking' | 'applying' | 'complete' | 'waiting' | 'failed';
 
@@ -4092,7 +4094,7 @@ function focusAgentBoundary(event: BlueprintAgentActivityEvent): void {
     ? prototypeFramesUsingBoundary(visibleRoot, event.focus.boundaryId)
     : [];
   if (prototypeConsumers.length > 0) {
-    for (const frame of prototypeConsumers) applyPrototypeFrameFocus(frame, event.focus.boundaryId, event.phase === 'failed');
+    for (const frame of prototypeConsumers) applyPrototypeFrameFocus(frame, event.focus.boundaryId);
     const context = prototypeConsumers[0]?.closest<HTMLElement>('.frame');
     if (context) {
       focusedActivityElement = context;
@@ -4144,10 +4146,8 @@ function agentActivityKey(event: BlueprintAgentActivityEvent): string {
 
 function clearAgentFocus(): void {
   viewport.classList.remove('bp-agent-project-focus');
-  for (const frame of focusedPrototypeFrames) {
-    const original = prototypeDocumentByFrame.get(frame);
-    if (original) frame.srcdoc = original;
-  }
+  agentFrameFocusGeneration += 1;
+  for (const layer of document.querySelectorAll('.bp-chrome-agent-frame-focus')) layer.remove();
   focusedPrototypeFrames.clear();
   if (focusedActivityElement) {
     focusedActivityElement.classList.remove(
@@ -4173,30 +4173,70 @@ function prototypeFramesUsingBoundary(root: HTMLElement, focusBoundaryId: string
   });
 }
 
-function applyPrototypeFrameFocus(frame: HTMLIFrameElement, focusBoundaryId: string, failed: boolean): void {
-  const original = prototypeDocumentByFrame.get(frame);
-  if (!original) return;
-  const selectorValue = focusBoundaryId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const color = failed ? '#e66b6b' : '#4c9aff';
-  const focusStyles = `<style data-blueprint-agent-focus>
-[data-blueprint-boundary-id="${selectorValue}"] {
-  position: relative !important;
-  outline: 3px solid ${color} !important;
-  outline-offset: 5px !important;
-  filter: drop-shadow(0 0 13px color-mix(in srgb, ${color} 42%, transparent)) !important;
-  animation: blueprint-agent-focus 1.25s ease-in-out infinite !important;
-}
-@keyframes blueprint-agent-focus { 50% { outline-offset: 8px; } }
-@media (prefers-reduced-motion: reduce) { [data-blueprint-boundary-id="${selectorValue}"] { animation: none !important; } }
-</style>`;
-  frame.srcdoc = original.replace('</head>', `${focusStyles}</head>`);
+function applyPrototypeFrameFocus(frame: HTMLIFrameElement, focusBoundaryId: string): void {
+  const html = prototypeDocumentByFrame.get(frame);
+  const host = frame.parentElement;
+  if (!html || !host) return;
   focusedPrototypeFrames.add(frame);
+  const generation = agentFrameFocusGeneration;
+  void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, new Set([focusBoundaryId])).then(extents => {
+    if (generation !== agentFrameFocusGeneration || !frame.isConnected) return;
+    host.querySelector(':scope > .bp-chrome-agent-frame-focus')?.remove();
+    const layer = el('div', 'bp-chrome-agent-frame-focus');
+    layer.setAttribute('aria-hidden', 'true');
+    layer.dataset.focusBoundaryId = focusBoundaryId;
+    layer.classList.toggle('bp-chrome-agent-focus-failed', lastAgentActivity?.phase === 'failed');
+    for (const extent of extents) {
+      const box = el('div', 'bp-chrome-agent-frame-focus-box');
+      box.style.left = `${extent.left}px`;
+      box.style.top = `${extent.top}px`;
+      box.style.width = `${extent.right - extent.left}px`;
+      box.style.height = `${extent.bottom - extent.top}px`;
+      layer.append(box);
+    }
+    host.append(layer);
+  });
+}
+
+/**
+ * The visible frame keeps its empty-permission sandbox, so boundary geometry is
+ * read from a short-lived same-origin twin rendering the same no-script document.
+ */
+function measurePrototypeBoundaryExtents(
+  html: string,
+  width: number,
+  height: number,
+  boundaryIds: ReadonlySet<string>
+): Promise<BoundaryExtent[]> {
+  if (width <= 0 || height <= 0) return Promise.resolve([]);
+  return new Promise(resolve => {
+    const twin = document.createElement('iframe');
+    twin.style.cssText = `position:fixed;left:-${width + 100}px;top:0;width:${width}px;height:${height}px;border:0;pointer-events:none;`;
+    twin.tabIndex = -1;
+    twin.setAttribute('aria-hidden', 'true');
+    twin.setAttribute('sandbox', 'allow-same-origin');
+    twin.addEventListener('load', () => {
+      const twinDocument = twin.contentDocument;
+      const measured = twinDocument
+        ? twinDocument.fonts.ready.then(() => measureBoundaryExtents(twinDocument, boundaryIds))
+        : Promise.resolve([]);
+      void measured
+        .catch(() => [])
+        .then(extents => {
+          twin.remove();
+          resolve(extents);
+        });
+    }, { once: true });
+    twin.srcdoc = html;
+    document.body.append(twin);
+  });
 }
 
 function setFocusedActivityFailed(failed: boolean): void {
   focusedActivityElement?.classList.toggle('bp-chrome-agent-focus-failed', failed);
-  if (!lastAgentActivity) return;
-  for (const frame of focusedPrototypeFrames) applyPrototypeFrameFocus(frame, lastAgentActivity.focus.boundaryId, failed);
+  for (const layer of document.querySelectorAll('.bp-chrome-agent-frame-focus')) {
+    layer.classList.toggle('bp-chrome-agent-focus-failed', failed);
+  }
 }
 
 function markFocusedBoundaryBusy(busy: boolean): void {
