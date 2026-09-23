@@ -1,7 +1,7 @@
 /**
  * Locked universal base primitive floor.
  *
- * Blueprint's 27 base primitives are universal and locked: every high-fidelity
+ * Blueprint's 26 base primitives are universal and locked: every high-fidelity
  * project (manifest.prototypeHost present) must carry the full base set below.
  * Apps may add primitives, state sets, and states, and base primitives inherit
  * app design through token values, but the base set can never be removed or
@@ -59,10 +59,6 @@ export const BASE_PRIMITIVE_CONTRACT: BasePrimitiveContractEntry[] = [
   {
     id: 'card',
     stateSets: [{ id: 'variant', states: ['default', 'flat', 'elevated', 'status-accent'] }]
-  },
-  {
-    id: 'media-card',
-    stateSets: [{ id: 'variant', states: ['cover', 'nested'] }]
   },
   {
     id: 'nav-bar',

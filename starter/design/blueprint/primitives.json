@@ -389,45 +389,6 @@
       ]
     },
     {
-      "id": "media-card",
-      "name": "Media Card",
-      "description": "Media container primitive for cover and nested media.",
-      "tokenGroupIds": ["color", "space", "shape", "typography"],
-      "styleRefs": ["primitive.media-card"],
-      "notes": [],
-      "prototypeOnly": false,
-      "implementationHints": ["Preserve media clipping and text overlay behavior."],
-      "prototype": {
-        "source": "prototype/primitives/media-card.html",
-        "styles": ["prototype/primitives/media-card.css"],
-        "slots": ["title"],
-        "variants": ["default"],
-        "states": ["cover", "nested"],
-        "accessibilityIntent": "A content container that pairs decorative media with an accessible text title.",
-        "tokenRoles": {
-          "color.surface": "background",
-          "color.scrim": "legibility-wash",
-          "color.on-scrim": "overlay-text",
-          "color.accent": "placeholder-art",
-          "shape.radius-xl": "radius",
-          "typography.heading": "title",
-          "typography.caption": "caption"
-        }
-      },
-      "stateSets": [
-        {
-          "id": "variant",
-          "name": "Variant States",
-          "description": "Media card variants.",
-          "styleRefs": ["primitive.media-card.variant"],
-          "states": [
-            { "id": "cover", "name": "Cover", "tokens": ["color.scrim", "color.on-scrim", "shape.radius-xl"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
-            { "id": "nested", "name": "Nested", "tokens": ["space.space-2", "shape.radius-lg"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
-          ]
-        }
-      ]
-    },
-    {
       "id": "nav-bar",
       "name": "Navigation Bar",
       "description": "Balanced slot navigation primitive.",

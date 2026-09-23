@@ -136,7 +136,6 @@ describe('Blueprint data-driven primitives canvas', () => {
         'slider',
         'surface',
         'card',
-        'media-card',
         'nav-bar',
         'back-button',
         'separator',

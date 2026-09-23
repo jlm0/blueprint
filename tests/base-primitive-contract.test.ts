@@ -16,7 +16,7 @@ describe('Blueprint locked base primitive contract', () => {
     const starter = await loadProjectFromFs(starterRoot);
     const starterById = new Map(starter.primitives.primitives.map(primitive => [primitive.id, primitive]));
 
-    assert.equal(BASE_PRIMITIVE_CONTRACT.length, 27);
+    assert.equal(BASE_PRIMITIVE_CONTRACT.length, 26);
     for (const entry of BASE_PRIMITIVE_CONTRACT) {
       const primitive = starterById.get(entry.id);
       assert.ok(primitive, `starter base declaration is missing ${entry.id}`);

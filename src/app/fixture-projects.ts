@@ -44,8 +44,6 @@ import starterListCss from '../../starter/design/blueprint/prototype/primitives/
 import starterListHtml from '../../starter/design/blueprint/prototype/primitives/list.html?raw';
 import starterLoadingMarkCss from '../../starter/design/blueprint/prototype/primitives/loading-mark.css?raw';
 import starterLoadingMarkHtml from '../../starter/design/blueprint/prototype/primitives/loading-mark.html?raw';
-import starterMediaCardCss from '../../starter/design/blueprint/prototype/primitives/media-card.css?raw';
-import starterMediaCardHtml from '../../starter/design/blueprint/prototype/primitives/media-card.html?raw';
 import starterNavBarCss from '../../starter/design/blueprint/prototype/primitives/nav-bar.css?raw';
 import starterNavBarHtml from '../../starter/design/blueprint/prototype/primitives/nav-bar.html?raw';
 import starterOtpInputCss from '../../starter/design/blueprint/prototype/primitives/otp-input.css?raw';
@@ -124,8 +122,6 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/primitives/list.html': starterListHtml,
       'prototype/primitives/loading-mark.css': starterLoadingMarkCss,
       'prototype/primitives/loading-mark.html': starterLoadingMarkHtml,
-      'prototype/primitives/media-card.css': starterMediaCardCss,
-      'prototype/primitives/media-card.html': starterMediaCardHtml,
       'prototype/primitives/nav-bar.css': starterNavBarCss,
       'prototype/primitives/nav-bar.html': starterNavBarHtml,
       'prototype/primitives/otp-input.css': starterOtpInputCss,
