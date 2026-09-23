@@ -17,7 +17,7 @@
         {
           "styleRef": ".nova-care-home",
           "status": "linked-artifact-pending",
-          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/home.json"
+          "artifactRef": ".blueprint-artifacts/browser-smoke/style-evidence/home.json"
         }
       ],
       "notes": ["This screen demonstrates a production-intended composition with one prototype-only section."],

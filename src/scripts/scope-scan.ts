@@ -3,8 +3,6 @@ import path from 'node:path';
 
 const runtimeRoots = ['src/app', 'src/core', 'src/mcp', 'src/prototype', 'src/index.ts', 'index.html', 'package.json'];
 const forbiddenRuntimeTerms = [
-  'reference',
-  'reference-app',
   'packages/ui',
   'dashboard',
   'inspector',

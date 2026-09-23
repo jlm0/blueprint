@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://blueprint.local/schema/blueprint-project.schema.json",
   "title": "Blueprint Project Structured Files",
-  "description": "Machine-readable artifact aligned with the current TypeScript structured-file contract. Production handoff semantics remain owned by the Agent Handoff Contract workstream; this schema exposes the current fields for editors, agents, and package consumers.",
+  "description": "Machine-readable artifact aligned with the current TypeScript structured-file contract. This schema exposes the current fields for editors, agents, and package consumers.",
   "type": "object",
   "required": ["manifest", "tokens", "primitives", "screens"],
   "additionalProperties": false,

@@ -5,7 +5,7 @@
     "id": "high-fidelity-red",
     "name": "High Fidelity Red Contract",
     "description": "Red-only proof fixture for token-grounded browser-native composition.",
-    "owner": "Blueprint workstream red phase",
+    "owner": "Blueprint red-phase fixture",
     "sourceRoot": "fixtures/red/high-fidelity-prototype/design/blueprint"
   },
   "defaultBoardId": "screens",

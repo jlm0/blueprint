@@ -65,7 +65,7 @@ describe('Blueprint canvas-to-contract review loop', () => {
       generatedAt: '2026-06-23T20:00:00.000Z',
       board: 'screens',
       screenId: 'home',
-      screenshotPath: '.agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/screenshots/blueprint-screens-desktop.png',
+      screenshotPath: '.blueprint-artifacts/browser-smoke/screenshots/blueprint-screens-desktop.png',
       packetToolName: 'extract'
     });
 
@@ -139,7 +139,7 @@ describe('Blueprint canvas-to-contract review loop', () => {
       }
     ], {
       generatedAt: '2026-06-23T20:00:00.000Z',
-      screenshotPath: '.agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/screenshots/blueprint-screens-desktop.png'
+      screenshotPath: '.blueprint-artifacts/browser-smoke/screenshots/blueprint-screens-desktop.png'
     });
 
     assert.equal(evidence.projectId, 'nova-care');

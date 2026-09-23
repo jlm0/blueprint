@@ -7,3 +7,11 @@ coverage/
 .env
 .env.*
 !.env.example
+.agent-workstream/
+.codex/
+.claude/
+docs/
+AGENTS.md
+!starter/**/AGENTS.md
+!fixtures/**/AGENTS.md
+CLAUDE.md

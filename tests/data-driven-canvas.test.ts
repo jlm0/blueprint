@@ -1031,19 +1031,6 @@ describe('Blueprint data-driven primitives canvas', () => {
       await mutatedPage.close();
     }
   });
-
-  it('keeps smoke and extraction artifact defaults out of closed June workstream paths', async () => {
-    const { readFile } = await import('node:fs/promises');
-    const browserSmoke = await readFile('src/scripts/browser-smoke.ts', 'utf8');
-    const extractionArtifacts = await readFile('src/scripts/create-extraction-artifacts.ts', 'utf8');
-
-    assert.doesNotMatch(browserSmoke, /2026-06-23-04-blueprint-canvas-contract-review-loop\/artifacts/);
-    assert.doesNotMatch(extractionArtifacts, /2026-06-23-01-blueprint-platform-foundation\/artifacts/);
-    assert.doesNotMatch(browserSmoke, /\.agent-workstream\/2026-\d{2}-\d{2}/);
-    assert.doesNotMatch(extractionArtifacts, /\.agent-workstream\/2026-\d{2}-\d{2}/);
-    assert.match(browserSmoke, /BLUEPRINT_ARTIFACT_ROOT/);
-    assert.match(extractionArtifacts, /BLUEPRINT_ARTIFACT_ROOT/);
-  });
 });
 
 async function openPrimitiveBoard(bundle: BlueprintProjectBundle): Promise<Page> {

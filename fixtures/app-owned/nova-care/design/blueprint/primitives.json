@@ -18,8 +18,8 @@
         {
           "styleRef": ".nova-action-button",
           "status": "linked-artifact-pending",
-          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/action-button.json",
-          "notes": ["Rendered selector proof is produced by the canvas review-loop workstream."]
+          "artifactRef": ".blueprint-artifacts/browser-smoke/style-evidence/action-button.json",
+          "notes": ["Rendered selector proof is produced by browser smoke."]
         }
       ],
       "notes": ["The primitive is generic enough to transfer into a target app button implementation."],
@@ -110,7 +110,7 @@
         {
           "styleRef": ".nova-status-pill",
           "status": "linked-artifact-pending",
-          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/status-pill.json"
+          "artifactRef": ".blueprint-artifacts/browser-smoke/style-evidence/status-pill.json"
         }
       ],
       "notes": ["Used by screen sections that need quick scan state."],
@@ -186,7 +186,7 @@
         {
           "styleRef": ".nova-info-card",
           "status": "linked-artifact-pending",
-          "artifactRef": ".agent-workstream/2026-06-23-04-blueprint-canvas-contract-review-loop/artifacts/style-evidence/info-card.json"
+          "artifactRef": ".blueprint-artifacts/browser-smoke/style-evidence/info-card.json"
         }
       ],
       "notes": ["Cards are content containers, not page sections."],

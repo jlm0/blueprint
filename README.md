@@ -1,114 +1,150 @@
 # Blueprint
 
-Blueprint is a portable design-system canvas template for modeling interface systems as app-owned, agent-readable files. It provides the shared infinite-canvas runtime, TypeScript schema, starter structure, frame/viewport wrappers, primitive methodology, dependency queries, and extraction packet shape that individual app repositories can copy into their own design folders.
+Blueprint is a local design canvas and MCP server for modeling an app's interface system as app-owned, agent-readable files. It sits beside an agent session: the agent edits tokens, primitives, components, and screens as plain JSON, HTML, and CSS inside the app repository, and Blueprint checks, renders, and hands them off.
 
-The product goal is not to preserve one app's prototype, and it is not to create a centralized app that owns or switches between every project's design system. The goal is to turn the working reference canvas pattern into a reusable standalone template that any app can instantiate, usually under a path such as `design/blueprint/`, while keeping that app's tokens, primitives, screens, copy, theme, and product decisions in the app repo that owns them.
+Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: an infinite canvas with Primitives and Screens boards, mobile and desktop frames, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
 
-Blueprint core should reconcile the repeatable behavior across projects: a full-screen infinite canvas, a small board switcher, Primitives and Screens boards, smooth reference-style pan/zoom/fit behavior, collision-aware canvas placement, token materialization, canonical primitive and component compilation, isolated browser-native screen hosting, mobile and desktop review conditions, dependency lookup, and extraction-ready handoff packets. Each app adapts those structures through its own token values, canonical sources, reusable components, and screen composition without re-deciding how the canvas, isolation boundary, frame wrappers, dependency graph, or agent handoff boundaries work.
+## How it works
 
-Blueprint has a split authority model. Structured JSON owns stable IDs, declarations, named states, dependency relationships, production targets, and review conditions. App-owned HTML/CSS owns the canonical behavior and appearance of reusable primitives and components, while screen HTML/CSS owns unique hierarchy, responsive layout, media, effects, and art direction. Screenshots and visual diffs are review evidence only. Agents can query a token group, primitive, component, screen, or section and receive either a focused packet or a deep handoff packet with the transitive screen → component → primitive → token graph, approved source paths, viewport/state context, targets, evidence status, and unresolved decisions.
+Blueprint splits authority between two layers:
 
-## Core Contracts
+- **Structured JSON owns the graph.** Stable IDs, declarations, named states, dependencies, production relationships, targets, and review conditions live in `manifest.json`, `tokens.json`, `primitives.json`, `components.json`, and `screens.json`.
+- **Governed HTML/CSS owns the rendering.** Primitive and component sources define reusable behavior and appearance. Screen sources define unique hierarchy, responsive layout, media, and art direction.
 
-Each app-owned Blueprint project should be structured around stable, addressable boundaries: project, board, token group, primitive, primitive state set, component, screen, and screen section. Those boundaries are primarily an agent-consumable sidecar contract, exposed through structured files, source refs, data attributes, query scripts, and extraction packets rather than visible dashboard chrome. Every boundary must have a stable ID, an owning source file, dependency metadata, notes, and enough style context to inspect it without reverse-engineering the canvas DOM.
+Screenshots and visual diffs are review evidence only, never source.
 
-Query outputs and extraction packets share one canonical boundary shape. The minimum packet fields are `id`, `kind`, `projectId`, `sourceFiles`, `data`, `styleRefs`, `styleEvidence`, `dependencies.uses`, `dependencies.usedBy`, `notes`, `prototypeOnly`, and `implementationHints`. Focused extraction preserves that single-boundary view. Deep extraction adds `boundaries`, `resolvedTokens`, role-aware `tokenUsage`, and traversal metadata so an implementation agent can consume the selected screen, section, primitive, or state set without manually chasing references.
+Screens compose reusable parts with `<blueprint-use kind="primitive|component" ref="…" state="…">`. Blueprint replaces each use with the referenced root, without wrapper elements, so ordinary sibling, flex, grid, and breakpoint rules keep working. Tokens become `--app-*` CSS custom properties. Every screen renders in a sandboxed frame with a no-network, no-script content security policy.
 
-Baseline validation keeps existing four-file projects loadable. These projects are reported as `baseline-compatible`; their generic family projection remains usable but is not high-fidelity evidence. A sidecar becomes `high-fidelity` through declared, governed prototype sources, and missing declared sources fail closed. Strict handoff validation remains opt-in and checks the richer production contract. The separate readiness report surfaces ready, pending, unresolved, or blocked evidence without deleting uncertainty; a `ready` report is not a replacement for strict validation.
+Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, and source paths so an implementation agent can build without reading the canvas DOM.
 
-High-fidelity projects also carry a locked universal base set: the 26 base primitives declared in `src/core/base-primitives.ts` and carried by `starter/design/blueprint/primitives.json`, with their named state sets and states, are the shared floor every prototype-era sidecar must keep. Base primitives inherit each app's design through token values, and apps may add primitives, state sets, and states — but never remove or reduce the base set. Baseline validation enforces the floor for any project declaring `manifest.prototypeHost`; legacy baseline projects without `prototypeHost` keep their documented `baseline-compatible` classification and stay exempt.
+### Fidelity tiers
 
-## Canvas Review Loop
+- **`baseline-compatible`**: legacy four-file sidecars without prototype sources. They stay loadable and render through generic family templates, but they are not high-fidelity evidence.
+- **`high-fidelity`**: sidecars that declare `manifest.prototypeHost` and governed sources. Missing declared sources fail closed. These sidecars must keep the 26 locked base primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle the base set through tokens and may add to it, but must never remove from it.
 
-For a high-fidelity sidecar, the Primitives board and every component or screen consumer instantiate the same app-owned canonical primitive source. Blueprint materializes token JSON as CSS custom properties, recursively replaces `<blueprint-use kind="primitive|component" ref="…">` declarations with the referenced app roots, annotates those roots directly without layout wrappers, and mounts each screen document in an isolated frame. Screen-local HTML/CSS can use ordinary browser grid, flex, positioning, overlays, responsive rules, typography, and controlled sidecar assets; Blueprint does not translate a restricted layout-keyword language into the final screen. Generic family renderers remain an explicitly labeled fallback for baseline-compatible projects only. Primitives that declare `platforms` are grouped on the board into Shared, Mobile, and Web zones.
+Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, and color contrast.
 
-Visible affordances stay minimal. Primitive cards do not render copy or terminal controls; their boundary IDs and typed extraction tool calls remain machine-readable metadata for agents and review artifacts. The screen frame keeps its existing compact copy/screenshot/save controls. Browser smoke also writes machine-readable review manifests and canvas-side style evidence artifacts, linking project ID, boundary ID, board/screen context, explicit captured/capture-ready/unresolved capture status, exact governed source/state/viewport context when available, an optional MCP packet tool call, rendered snippet, computed-style summary, and unresolved/captured style evidence status. By default local evidence goes under `.blueprint-artifacts/`; set `BLUEPRINT_ARTIFACT_ROOT` to route evidence into a workstream artifact folder. These artifacts connect what a person reviewed to the structured graph and canonical app-owned sources without treating screenshots or canvas DOM as editable source.
+## Getting started
 
-The initial reference input is the reference canvas at:
+Requires Node.js 20 or later.
 
-```text
-path/to/reference/canvas
+```sh
+npm install
+npx playwright install chromium   # used by capture, browser smoke, and canvas tests
+npm run dev                       # canvas at http://127.0.0.1:5173 showing the starter sidecar
 ```
 
-That canvas is evidence for the kit shape, not the tool's product boundary. Any app-specific names, visuals, tokens, screens, or copy from the reference must live as sample/reference data or reference notes, never as assumptions baked into Blueprint core. Blueprint should preserve the reference canvas grammar and primitive coverage while generalizing the palette through neutral, replaceable tokens.
+### Connecting an agent
 
-## Repository Shape
+Build the MCP server and static canvas:
 
-The first implementation is a browser-native TypeScript template with no runtime framework dependency. Vite is used only as local serving/build tooling. The visible app renders one configured Blueprint project bundle at a time, defaulting to the starter fixture; additional fixtures are headless schema proof and never appear as selectable apps. The app-owned proof fixtures live under `fixtures/app-owned/*/design/blueprint/`, the invalid schema fixture lives under `fixtures/invalid/`, and the starter scaffold lives under `starter/design/blueprint/`.
-
-```text
-src/core/        typed schema, validation, boundary IDs, queries, extraction packets
-src/app/         browser-native reference-style canvas template and placement helpers
-src/mcp/         typed MCP schemas, ten project, exploration, and history tools, and stdio server lifecycle
-src/scripts/     repository validation, extraction, scope, and browser-smoke harnesses
-fixtures/        app-owned proof fixtures and invalid fixture
-starter/         copyable design/blueprint starter shape
-docs/            kit, query, screen-composition, and reference-import guidance
-```
-
-## Commands
-
-```text
-npm run dev
-npm run typecheck
-npm run check:fixtures
-npm test
-npm run extract:artifacts
-npm run scan:scope
-npm run build
-npm run smoke:browser
-npm run qa
-```
-
-## Agent MCP
-
-Blueprint exposes one local stdio MCP server for agents. Build the server and static review site with:
-
-```text
+```sh
 npm run build
 ```
 
-Configure the agent host to start `blueprint-mcp` from the app repo root. The server exposes exactly ten typed tools:
+Then register the stdio server with your agent host, running from the app repository root:
 
 ```json
 {
-  "init": { "projectId": "my-app", "name": "My App", "out": "design/blueprint", "force": false },
-  "validate": { "project": "design/blueprint", "mode": "baseline | readiness | strict" },
-  "index": { "project": "design/blueprint" },
-  "query": { "project": "design/blueprint", "query": { "type": "show", "boundary": "screen:home" } },
-  "explore": { "project": "design/blueprint", "operation": { "type": "create", "screenId": "home", "state": "initial", "framePresetId": "phone", "title": "Home hero options", "intent": "Compare three hero arrangements", "candidateLabels": ["A", "B", "C"] } },
-  "promote": { "project": "design/blueprint", "explorationId": "home-hero-options", "candidateId": "b", "expectedBaseDigest": "<digest>", "expectedCurrentDigest": "<digest>", "expectedCandidateDigest": "<digest>" },
-  "restore": { "project": "design/blueprint", "screenId": "home", "version": 1, "expectedCurrentDigest": "<digest>", "expectedVersionDigest": "<digest>" },
-  "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "focused | deep" },
-  "capture": { "project": "design/blueprint", "boundary": "screen:<id>", "state": "<state>", "viewport": "<frame-preset-id>", "out": ".blueprint-artifacts/screen.png" },
-  "serve": { "project": "design/blueprint", "explorationId": "home-hero-options" }
+  "mcpServers": {
+    "blueprint": { "command": "node", "args": ["/path/to/blueprint/dist/mcp/server.js"] }
+  }
 }
 ```
 
-The MCP interface is project-scoped by design: every tool call works against one app-owned project path. `serve` defaults to `design/blueprint` from the server process working directory and keeps one stable runtime per canonical sidecar across independent MCP connections. Concurrent agents working in repo A reuse repo A's URL and port; repo B receives an isolated runtime and the next available port. Omit `port` for automatic allocation beginning at 4173, or provide it when an exact port is required. A served URL can open one saved exploration without creating another listener. `explore` creates or archives a persistent comparison without adding its candidates to canonical route rows. Creation copies the current governed screen into a frozen baseline and two to five editable candidate sources; the agent then edits those candidate files and uses `query` to inspect their current digests. Each exploration is stored independently at `explorations/<id>.json`; its HTML/CSS snapshots are independently named beside their original source directories so relative asset URLs stay valid. New alternatives never enlarge one aggregate registry. `promote` requires the explicit exploration, candidate, and compare-and-swap digests, preserves the previous screen as an independent `history/<screen>-v<n>.json` record, and keeps both `screens.json` and the canonical screen ID stable. `restore` uses inspected current and history digests to restore a prior version while first preserving the outgoing current screen as the next immutable history record.
+The server exposes eleven project-scoped tools:
 
-### Live Codex canvas activity
+| Tool | Purpose |
+| --- | --- |
+| `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser frames. |
+| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode. |
+| `index` | List every stable boundary ID. |
+| `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
+| `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
+| `capture` | Render one screen, state, and viewport to PNG. |
+| `serve` | Open the live review canvas for the sidecar. |
+| `selection` | Read what the person selected on the canvas. |
+| `explore` | Create or archive two to five candidate alternatives for a single screen state. |
+| `promote` | Make a chosen candidate canonical, guarded by content digests. |
+| `restore` | Bring back a prior screen version, preserving the current one in history. |
 
-While an MCP-owned `serve` listener is open, Blueprint watches only that runtime's sidecar. After a valid JSON, HTML, CSS, or controlled-asset change, the browser fetches the new validated snapshot and reconciles it into the existing document. Screen-source changes replace affected frames after their sandboxed documents are ready; broader token or structural changes rebuild mounted boards in place. The active board, URL, zoom, and pan survive. Invalid intermediate edits keep the last-good canvas visible and show a waiting state until the files become valid. The same listener exposes a private loopback activity channel. A random per-listener token is written to an owner-only descriptor under the operating-system temporary directory, which also lets other Blueprint MCP processes discover and reuse that repository runtime. An atomic repository lease prevents concurrent processes from creating duplicate listeners. The descriptor and listener are removed when the owning MCP connection or stdio pipe closes; the token is never included in the served page.
+Example calls:
 
-Codex hooks provide the activity input. This repository includes `.codex/hooks.json` for `PreToolUse` and `PostToolUse`, matching Desktop's `functions.exec` wrapper as well as direct Blueprint MCP, `apply_patch`, and shell tool names. Codex invokes `src/hooks/codex-activity-hook.ts`, which discovers the listener for the exact project and forwards a bounded event. The browser shows a nine-dot working, reviewing, applying, complete, waiting, or failed state and highlights every boundary the in-flight tool calls touch, plus every boundary whose governed source actually changed, without refitting the user's current canvas view. A shared stylesheet highlights each boundary that declares it. A finished tool call is published only after the listener's file watcher settles and carries the revision that includes its edits; the browser reports complete once that revision is applied, or waits while the project is invalid. Reusable primitive and component focus is drawn inside matching sandboxed screen instances without granting those documents script or same-origin permissions. Exact MCP boundary arguments produce exact focus; section activity falls back to its containing screen when needed, and an unresolvable repository-scoped action uses a canvas-wide focus treatment.
-
-The canvas is meant to sit beside the agent session. Clicking a screen, section, component, or primitive selects it, even inside a sandboxed screen frame, and copies a reference such as `primitive:button in section:home/featured-practice in screen:home` to paste into the conversation. The breadcrumb selects an enclosing boundary; Escape clears the selection. The `selection` MCP tool returns the current selection with its enclosing boundaries and owning source files, so the agent can resolve feedback like "make this tighter" without the person naming the boundary. In an exploration or history view the selection also names the candidate or version, for example `screen:home in exploration:home-hero candidate:bold`, and the tool returns that candidate's own source files and `candidateId`.
-
-The canvas also marks what the latest agent turn changed. Every primitive, component, token group, and screen whose declaration or owned files differ from the start of the turn gets a dashed marker, drawn inside each screen that renders it. A screen change confined to marked sections is narrowed to those sections. Before shows the canvas as it was when the turn began, and After returns to the live project. Markers persist until the next turn edits the project or the person dismisses them.
-
-Design findings from the strict lints appear on the canvas as well: literal colors, lengths that restate a token, hand-built native controls, unmarked sections, and color roles whose text-on-fill contrast falls below WCAG minimums. A screen frame with findings shows a count beside its name, and every component instance with findings gets a dotted marker inside the frames that render it. The count opens a list of each finding with its source location and remedy, and Copy puts it on the clipboard as an instruction the person can paste to the agent. The list refreshes as fixes land.
-
-Builds also expose `blueprint-codex-hook` beside `blueprint-mcp` for installations that want to register the same bridge from a package or plugin. A standalone skill script is not automatically a hook: the consuming Codex project or plugin must register the command, the Blueprint MCP server must be configured for that Codex host, and the project hook must be reviewed and trusted. In this repository, run `npm install`, start or resume Codex from the repo, review `.codex/hooks.json` when prompted, and use the Blueprint MCP `serve` tool to open the live review canvas.
-
-`init` preserves a neutral token, canonical primitive, and reusable component foundation while leaving the `home` phone and `web-home` browser screens intentionally empty. Readiness validation reports the fidelity tier and evidence state; strict validation checks the production handoff contract. `capture` selects an explicit canonical screen, named state, and declared viewport, waits for controlled fonts/media, and writes a screen PNG. Missing browser support fails during preflight with remediation rather than after rendering starts. Query and extraction packets expose source refs and the dependency graph; captures remain corroborating evidence under ignored `.blueprint-artifacts/`.
-
-`npm run extract:artifacts` writes canonical primitive and screen packets under `.blueprint-artifacts/extraction-query/` by default. `npm run smoke:browser` renders the dark Blueprint canvas, verifies the Primitives board is driven by starter, Nova Care, and Atlas Pay sidecar data, verifies the Screens board renders structured screen sections inside reusable mobile and desktop frames without restoring the rejected metadata-card projection, proves visible-boundary synchronization, review-loop affordances, no-dashboard constraints, and single-project rendering, then writes screenshots, review manifests, and canvas-side style evidence under `.blueprint-artifacts/browser-smoke/` by default. Set `BLUEPRINT_ARTIFACT_ROOT=<path>` to place either command's evidence under a caller-provided artifact root.
-
-## Workstream
-
-```text
-.agent-workstream/
+```json
+{
+  "init": { "projectId": "my-app", "name": "My App", "out": "design/blueprint" },
+  "validate": { "project": "design/blueprint", "mode": "strict" },
+  "query": { "project": "design/blueprint", "query": { "type": "used-by", "boundary": "primitive:button" } },
+  "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "deep" },
+  "capture": { "project": "design/blueprint", "boundary": "screen:home", "state": "default", "viewport": "phone", "out": ".blueprint-artifacts/home.png" },
+  "serve": { "project": "design/blueprint" }
+}
 ```
 
-Each dated workstream remains the source for its own scope, validation, and closure evidence. Future implementation should continue from the relevant workstream documents rather than relying on chat context.
+`init` writes an `AGENTS.md` into the new sidecar that describes the working rules for agents editing it.
+
+## The review canvas
+
+`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current board, zoom, and pan. While an edit is invalid, the last good state stays visible.
+
+- **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.
+- **Turn changes.** Boundaries that changed during the latest agent turn get a dashed marker. Before and After toggle between the turn's starting state and the live project.
+- **Findings.** Strict-lint findings appear as counts on screen frames and markers on component instances, each with a copyable remedy.
+- **Explorations.** Saved alternatives open in an isolated baseline-and-candidates view instead of crowding the canonical screens.
+
+### Live agent activity
+
+Builds include a `blueprint-codex-hook` command that streams tool activity into an open canvas. The canvas then shows what the agent is working on and highlights the boundaries it touches. To enable it, register the hook in the consuming project's Codex configuration:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(functions\\.exec|Bash|apply_patch|Edit|Write|mcp__blueprint__.*)$",
+        "hooks": [{ "type": "command", "command": "blueprint-codex-hook", "timeout": 3 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(functions\\.exec|Bash|apply_patch|Edit|Write|mcp__blueprint__.*)$",
+        "hooks": [{ "type": "command", "command": "blueprint-codex-hook", "timeout": 3 }]
+      }
+    ]
+  }
+}
+```
+
+The hook finds the running listener through an owner-only descriptor in the OS temp directory and authenticates with a random per-listener token. The token is never sent to the served page.
+
+## Repository layout
+
+```text
+src/core/       schema types, validation, lints, boundary IDs, queries, extraction packets
+src/app/        browser-native canvas (no UI framework)
+src/prototype/  source compiler, sandbox host policy, capture
+src/mcp/        MCP tool schemas, operations, and stdio server
+src/hooks/      agent activity hook
+src/scripts/    fixture validation, extraction, scope scan, browser smoke
+schema/         JSON Schema for sidecar files
+starter/        the sidecar that init copies
+fixtures/       sample sidecars used by tests, plus invalid and red-phase cases
+tests/          node:test suites
+```
+
+## Scripts
+
+| Command | Runs |
+| --- | --- |
+| `npm run dev` | Vite dev server for the canvas |
+| `npm run lint` | oxlint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Unit and browser tests |
+| `npm run check:fixtures` | Validates every fixture |
+| `npm run extract:artifacts` | Writes sample packets under `.blueprint-artifacts/` |
+| `npm run scan:scope` | Keeps runtime code free of framework dependencies and app-specific terms |
+| `npm run build` | Static canvas and MCP server into `dist/` |
+| `npm run smoke:browser` | End-to-end canvas smoke test |
+| `npm run qa` | All of the above |
+
+Generated evidence goes to the ignored `.blueprint-artifacts/` directory. Set `BLUEPRINT_ARTIFACT_ROOT` to send it somewhere else.

@@ -17,7 +17,6 @@
   "files": [
     "dist/mcp",
     "dist/site",
-    "docs",
     "schema",
     "starter",
     "README.md"

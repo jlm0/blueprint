@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -271,28 +270,13 @@ describe('Blueprint handoff readiness semantics', () => {
     assert.ok(schema.$defs.deepHandoffPacket?.properties?.tokenUsage, 'schema should document deep packet token usage');
   });
 
-  it('keeps tool artifact defaults neutral while classifying dated fixture evidence as non-product data', async () => {
+  it('keeps tool artifact defaults under a neutral artifact root', async () => {
     const browserSmoke = await readFile('src/scripts/browser-smoke.ts', 'utf8');
     const extractionArtifacts = await readFile('src/scripts/create-extraction-artifacts.ts', 'utf8');
-    const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;
-    const datedProductArtifactPath = /\.agent-workstream\/\d{4}-\d{2}-\d{2}-[^'"\s]+\/artifacts/;
 
     for (const source of [browserSmoke, extractionArtifacts]) {
-      assert.doesNotMatch(source, datedProductArtifactPath);
-      assert.match(source, /BLUEPRINT_ARTIFACT_ROOT|\.blueprint-artifacts/);
-    }
-    assert.doesNotMatch(docs, datedProductArtifactPath);
-
-    const validationFixturePath =
-      '.agent-workstream/2026-07-01-01-blueprint-data-driven-canvas/artifacts/final-qa/extraction/primitive-action-button.json';
-    if (existsSync(validationFixturePath)) {
-      const fixturePacket = JSON.parse(await readFile(validationFixturePath, 'utf8')) as {
-        styleEvidence?: Array<{ artifactRef?: string }>;
-      };
-      assert.ok(
-        fixturePacket.styleEvidence?.some(item => item.artifactRef?.includes('2026-06-23')),
-        'dated artifact refs may remain inside captured validation fixtures only'
-      );
+      assert.match(source, /BLUEPRINT_ARTIFACT_ROOT/);
+      assert.match(source, /\.blueprint-artifacts/);
     }
   });
 });

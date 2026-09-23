@@ -1045,7 +1045,7 @@ describe('Blueprint MCP and template governance', () => {
     assert.match(agents, /explore.*promote/is);
     assert.match(agents, /screenshots.*evidence/i);
 
-    const docs = `${await readFile('README.md', 'utf8')}\n${await readFile('docs/starter-scaffold.md', 'utf8')}\n${await readFile('docs/query-contract.md', 'utf8')}`;
+    const docs = await readFile('README.md', 'utf8');
     for (const tool of toolNames) {
       assert.match(docs, new RegExp(`\\b${tool}\\b`, 'i'));
     }
@@ -1054,18 +1054,6 @@ describe('Blueprint MCP and template governance', () => {
     assert.match(docs, /structured JSON.*owns|JSON owns/i);
     assert.doesNotMatch(docs, /Local CLI|blueprint (?:init|validate|index|query|extract|capture|serve)/i);
     assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);
-
-    const hooks = JSON.parse(await readFile('.codex/hooks.json', 'utf8')) as {
-      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ async?: boolean; command?: string }> }>>;
-    };
-    for (const eventName of ['PreToolUse', 'PostToolUse']) {
-      const registration = hooks.hooks?.[eventName]?.[0];
-      assert.match(registration?.matcher ?? '', /mcp__blueprint__/);
-      assert.match(registration?.matcher ?? '', /apply_patch/);
-      assert.match(registration?.matcher ?? '', /functions\\\.exec/);
-      assert.equal(registration?.hooks?.[0]?.async, undefined);
-      assert.match(registration?.hooks?.[0]?.command ?? '', /codex-activity-hook/);
-    }
   });
 });
 
