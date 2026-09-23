@@ -94,6 +94,8 @@ export interface PrimitiveDefinition {
   prototypeOnly: boolean;
   implementationHints: string[];
   implementationTargets?: ImplementationTarget[];
+  /** Frame types the primitive is designed for; omit when it is shared across mobile and desktop. */
+  platforms?: Array<FramePreset['type']>;
   /** Canonical app-owned render source. Omission selects the explicit legacy fallback. */
   prototype?: PrimitivePrototypeSource;
   stateSets: PrimitiveStateSet[];

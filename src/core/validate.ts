@@ -508,6 +508,12 @@ function validatePrimitive(errors: string[], primitive: PrimitiveDefinition, tok
   requireBoolean(errors, `primitive.${primitive.id}.prototypeOnly`, primitive.prototypeOnly);
   requireArray(errors, `primitive.${primitive.id}.implementationHints`, primitive.implementationHints);
   requireArray(errors, `primitive.${primitive.id}.stateSets`, primitive.stateSets);
+  if (primitive.platforms !== undefined) {
+    const platforms = Array.isArray(primitive.platforms) ? primitive.platforms : [];
+    if (platforms.length === 0 || new Set(platforms).size !== platforms.length || platforms.some(platform => platform !== 'mobile' && platform !== 'desktop')) {
+      errors.push(`primitive.${primitive.id}.platforms must list "mobile" and/or "desktop" once each, or be omitted for shared primitives.`);
+    }
+  }
 
   for (const tokenGroupId of primitive.tokenGroupIds ?? []) {
     if (!tokenGroupIds.has(tokenGroupId)) {

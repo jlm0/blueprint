@@ -401,6 +401,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Keep side slots balanced so titles remain centered."],
+      "platforms": ["mobile"],
       "prototype": {
         "source": "prototype/primitives/nav-bar.html",
         "styles": ["prototype/primitives/nav-bar.css"],
@@ -442,6 +443,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Keep icon-only controls accessible."],
+      "platforms": ["mobile"],
       "prototype": {
         "source": "prototype/primitives/back-button.html",
         "styles": ["prototype/primitives/back-button.css"],
@@ -516,6 +518,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Use list for grouped rows and dividers."],
+      "platforms": ["mobile"],
       "prototype": {
         "source": "prototype/primitives/list.html",
         "styles": ["prototype/primitives/list.css"],
@@ -557,6 +560,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Keep row-shaped press behavior separate from list grouping."],
+      "platforms": ["mobile"],
       "prototype": {
         "source": "prototype/primitives/pressable-row.html",
         "styles": ["prototype/primitives/pressable-row.css"],
@@ -872,6 +876,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Keep sheet navbar, content, and footer slots independently targetable."],
+      "platforms": ["mobile"],
       "prototype": {
         "source": "prototype/primitives/bottom-sheet.html",
         "styles": ["prototype/primitives/bottom-sheet.css"],
@@ -1269,6 +1274,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Show on hover and keyboard focus; never put required information only in a tooltip."],
+      "platforms": ["desktop"],
       "prototype": {
         "source": "prototype/primitives/tooltip.html",
         "styles": ["prototype/primitives/tooltip.css"],
@@ -1388,6 +1394,7 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": ["Map to the target data table row and keep numeric columns end-aligned with tabular figures."],
+      "platforms": ["desktop"],
       "prototype": {
         "source": "prototype/primitives/table-row.html",
         "styles": ["prototype/primitives/table-row.css"],

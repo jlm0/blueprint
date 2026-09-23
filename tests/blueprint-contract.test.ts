@@ -79,6 +79,23 @@ describe('Blueprint schema contract', () => {
     assert.match(result.errors.join('\n'), /framePreset\..*\.type must be "mobile" or "desktop"/);
     assert.match(result.errors.join('\n'), /framePreset\..*\.width must be a positive number/);
   });
+
+  it('accepts primitive platform tags and rejects unknown or repeated platforms', async () => {
+    const bundle = structuredClone(await loadProjectFromFs(novaRoot));
+    const [first, second, third] = bundle.primitives.primitives;
+    assert.ok(first && second && third);
+
+    first.platforms = ['mobile'];
+    second.platforms = ['mobile', 'desktop'];
+    assert.equal(validateProject(bundle).ok, true, validateProject(bundle).errors.join('\n'));
+
+    (second as { platforms: string[] }).platforms = ['tablet'];
+    third.platforms = ['desktop', 'desktop'];
+    const result = validateProject(bundle);
+    assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${second.id}\\.platforms must list "mobile" and/or "desktop" once each`));
+    assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${third.id}\\.platforms must list`));
+  });
 });
 
 describe('Blueprint query contract', () => {

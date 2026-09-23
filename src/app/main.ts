@@ -490,72 +490,83 @@ function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardCo
     });
   });
 
-  const groupedPrimitives = groupPrimitivesByFamily(bundle.primitives.primitives);
-  // Related families share one column and stack vertically (all form controls
-  // together, feedback together, overlays together) instead of one endless
-  // horizontal row of single-family columns. Per-primitive chips carry the
-  // identity, so columns need no group headings.
-  const byFamily = new Map(groupedPrimitives.map(group => [group.family, group.primitives]));
-  const claimedFamilies = new Set<string>();
-  const familyColumns: string[][] = [];
-  for (const planned of FAMILY_COLUMN_GROUPS) {
-    const present = planned.filter(family => byFamily.has(family));
-    if (present.length > 0) {
-      familyColumns.push(present);
-      present.forEach(family => claimedFamilies.add(family));
-    }
-  }
-  for (const group of groupedPrimitives) {
-    if (!claimedFamilies.has(group.family)) {
-      familyColumns.push([group.family]);
-    }
-  }
+  // Shared primitives come first, then mobile-only and desktop-only zones under
+  // their own headings; within a zone, related families share one column and
+  // stack vertically. Per-primitive chips carry the identity.
+  const zones = primitivePlatformZones(bundle.primitives.primitives);
+  const showZones = zones.some(zone => zone.id !== 'shared');
+  const columns: Array<{ cards: HTMLElement[]; heading?: HTMLElement; startsZone: boolean }> = [];
   // Height autofits arrive per iframe; reflow synchronously with each one so
   // positions are never stale between a resize and its repack. Column x
   // positions are recomputed from measured card widths so cards that grew to
   // fit their content never clip or overlap a neighboring group.
-  const columnCards: HTMLElement[][] = [];
   const refit = (): void => {
     if (root.hidden) {
       return;
     }
-    let columnX = 650;
-    for (const cards of columnCards) {
-      const width = Math.max(...cards.map(card => card.offsetWidth || 400));
-      for (const card of cards) {
+    let columnX = PRIMITIVE_BOARD_START_X;
+    for (const column of columns) {
+      if (column.startsZone) {
+        columnX += PRIMITIVE_ZONE_GAP - PRIMITIVE_COLUMN_GAP;
+      }
+      const width = Math.max(...column.cards.map(card => card.offsetWidth || 400));
+      if (column.heading) {
+        column.heading.style.left = `${columnX}px`;
+      }
+      for (const card of column.cards) {
         card.dataset.layoutX = String(columnX);
         card.style.left = `${columnX}px`;
       }
-      columnX += width + 64;
+      columnX += width + PRIMITIVE_COLUMN_GAP;
     }
     controller.fitTo(layout.reflow());
   };
-  let columnX = 650;
-  for (const columnFamilies of familyColumns) {
-    const width = Math.max(
-      ...columnFamilies.flatMap(family =>
-        (byFamily.get(family) ?? []).map(primitive =>
-          primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : familyWidth(family)
-        )
-      )
-    );
-    const x = columnX;
-    columnX += width + 64;
-    let stackY = 380;
-    const cardsInColumn: HTMLElement[] = [];
-    columnCards.push(cardsInColumn);
-    for (const family of columnFamilies) {
-      for (const primitive of byFamily.get(family) ?? []) {
-        const cardWidth = primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : width;
-        const card = addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, family, {
-          x,
-          y: stackY,
-          width: cardWidth
-        }, refit);
-        cardsInColumn.push(card);
-        stackY += 280;
-      }
+  let columnX = PRIMITIVE_BOARD_START_X;
+  for (const zone of zones) {
+    const { byFamily, familyColumns } = planFamilyColumns(zone.primitives);
+    const startsZone = showZones && columns.length > 0;
+    if (startsZone) {
+      columnX += PRIMITIVE_ZONE_GAP - PRIMITIVE_COLUMN_GAP;
     }
+    const heading = showZones
+      ? addGroupHeading(root, controller, {
+          title: zone.title,
+          subtitle: zone.primitives.length === 1 ? '1 primitive' : `${zone.primitives.length} primitives`,
+          x: columnX,
+          y: 300,
+          accent: 'var(--bp-sample-fg)'
+        })
+      : undefined;
+    if (heading) {
+      heading.dataset.primitivePlatform = zone.id;
+    }
+    familyColumns.forEach((columnFamilies, index) => {
+      const width = Math.max(
+        ...columnFamilies.flatMap(family =>
+          (byFamily.get(family) ?? []).map(primitive =>
+            primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : familyWidth(family)
+          )
+        )
+      );
+      const x = columnX;
+      columnX += width + PRIMITIVE_COLUMN_GAP;
+      let stackY = 380;
+      const cards: HTMLElement[] = [];
+      columns.push({ cards, heading: index === 0 ? heading : undefined, startsZone: index === 0 && startsZone });
+      for (const family of columnFamilies) {
+        for (const primitive of byFamily.get(family) ?? []) {
+          const cardWidth = primitive.prototype ? canonicalSpecimenCardWidth(family, primitive) : width;
+          const card = addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, family, {
+            x,
+            y: stackY,
+            width: cardWidth
+          }, refit);
+          card.dataset.primitivePlatform = zone.id;
+          cards.push(card);
+          stackY += 280;
+        }
+      }
+    });
   }
 
   if (document.fonts?.ready) {
@@ -2255,6 +2266,44 @@ function cardClass(state: PrimitiveState): string {
 
 function cssClassName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'default';
+}
+
+const PRIMITIVE_BOARD_START_X = 650;
+const PRIMITIVE_COLUMN_GAP = 64;
+const PRIMITIVE_ZONE_GAP = 160;
+
+function primitivePlatformZones(primitives: PrimitiveDefinition[]): Array<{ id: 'shared' | 'mobile' | 'desktop'; title: string; primitives: PrimitiveDefinition[] }> {
+  const zoneOf = (primitive: PrimitiveDefinition): 'shared' | 'mobile' | 'desktop' => (
+    primitive.platforms?.length === 1 ? primitive.platforms[0] : 'shared'
+  );
+  const zones = [
+    { id: 'shared' as const, title: 'Shared' },
+    { id: 'mobile' as const, title: 'Mobile' },
+    { id: 'desktop' as const, title: 'Web' }
+  ];
+  return zones
+    .map(zone => ({ ...zone, primitives: primitives.filter(primitive => zoneOf(primitive) === zone.id) }))
+    .filter(zone => zone.primitives.length > 0);
+}
+
+function planFamilyColumns(primitives: PrimitiveDefinition[]): { byFamily: Map<string, PrimitiveDefinition[]>; familyColumns: string[][] } {
+  const groupedPrimitives = groupPrimitivesByFamily(primitives);
+  const byFamily = new Map(groupedPrimitives.map(group => [group.family, group.primitives]));
+  const claimedFamilies = new Set<string>();
+  const familyColumns: string[][] = [];
+  for (const planned of FAMILY_COLUMN_GROUPS) {
+    const present = planned.filter(family => byFamily.has(family));
+    if (present.length > 0) {
+      familyColumns.push(present);
+      present.forEach(family => claimedFamilies.add(family));
+    }
+  }
+  for (const group of groupedPrimitives) {
+    if (!claimedFamilies.has(group.family)) {
+      familyColumns.push([group.family]);
+    }
+  }
+  return { byFamily, familyColumns };
 }
 
 function groupPrimitivesByFamily(primitives: PrimitiveDefinition[]): FamilyGroup[] {

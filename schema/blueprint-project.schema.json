@@ -161,6 +161,12 @@
           "type": "array",
           "items": { "$ref": "#/$defs/implementationTarget" }
         },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["mobile", "desktop"] }
+        },
         "prototype": { "$ref": "#/$defs/primitivePrototype" },
         "stateSets": {
           "type": "array",

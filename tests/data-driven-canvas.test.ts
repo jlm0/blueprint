@@ -621,6 +621,51 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('groups platform-tagged primitives into shared, mobile, and web zones', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    const page = await openPrimitiveBoard(bundle);
+
+    try {
+      const zones = await page.locator('.board-primitives').evaluate(rootElement => {
+        const headings = [...rootElement.querySelectorAll<HTMLElement>('.group-head[data-primitive-platform]')].map(heading => ({
+          zone: heading.dataset.primitivePlatform ?? '',
+          title: heading.querySelector('h1')?.textContent ?? '',
+          subtitle: heading.querySelector('.sub')?.textContent ?? '',
+          left: parseFloat(heading.style.left)
+        }));
+        const cards = [...rootElement.querySelectorAll<HTMLElement>('.spec[data-primitive-platform]')].map(card => ({
+          zone: card.dataset.primitivePlatform ?? '',
+          left: parseFloat(card.style.left),
+          right: parseFloat(card.style.left) + card.offsetWidth
+        }));
+        return { headings, cards };
+      });
+
+      const tagged = (platform: 'mobile' | 'desktop') =>
+        bundle.primitives.primitives.filter(primitive => primitive.platforms?.length === 1 && primitive.platforms[0] === platform).length;
+      const shared = bundle.primitives.primitives.length - tagged('mobile') - tagged('desktop');
+      assert.deepEqual(
+        zones.headings.map(heading => [heading.zone, heading.title, heading.subtitle]),
+        [
+          ['shared', 'Shared', `${shared} primitives`],
+          ['mobile', 'Mobile', `${tagged('mobile')} primitives`],
+          ['desktop', 'Web', `${tagged('desktop')} primitives`]
+        ]
+      );
+      for (const [index, heading] of zones.headings.entries()) {
+        const next = zones.headings[index + 1];
+        const cards = zones.cards.filter(card => card.zone === heading.zone);
+        assert.ok(cards.length > 0, `${heading.zone} zone should render cards`);
+        assert.ok(cards.every(card => card.left >= heading.left), `${heading.zone} cards should start at their heading`);
+        if (next) {
+          assert.ok(cards.every(card => card.right < next.left), `${heading.zone} cards should end before the ${next.zone} zone`);
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  });
+
   it('renders every screen frame and section boundary from structured screen composition', async () => {
     const bundle = withAdditionalScreen(await loadProjectFromFs(novaRoot));
     const page = await openScreensBoard(bundle);
