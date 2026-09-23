@@ -13,8 +13,6 @@ import type {
   ValidationResult
 } from '../src/core/types';
 
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
-const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
 const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 
 type ExtractionOptions = { mode?: 'focused' | 'deep' };
@@ -91,7 +89,6 @@ describe('Blueprint production handoff contract', () => {
     // Dense Ops ships its font assets locally, so unresolvedDecisions is
     // empty and readiness is legitimately ready.
     assert.equal(readiness.tier, 'ready');
-    assert.equal(readiness.fidelityTier, 'high-fidelity');
     assert.equal(strict.ok, true);
     assert.deepEqual(strict.errors, []);
   });
@@ -121,15 +118,15 @@ describe('Blueprint production handoff contract', () => {
   });
 
   it('keeps focused packets available while deep packets include transitive boundary data in stable order', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(denseRoot);
 
-    const focused = extract(bundle, 'screen:home', { mode: 'focused' });
+    const focused = extract(bundle, 'screen:service-health', { mode: 'focused' });
     assert.equal(focused.kind, 'screen');
     assert.equal(focused.extraction?.mode ?? 'focused', 'focused');
     assert.equal('boundaries' in focused, false);
 
-    const first = extract(bundle, 'screen:home', { mode: 'deep' });
-    const second = extract(bundle, 'screen:home', { mode: 'deep' });
+    const first = extract(bundle, 'screen:service-health', { mode: 'deep' });
+    const second = extract(bundle, 'screen:service-health', { mode: 'deep' });
     const boundaryIds = first.boundaries.map((boundary: { id: string }) => boundary.id);
 
     assert.equal(first.extraction.mode, 'deep');
@@ -139,40 +136,41 @@ describe('Blueprint production handoff contract', () => {
       boundaryIds,
       'deep packet ordering should be deterministic across runs'
     );
-    assert.ok(boundaryIds.includes('nova-care/screen/home'));
-    assert.ok(boundaryIds.includes('nova-care/section/home/next-action'));
-    assert.ok(boundaryIds.includes('nova-care/primitive/action-button'));
-    assert.ok(boundaryIds.includes('nova-care/state-set/action-button/intent'));
-    assert.ok(boundaryIds.includes('nova-care/token-group/color'));
+    assert.ok(boundaryIds.includes('dense-ops/screen/service-health'));
+    assert.ok(boundaryIds.includes('dense-ops/section/service-health/service-table'));
+    assert.ok(boundaryIds.includes('dense-ops/component/service-health-table'));
+    assert.ok(boundaryIds.includes('dense-ops/primitive/action-button'));
+    assert.ok(boundaryIds.includes('dense-ops/state-set/action-button/interaction'));
+    assert.ok(boundaryIds.includes('dense-ops/token-group/color'));
 
-    const section = extract(bundle, 'section:home/next-action', { mode: 'deep' });
-    assert.equal(section.extraction.selected.id, 'nova-care/section/home/next-action');
-    assert.ok(section.boundaries.some((boundary: { id: string }) => boundary.id === 'nova-care/primitive/action-button'));
+    const section = extract(bundle, 'section:service-health/service-table', { mode: 'deep' });
+    assert.equal(section.extraction.selected.id, 'dense-ops/section/service-health/service-table');
+    assert.ok(section.boundaries.some((boundary: { id: string }) => boundary.id === 'dense-ops/primitive/action-button'));
 
-    const stateSet = extract(bundle, 'state-set:action-button/intent', { mode: 'deep' });
-    assert.equal(stateSet.extraction.selected.id, 'nova-care/state-set/action-button/intent');
-    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'nova-care/primitive/action-button'));
-    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'nova-care/token-group/color'));
+    const stateSet = extract(bundle, 'state-set:action-button/interaction', { mode: 'deep' });
+    assert.equal(stateSet.extraction.selected.id, 'dense-ops/state-set/action-button/interaction');
+    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'dense-ops/primitive/action-button'));
+    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'dense-ops/token-group/color'));
   });
 
   it('resolves token records for primitive and screen deep packets without follow-up token queries', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
-    const packet = extract(bundle, 'screen:home', { mode: 'deep' });
+    const bundle = await loadProjectFromFs(denseRoot);
+    const packet = extract(bundle, 'screen:service-health', { mode: 'deep' });
     const tokenIds = packet.resolvedTokens.map((token: { id: string }) => token.id);
     const accent = packet.resolvedTokens.find((token: { id: string }) => token.id === 'color.accent');
 
     assert.ok(tokenIds.includes('color.accent'));
-    assert.ok(tokenIds.includes('shape.radius-control'));
+    assert.ok(tokenIds.includes('shape.control'));
     assert.equal(accent.groupId, 'color');
     assert.equal(accent.tokenId, 'accent');
     assert.equal(accent.type, 'color');
-    assert.equal(accent.value, '#3e7c61');
-    assert.equal(accent.description, 'Primary command color.');
-    assert.equal(accent.styleRef, '--nova-color-accent');
+    assert.equal(accent.value, '#d4f35b');
+    assert.equal(accent.description, 'Canonical inspection action.');
+    assert.equal(accent.styleRef, '--ops-color-accent');
   });
 
   it('reports unresolved token references during baseline validation', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(denseRoot);
     const broken = structuredClone(bundle);
     broken.primitives.primitives[0].stateSets[0].states[0].tokens.push('color.missing');
 
@@ -182,53 +180,61 @@ describe('Blueprint production handoff contract', () => {
   });
 
   it('carries production relationship metadata and composition bindings into focused and deep packets', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
-    const screen = showBoundary(bundle, 'screen:home') as any;
-    const nextAction = screen.data.sections.find((section: { id: string }) => section.id === 'next-action');
+    const bundle = await loadProjectFromFs(denseRoot);
+    const screen = showBoundary(bundle, 'screen:service-health') as any;
+    const serviceTable = screen.data.sections.find((section: { id: string }) => section.id === 'service-table');
+    const component = showBoundary(bundle, 'component:service-health-table') as any;
 
     assert.equal(screen.data.productionRelationship.kind, 'new-route');
-    assert.equal(screen.data.productionRelationship.routePath, '/care');
-    assert.equal(nextAction.uses[0].binding.slot, 'primaryContent');
-    assert.equal(nextAction.uses[0].binding.state, 'compact');
-    assert.equal(nextAction.uses[1].binding.variant, 'primary');
-    assert.equal(nextAction.uses[1].binding.accessibility, 'Primary and secondary commands remain keyboard reachable.');
+    assert.equal(screen.data.productionRelationship.routePath, '/ops/services');
+    assert.equal(serviceTable.uses[0].binding.slot, 'content');
+    assert.equal(serviceTable.uses[0].binding.state, 'populated');
+    assert.equal(serviceTable.uses[0].binding.data, 'services');
+    assert.equal(component.data.uses[0].binding.variant, 'inspect');
+    assert.equal(component.data.uses[0].binding.copy, 'Inspect');
 
-    const packet = extract(bundle, 'screen:home', { mode: 'deep' });
-    const section = packet.boundaries.find((boundary: { id: string }) => boundary.id === 'nova-care/section/home/next-action');
-    assert.equal(section.data.uses[0].binding.slot, 'primaryContent');
+    const packet = extract(bundle, 'screen:service-health', { mode: 'deep' });
+    const section = packet.boundaries.find(
+      (boundary: { id: string }) => boundary.id === 'dense-ops/section/service-health/service-table'
+    );
+    assert.equal(section.data.uses[0].binding.slot, 'content');
+    const table = packet.boundaries.find((boundary: { id: string }) => boundary.id === 'dense-ops/component/service-health-table');
+    assert.equal(table.data.uses[0].binding.slot, 'row-action');
   });
 
   it('carries implementation target metadata without generating target code', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(denseRoot);
     const primitive = showBoundary(bundle, 'primitive:action-button') as any;
-    const screen = showBoundary(bundle, 'screen:home') as any;
+    const screen = showBoundary(bundle, 'screen:service-health') as any;
     const target = primitive.data.implementationTargets[0];
 
     assert.equal(target.platform, 'web');
-    assert.equal(target.framework, 'react');
-    assert.equal(target.candidatePath, 'src/components/ActionButton.tsx');
-    assert.equal(target.symbolName, 'ActionButton');
-    assert.equal(target.operationIntent, 'adapt-existing-component');
-    assert.equal(target.propMapping.intent, 'variant');
-    assert.equal(target.tokenAdapter, 'theme.tokens');
-    assert.deepEqual(target.testPaths, ['src/components/ActionButton.test.tsx']);
-    assert.deepEqual(target.storyPaths, ['src/components/ActionButton.stories.tsx']);
+    assert.equal(target.framework, 'framework-neutral');
+    assert.equal(target.candidatePath, 'src/components/InspectionAction');
+    assert.equal(target.symbolName, 'InspectionAction');
+    assert.equal(target.operationIntent, 'create-component');
+    assert.equal(target.propMapping.label, 'children');
+    assert.deepEqual(target.stateMapping, { default: 'default', disabled: 'disabled' });
+    assert.equal(target.tokenAdapter, 'ops tokens');
+    assert.deepEqual(target.testPaths, []);
+    assert.deepEqual(target.storyPaths, []);
     assert.deepEqual(target.unresolvedDecisions, []);
-    assert.equal(screen.data.implementationTargets[0].candidatePath, 'src/screens/CareHome.tsx');
+    assert.equal(screen.data.implementationTargets[0].candidatePath, 'src/screens/ServiceHealth');
     assert.equal('generatedCode' in primitive.data, false);
   });
 
   it('separates baseline project validity from strict handoff readiness and version compatibility', async () => {
-    const ready = await loadProjectFromFs(novaRoot);
-    const legacy = await loadProjectFromFs(atlasRoot);
+    const ready = await loadProjectFromFs(denseRoot);
+    const unversioned = structuredClone(ready);
+    delete unversioned.manifest.handoffContractVersion;
 
     assert.equal(validate(ready).ok, true);
-    assert.equal(validate(legacy).ok, true);
+    assert.equal(validate(unversioned).ok, true);
     assert.equal(validate(ready, { mode: 'strict' }).ok, true);
 
-    const legacyStrict = validate(legacy, { mode: 'strict' });
-    assert.equal(legacyStrict.ok, false);
-    assert.match(legacyStrict.errors.join('\n'), /handoffContractVersion/);
+    const unversionedStrict = validate(unversioned, { mode: 'strict' });
+    assert.equal(unversionedStrict.ok, false);
+    assert.match(unversionedStrict.errors.join('\n'), /handoffContractVersion/);
 
     const mismatched = structuredClone(ready);
     mismatched.manifest.handoffContractVersion = '999.0.0';
@@ -246,11 +252,11 @@ describe('Blueprint production handoff contract', () => {
   });
 
   it('terminates cyclic deep traversal and reports cycles without destabilizing packet order', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(denseRoot);
     const cyclic = structuredClone(bundle);
     cyclic.screens.screens[0].sections[0].uses.push({
       kind: 'screen',
-      id: 'home',
+      id: 'service-health',
       reason: 'Regression fixture for screen-to-screen cycle handling',
       binding: {
         slot: 'cycleGuard',
@@ -258,10 +264,12 @@ describe('Blueprint production handoff contract', () => {
       }
     });
 
-    const first = extract(cyclic, 'screen:home', { mode: 'deep' });
-    const second = extract(cyclic, 'screen:home', { mode: 'deep' });
+    const first = extract(cyclic, 'screen:service-health', { mode: 'deep' });
+    const second = extract(cyclic, 'screen:service-health', { mode: 'deep' });
 
-    assert.ok(first.extraction.cycles.some((cycle: { from: string; to: string }) => cycle.to === 'nova-care/screen/home'));
+    assert.ok(
+      first.extraction.cycles.some((cycle: { from: string; to: string }) => cycle.to === 'dense-ops/screen/service-health')
+    );
     assert.deepEqual(
       second.boundaries.map((boundary: { id: string }) => boundary.id),
       first.boundaries.map((boundary: { id: string }) => boundary.id)

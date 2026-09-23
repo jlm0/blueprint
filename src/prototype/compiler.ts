@@ -395,7 +395,7 @@ function resolveBoundary(bundle: BlueprintProjectBundle, target: PrototypeCompil
       throw new Error(`Unknown prototype primitive "${target.id}".`);
     }
     if (!primitive.prototype) {
-      throw new Error(`Primitive "${target.id}" has no canonical prototype source; use the legacy fallback renderer.`);
+      throw new Error(`Primitive "${target.id}" has no canonical prototype source.`);
     }
     return primitiveBoundary(primitive);
   }
@@ -411,7 +411,7 @@ function resolveBoundary(bundle: BlueprintProjectBundle, target: PrototypeCompil
     throw new Error(`Unknown prototype screen "${target.id}".`);
   }
   if (!screen.prototype) {
-    throw new Error(`Screen "${target.id}" has no browser-native prototype source; use the legacy canvas renderer.`);
+    throw new Error(`Screen "${target.id}" has no browser-native prototype source.`);
   }
   return screenBoundary(screen);
 }

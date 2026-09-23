@@ -42,9 +42,9 @@ export function lintLocalStyleValues(bundle: BlueprintProjectBundle): LocalStyle
     }
   }
   const boundaries = [
-    ...bundle.primitives.primitives.flatMap(primitive => primitive.prototype ? [{ label: `primitive.${primitive.id}`, prototype: primitive.prototype }] : []),
+    ...bundle.primitives.primitives.map(primitive => ({ label: `primitive.${primitive.id}`, prototype: primitive.prototype })),
     ...bundle.components.components.map(component => ({ label: `component.${component.id}`, prototype: component.prototype })),
-    ...bundle.screens.screens.flatMap(screen => screen.prototype ? [{ label: `screen.${screen.id}`, prototype: screen.prototype }] : [])
+    ...bundle.screens.screens.map(screen => ({ label: `screen.${screen.id}`, prototype: screen.prototype }))
   ];
   for (const { label, prototype } of boundaries) {
     for (const styleRef of prototype.styles ?? []) {

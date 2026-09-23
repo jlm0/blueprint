@@ -11,7 +11,25 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [],
-      "sections": []
+      "sections": [],
+      "prototype": {
+        "source": "prototype/screens/home.html",
+        "styles": [
+          "prototype/screens/home.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      }
     },
     {
       "id": "web-home",
@@ -22,7 +40,25 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [],
-      "sections": []
+      "sections": [],
+      "prototype": {
+        "source": "prototype/screens/web-home.html",
+        "styles": [
+          "prototype/screens/web-home.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      }
     }
   ]
 }

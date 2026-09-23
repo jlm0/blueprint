@@ -226,7 +226,6 @@ const readinessItemSchema = z
 export const readinessReportSchema = z
   .object({
     projectId: z.string(),
-    fidelityTier: z.enum(['baseline-compatible', 'high-fidelity']),
     prototypeSources: z.array(z.string()),
     tier: z.enum(['ready', 'pending', 'unresolved', 'blocked']),
     items: z.array(readinessItemSchema),
@@ -279,10 +278,7 @@ const styleEvidenceSchema = z
   })
   .strict();
 
-const renderingSchema = z.union([
-  z.object({ mode: z.literal('canonical-app-owned'), source: z.string(), fallbackUsed: z.literal(false) }).strict(),
-  z.object({ mode: z.literal('legacy-fallback'), fallbackUsed: z.literal(true), reason: z.literal('no-canonical-prototype-source') }).strict()
-]);
+const renderingSchema = z.object({ mode: z.literal('canonical-app-owned'), source: z.string() }).strict();
 
 export const boundaryPacketSchema = z
   .object({
@@ -393,19 +389,7 @@ const sourceFocusedCaptureSchema = captureOutputBaseSchema.extend({
     .strict()
 }).strict();
 
-const canvasCaptureSchema = captureOutputBaseSchema.extend({
-  source: z
-    .object({
-      board: z.literal('screens'),
-      captureTarget: z.literal('screen-frame'),
-      method: z.literal('browser-rendered-frame-save'),
-      preDownloadDomAssertion: z.literal('passed'),
-      visibleSectionBoundaries: z.array(z.string())
-    })
-    .strict()
-}).strict();
-
-export const captureOutputSchema = z.union([sourceFocusedCaptureSchema, canvasCaptureSchema]);
+export const captureOutputSchema = sourceFocusedCaptureSchema;
 
 export const serveOutputSchema = z
   .object({

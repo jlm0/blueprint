@@ -6,20 +6,20 @@ import { screenFrameLabel, screenRoutePath } from '../src/core/screen-naming';
 import type { ScreenDefinition } from '../src/core/types';
 import { validateProject } from '../src/core/validate';
 
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
 
 describe('Blueprint screen frame naming', () => {
   it('derives Route · Frame name and adds Vn only when declared', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
     const screen = bundle.screens.screens[0];
     assert.ok(screen);
 
-    assert.equal(screenRoutePath(screen), '/care');
-    assert.equal(screenFrameLabel(screen), 'Care · Care Home');
+    assert.equal(screenRoutePath(screen), '/');
+    assert.equal(screenFrameLabel(screen), 'Root · Today');
 
     const versioned = structuredClone(screen);
     versioned.version = 2;
-    assert.equal(screenFrameLabel(versioned), 'Care · Care Home · V2');
+    assert.equal(screenFrameLabel(versioned), 'Root · Today · V2');
 
     const savings = structuredClone(screen);
     savings.name = 'Move money';
@@ -29,7 +29,7 @@ describe('Blueprint screen frame naming', () => {
     const fallback = structuredClone(screen);
     fallback.id = 'web-home';
     delete fallback.productionRelationship;
-    assert.equal(screenFrameLabel(fallback), 'Web Home · Care Home');
+    assert.equal(screenFrameLabel(fallback), 'Web Home · Today');
   });
 
   it('publishes the optional positive integer version in the screen JSON schema', async () => {
@@ -40,7 +40,7 @@ describe('Blueprint screen frame naming', () => {
   });
 
   it('requires versions only for duplicate route and frame names', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
     const first = bundle.screens.screens[0];
     assert.ok(first);
     const second = structuredClone(first);
@@ -58,13 +58,13 @@ describe('Blueprint screen frame naming', () => {
   });
 
   it('rejects singleton, invalid, duplicate, and non-consecutive versions', async () => {
-    const singleton = await loadProjectFromFs(novaRoot);
+    const singleton = await loadProjectFromFs(stillRoot);
     const only = singleton.screens.screens[0];
     assert.ok(only);
     only.version = 1;
     assert.match(validateProject(singleton).errors.join('\n'), /must be omitted because .* has only one screen/);
 
-    const invalid = await loadProjectFromFs(novaRoot);
+    const invalid = await loadProjectFromFs(stillRoot);
     const invalidScreen = invalid.screens.screens[0];
     assert.ok(invalidScreen);
     invalidScreen.version = 1.5;
@@ -81,13 +81,13 @@ describe('Blueprint screen frame naming', () => {
 });
 
 async function versionedPair() {
-  const bundle = await loadProjectFromFs(novaRoot);
+  const bundle = await loadProjectFromFs(stillRoot);
   const first = bundle.screens.screens[0];
   assert.ok(first);
   const second = structuredClone(first) as ScreenDefinition;
   second.id = 'home-alternative';
   first.version = 1;
   second.version = 2;
-  bundle.screens.screens.push(second);
+  bundle.screens.screens.splice(1, 0, second);
   return bundle;
 }

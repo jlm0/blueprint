@@ -10,7 +10,6 @@ import type {
   BoundaryDependency,
   DeepHandoffPacket,
   PrimitiveDefinition,
-  ReadinessReport,
   ScreenDefinition
 } from '../src/core/types';
 import { createReadinessReport, validateProject } from '../src/core/validate';
@@ -63,20 +62,6 @@ interface HighFidelityBundle extends BlueprintProjectBundle {
   sourceFiles: BlueprintProjectBundle['sourceFiles'] & {
     components: string;
     prototypeSources: string[];
-  };
-}
-
-interface FidelityReadinessReport extends ReadinessReport {
-  fidelityTier: 'baseline-compatible' | 'high-fidelity';
-  prototypeSources: string[];
-}
-
-interface CanonicalPrimitivePacket {
-  data: RedPrimitive;
-  rendering: {
-    mode: 'canonical-app-owned';
-    source: string;
-    fallbackUsed: false;
   };
 }
 
@@ -142,18 +127,17 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     assert.match(strict.errors.join('\n'), /waitlist.*prototype.*source.*(?:missing|exist)/i);
   });
 
-  it('T2/R1-R2 selects the app-owned source ahead of the labeled legacy fallback for prototype-backed primitives', async () => {
+  it('T2/R1-R2 selects the app-owned canonical source for prototype-backed primitives', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const packet = showBoundary(bundle, 'primitive:action-button') as CanonicalPrimitivePacket;
+    const packet = showBoundary(bundle, 'primitive:action-button');
 
     assert.deepEqual(
       packet.rendering,
       {
         mode: 'canonical-app-owned',
-        source: 'prototype/primitives/action-button.html',
-        fallbackUsed: false
+        source: 'prototype/primitives/action-button.html'
       },
-      'T2 runtime gap: a prototype-backed primitive must select its app-owned canonical source; legacy fallback remains allowed only when no canonical source is declared'
+      'T2 runtime gap: a prototype-backed primitive must select its app-owned canonical source'
     );
   });
 
@@ -283,20 +267,9 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     );
   });
 
-  it('T8/R8 classifies legacy fixtures honestly without claiming high-fidelity readiness', async () => {
-    const legacy = createReadinessReport(
-      await loadProjectFromFs('fixtures/app-owned/nova-care/design/blueprint')
-    ) as FidelityReadinessReport;
-    assert.equal(
-      legacy.fidelityTier,
-      'baseline-compatible',
-      'T8 compatibility gap: legacy structured fixtures need an explicit baseline-compatible fidelity classification'
-    );
-    assert.deepEqual(legacy.prototypeSources, []);
-
-    const highFidelity = createReadinessReport(await loadProjectFromFs(fixtureRoot)) as FidelityReadinessReport;
-    assert.equal(highFidelity.fidelityTier, 'high-fidelity');
-    assert.ok(highFidelity.prototypeSources.includes('prototype/screens/waitlist.html'));
+  it('T8/R8 reports governed prototype sources in readiness', async () => {
+    const readiness = createReadinessReport(await loadProjectFromFs(fixtureRoot));
+    assert.ok(readiness.prototypeSources.includes('prototype/screens/waitlist.html'));
   });
 
   it('T9/R1-R8 retains the complete repository QA command contract', async () => {

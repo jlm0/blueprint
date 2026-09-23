@@ -4,7 +4,7 @@
   "title": "Blueprint Project Structured Files",
   "description": "Machine-readable artifact aligned with the current TypeScript structured-file contract. This schema exposes the current fields for editors, agents, and package consumers.",
   "type": "object",
-  "required": ["manifest", "tokens", "primitives", "screens"],
+  "required": ["manifest", "tokens", "primitives", "components", "screens"],
   "additionalProperties": false,
   "properties": {
     "manifest": { "$ref": "#/$defs/manifest" },
@@ -18,7 +18,7 @@
   "$defs": {
     "manifest": {
       "type": "object",
-      "required": ["schemaVersion", "project", "defaultBoardId", "boards", "framePresets"],
+      "required": ["schemaVersion", "project", "defaultBoardId", "boards", "framePresets", "prototypeHost"],
       "properties": {
         "schemaVersion": { "type": "string" },
         "handoffContractVersion": { "type": "string" },
@@ -139,7 +139,7 @@
     },
     "primitive": {
       "type": "object",
-      "required": ["id", "name", "description", "tokenGroupIds", "styleRefs", "notes", "prototypeOnly", "implementationHints", "stateSets"],
+      "required": ["id", "name", "description", "tokenGroupIds", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "stateSets"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -407,7 +407,7 @@
     },
     "screen": {
       "type": "object",
-      "required": ["id", "name", "description", "framePresetId", "styleRefs", "notes", "prototypeOnly", "implementationHints", "sections"],
+      "required": ["id", "name", "description", "framePresetId", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "sections"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -578,10 +578,9 @@
     },
     "readinessReport": {
       "type": "object",
-      "required": ["projectId", "fidelityTier", "prototypeSources", "tier", "items", "blockers"],
+      "required": ["projectId", "prototypeSources", "tier", "items", "blockers"],
       "properties": {
         "projectId": { "type": "string" },
-        "fidelityTier": { "enum": ["baseline-compatible", "high-fidelity"] },
         "prototypeSources": { "$ref": "#/$defs/stringArray" },
         "tier": { "enum": ["ready", "pending", "unresolved", "blocked"] },
         "items": {

@@ -9,8 +9,8 @@ export interface BlueprintManifest {
   defaultBoardId: string;
   boards: BoardDefinition[];
   framePresets: FramePreset[];
-  /** Governs the isolated browser-native prototype host when high-fidelity sources are present. */
-  prototypeHost?: PrototypeHostPolicy;
+  /** Governs the isolated browser-native prototype host. */
+  prototypeHost: PrototypeHostPolicy;
 }
 
 /** Restricts browser-native prototype resources to deterministic sidecar-owned inputs. */
@@ -96,8 +96,8 @@ export interface PrimitiveDefinition {
   implementationTargets?: ImplementationTarget[];
   /** Frame types the primitive is designed for; omit when it is shared across mobile and desktop. */
   platforms?: Array<FramePreset['type']>;
-  /** Canonical app-owned render source. Omission selects the explicit legacy fallback. */
-  prototype?: PrimitivePrototypeSource;
+  /** Canonical app-owned render source. */
+  prototype: PrimitivePrototypeSource;
   stateSets: PrimitiveStateSet[];
 }
 
@@ -311,8 +311,8 @@ export interface ScreenDefinition {
   implementationHints: string[];
   productionRelationship?: ProductionRelationship;
   implementationTargets?: ImplementationTarget[];
-  /** Browser-native high-fidelity source and deterministic review conditions. */
-  prototype?: ScreenPrototypeSource;
+  /** Browser-native source and deterministic review conditions. */
+  prototype: ScreenPrototypeSource;
   sections: ScreenSection[];
 }
 
@@ -323,7 +323,7 @@ export interface ReviewCondition {
   state: string;
 }
 
-/** Browser-native source contract for a high-fidelity screen. */
+/** Browser-native source contract for a screen. */
 export interface ScreenPrototypeSource extends PrototypeSource {
   /** Controlled sidecar-relative images, fonts, or other local assets. */
   assetRefs: string[];
@@ -407,7 +407,6 @@ export interface BlueprintProjectBundle {
   manifest: BlueprintManifest;
   tokens: TokenFile;
   primitives: PrimitiveFile;
-  /** Reusable components; empty for legacy four-file sidecars. */
   components: ComponentFile;
   screens: ScreenFile;
   /** Saved alternatives assembled from separate exploration records. */
@@ -419,10 +418,8 @@ export interface BlueprintProjectBundle {
     manifest: string;
     tokens: string;
     primitives: string;
-    components?: string;
+    components: string;
     screens: string;
-    /** Legacy aggregate read compatibility; new mutations write one record per exploration. */
-    explorations?: string;
     explorationRecords: string[];
     historyRecords: string[];
     /** Normalized absolute provenance paths for every governed prototype input. */
@@ -474,26 +471,15 @@ export interface BoundaryPacket<TData = unknown> {
   notes: string[];
   prototypeOnly: boolean;
   implementationHints: string[];
-  /** Canonical or legacy render selection for renderable reusable boundaries. */
+  /** Canonical render source for renderable reusable boundaries. */
   rendering?: PrototypeRenderDecision;
 }
 
-/** Render selection for a boundary with an app-owned canonical source. */
-export interface CanonicalPrototypeRenderDecision {
+/** Render source for a boundary, consumed by canvas and handoff clients. */
+export interface PrototypeRenderDecision {
   mode: 'canonical-app-owned';
   source: string;
-  fallbackUsed: false;
 }
-
-/** Honest compatibility selection for a boundary without a canonical source. */
-export interface LegacyFallbackRenderDecision {
-  mode: 'legacy-fallback';
-  fallbackUsed: true;
-  reason: 'no-canonical-prototype-source';
-}
-
-/** Discriminated public render decision consumed by canvas and handoff clients. */
-export type PrototypeRenderDecision = CanonicalPrototypeRenderDecision | LegacyFallbackRenderDecision;
 
 export type ExtractionMode = 'focused' | 'deep';
 
@@ -570,8 +556,6 @@ export interface ReadinessItem {
 
 export interface ReadinessReport {
   projectId: string;
-  /** Honest visual-source capability classification. */
-  fidelityTier: 'baseline-compatible' | 'high-fidelity';
   /** Sidecar-relative governed source paths; source text is intentionally omitted. */
   prototypeSources: string[];
   tier: ReadinessTier;

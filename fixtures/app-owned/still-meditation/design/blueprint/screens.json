@@ -321,7 +321,25 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [],
-      "sections": []
+      "sections": [],
+      "prototype": {
+        "source": "prototype/screens/web-home.html",
+        "styles": [
+          "prototype/screens/web-home.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      }
     }
   ]
 }

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,10 +12,10 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
 const codexHookPath = path.join(projectRoot, 'dist/mcp/codex-activity-hook.js');
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
 const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const denseOpsRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
 interface McpSession {
@@ -90,9 +89,9 @@ describe('Blueprint MCP and template governance', () => {
     try {
       assert.equal(session.client.getProtocolEra(), 'legacy');
       assert.deepEqual(session.tools.map(tool => tool.name), toolNames);
-      const result = await call(session, 'index', { project: novaRoot });
+      const result = await call(session, 'index', { project: stillRoot });
       assert.equal(result.command, 'index');
-      assert.ok((result.results as Array<{ id: string }>).some(item => item.id === 'nova-care/screen/home'));
+      assert.ok((result.results as Array<{ id: string }>).some(item => item.id === 'still-meditation/screen/home'));
     } finally {
       await session.close();
     }
@@ -143,41 +142,41 @@ describe('Blueprint MCP and template governance', () => {
       const session = await openSession();
       try {
         const validationOut = path.join(tempDir, 'validation.json');
-        const validation = await call(session, 'validate', { project: novaRoot, out: validationOut });
+        const validation = await call(session, 'validate', { project: stillRoot, out: validationOut });
         assert.equal(validation.ok, true);
         assert.deepEqual(JSON.parse(await readFile(validationOut, 'utf8')), validation);
 
-        const strict = await call(session, 'validate', { project: novaRoot, mode: 'strict' });
+        const strict = await call(session, 'validate', { project: denseOpsRoot, mode: 'strict' });
         assert.equal(strict.mode, 'strict');
         assert.equal(strict.ok, true);
 
-        const blocked = await session.client.callTool({ name: 'validate', arguments: { project: novaRoot, mode: 'readiness' } });
+        const blocked = await session.client.callTool({ name: 'validate', arguments: { project: stillRoot, mode: 'readiness' } });
         assert.equal(blocked.isError, true);
         const blockedOutput = structured(blocked);
         assert.equal(blockedOutput.ok, false);
         assert.equal((blockedOutput.readiness as { tier: string }).tier, 'blocked');
 
-        const index = await call(session, 'index', { project: novaRoot });
-        assert.ok((index.results as Array<{ id: string }>).some(item => item.id === 'nova-care/screen/home'));
+        const index = await call(session, 'index', { project: stillRoot });
+        assert.ok((index.results as Array<{ id: string }>).some(item => item.id === 'still-meditation/screen/home'));
 
-        const show = await call(session, 'query', { project: novaRoot, query: { type: 'show', boundary: 'screen:home' } });
-        assert.equal(show.id, 'nova-care/screen/home');
-        const uses = await call(session, 'query', { project: novaRoot, query: { type: 'uses', boundary: 'screen:home' } });
-        assert.ok((uses.results as Array<{ localId: string }>).some(item => item.localId === 'action-button'));
-        const usedBy = await call(session, 'query', { project: novaRoot, query: { type: 'used-by', boundary: 'primitive:action-button' } });
+        const show = await call(session, 'query', { project: stillRoot, query: { type: 'show', boundary: 'screen:home' } });
+        assert.equal(show.id, 'still-meditation/screen/home');
+        const uses = await call(session, 'query', { project: stillRoot, query: { type: 'uses', boundary: 'screen:home' } });
+        assert.ok((uses.results as Array<{ localId: string }>).some(item => item.localId === 'button'));
+        const usedBy = await call(session, 'query', { project: stillRoot, query: { type: 'used-by', boundary: 'primitive:button' } });
         assert.ok((usedBy.results as unknown[]).length > 0);
-        const sections = await call(session, 'query', { project: novaRoot, query: { type: 'sections', screen: 'home' } });
-        assert.equal((sections.results as unknown[]).length, 3);
-        const prototypeOnly = await call(session, 'query', { project: novaRoot, query: { type: 'prototype-only' } });
+        const sections = await call(session, 'query', { project: stillRoot, query: { type: 'sections', screen: 'home' } });
+        assert.equal((sections.results as unknown[]).length, 5);
+        const prototypeOnly = await call(session, 'query', { project: stillRoot, query: { type: 'prototype-only' } });
         assert.ok(Array.isArray(prototypeOnly.results));
 
         const focusedOut = path.join(tempDir, 'focused.json');
-        const focused = await call(session, 'extract', { project: novaRoot, boundary: 'screen:home', out: focusedOut });
-        assert.equal(focused.id, 'nova-care/screen/home');
+        const focused = await call(session, 'extract', { project: stillRoot, boundary: 'screen:home', out: focusedOut });
+        assert.equal(focused.id, 'still-meditation/screen/home');
         assert.equal('boundaries' in focused, false);
         assert.deepEqual(JSON.parse(await readFile(focusedOut, 'utf8')), focused);
 
-        const deep = await call(session, 'extract', { project: novaRoot, boundary: 'section:home/next-action', mode: 'deep' });
+        const deep = await call(session, 'extract', { project: stillRoot, boundary: 'section:home/featured-practice', mode: 'deep' });
         assert.equal((deep.extraction as { mode: string }).mode, 'deep');
         assert.ok((deep.boundaries as unknown[]).length > 1);
         assert.ok((deep.resolvedTokens as unknown[]).length > 0);
@@ -387,64 +386,14 @@ describe('Blueprint MCP and template governance', () => {
     }
   });
 
-  it('compacts a legacy aggregate exploration file into independent records on mutation', async () => {
-    await withTempDir(async tempDir => {
-      const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(explorationRoot, projectCopy, { recursive: true });
-      const session = await openSession();
-      try {
-        await call(session, 'explore', {
-          project: projectCopy,
-          operation: {
-            type: 'create',
-            id: 'legacy-home',
-            screenId: 'home',
-            state: 'initial',
-            framePresetId: 'desktop-web-tall',
-            title: 'Legacy home',
-            intent: 'Exercise aggregate migration.',
-            candidateLabels: ['A', 'B']
-          }
-        });
-        const recordPath = path.join(projectCopy, 'explorations', 'legacy-home.json');
-        const record = JSON.parse(await readFile(recordPath, 'utf8')) as {
-          schemaVersion: string;
-          projectId: string;
-          exploration: unknown;
-        };
-        await writeFile(path.join(projectCopy, 'explorations.json'), `${JSON.stringify({
-          schemaVersion: record.schemaVersion,
-          projectId: record.projectId,
-          explorations: [record.exploration]
-        }, null, 2)}\n`);
-        await unlink(recordPath);
-
-        await call(session, 'explore', {
-          project: projectCopy,
-          operation: { type: 'archive', explorationId: 'legacy-home' }
-        });
-        const compacted = JSON.parse(await readFile(path.join(projectCopy, 'explorations.json'), 'utf8')) as {
-          explorations: unknown[];
-        };
-        const migrated = JSON.parse(await readFile(recordPath, 'utf8')) as {
-          exploration: { lifecycle: string };
-        };
-        assert.deepEqual(compacted.explorations, []);
-        assert.equal(migrated.exploration.lifecycle, 'archived');
-      } finally {
-        await session.close();
-      }
-    });
-  });
-
   it('returns domain and schema failures as tool errors while unknown tools remain protocol errors', async () => {
     const session = await openSession();
     try {
-      const missing = await session.client.callTool({ name: 'query', arguments: { project: novaRoot, query: { type: 'show', boundary: 'screen:missing' } } });
+      const missing = await session.client.callTool({ name: 'query', arguments: { project: stillRoot, query: { type: 'show', boundary: 'screen:missing' } } });
       assertToolError(missing, /not found|unknown/i);
-      const invalidQuery = await session.client.callTool({ name: 'query', arguments: { project: novaRoot, query: { type: 'sections', boundary: 'screen:home' } } });
+      const invalidQuery = await session.client.callTool({ name: 'query', arguments: { project: stillRoot, query: { type: 'sections', boundary: 'screen:home' } } });
       assertToolError(invalidQuery, /input validation error|invalid/i);
-      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: novaRoot, boundary: 'primitive:action-button', out: 'button.png' } });
+      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: stillRoot, boundary: 'primitive:button', out: 'button.png' } });
       assertToolError(invalidCapture, /input validation error|screen/i);
       await assert.rejects(session.client.callTool({ name: 'missing-tool', arguments: {} }), /not found|unknown|missing-tool/i);
     } finally {
@@ -452,21 +401,10 @@ describe('Blueprint MCP and template governance', () => {
     }
   });
 
-  it('captures both legacy canvas and declared source-focused state/viewport PNGs through stdio MCP', async () => {
+  it('captures declared source-focused state/viewport PNGs from the compiled prototype document through stdio MCP', async () => {
     await withTempDir(async tempDir => {
       const session = await openSession();
       try {
-        const legacyOut = path.join(tempDir, 'home.png');
-        const legacy = await call(session, 'capture', { project: novaRoot, boundary: 'screen:home', out: legacyOut });
-        assert.equal(legacy.boundary, 'nova-care/screen/home');
-        assert.equal((legacy.source as { captureTarget: string }).captureTarget, 'screen-frame');
-        const legacyPng = await readFile(legacyOut);
-        assert.equal(legacyPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-        assert.equal(legacyPng.readUInt32BE(16), 786);
-        assert.equal(legacyPng.readUInt32BE(20), 1704);
-        const blankBaseline = await readFile('tests/baselines/nova-care-home-blank-screen-baseline.png');
-        assert.notEqual(createHash('sha256').update(legacyPng).digest('hex'), createHash('sha256').update(blankBaseline).digest('hex'));
-
         const focusedOut = path.join(tempDir, 'waitlist-phone.png');
         const focused = await call(session, 'capture', {
           project: highFidelityRoot,
@@ -479,6 +417,7 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal(focused.state, 'initial');
         assert.equal(focused.viewport, 'phone-review');
         assert.equal((focused.source as { editorChrome: boolean }).editorChrome, false);
+        assert.equal((focused.source as { captureTarget: string }).captureTarget, 'compiled-prototype-document');
         const focusedPng = await readFile(focusedOut);
         assert.equal(focusedPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
         assert.equal(focusedPng.readUInt32BE(16), 390);
@@ -842,12 +781,13 @@ describe('Blueprint MCP and template governance', () => {
           await changeLayer.locator('.bp-chrome-change-box').first().waitFor();
           assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
 
-          const frameShowsEdit = (): Promise<boolean> => page.evaluate(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
-            .every(frame => frame.srcdoc.includes('Find our')));
+          const homeFrames = 'iframe.canonical-prototype-iframe[data-prototype-target-boundary="still-meditation/screen/home"]';
+          const frameShowsEdit = (): Promise<boolean> => page.evaluate(selector => [...document.querySelectorAll<HTMLIFrameElement>(selector)]
+            .every(frame => frame.srcdoc.includes('Find our')), homeFrames);
           await page.locator('.bp-chrome-changes-toggle').click();
           await page.locator('.bp-chrome-changes-toggle[aria-pressed="true"]').waitFor();
-          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
-            .every(frame => frame.srcdoc.includes('Find your')));
+          await page.waitForFunction(selector => [...document.querySelectorAll<HTMLIFrameElement>(selector)]
+            .every(frame => frame.srcdoc.includes('Find your')), homeFrames);
           await page.locator('.bp-chrome-changes-toggle').click();
           await page.locator('.bp-chrome-changes-toggle[aria-pressed="false"]').waitFor();
           await assertEventually(frameShowsEdit);
@@ -916,7 +856,7 @@ describe('Blueprint MCP and template governance', () => {
     await withTempDir(async tempDir => {
       const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');
       const repoB = path.join(tempDir, 'repo-b', 'design', 'blueprint');
-      await cp(novaRoot, repoA, { recursive: true });
+      await cp(stillRoot, repoA, { recursive: true });
       await cp(explorationRoot, repoB, { recursive: true });
       const session = await openSession(tempDir);
       try {
@@ -948,7 +888,7 @@ describe('Blueprint MCP and template governance', () => {
   it('shares one stable project runtime across independent MCP processes', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(novaRoot, projectCopy, { recursive: true });
+      await cp(stillRoot, projectCopy, { recursive: true });
       const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
       let ownerIndex = -1;
       try {
@@ -974,7 +914,7 @@ describe('Blueprint MCP and template governance', () => {
   it('closes an owned review listener promptly when the stdio connection ends', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(novaRoot, projectCopy, { recursive: true });
+      await cp(stillRoot, projectCopy, { recursive: true });
       const session = await openSession(tempDir);
       const served = await call(session, 'serve', { project: projectCopy, port: 0 });
       const startedAt = Date.now();
@@ -988,7 +928,7 @@ describe('Blueprint MCP and template governance', () => {
   it('replaces a borrowed handle after its owning MCP process disconnects', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(novaRoot, projectCopy, { recursive: true });
+      await cp(stillRoot, projectCopy, { recursive: true });
       const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
       try {
         const served = await Promise.all(sessions.map(session => call(session, 'serve', { project: projectCopy, port: 0 })));
@@ -1016,7 +956,7 @@ describe('Blueprint MCP and template governance', () => {
     assert.ok(address && typeof address !== 'string');
     const session = await openSession();
     try {
-      const inUse = await session.client.callTool({ name: 'serve', arguments: { project: novaRoot, port: address.port } });
+      const inUse = await session.client.callTool({ name: 'serve', arguments: { project: stillRoot, port: address.port } });
       assertToolError(inUse, /EADDRINUSE|already in use/i);
       const missing = await session.client.callTool({ name: 'serve', arguments: { project: 'does-not-exist', port: 0 } });
       assertToolError(missing, /path not found|does-not-exist/i);
@@ -1050,7 +990,8 @@ describe('Blueprint MCP and template governance', () => {
       assert.match(docs, new RegExp(`\\b${tool}\\b`, 'i'));
     }
     assert.match(docs, /single-project/i);
-    assert.match(docs, /baseline-compatible/i);
+    assert.match(docs, /`baseline`, `readiness`, or `strict`/);
+    assert.doesNotMatch(docs, /baseline-compatible/i);
     assert.match(docs, /structured JSON.*owns|JSON owns/i);
     assert.doesNotMatch(docs, /Local CLI|blueprint (?:init|validate|index|query|extract|capture|serve)/i);
     assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);

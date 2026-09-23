@@ -20,11 +20,10 @@ export interface RawProjectFiles {
   manifest: BlueprintManifest;
   tokens: TokenFile;
   primitives: PrimitiveFile;
-  components?: ComponentFile;
+  components: ComponentFile;
   screens: ScreenFile;
   explorations?: ExplorationFile;
   history?: ScreenHistoryFile;
-  legacyExplorationsFile?: boolean;
   explorationRecordRefs?: string[];
   historyRecordRefs?: string[];
   prototypeSourceContents?: Record<string, string>;
@@ -32,7 +31,7 @@ export interface RawProjectFiles {
 }
 
 export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): BlueprintProjectBundle {
-  const components = raw.components ?? emptyComponentFile(raw.manifest.project.id);
+  const components = raw.components;
   const explorations = raw.explorations ?? emptyExplorationFile(raw.manifest.project.id);
   const history = raw.history ?? emptyScreenHistoryFile(raw.manifest.project.id);
   const prototypeSourceRefs = collectPrototypeSourceRefs(raw.primitives, components, raw.screens);
@@ -51,9 +50,8 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
       manifest: `${sourceRoot}/manifest.json`,
       tokens: `${sourceRoot}/tokens.json`,
       primitives: `${sourceRoot}/primitives.json`,
-      ...(raw.components ? { components: `${sourceRoot}/components.json` } : {}),
+      components: `${sourceRoot}/components.json`,
       screens: `${sourceRoot}/screens.json`,
-      ...(raw.legacyExplorationsFile ? { explorations: `${sourceRoot}/explorations.json` } : {}),
       explorationRecords: (raw.explorationRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       historyRecords: (raw.historyRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),
@@ -173,14 +171,6 @@ function safePrototypeRef(sourceRef: string): string[] {
     return [];
   }
   return [normalized];
-}
-
-function emptyComponentFile(projectId: string): ComponentFile {
-  return {
-    schemaVersion: '1.0.0',
-    projectId,
-    components: []
-  };
 }
 
 function emptyExplorationFile(projectId: string): ExplorationFile {

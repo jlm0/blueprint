@@ -31,7 +31,7 @@ export function collectDesignFindings(bundle: BlueprintProjectBundle): DesignFin
     ...bundle.screens.screens.flatMap(screen => unmarkedSectionIds(bundle, screen).map(sectionId => finding(
       `screen.${screen.id}`,
       'section-marker',
-      screen.prototype?.source ?? '',
+      screen.prototype.source,
       `section "${sectionId}" has no data-blueprint-section="${sectionId}" marker, so it cannot be addressed on the canvas.`
     ))),
     ...lintColorContrast(bundle).map(issue => finding(`token-group.${issue.groupId}`, 'contrast', 'tokens.json', contrastMessage(issue)))
@@ -55,7 +55,7 @@ export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
 }
 
 export function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {
-  const source = screen.prototype ? bundle.prototypeSourceContents[screen.prototype.source] : undefined;
+  const source = bundle.prototypeSourceContents[screen.prototype.source];
   if (source === undefined) return [];
   const marked = new Set(findSectionMarkers(source));
   return (screen.sections ?? [])

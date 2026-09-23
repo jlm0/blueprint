@@ -16,7 +16,6 @@ import type { Page } from 'playwright';
 import type {
   BlueprintProjectBundle,
   ExplorationDefinition,
-  ExplorationFile,
   ScreenDefinition,
   ScreenHistoryEntry
 } from '../core/types';
@@ -330,155 +329,79 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
     throw new Error(`Screen not found: ${selector.id}.`);
   }
 
-  if (selectedScreen.prototype) {
-    const selection = resolvePrototypeReviewSelection(bundle, {
-      screenId: selectedScreen.id,
-      state: input.state,
-      viewport: input.viewport
-    });
-    const chromium = await preflightChromium();
-    let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-
-    try {
-      browser = await withAbort(chromium.launch(), signal);
-      const compiled = compilePrototypeReview(bundle, selection);
-      const page = await browser.newPage({
-        viewport: { width: selection.width, height: selection.height },
-        deviceScaleFactor: 1,
-        // Ambient app animation is authored under prefers-reduced-motion: no-preference,
-        // so emulating reduce keeps capture bytes deterministic across runs.
-        reducedMotion: 'reduce'
-      });
-      const networkGuard = await installPrototypeNetworkGuard({
-        route: async handler => {
-          await page.route('**/*', route => handler({
-            url: route.request().url(),
-            continue: () => route.continue(),
-            abort: () => route.abort('blockedbyclient')
-          }));
-        },
-        onFrameNavigated: handler => {
-          page.on('framenavigated', frame => handler(frame.url(), frame === page.mainFrame()));
-        },
-        currentUrl: () => page.url()
-      });
-      await withAbort(page.setContent(compiled.html, { waitUntil: 'load' }), signal);
-      networkGuard.assertClean();
-      await withAbort(waitForPrototypeCaptureReadiness(page), signal);
-      networkGuard.assertClean();
-
-      const resolvedOut = path.resolve(out);
-      await mkdir(path.dirname(resolvedOut), { recursive: true });
-      await withAbort(page.screenshot({
-        path: resolvedOut,
-        type: 'png',
-        fullPage: false,
-        animations: 'disabled',
-        caret: 'hide',
-        scale: 'css'
-      }), signal);
-
-      return captureOutputSchema.parse({
-        command: 'capture',
-        project: normalize(path.resolve(project)),
-        projectId: bundle.manifest.project.id,
-        boundary: selection.boundaryId,
-        state: selection.state,
-        viewport: selection.framePresetId,
-        reviewCondition: selection.conditionId,
-        dimensions: { width: selection.width, height: selection.height },
-        out: normalize(resolvedOut),
-        mediaType: 'image/png',
-        source: {
-          context: 'source-focused',
-          captureTarget: 'compiled-prototype-document',
-          method: 'browser-page-screenshot',
-          editorChrome: false,
-          readiness: {
-            fonts: 'ready',
-            images: 'decoded',
-            layout: 'stable'
-          },
-          observedBoundaryIds: compiled.observedBoundaryIds
-        }
-      });
-    } finally {
-      await browser?.close();
-    }
-  }
-
-  if (input.state || input.viewport) {
-    throw new Error('state and viewport require a screen with declared browser-native prototype review conditions.');
-  }
-
-  const renderBundle = {
-    ...bundle,
-    screens: {
-      ...bundle.screens,
-      screens: [selectedScreen, ...bundle.screens.screens.filter(screen => screen.id !== selector.id)]
-    }
-  };
-  const fullBoundaryId = boundaryId(bundle.manifest.project.id, 'screen', selector.id);
+  const selection = resolvePrototypeReviewSelection(bundle, {
+    screenId: selectedScreen.id,
+    state: input.state,
+    viewport: input.viewport
+  });
   const chromium = await preflightChromium();
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-  let captureServer: CaptureServer | undefined;
 
   try {
     browser = await withAbort(chromium.launch(), signal);
-    captureServer = await withAbort(startCaptureServer(), signal);
+    const compiled = compilePrototypeReview(bundle, selection);
+    const page = await browser.newPage({
+      viewport: { width: selection.width, height: selection.height },
+      deviceScaleFactor: 1,
+      // Ambient app animation is authored under prefers-reduced-motion: no-preference,
+      // so emulating reduce keeps capture bytes deterministic across runs.
+      reducedMotion: 'reduce'
+    });
+    const networkGuard = await installPrototypeNetworkGuard({
+      route: async handler => {
+        await page.route('**/*', route => handler({
+          url: route.request().url(),
+          continue: () => route.continue(),
+          abort: () => route.abort('blockedbyclient')
+        }));
+      },
+      onFrameNavigated: handler => {
+        page.on('framenavigated', frame => handler(frame.url(), frame === page.mainFrame()));
+      },
+      currentUrl: () => page.url()
+    });
+    await withAbort(page.setContent(compiled.html, { waitUntil: 'load' }), signal);
+    networkGuard.assertClean();
+    await withAbort(waitForPrototypeCaptureReadiness(page), signal);
+    networkGuard.assertClean();
+
     const resolvedOut = path.resolve(out);
     await mkdir(path.dirname(resolvedOut), { recursive: true });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
-    await page.addInitScript(projectBundle => {
-      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
-        configurable: true,
-        value: projectBundle
-      });
-    }, renderBundle);
-
-    await withAbort(page.goto(`${captureServer.url}?board=screens`), signal);
-    const frame = page.locator(`[data-boundary-id="${cssAttr(fullBoundaryId)}"]`).first();
-    await withAbort(frame.waitFor({ state: 'visible', timeout: 10000 }), signal);
-    const expectedSectionBoundaries = selectedScreen.sections
-      .map(section => boundaryId(bundle.manifest.project.id, 'section', `${selectedScreen.id}/${section.id}`))
-      .sort();
-    const visibleSectionBoundaries = (await frame.locator('[data-boundary-kind="section"][data-boundary-id]').evaluateAll(elements =>
-      elements
-        .map(element => (element as HTMLElement).dataset.boundaryId ?? '')
-        .filter(Boolean)
-        .sort()
-    )) as string[];
-    const missingSectionBoundaries = expectedSectionBoundaries.filter(id => !visibleSectionBoundaries.includes(id));
-    if (missingSectionBoundaries.length > 0) {
-      throw new Error(`Screen capture pre-download DOM assertion failed. Missing visible section boundaries: ${missingSectionBoundaries.join(', ')}`);
-    }
-    // Frame tools hang from the unclipped frame slot (sibling of the frame), not the frame itself.
-    const save = frame.locator('xpath=..').locator('.frame-save').first();
-    await withAbort(save.waitFor({ state: 'visible', timeout: 5000 }), signal);
-
-    const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
-    await save.click();
-    const download = await withAbort(downloadPromise, signal);
-    await withAbort(download.saveAs(resolvedOut), signal);
+    await withAbort(page.screenshot({
+      path: resolvedOut,
+      type: 'png',
+      fullPage: false,
+      animations: 'disabled',
+      caret: 'hide',
+      scale: 'css'
+    }), signal);
 
     return captureOutputSchema.parse({
       command: 'capture',
       project: normalize(path.resolve(project)),
       projectId: bundle.manifest.project.id,
-      boundary: fullBoundaryId,
+      boundary: selection.boundaryId,
+      state: selection.state,
+      viewport: selection.framePresetId,
+      reviewCondition: selection.conditionId,
+      dimensions: { width: selection.width, height: selection.height },
       out: normalize(resolvedOut),
       mediaType: 'image/png',
       source: {
-        board: 'screens',
-        captureTarget: 'screen-frame',
-        method: 'browser-rendered-frame-save',
-        preDownloadDomAssertion: 'passed',
-        visibleSectionBoundaries
+        context: 'source-focused',
+        captureTarget: 'compiled-prototype-document',
+        method: 'browser-page-screenshot',
+        editorChrome: false,
+        readiness: {
+          fonts: 'ready',
+          images: 'decoded',
+          layout: 'stable'
+        },
+        observedBoundaryIds: compiled.observedBoundaryIds
       }
     });
   } finally {
     await browser?.close();
-    await captureServer?.close();
   }
 }
 
@@ -506,7 +429,7 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
 
   const transaction = await applyProjectFileTransaction(projectRoot, [
     ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
-    ...explorationMetadataWrites(bundle, result.explorations, result.exploration)
+    ...explorationMetadataWrites(bundle, result.exploration)
   ]);
   try {
     throwIfAborted(signal);
@@ -549,7 +472,7 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   const transaction = await applyProjectFileTransaction(projectRoot, [
     ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
     { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
-    ...explorationMetadataWrites(bundle, result.explorations, result.exploration),
+    ...explorationMetadataWrites(bundle, result.exploration),
     {
       fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
       content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
@@ -840,29 +763,11 @@ function historyVersionSummary(entry: ScreenHistoryEntry): {
   };
 }
 
-function explorationMetadataWrites(
-  bundle: BlueprintProjectBundle,
-  explorations: ExplorationFile,
-  changed: ExplorationDefinition
-): ProjectFileWrite[] {
-  const records = bundle.sourceFiles.explorations
-    ? explorations.explorations
-    : [changed];
-  const writes: ProjectFileWrite[] = records.map(exploration => ({
-    fileRef: explorationRecordRef(exploration.id),
-    content: jsonFileContent(explorationRecordFile(bundle.manifest.project.id, exploration))
-  }));
-  if (bundle.sourceFiles.explorations) {
-    writes.push({
-      fileRef: 'explorations.json',
-      content: jsonFileContent({
-        schemaVersion: explorations.schemaVersion,
-        projectId: explorations.projectId,
-        explorations: []
-      })
-    });
-  }
-  return writes;
+function explorationMetadataWrites(bundle: BlueprintProjectBundle, changed: ExplorationDefinition): ProjectFileWrite[] {
+  return [{
+    fileRef: explorationRecordRef(changed.id),
+    content: jsonFileContent(explorationRecordFile(bundle.manifest.project.id, changed))
+  }];
 }
 
 function jsonFileContent(value: unknown): string {
@@ -1087,36 +992,6 @@ function findPackageRoot(): string {
     current = path.dirname(current);
   }
   return process.cwd();
-}
-
-async function startCaptureServer(): Promise<CaptureServer> {
-  if (existsSync(path.join(packageRoot, 'src', 'app', 'main.ts'))) {
-    const { createServer } = await runtimeImport<typeof import('vite')>('vite');
-    const server = await createServer({
-      root: packageRoot,
-      logLevel: 'error',
-      server: {
-        host: '127.0.0.1',
-        port: 0
-      }
-    });
-    await server.listen();
-    const address = server.httpServer?.address();
-    const port = typeof address === 'object' && address ? address.port : 5173;
-    return {
-      url: `http://127.0.0.1:${port}`,
-      close: async () => {
-        await server.close();
-      }
-    };
-  }
-
-  const siteRoot = path.join(packageRoot, 'dist', 'site');
-  if (!existsSync(path.join(siteRoot, 'index.html'))) {
-    throw new Error('Blueprint capture requires the app source or a built dist/site. Run from the Blueprint repo or run `npm run build:site` first.');
-  }
-
-  return startStaticSiteServer(siteRoot);
 }
 
 async function startServeServer(projectRoot: string, requestedPort?: number): Promise<LocalServeServer> {
@@ -1536,43 +1411,6 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-async function startStaticSiteServer(siteRoot: string): Promise<CaptureServer> {
-  const server = createHttpServer(async (request, response) => {
-    if (!admitLoopbackRequest(server, request.headers.host, response)) {
-      return;
-    }
-    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
-    const pathname = decodeRequestPathname(requestUrl);
-    if (!pathname) {
-      response.writeHead(400, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
-      response.end('Bad request');
-      return;
-    }
-    const filePath = path.resolve(siteRoot, `.${pathname}`);
-    if (!filePath.startsWith(`${path.resolve(siteRoot)}${path.sep}`)) {
-      response.writeHead(403, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
-      response.end('Forbidden');
-      return;
-    }
-
-    try {
-      const body = await readFile(filePath);
-      response.writeHead(200, createBlueprintResponseHeaders({ contentType: contentType(filePath) }));
-      response.end(body);
-    } catch {
-      response.writeHead(404, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
-      response.end('Not found');
-    }
-  });
-
-  await listen(server);
-  const address = server.address() as AddressInfo;
-  return {
-    url: `http://127.0.0.1:${address.port}`,
-    close: () => closeHttpServer(server)
-  };
-}
-
 function decodeRequestPathname(requestUrl: URL): string | undefined {
   try {
     return decodeURIComponent(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
@@ -1664,10 +1502,6 @@ function contentType(filePath: string): string {
 
 function normalize(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
-}
-
-function cssAttr(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

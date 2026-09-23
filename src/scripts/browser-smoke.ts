@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     await assertNoViewportTextOverlap(mobile, 'starter-screens-mobile');
     await mobile.screenshot({ path: path.join(screenshotRoot, 'blueprint-screens-mobile.png'), fullPage: true });
 
-    const appOwned = await loadProjectFromFs('fixtures/app-owned/nova-care/design/blueprint');
+    const appOwned = await loadProjectFromFs('fixtures/app-owned/still-meditation/design/blueprint');
     const configured = await browser.newPage({ viewport: { width: 1024, height: 780 } });
     await configured.addInitScript(bundle => {
       Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
@@ -106,13 +106,13 @@ async function main(): Promise<void> {
       });
     }, appOwned);
     await configured.goto(`${url}?board=screens`);
-    await configured.waitForSelector('.board-screens .frame[data-boundary-id="nova-care/screen/home"]', { timeout: 10000 });
+    await configured.waitForSelector('.board-screens .frame[data-boundary-id="still-meditation/screen/home"]', { timeout: 10000 });
     await assertScreenCompositionRendered(configured, appOwned);
     await assertNoProjectManagerChrome(configured);
-    const novaScreensScreenshot = path.join(screenshotRoot, 'nova-care-screens.png');
-    await configured.screenshot({ path: novaScreensScreenshot, fullPage: true });
-    await writeScreenReviewArtifacts(configured, appOwned.manifest.project.id, 'nova-care-screens', novaScreensScreenshot);
-    await assertAppSampleStyleStability(configured, 'nova-care-screens', async () => {
+    const configuredScreensScreenshot = path.join(screenshotRoot, 'still-meditation-screens.png');
+    await configured.screenshot({ path: configuredScreensScreenshot, fullPage: true });
+    await writeScreenReviewArtifacts(configured, appOwned.manifest.project.id, 'still-meditation-screens', configuredScreensScreenshot);
+    await assertAppSampleStyleStability(configured, 'still-meditation-screens', async () => {
       await configured.locator('.board-screens .frame-chip').first().focus();
       await configured.locator('.board-screens .frame-shot').first().focus();
     });
@@ -295,8 +295,8 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
 async function assertProofFixturePrimitiveBoards(browser: import('playwright').Browser, url: string): Promise<void> {
   const proofRoots = [
     'starter/design/blueprint',
-    'fixtures/app-owned/nova-care/design/blueprint',
-    'fixtures/app-owned/atlas-pay/design/blueprint'
+    'fixtures/app-owned/still-meditation/design/blueprint',
+    'fixtures/app-owned/dense-ops/design/blueprint'
   ];
 
   for (const projectRoot of proofRoots) {
@@ -327,15 +327,7 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
 
   const expectedBoundaryIds = [
     ...bundle.tokens.tokenGroups.map(group => `${bundle.manifest.project.id}/token-group/${group.id}`),
-    ...bundle.primitives.primitives.flatMap(primitive => [
-      `${bundle.manifest.project.id}/primitive/${primitive.id}`,
-      // Prototype-backed primitives render one compiled canonical specimen per declared
-      // prototype state instead of legacy state-set sections, so their state sets are
-      // not expected as separate visible board records.
-      ...(primitive.prototype
-        ? []
-        : primitive.stateSets.map(stateSet => `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`))
-    ])
+    ...bundle.primitives.primitives.map(primitive => `${bundle.manifest.project.id}/primitive/${primitive.id}`)
   ];
   const visibleBoundaryIds = records.map(record => record.id);
   const missingBoundaries = expectedBoundaryIds.filter(id => !visibleBoundaryIds.includes(id));
@@ -366,11 +358,11 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
   );
   const missingFamily = primitiveCards.filter(card => card.family.length === 0);
   if (missingFamily.length > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive cards should name renderer families: ${JSON.stringify(missingFamily)}`);
+    throw new Error(`${bundle.manifest.project.id} primitive cards should name their board family: ${JSON.stringify(missingFamily)}`);
   }
   const families = new Set(primitiveCards.map(card => card.family));
   if (families.size < Math.min(2, bundle.primitives.primitives.length) || ![...families].some(family => family !== 'generic')) {
-    throw new Error(`${bundle.manifest.project.id} primitive board should prove bounded family templates, received: ${[...families].join(', ')}`);
+    throw new Error(`${bundle.manifest.project.id} primitive board should group primitives into named families, received: ${[...families].join(', ')}`);
   }
   const visibleProbeCount = await page.locator('.board-primitives [data-boundary-kind="primitive"] .token-probe').count();
   if (visibleProbeCount > 0) {
@@ -382,7 +374,7 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
   }
   const genericFixtureCount = await page.locator('.board-primitives [data-boundary-kind="primitive"][data-primitive-family="generic"]').count();
   if (genericFixtureCount > 0) {
-    throw new Error(`${bundle.manifest.project.id} shipped primitives should not route through the generic fallback renderer.`);
+    throw new Error(`${bundle.manifest.project.id} shipped primitives should classify into a named family, not generic.`);
   }
 
   for (const primitive of bundle.primitives.primitives) {
@@ -566,11 +558,6 @@ async function assertReferenceScreenBoard(page: import('playwright').Page, bundl
 }
 
 async function assertScreenCompositionRendered(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
-  const rejectedProjectionCount = await page.locator('.board-screens .screen-section-projection').count();
-  if (rejectedProjectionCount !== 0) {
-    throw new Error(`Screens board must not reintroduce rejected metadata-card section projections; received ${rejectedProjectionCount}.`);
-  }
-
   const records = await collectScreenBoundaryRecords(page);
   const sync = validateVisibleBoundaryRecords(bundle, records);
   if (!sync.ok) {
@@ -583,44 +570,24 @@ async function assertScreenCompositionRendered(page: import('playwright').Page, 
     throw new Error(`${bundle.manifest.project.id} Screens board missing screen frames: expected ${expectedScreenIds.join(',')}, received ${visibleScreenIds.join(',')}`);
   }
 
-  const expectedSectionIds = bundle.screens.screens
-    .flatMap(screen => screen.sections.map(section => `${bundle.manifest.project.id}/section/${screen.id}/${section.id}`))
-    .sort();
-  const visibleSectionIds = records.filter(record => record.kind === 'section').map(record => record.id).sort();
-  if (visibleSectionIds.join(',') !== expectedSectionIds.join(',')) {
-    throw new Error(`${bundle.manifest.project.id} Screens board missing rendered section boundaries: expected ${expectedSectionIds.join(',')}, received ${visibleSectionIds.join(',')}`);
-  }
-
-  const invalidSectionContexts = await page.locator('.board-screens [data-boundary-kind="section"]').evaluateAll(elements =>
-    elements
-      .map(element => {
-        const node = element as HTMLElement;
-        const frame = node.closest<HTMLElement>('.frame');
-        return {
-          id: node.dataset.boundaryId ?? '',
-          screenId: node.dataset.screenId ?? '',
-          frameScreenId: frame?.dataset.screenId ?? '',
-          text: node.textContent?.trim().replace(/\s+/g, ' ') ?? ''
-        };
-      })
-      .filter(record => record.screenId.length === 0 || record.frameScreenId.length === 0 || record.screenId !== record.frameScreenId || record.text.length === 0)
-  );
-  if (invalidSectionContexts.length > 0) {
-    throw new Error(`Rendered sections should have visible content and stay inside their owning frame: ${JSON.stringify(invalidSectionContexts)}`);
-  }
-
-  const metadataRelapses = await page.locator('.board-screens .screen-template-body').evaluateAll((elements, projectBundle) => {
-    const bundle = projectBundle as BlueprintProjectBundle;
-    const primitiveNames = bundle.primitives.primitives.map(primitive => primitive.name).filter(Boolean);
-    const primitiveDescriptions = bundle.primitives.primitives.map(primitive => primitive.description).filter(Boolean);
-    const forbidden = [...primitiveNames, ...primitiveDescriptions].filter(Boolean);
-    return elements.flatMap(element => {
-      const text = (element as HTMLElement).innerText;
-      return forbidden.filter(term => term.length > 0 && text.includes(term));
-    });
-  }, bundle);
-  if (metadataRelapses.length > 0) {
-    throw new Error(`Screens board should render prototype content, not primitive metadata labels/descriptions: ${[...new Set(metadataRelapses)].join(', ')}`);
+  for (const screen of bundle.screens.screens) {
+    const screenBoundaryId = `${bundle.manifest.project.id}/screen/${screen.id}`;
+    const prototype = page.frameLocator(`.board-screens .frame[data-boundary-id="${screenBoundaryId}"] .canonical-prototype-iframe >> nth=0`);
+    const expectedSectionIds = screen.sections.map(section => `${bundle.manifest.project.id}/section/${screen.id}/${section.id}`).sort();
+    const sectionMarkers = await prototype.locator('[data-blueprint-section-boundary-id]').evaluateAll(elements =>
+      elements.map(element => ({
+        id: (element as HTMLElement).dataset.blueprintSectionBoundaryId ?? '',
+        text: element.textContent?.trim() ?? ''
+      }))
+    );
+    const markedSectionIds = sectionMarkers.map(marker => marker.id).sort();
+    if (markedSectionIds.join(',') !== expectedSectionIds.join(',')) {
+      throw new Error(`${screenBoundaryId} prototype should mark every declared section: expected ${expectedSectionIds.join(',')}, received ${markedSectionIds.join(',')}`);
+    }
+    const emptySections = sectionMarkers.filter(marker => marker.text.length === 0).map(marker => marker.id);
+    if (emptySections.length > 0) {
+      throw new Error(`${screenBoundaryId} sections should render visible content: ${emptySections.join(', ')}`);
+    }
   }
 }
 
@@ -709,8 +676,8 @@ async function writeScreenReviewArtifacts(page: import('playwright').Page, proje
 async function assertNoProjectManagerChrome(page: import('playwright').Page): Promise<void> {
   await assertDashboardChromeRemoved(page);
   const projectId = await page.locator('.board-screens .frame').first().getAttribute('data-boundary-id');
-  if (projectId !== 'nova-care/screen/home') {
-    throw new Error(`Configured single-project bundle should render nova-care without source edits, received ${projectId}.`);
+  if (projectId !== 'still-meditation/screen/home') {
+    throw new Error(`Configured single-project bundle should render still-meditation without source edits, received ${projectId}.`);
   }
 }
 
@@ -1083,11 +1050,9 @@ async function collectAppSampleStyleSnapshot(page: import('playwright').Page): P
       'margin-left'
     ];
     const probes = [
-      { selector: '.board-primitives .primitive-sample', limit: 3 },
+      { selector: '.board-primitives .canonical-primitive-specimen', limit: 3 },
       { selector: '.board-primitives .token-row', limit: 2 },
-      { selector: '.board-screens .screen-template-body', limit: 1 },
-      { selector: '.board-screens .screen-section', limit: 3 },
-      { selector: '.board-screens .screen-dependency', limit: 3 }
+      { selector: '.board-screens .canonical-prototype-screen', limit: 3 }
     ];
     const samples: Array<{ key: string; selector: string; boundaryId: string; text: string; styles: Record<string, string> }> = [];
     for (const probe of probes) {

@@ -17,12 +17,12 @@ const ignoredInputTypes = new Set(['hidden', 'file', 'color', 'image']);
  * `data-blueprint-native="<reason>"`.
  */
 export function lintHandBuiltControls(bundle: BlueprintProjectBundle): HandBuiltControlIssue[] {
-  const canonicalPrimitives = new Set(
-    bundle.primitives.primitives.filter(primitive => primitive.prototype).map(primitive => primitive.id)
+  const primitiveIds = new Set(
+    bundle.primitives.primitives.map(primitive => primitive.id)
   );
   const boundaries = [
     ...bundle.components.components.map(component => ({ label: `component.${component.id}`, sourceRef: component.prototype.source })),
-    ...bundle.screens.screens.flatMap(screen => screen.prototype ? [{ label: `screen.${screen.id}`, sourceRef: screen.prototype.source }] : [])
+    ...bundle.screens.screens.map(screen => ({ label: `screen.${screen.id}`, sourceRef: screen.prototype.source }))
   ];
   const issues: HandBuiltControlIssue[] = [];
   for (const { label, sourceRef } of boundaries) {
@@ -32,7 +32,7 @@ export function lintHandBuiltControls(bundle: BlueprintProjectBundle): HandBuilt
       const element = match[1].toLowerCase();
       const attributes = match[2];
       if (/\bdata-blueprint-native\s*=/i.test(attributes)) continue;
-      const primitiveId = matchingPrimitiveIds(element, attributes).find(candidate => canonicalPrimitives.has(candidate));
+      const primitiveId = matchingPrimitiveIds(element, attributes).find(candidate => primitiveIds.has(candidate));
       if (primitiveId) {
         issues.push({
           boundary: label,

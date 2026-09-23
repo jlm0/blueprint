@@ -135,7 +135,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Capture Blueprint Screen',
       description:
-        'Capture one screen boundary as a deterministic PNG. Prototype-backed screens accept declared state and viewport selections; legacy screens capture the visible canvas frame.',
+        'Capture one screen boundary, named state, and declared viewport as a deterministic PNG.',
       inputSchema: captureInputSchema,
       outputSchema: captureOutputSchema
     },

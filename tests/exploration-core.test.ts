@@ -36,7 +36,6 @@ describe('persistent screen exploration core', () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
 
     assert.deepEqual(bundle.explorations.explorations, []);
-    assert.equal(bundle.sourceFiles.explorations, undefined);
     assert.deepEqual(bundle.sourceFiles.explorationRecords, []);
     assert.deepEqual(bundle.sourceFiles.historyRecords, []);
     assert.deepEqual(bundle.sourceFiles.explorationSources, []);
@@ -73,21 +72,6 @@ describe('persistent screen exploration core', () => {
       assert.deepEqual(reloaded.screens.screens.map(screen => screen.id), ['service-health']);
       assert.deepEqual(listExplorations(reloaded)[0]?.candidates.map(candidate => candidate.label), ['A', 'B', 'C']);
       assert.equal(inspectExploration(reloaded, created.exploration.id).currentDigest, created.exploration.target.baseDigest);
-    });
-  });
-
-  it('loads the prior aggregate exploration file as read-compatible input', async () => {
-    await withFixture(async root => {
-      const bundle = await loadProjectFromFs(root);
-      const created = createExplorationMetadata(bundle, explorationInput('legacy-read'));
-      await writeFile(path.join(root, 'explorations.json'), `${JSON.stringify(created.explorations, null, 2)}\n`);
-      await persistSourceWrites(root, created.sourceWrites);
-
-      const reloaded = await loadProjectFromFs(root);
-      assert.equal(reloaded.explorations.explorations[0]?.id, created.exploration.id);
-      assert.match(reloaded.sourceFiles.explorations ?? '', /explorations\.json$/);
-      assert.deepEqual(reloaded.sourceFiles.explorationRecords, []);
-      assert.equal(validateProject(reloaded).ok, true);
     });
   });
 

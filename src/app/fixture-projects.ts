@@ -36,6 +36,8 @@ import starterContextMenuCss from '../../starter/design/blueprint/prototype/prim
 import starterContextMenuHtml from '../../starter/design/blueprint/prototype/primitives/context-menu.html?raw';
 import starterIconCss from '../../starter/design/blueprint/prototype/primitives/icon.css?raw';
 import starterIconHtml from '../../starter/design/blueprint/prototype/primitives/icon.html?raw';
+import starterHomeCss from '../../starter/design/blueprint/prototype/screens/home.css?raw';
+import starterHomeHtml from '../../starter/design/blueprint/prototype/screens/home.html?raw';
 import starterInlineAlertCss from '../../starter/design/blueprint/prototype/primitives/inline-alert.css?raw';
 import starterInlineAlertHtml from '../../starter/design/blueprint/prototype/primitives/inline-alert.html?raw';
 import starterInputCss from '../../starter/design/blueprint/prototype/primitives/input.css?raw';
@@ -82,6 +84,8 @@ import starterToastCss from '../../starter/design/blueprint/prototype/primitives
 import starterToastHtml from '../../starter/design/blueprint/prototype/primitives/toast.html?raw';
 import starterTooltipCss from '../../starter/design/blueprint/prototype/primitives/tooltip.css?raw';
 import starterTooltipHtml from '../../starter/design/blueprint/prototype/primitives/tooltip.html?raw';
+import starterWebHomeCss from '../../starter/design/blueprint/prototype/screens/web-home.css?raw';
+import starterWebHomeHtml from '../../starter/design/blueprint/prototype/screens/web-home.html?raw';
 
 export function loadStarterProject(): BlueprintProjectBundle {
   const sourceRoot = 'starter/design/blueprint';
@@ -159,7 +163,11 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/primitives/toast.css': starterToastCss,
       'prototype/primitives/toast.html': starterToastHtml,
       'prototype/primitives/tooltip.css': starterTooltipCss,
-      'prototype/primitives/tooltip.html': starterTooltipHtml
+      'prototype/primitives/tooltip.html': starterTooltipHtml,
+      'prototype/screens/home.css': starterHomeCss,
+      'prototype/screens/home.html': starterHomeHtml,
+      'prototype/screens/web-home.css': starterWebHomeCss,
+      'prototype/screens/web-home.html': starterWebHomeHtml
     }
   });
 }

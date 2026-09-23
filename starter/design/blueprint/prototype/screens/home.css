@@ -1,0 +1,4 @@
+[data-blueprint-screen="home"] {
+  min-height: 100vh;
+  background: var(--app-color-background);
+}

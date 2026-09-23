@@ -15,13 +15,13 @@ export function changedBoundaries(previous: BlueprintProjectBundle, next: Bluepr
   };
   compare('token-group', previous.tokens.tokenGroups, next.tokens.tokenGroups, () => []);
   compare('primitive', previous.primitives.primitives, next.primitives.primitives, primitive => (
-    primitive.prototype ? [primitive.prototype.source, ...primitive.prototype.styles] : []
+    [primitive.prototype.source, ...primitive.prototype.styles]
   ));
   compare('component', previous.components.components, next.components.components, component => (
     [component.prototype.source, ...component.prototype.styles]
   ));
   compare('screen', previous.screens.screens, next.screens.screens, screen => (
-    screen.prototype ? [screen.prototype.source, ...screen.prototype.styles, ...screen.prototype.assetRefs] : []
+    [screen.prototype.source, ...screen.prototype.styles, ...screen.prototype.assetRefs]
   ));
   return changed;
 }

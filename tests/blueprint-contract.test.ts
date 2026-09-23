@@ -5,34 +5,59 @@ import path from 'node:path';
 import { createExtractionPacket, queryPrototypeOnly, querySections, queryUsedBy, queryUses, showBoundary } from '../src/core/query';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateProject } from '../src/core/validate';
-import type { BoundaryPacket, PrimitiveDefinition, PrimitiveState, ScreenDefinition } from '../src/core/types';
+import type { BoundaryPacket, PrimitiveDefinition, PrimitiveState, ScreenDefinition, ScreenSection } from '../src/core/types';
 
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
-const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
-const invalidRoot = 'fixtures/invalid/missing-section/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
+const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 
 describe('Blueprint schema contract', () => {
-  it('validates two app-owned project fixtures and rejects an invalid fixture', async () => {
-    for (const root of [novaRoot, atlasRoot]) {
+  it('validates the app-owned project fixtures and rejects an invalid copy', async () => {
+    for (const root of [stillRoot, denseRoot, blankSlateRoot]) {
       const bundle = await loadProjectFromFs(root);
       const result = validateProject(bundle);
       assert.equal(result.ok, true, result.errors.join('\n'));
       assert.equal(bundle.manifest.project.sourceRoot, root);
-      assert.equal(bundle.manifest.defaultBoardId, 'primitives');
+      assert.equal(bundle.manifest.defaultBoardId, 'screens');
       assert.deepEqual(
         bundle.manifest.boards.map(board => board.kind),
         ['primitives', 'screens']
       );
     }
 
-    const invalid = await loadProjectFromFs(invalidRoot);
+    const invalid = structuredClone(await loadProjectFromFs(stillRoot));
+    const section = invalid.screens.screens[0]?.sections[0];
+    assert.ok(section);
+    delete (section as Partial<ScreenSection>).id;
     const invalidResult = validateProject(invalid);
     assert.equal(invalidResult.ok, false);
     assert.match(invalidResult.errors.join('\n'), /section\.id/);
   });
 
+  it('rejects sidecars missing the prototype host policy or prototype sources', async () => {
+    const bundle = structuredClone(await loadProjectFromFs(stillRoot));
+    const primitive = bundle.primitives.primitives.find(candidate => candidate.id === 'button');
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'home');
+    assert.ok(primitive && screen);
+
+    delete (bundle.manifest as Partial<typeof bundle.manifest>).prototypeHost;
+    delete (primitive as Partial<PrimitiveDefinition>).prototype;
+    delete (screen as Partial<ScreenDefinition>).prototype;
+
+    const errors = validateProject(bundle).errors;
+    assert.ok(errors.includes('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none".'), errors.join('\n'));
+    assert.ok(errors.includes('primitive.button.prototype must declare a canonical HTML/CSS source.'), errors.join('\n'));
+    assert.ok(errors.includes('screen.home.prototype must declare a browser-native HTML/CSS source.'), errors.join('\n'));
+
+    const permissive = structuredClone(await loadProjectFromFs(stillRoot));
+    Object.assign(permissive.manifest.prototypeHost, { network: 'allow', scripts: 'inline' });
+    const hostErrors = validateProject(permissive).errors;
+    assert.ok(hostErrors.includes('manifest.prototypeHost.network must be "deny".'), hostErrors.join('\n'));
+    assert.ok(hostErrors.includes('manifest.prototypeHost.scripts must be "none".'), hostErrors.join('\n'));
+  });
+
   it('represents tokens, primitives, state sets, screens, sections, notes, style refs, and hints as structured files', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
     assert.ok(bundle.tokens.tokenGroups.length >= 3);
     assert.ok(bundle.primitives.primitives.some(primitive => primitive.stateSets.length > 0));
     assert.ok(bundle.screens.screens.some(screen => screen.sections.length > 0));
@@ -49,7 +74,7 @@ describe('Blueprint schema contract', () => {
   });
 
   it('rejects primitive states missing required canvas metadata before serve can crash', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
     const broken = structuredClone(bundle);
     const state = broken.primitives.primitives[0]?.stateSets[0]?.states[0];
     assert.ok(state);
@@ -66,7 +91,7 @@ describe('Blueprint schema contract', () => {
   });
 
   it('keeps frame presets scoped to mobile and desktop prototype modes', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
     const broken = structuredClone(bundle);
     const preset = broken.manifest.framePresets[0];
     assert.ok(preset);
@@ -81,7 +106,7 @@ describe('Blueprint schema contract', () => {
   });
 
   it('accepts primitive platform tags and rejects unknown or repeated platforms', async () => {
-    const bundle = structuredClone(await loadProjectFromFs(novaRoot));
+    const bundle = structuredClone(await loadProjectFromFs(stillRoot));
     const [first, second, third] = bundle.primitives.primitives;
     assert.ok(first && second && third);
 
@@ -100,31 +125,38 @@ describe('Blueprint schema contract', () => {
 
 describe('Blueprint query contract', () => {
   it('answers focused dependency and section questions without whole-board parsing', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+    const bundle = await loadProjectFromFs(stillRoot);
 
     const screenUses = queryUses(bundle, 'screen:home');
-    assert.ok(screenUses.results.some(result => isReference(result) && result.localId === 'action-button'));
+    assert.ok(screenUses.results.some(result => isReference(result) && result.localId === 'button'));
 
-    const usedBy = queryUsedBy(bundle, 'primitive:action-button');
-    assert.ok(usedBy.results.some(result => isReference(result) && result.localId === 'home/next-action'));
+    const usedBy = queryUsedBy(bundle, 'primitive:button');
+    assert.ok(usedBy.results.some(result => isReference(result) && result.localId === 'home/featured-practice'));
 
     const sections = querySections(bundle, 'home');
-    assert.equal(sections.results.length, 3);
+    assert.equal(sections.results.length, 5);
 
-    const prototypeOnly = queryPrototypeOnly(bundle);
-    assert.ok(prototypeOnly.results.length >= 1);
+    assert.deepEqual(queryPrototypeOnly(bundle).results, []);
+    const flagged = structuredClone(bundle);
+    const navigation = flagged.screens.screens.find(screen => screen.id === 'home')?.sections.find(section => section.id === 'navigation');
+    assert.ok(navigation);
+    navigation.prototypeOnly = true;
+    assert.deepEqual(
+      queryPrototypeOnly(flagged).results.map(result => (result as { id: string }).id),
+      ['still-meditation/section/home/navigation']
+    );
   });
 
   it('creates canonical extraction packets for one primitive and one screen', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
-    const primitive = createExtractionPacket(bundle, 'primitive:action-button');
+    const bundle = await loadProjectFromFs(stillRoot);
+    const primitive = createExtractionPacket(bundle, 'primitive:button');
     const screen = createExtractionPacket(bundle, 'screen:home');
 
     assertCanonicalPacket(primitive);
     assertCanonicalPacket(screen);
     assert.equal(primitive.kind, 'primitive');
     assert.equal(screen.kind, 'screen');
-    assert.equal((primitive.data as PrimitiveDefinition).id, 'action-button');
+    assert.equal((primitive.data as PrimitiveDefinition).id, 'button');
     assert.equal((screen.data as ScreenDefinition).id, 'home');
     assert.equal('value' in (primitive.data as Record<string, unknown>), false);
     assert.equal('value' in (screen.data as Record<string, unknown>), false);
@@ -151,11 +183,11 @@ describe('Blueprint no-framework package boundary', () => {
   });
 
   it('keeps rendered HTML from becoming the fixture source of truth', async () => {
-    const files = await readdir(novaRoot);
+    const files = await readdir(denseRoot);
     assert.deepEqual(
-      files.sort(),
-      ['manifest.json', 'primitives.json', 'screens.json', 'tokens.json'],
-      'app-owned fixture should be structured data only'
+      files.filter(file => file !== '.blueprint-artifacts').sort(),
+      ['components.json', 'manifest.json', 'primitives.json', 'prototype', 'screens.json', 'tokens.json'],
+      'app-owned fixture should be structured data plus governed prototype sources only'
     );
     assert.equal(path.extname('index.html'), '.html');
   });

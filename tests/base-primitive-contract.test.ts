@@ -8,8 +8,7 @@ import type { BlueprintProjectBundle, PrimitiveStateSet } from '../src/core/type
 const starterRoot = 'starter/design/blueprint';
 const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
-const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
 
 describe('Blueprint locked base primitive contract', () => {
   it('is carried in full by the canonical starter declaration', async () => {
@@ -34,7 +33,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('accepts compliant high-fidelity projects carrying the themed base set', async () => {
-    for (const root of [starterRoot, blankSlateRoot, denseRoot]) {
+    for (const root of [starterRoot, blankSlateRoot, denseRoot, stillRoot]) {
       const bundle = await loadProjectFromFs(root);
       assert.ok(bundle.manifest.prototypeHost, `${root} should declare the prototype-era contract`);
       assert.equal(validateProject(bundle).ok, true, `${root} should remain baseline-valid`);
@@ -99,24 +98,14 @@ describe('Blueprint locked base primitive contract', () => {
     assert.equal(result.ok, true, result.errors.join('\n'));
   });
 
-  it('keeps legacy baseline projects without the base set unaffected', async () => {
-    for (const root of [novaRoot, atlasRoot]) {
-      const bundle = await loadProjectFromFs(root);
-      assert.equal(bundle.manifest.prototypeHost, undefined, `${root} should remain a legacy baseline project`);
-      assert.ok(
-        !BASE_PRIMITIVE_CONTRACT.every(base => bundle.primitives.primitives.some(primitive => primitive.id === base.id)),
-        `${root} should not carry the full base set`
-      );
-      assert.equal(validateProject(bundle).ok, true, `${root} should remain baseline-valid`);
-    }
-  });
+  it('applies the locked floor independently of the prototype host declaration', async () => {
+    const broken = cloneBundle(await loadProjectFromFs(denseRoot));
+    delete (broken.manifest as Partial<BlueprintProjectBundle['manifest']>).prototypeHost;
+    broken.primitives.primitives = broken.primitives.primitives.filter(primitive => primitive.id !== 'button');
 
-  it('applies the locked floor as soon as a project declares prototypeHost', async () => {
-    const promoted = cloneBundle(await loadProjectFromFs(novaRoot));
-    promoted.manifest.prototypeHost = { assetRoots: [], network: 'deny', scripts: 'none' };
-
-    const result = validateProject(promoted);
+    const result = validateProject(broken);
     assert.equal(result.ok, false);
+    assert.match(result.errors.join('\n'), /manifest\.prototypeHost must declare/);
     assert.match(result.errors.join('\n'), /missing locked base primitive "button"/);
     assert.match(result.errors.join('\n'), /base primitive set is locked and cannot be reduced/);
   });

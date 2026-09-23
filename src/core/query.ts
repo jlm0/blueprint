@@ -351,7 +351,7 @@ function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: Bo
       });
     };
 
-    for (const [tokenId, role] of Object.entries(primitive.prototype?.tokenRoles ?? {})) {
+    for (const [tokenId, role] of Object.entries(primitive.prototype.tokenRoles)) {
       recordUsage(tokenId, role);
     }
 
@@ -440,14 +440,17 @@ function primitivePacket(bundle: BlueprintProjectBundle, primitive: PrimitiveDef
     notes: primitive.notes,
     prototypeOnly: primitive.prototypeOnly,
     implementationHints: primitive.implementationHints,
-    rendering: primitiveRenderDecision(primitive)
+    rendering: {
+      mode: 'canonical-app-owned',
+      source: primitive.prototype.source
+    }
   });
 }
 
 function componentPacket(bundle: BlueprintProjectBundle, component: ComponentDefinition): BoundaryPacket<ComponentDefinition> {
   return packet(bundle, 'component', component.id, component, {
     sourceFiles: [
-      ...(bundle.sourceFiles.components ? [bundle.sourceFiles.components] : []),
+      bundle.sourceFiles.components,
       ...prototypeSourceFiles(bundle, component.prototype)
     ],
     styleRefs: component.styleRefs ?? component.prototype.styles,
@@ -465,8 +468,7 @@ function componentPacket(bundle: BlueprintProjectBundle, component: ComponentDef
     implementationHints: component.implementationHints ?? [],
     rendering: {
       mode: 'canonical-app-owned',
-      source: component.prototype.source,
-      fallbackUsed: false
+      source: component.prototype.source
     }
   });
 }
@@ -495,8 +497,8 @@ function screenPacket(bundle: BlueprintProjectBundle, screen: ScreenDefinition):
       bundle.sourceFiles.screens,
       bundle.sourceFiles.primitives,
       bundle.sourceFiles.tokens,
-      ...(bundle.sourceFiles.components ? [bundle.sourceFiles.components] : []),
-      ...prototypeSourceFiles(bundle, screen.prototype, screen.prototype?.assetRefs)
+      bundle.sourceFiles.components,
+      ...prototypeSourceFiles(bundle, screen.prototype, screen.prototype.assetRefs)
     ],
     styleRefs: screen.styleRefs,
     styleEvidence: styleEvidenceFor(screen.styleRefs, screen.styleEvidence),
@@ -505,13 +507,10 @@ function screenPacket(bundle: BlueprintProjectBundle, screen: ScreenDefinition):
     notes: [...screen.notes, ...screen.sections.flatMap(section => section.notes)],
     prototypeOnly: screen.prototypeOnly,
     implementationHints: [...screen.implementationHints, ...screen.sections.flatMap(section => section.implementationHints)],
-    ...(screen.prototype ? {
-      rendering: {
-        mode: 'canonical-app-owned' as const,
-        source: screen.prototype.source,
-        fallbackUsed: false as const
-      }
-    } : {})
+    rendering: {
+      mode: 'canonical-app-owned',
+      source: screen.prototype.source
+    }
   });
 }
 
@@ -571,29 +570,11 @@ function packet<TData>(
   };
 }
 
-function primitiveRenderDecision(primitive: PrimitiveDefinition): PrototypeRenderDecision {
-  if (primitive.prototype) {
-    return {
-      mode: 'canonical-app-owned',
-      source: primitive.prototype.source,
-      fallbackUsed: false
-    };
-  }
-  return {
-    mode: 'legacy-fallback',
-    fallbackUsed: true,
-    reason: 'no-canonical-prototype-source'
-  };
-}
-
 function prototypeSourceFiles(
   bundle: BlueprintProjectBundle,
-  prototype: PrototypeSource | undefined,
+  prototype: PrototypeSource,
   extraRefs: string[] = []
 ): string[] {
-  if (!prototype) {
-    return [];
-  }
   const refs = [prototype.source, ...prototype.styles, ...extraRefs];
   return [...new Set(refs.map(sourceRef => `${bundle.sourceRoot}/${sourceRef.replace(/\\/g, '/').replace(/^\.\//, '')}`))];
 }

@@ -17,10 +17,9 @@ Screens compose reusable parts with `<blueprint-use kind="primitive|component" r
 
 Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, and source paths so an implementation agent can build without reading the canvas DOM.
 
-### Fidelity tiers
+### One sidecar format
 
-- **`baseline-compatible`**: legacy four-file sidecars without prototype sources. They stay loadable and render through generic family templates, but they are not high-fidelity evidence.
-- **`high-fidelity`**: sidecars that declare `manifest.prototypeHost` and governed sources. Missing declared sources fail closed. These sidecars must keep the 26 locked base primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle the base set through tokens and may add to it, but must never remove from it.
+Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar also keeps the 26 locked base primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle the base set through tokens and may add to it, but never remove from it.
 
 Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, and color contrast.
 
@@ -56,7 +55,7 @@ The server exposes eleven project-scoped tools:
 
 | Tool | Purpose |
 | --- | --- |
-| `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser frames. |
+| `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser screens. |
 | `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode. |
 | `index` | List every stable boundary ID. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
@@ -128,7 +127,7 @@ src/hooks/      agent activity hook
 src/scripts/    fixture validation, extraction, scope scan, browser smoke
 schema/         JSON Schema for sidecar files
 starter/        the sidecar that init copies
-fixtures/       sample sidecars used by tests, plus invalid and red-phase cases
+fixtures/       sample sidecars used by tests, plus a minimal compile-contract case
 tests/          node:test suites
 ```
 

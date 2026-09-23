@@ -13,7 +13,7 @@ import {
 const artifactRoot =
   process.env.BLUEPRINT_ARTIFACT_ROOT ??
   '.blueprint-artifacts/extraction-query';
-const projectRoot = 'fixtures/app-owned/nova-care/design/blueprint';
+const projectRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
 
 async function main(): Promise<void> {
   const bundle = await loadProjectFromFs(projectRoot);
@@ -22,11 +22,11 @@ async function main(): Promise<void> {
   await mkdir(extractionRoot, { recursive: true });
   await mkdir(queryRoot, { recursive: true });
 
-  await writeJson(path.join(extractionRoot, 'primitive-action-button.json'), createExtractionPacket(bundle, 'primitive:action-button'));
+  await writeJson(path.join(extractionRoot, 'primitive-button.json'), createExtractionPacket(bundle, 'primitive:button'));
   await writeJson(path.join(extractionRoot, 'screen-home.json'), createExtractionPacket(bundle, 'screen:home'));
   await writeJson(path.join(queryRoot, 'show-screen-home.json'), showBoundary(bundle, 'screen:home'));
   await writeJson(path.join(queryRoot, 'uses-screen-home.json'), queryUses(bundle, 'screen:home'));
-  await writeJson(path.join(queryRoot, 'used-by-action-button.json'), queryUsedBy(bundle, 'primitive:action-button'));
+  await writeJson(path.join(queryRoot, 'used-by-button.json'), queryUsedBy(bundle, 'primitive:button'));
   await writeJson(path.join(queryRoot, 'sections-screen-home.json'), querySections(bundle, 'home'));
   await writeJson(path.join(queryRoot, 'prototype-only.json'), queryPrototypeOnly(bundle));
 

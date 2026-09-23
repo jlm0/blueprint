@@ -24,8 +24,30 @@ describe('starter and high-fidelity portability contract', () => {
     assert.deepEqual(
       bundle.screens.screens.map(screen => ({ id: screen.id, sections: screen.sections.length, prototype: screen.prototype })),
       [
-        { id: 'home', sections: 0, prototype: undefined },
-        { id: 'web-home', sections: 0, prototype: undefined }
+        {
+          id: 'home',
+          sections: 0,
+          prototype: {
+            source: 'prototype/screens/home.html',
+            styles: ['prototype/screens/home.css'],
+            assetRefs: [],
+            states: ['default'],
+            reviewConditions: [{ id: 'phone-default', framePresetId: 'phone', state: 'default' }],
+            renderedUses: []
+          }
+        },
+        {
+          id: 'web-home',
+          sections: 0,
+          prototype: {
+            source: 'prototype/screens/web-home.html',
+            styles: ['prototype/screens/web-home.css'],
+            assetRefs: [],
+            states: ['default'],
+            reviewConditions: [{ id: 'desktop-web-default', framePresetId: 'desktop-web', state: 'default' }],
+            renderedUses: []
+          }
+        }
       ]
     );
 
@@ -45,7 +67,7 @@ describe('starter and high-fidelity portability contract', () => {
 
     assert.equal(validateProject(bundle).ok, true);
     assert.equal(validateProject(bundle, { mode: 'strict' }).ok, true);
-    assert.equal(readiness.fidelityTier, 'high-fidelity');
+    assert.ok(readiness.prototypeSources.includes('prototype/screens/service-health.html'));
     assert.equal(readiness.tier, 'ready');
     assert.deepEqual(deep.extraction.includedBoundaryIds, [
       'dense-ops/screen/service-health',
@@ -66,16 +88,7 @@ describe('starter and high-fidelity portability contract', () => {
     assert.doesNotMatch(compiled.html, /email-signup|waitlist/i);
   });
 
-  it('retains honest legacy compatibility without fixture-specific runtime branches', async () => {
-    for (const root of [
-      'fixtures/app-owned/atlas-pay/design/blueprint',
-      'fixtures/app-owned/nova-care/design/blueprint'
-    ]) {
-      const report = createReadinessReport(await loadProjectFromFs(root));
-      assert.equal(report.fidelityTier, 'baseline-compatible');
-      assert.deepEqual(report.prototypeSources, []);
-    }
-
+  it('keeps runtime code free of fixture-specific branches', async () => {
     const runtime = (await Promise.all([
       'src/app/main.ts',
       'src/prototype/compiler.ts',

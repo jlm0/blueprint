@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser, type FrameLocator, type Locator, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 import { boundaryId } from '../src/core/address';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../src/core/review';
-import type { BlueprintProjectBundle, PrimitiveDefinition, ScreenDefinition } from '../src/core/types';
+import type { BlueprintProjectBundle } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
-const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
-const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
+const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const denseOpsRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
 const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
 
 let server: ViteDevServer;
@@ -39,72 +39,29 @@ describe('Blueprint data-driven primitives canvas', () => {
     await server?.close();
   });
 
-  it('renders primitive and state-set records from the loaded bundle with a generic unknown-family fallback', async () => {
-    const bundle = withUnknownPrimitive(await loadProjectFromFs(novaRoot));
-    const page = await openPrimitiveBoard(bundle);
-
-    try {
-      const records = await collectPrimitiveRecords(page);
-      const sync = validateVisibleBoundaryRecords(bundle, records);
-      assert.equal(sync.ok, true, sync.errors.join('\n'));
-
-      assertTokenGroupsVisible(bundle, records);
-      for (const primitive of bundle.primitives.primitives) {
-        assert.ok(
-          records.some(record => record.id === boundaryId(bundle.manifest.project.id, 'primitive', primitive.id)),
-          `missing visible primitive boundary for ${primitive.id}`
-        );
-        for (const stateSet of primitive.stateSets) {
-          const localId = `${primitive.id}/${stateSet.id}`;
-          assert.ok(
-            records.some(record => record.id === boundaryId(bundle.manifest.project.id, 'state-set', localId)),
-            `missing visible state-set boundary for ${localId}`
-          );
-          for (const state of stateSet.states) {
-            assert.equal(
-              await page
-                .locator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'state-set', localId))} [data-primitive-state-id="${escapeAttribute(state.id)}"]`)
-                .count(),
-              1,
-              `missing visible state sample for ${localId}/${state.id}`
-            );
-          }
-        }
-      }
-
-      for (const primitiveId of ['timeline-band', 'feedback-banner', 'arrow-toggle', 'cardholder-field']) {
-        const fallback = page.locator(boundarySelector(`nova-care/primitive/${primitiveId}`));
-        assert.equal(await fallback.count(), 1, `${primitiveId} should still render one generic card`);
-        assert.equal(await fallback.getAttribute('data-primitive-family'), 'generic', `${primitiveId} should not match family names by substring`);
-        assert.ok((await fallback.locator('[data-primitive-sample="generic"]').count()) >= 1);
-        assert.equal(await fallback.locator('.token-probe, .generated-card-head, .primitive-meta-row').count(), 0);
-      }
-      assert.equal(await page.locator(boundarySelector('nova-care/primitive/action-button')).getAttribute('data-primitive-family'), 'button');
-    } finally {
-      await page.close();
-    }
-  });
-
-  it('renders distinct primitive canvases for starter, Nova Care, and Atlas Pay without source edits', async () => {
+  it('renders distinct primitive canvases for starter, Still, and Dense Ops without source edits', async () => {
     const fixtures = [
       { name: 'starter', bundle: await loadProjectFromFs(starterRoot) },
-      { name: 'nova-care', bundle: await loadProjectFromFs(novaRoot) },
-      { name: 'atlas-pay', bundle: await loadProjectFromFs(atlasRoot) }
+      { name: 'still-meditation', bundle: await loadProjectFromFs(stillRoot) },
+      { name: 'dense-ops', bundle: await loadProjectFromFs(denseOpsRoot) }
     ];
+    const allPrimitiveIds = new Set(fixtures.flatMap(fixture => fixture.bundle.primitives.primitives.map(primitive => primitive.id)));
 
     for (const fixture of fixtures) {
       const page = await openPrimitiveBoard(fixture.bundle);
       try {
         const records = await collectPrimitiveRecords(page);
+        const sync = validateVisibleBoundaryRecords(fixture.bundle, records);
+        assert.equal(sync.ok, true, sync.errors.join('\n'));
         assertTokenGroupsVisible(fixture.bundle, records);
         const primitiveLocalIds = localIdsForKind(records, 'primitive');
         const expectedPrimitiveIds = fixture.bundle.primitives.primitives.map(primitive => primitive.id).sort();
         assert.deepEqual(primitiveLocalIds, expectedPrimitiveIds, `${fixture.name} primitive records should match its structured file`);
 
-        const staleStarterIds = ['button', 'input', 'card'].filter(
+        const staleIds = [...allPrimitiveIds].filter(
           id => !expectedPrimitiveIds.includes(id) && primitiveLocalIds.includes(id)
         );
-        assert.deepEqual(staleStarterIds, [], `${fixture.name} should not inherit stale starter-only primitive boundaries`);
+        assert.deepEqual(staleIds, [], `${fixture.name} should not inherit primitive boundaries from another project`);
 
         const chipLabels = await page.locator('.board-primitives .spec-chip').evaluateAll(elements =>
           elements.map(element => element.textContent?.trim()).filter(Boolean)
@@ -206,31 +163,39 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
-  it('keeps shipped primitive boards free of generic metadata/probe renderers', async () => {
+  it('renders every shipped primitive card as a compiled canonical specimen', async () => {
     const fixtures = [
       await loadProjectFromFs(starterRoot),
-      await loadProjectFromFs(novaRoot),
-      await loadProjectFromFs(atlasRoot)
+      await loadProjectFromFs(stillRoot),
+      await loadProjectFromFs(denseOpsRoot)
     ];
 
     for (const bundle of fixtures) {
       const page = await openPrimitiveBoard(bundle);
       try {
-        assert.equal(
-          await page.locator('.board-primitives [data-boundary-kind="primitive"] .token-probe').count(),
-          0,
-          `${bundle.manifest.project.id} should not show visible token probe chips on primitive cards`
+        const cards = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
+          elements.map(element => ({
+            id: (element as HTMLElement).dataset.boundaryLocalId ?? '',
+            renderModes: [...element.querySelectorAll<HTMLElement>('[data-prototype-render-mode]')].map(node => node.dataset.prototypeRenderMode),
+            specimens: element.querySelectorAll('.canonical-primitive-specimen').length,
+            iframes: element.querySelectorAll('.canonical-primitive-iframe').length,
+            compileErrors: element.querySelectorAll('.prototype-compile-error').length
+          }))
         );
-        assert.equal(
-          await page.locator('.board-primitives [data-boundary-kind="primitive"] .generated-card-head, .board-primitives [data-boundary-kind="primitive"] .primitive-meta-row').count(),
-          0,
-          `${bundle.manifest.project.id} should not show primitive metadata headers as human canvas content`
-        );
-        assert.equal(
-          await page.locator('.board-primitives [data-boundary-kind="primitive"][data-primitive-family="generic"]').count(),
-          0,
-          `${bundle.manifest.project.id} should not send shipped primitives through the generic fallback`
-        );
+        assert.equal(cards.length, bundle.primitives.primitives.length);
+        for (const primitive of bundle.primitives.primitives) {
+          const card = cards.find(candidate => candidate.id === primitive.id);
+          const label = `${bundle.manifest.project.id}/${primitive.id}`;
+          assert.ok(card, `${label} should render a primitive card`);
+          assert.deepEqual(card.renderModes, ['canonical-app-owned'], `${label} should render only its canonical app-owned specimen`);
+          assert.equal(card.specimens, 1, `${label} should render one canonical specimen`);
+          assert.equal(card.compileErrors, 0, `${label} canonical specimen should compile`);
+          assert.equal(
+            card.iframes,
+            primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
+            `${label} should render one canonical iframe per declared variant or size × state combination`
+          );
+        }
       } finally {
         await page.close();
       }
@@ -428,117 +393,97 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
-  it('uses app-owned foreground tokens when card surfaces resolve to light app colors', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
-    const page = await openPrimitiveBoard(bundle);
-
-    try {
-      const infoCardText = await page
-        .locator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', 'info-card'))} .card[data-primitive-state-id="compact"] strong`)
-        .evaluate(element => {
-          const style = window.getComputedStyle(element);
-          return {
-            color: style.color,
-            background: window.getComputedStyle(element.closest('.card') as Element).backgroundColor
-          };
-        });
-      assert.equal(infoCardText.background, 'rgb(251, 252, 248)', 'Nova info card should use its app-owned light surface token');
-      assert.equal(infoCardText.color, 'rgb(25, 33, 29)', 'Nova info card text should use the app-owned ink token on light surfaces');
-    } finally {
-      await page.close();
-    }
-  });
-
-  it('maps token mutations into primitive samples through named token roles and template hooks', async () => {
-    const cases = [
+  it('maps token mutations into canonical primitive specimens through their app token variables', async () => {
+    const cases: Array<{
+      primitiveId: string;
+      frameTitle?: string;
+      tokenRef: string;
+      groupId: string;
+      tokenId: string;
+      mutatedValue: string;
+      cssProperty: string;
+      baseExpected: string;
+      mutatedExpected: string;
+    }> = [
       {
-        root: novaRoot,
-        boundary: 'nova-care/primitive/action-button',
-        tokenRef: 'color.accent',
+        primitiveId: 'button',
+        tokenRef: 'color.primary',
         groupId: 'color',
-        tokenId: 'accent',
+        tokenId: 'primary',
         mutatedValue: '#ff00aa',
         cssProperty: 'background-color',
-        baseExpected: 'rgb(62, 124, 97)',
-        mutatedExpected: 'rgb(255, 0, 170)',
-        visibleSelector: '.btn[data-primitive-state-id="primary"]',
-        visibleCssProperty: 'background-color'
+        baseExpected: 'rgb(24, 24, 27)',
+        mutatedExpected: 'rgb(255, 0, 170)'
       },
       {
-        root: novaRoot,
-        boundary: 'nova-care/primitive/action-button',
-        tokenRef: 'space.cluster',
+        primitiveId: 'button',
+        tokenRef: 'space.control-x',
         groupId: 'space',
-        tokenId: 'cluster',
+        tokenId: 'control-x',
         mutatedValue: '32px',
         cssProperty: 'padding-left',
-        baseExpected: '12px',
+        baseExpected: '16px',
         mutatedExpected: '32px'
       },
       {
-        root: novaRoot,
-        boundary: 'nova-care/primitive/action-button',
-        tokenRef: 'shape.radius-control',
+        primitiveId: 'button',
+        tokenRef: 'shape.radius-md',
         groupId: 'shape',
-        tokenId: 'radius-control',
+        tokenId: 'radius-md',
         mutatedValue: '21px',
         cssProperty: 'border-top-left-radius',
-        baseExpected: '8px',
+        baseExpected: '6px',
         mutatedExpected: '21px'
       },
       {
-        root: starterRoot,
-        boundary: 'starter-app/primitive/button',
+        primitiveId: 'button',
         tokenRef: 'typography.body',
         groupId: 'typography',
         tokenId: 'body',
         mutatedValue: '700 22px/1.1 system-ui',
         cssProperty: 'font-size',
         baseExpected: '14px',
-        mutatedExpected: '22px',
-        iframeSelector: '[data-blueprint-primitive="button"]'
+        mutatedExpected: '22px'
       },
       {
-        root: novaRoot,
-        boundary: 'nova-care/primitive/info-card',
-        tokenRef: 'shape.shadow-panel',
+        primitiveId: 'card',
+        frameTitle: 'Card · elevated · default',
+        tokenRef: 'shape.shadow-md',
         groupId: 'shape',
-        tokenId: 'shadow-panel',
+        tokenId: 'shadow-md',
         mutatedValue: '0 4px 12px rgba(255, 0, 170, 0.35)',
         cssProperty: 'box-shadow',
-        baseExpected: 'rgba(25, 33, 29, 0.1) 0px 12px 28px 0px',
+        baseExpected: 'rgba(9, 9, 11, 0.08) 0px 4px 12px 0px, rgba(9, 9, 11, 0.06) 0px 1px 3px 0px',
         mutatedExpected: 'rgba(255, 0, 170, 0.35) 0px 4px 12px 0px'
       },
       {
-        root: starterRoot,
-        boundary: 'starter-app/primitive/button',
+        primitiveId: 'button',
         tokenRef: 'motion.state',
         groupId: 'motion',
         tokenId: 'state',
         mutatedValue: '240ms linear',
         cssProperty: 'transition-duration',
         baseExpected: '0.16s, 0.16s, 0.16s, 0.16s',
-        mutatedExpected: '0.24s, 0.24s, 0.24s, 0.24s',
-        iframeSelector: '[data-blueprint-primitive="button"]'
+        mutatedExpected: '0.24s, 0.24s, 0.24s, 0.24s'
       }
     ];
 
-    for (const item of cases) {
-      const baseBundle = await loadProjectFromFs(item.root);
-      const mutatedBundle = mutateToken(baseBundle, item.groupId, item.tokenId, item.mutatedValue);
-      const basePage = await openPrimitiveBoard(baseBundle);
-      const mutatedPage = await openPrimitiveBoard(mutatedBundle);
-
-      try {
-        if ('iframeSelector' in item && item.iframeSelector) {
+    const baseBundle = await loadProjectFromFs(starterRoot);
+    const basePage = await openPrimitiveBoard(baseBundle);
+    try {
+      for (const item of cases) {
+        const mutatedPage = await openPrimitiveBoard(mutateToken(baseBundle, item.groupId, item.tokenId, item.mutatedValue));
+        try {
           const readCanonicalStyle = async (page: Page): Promise<string> => {
-            const specimen = page
-              .frameLocator(`${boundarySelector(item.boundary)} .canonical-primitive-iframe`)
-              .nth(0);
-            const value = await specimen
-              .locator(item.iframeSelector as string)
-              .evaluate((element, property) => window.getComputedStyle(element).getPropertyValue(property as string), item.cssProperty);
-            assert.ok(value.trim().length > 0, `canonical ${item.iframeSelector} should expose computed ${item.cssProperty}`);
+            const frameSelector = `${boundarySelector(boundaryId(baseBundle.manifest.project.id, 'primitive', item.primitiveId))} .canonical-primitive-iframe${
+              item.frameTitle ? `[title="${escapeAttribute(item.frameTitle)}"]` : ''
+            }`;
+            const value = await page
+              .frameLocator(frameSelector)
+              .first()
+              .locator(`[data-blueprint-primitive="${item.primitiveId}"]`)
+              .evaluate((element, property) => window.getComputedStyle(element).getPropertyValue(property), item.cssProperty);
+            assert.ok(value.trim().length > 0, `canonical ${item.primitiveId} should expose computed ${item.cssProperty}`);
             return value;
           };
           const baseStyle = await readCanonicalStyle(basePage);
@@ -546,35 +491,17 @@ describe('Blueprint data-driven primitives canvas', () => {
           assert.equal(baseStyle, item.baseExpected, `${item.tokenRef} should drive canonical ${item.cssProperty} before mutation`);
           assert.equal(mutatedStyle, item.mutatedExpected, `${item.tokenRef} should drive canonical ${item.cssProperty} after mutation`);
           assert.notEqual(mutatedStyle, baseStyle, `${item.tokenRef} should change ${item.cssProperty} through the canonical specimen`);
-          continue;
+        } finally {
+          await mutatedPage.close();
         }
-
-        const baseStyle = await readTokenHookStyle(basePage, item.boundary, item.tokenRef, item.cssProperty);
-        const mutatedStyle = await readTokenHookStyle(mutatedPage, item.boundary, item.tokenRef, item.cssProperty);
-        assert.equal(baseStyle.value, item.baseExpected, `${item.tokenRef} base style should match fixture token value`);
-        assert.equal(mutatedStyle.value, item.mutatedExpected, `${item.tokenRef} mutated style should match edited token value`);
-        assert.equal(mutatedStyle.tokenRole, item.tokenRef);
-        assert.ok(mutatedStyle.templateHook.length > 0, `${item.tokenRef} should name the template hook it drives`);
-        assert.notEqual(
-          mutatedStyle.value,
-          baseStyle.value,
-          `${item.tokenRef} should change ${item.cssProperty} through ${mutatedStyle.templateHook}`
-        );
-        if ('visibleSelector' in item && item.visibleSelector && 'visibleCssProperty' in item && item.visibleCssProperty) {
-          const baseVisibleStyle = await readVisibleStyle(basePage, item.boundary, item.visibleSelector, item.visibleCssProperty);
-          const mutatedVisibleStyle = await readVisibleStyle(mutatedPage, item.boundary, item.visibleSelector, item.visibleCssProperty);
-          assert.equal(baseVisibleStyle, item.baseExpected, `${item.tokenRef} should drive visible ${item.visibleCssProperty} before mutation`);
-          assert.equal(mutatedVisibleStyle, item.mutatedExpected, `${item.tokenRef} should drive visible ${item.visibleCssProperty} after mutation`);
-        }
-      } finally {
-        await basePage.close();
-        await mutatedPage.close();
       }
+    } finally {
+      await basePage.close();
     }
   });
 
   it('keeps generated primitive cards collision-free for all proof fixtures', async () => {
-    for (const root of [starterRoot, novaRoot, atlasRoot]) {
+    for (const root of [starterRoot, stillRoot, denseOpsRoot]) {
       const bundle = await loadProjectFromFs(root);
       const page = await openPrimitiveBoard(bundle);
 
@@ -716,8 +643,9 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('renders every screen frame and section boundary from structured screen composition', async () => {
-    const bundle = withAdditionalScreen(await loadProjectFromFs(novaRoot));
+    const bundle = await loadProjectFromFs(stillRoot);
     const page = await openScreensBoard(bundle);
+    const projectId = bundle.manifest.project.id;
 
     try {
       const records = await collectScreenRecords(page);
@@ -725,57 +653,54 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(sync.ok, true, sync.errors.join('\n'));
 
       const expectedScreenBoundaries = bundle.screens.screens
-        .map(screen => boundaryId(bundle.manifest.project.id, 'screen', screen.id))
+        .map(screen => boundaryId(projectId, 'screen', screen.id))
         .sort();
-      const visibleScreenBoundaries = records.filter(record => record.kind === 'screen').map(record => record.id).sort();
-      assert.deepEqual(visibleScreenBoundaries, expectedScreenBoundaries, 'Screens board should render every screen in the loaded bundle');
+      const screenRecords = records.filter(record => record.kind === 'screen');
+      assert.deepEqual(screenRecords.map(record => record.id).sort(), expectedScreenBoundaries, 'Screens board should render every screen in the loaded bundle');
+      assert.ok(
+        screenRecords.every(record => record.id === boundaryId(projectId, 'screen', record.screenId ?? '')),
+        'Screen review records should carry their own screenId context'
+      );
 
-      const expectedSectionBoundaries = bundle.screens.screens
-        .flatMap(screen => screen.sections.map(section => boundaryId(bundle.manifest.project.id, 'section', `${screen.id}/${section.id}`)))
-        .sort();
-      const visibleSectionBoundaries = records.filter(record => record.kind === 'section').map(record => record.id).sort();
-      assert.deepEqual(visibleSectionBoundaries, expectedSectionBoundaries, 'Screens board should render every section boundary inside its owning frame');
-
-      const missingScreenContext = records.filter(record => record.kind === 'section' && !record.screenId);
-      assert.deepEqual(missingScreenContext, [], 'Section review records should include screenId context');
+      for (const screen of bundle.screens.screens) {
+        const frame = page.locator(boundarySelector(boundaryId(projectId, 'screen', screen.id)));
+        assert.equal(
+          await frame.locator('.canonical-prototype-screen[data-prototype-render-mode="canonical-app-owned"] .canonical-prototype-iframe').count(),
+          1,
+          `${screen.id} should render one canonical sandboxed prototype`
+        );
+        assert.equal(await frame.locator('.prototype-compile-error').count(), 0, `${screen.id} prototype should compile`);
+        const prototype = await screenPrototype(page, boundaryId(projectId, 'screen', screen.id));
+        assert.equal(await prototype.locator(`[data-blueprint-screen="${escapeAttribute(screen.id)}"]`).count(), 1, `${screen.id} prototype should render its own screen root`);
+        const sectionBoundaries = await prototype.locator('[data-blueprint-section-boundary-id]').evaluateAll(elements =>
+          elements.map(element => (element as HTMLElement).dataset.blueprintSectionBoundaryId ?? '')
+        );
+        assert.deepEqual(
+          sectionBoundaries.sort(),
+          screen.sections.map(section => boundaryId(projectId, 'section', `${screen.id}/${section.id}`)).sort(),
+          `${screen.id} prototype should mark every declared section boundary inside its owning frame`
+        );
+      }
 
       const collisions = await frameCollisions(page);
       assert.deepEqual(collisions, [], `Screen frames should not overlap:\n${collisions.join('\n')}`);
-
-      const manifest = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.manifest);
-      assert.ok(manifest, 'Screens board should expose a review manifest');
-      assert.equal(manifest.screenId, undefined, 'All-screens board review manifest should not claim one top-level screenId');
-      const manifestSections = manifest.boundaries.filter(boundary => boundary.kind === 'section');
-      assert.equal(manifestSections.length, expectedSectionBoundaries.length);
-      assert.ok(
-        manifestSections.every(boundary => boundary.screenId
-          && boundary.packet.status === 'available'
-          && boundary.packet.tool?.name === 'extract'
-          && boundary.packet.tool.arguments.boundary.startsWith('section:')),
-        'Section manifest entries should include screenId and extraction packet commands'
-      );
-
-      const styleEvidence = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.styleEvidence);
-      assert.ok(styleEvidence, 'Screens board should expose style evidence');
-      const styleSectionIds = styleEvidence.boundaries.filter(boundary => boundary.kind === 'section').map(boundary => boundary.boundaryId).sort();
-      assert.deepEqual(styleSectionIds, expectedSectionBoundaries);
     } finally {
       await page.close();
     }
   });
 
   it('renders desktop web frames and mobile frames from frame presets on the same canvas', async () => {
-    const bundle = withDesktopScreen(await loadProjectFromFs(novaRoot));
+    const bundle = await loadProjectFromFs(stillRoot);
     const page = await openScreensBoard(bundle);
 
     try {
-      const mobileFrame = page.locator(boundarySelector('nova-care/screen/home'));
-      const desktopFrame = page.locator(boundarySelector('nova-care/screen/web-dashboard'));
+      const mobileFrame = page.locator(boundarySelector('still-meditation/screen/home'));
+      const desktopFrame = page.locator(boundarySelector('still-meditation/screen/web-home'));
       await mobileFrame.waitFor({ state: 'visible', timeout: 5000 });
       await desktopFrame.waitFor({ state: 'visible', timeout: 5000 });
 
       assert.equal(await mobileFrame.getAttribute('data-frame-type'), 'mobile');
-      assert.equal(await mobileFrame.getAttribute('data-frame-preset-id'), 'phone-ios');
+      assert.equal(await mobileFrame.getAttribute('data-frame-preset-id'), 'phone');
       assert.equal(await desktopFrame.getAttribute('data-frame-type'), 'desktop');
       assert.equal(await desktopFrame.getAttribute('data-frame-preset-id'), 'desktop-web');
 
@@ -802,7 +727,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await desktopFrame.locator('.status-bar').count(), 0, 'desktop frame should not render phone status chrome');
       assert.equal(await desktopFrame.locator('.home-indicator').count(), 0, 'desktop frame should not render phone home indicator');
       assert.equal(await desktopFrame.locator('.browser-bar').count(), 1, 'desktop frame should render browser chrome');
-      assert.equal((await desktopFrame.locator('.browser-address').textContent())?.trim(), '/web-dashboard');
+      assert.equal((await desktopFrame.locator('.browser-address').textContent())?.trim(), 'Browser Base', 'desktop frame without a route should name the screen in the address bar');
 
       const collisions = await frameCollisions(page);
       assert.deepEqual(collisions, [], `Mixed mobile and desktop screen frames should not overlap:\n${collisions.join('\n')}`);
@@ -885,147 +810,173 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await frames.count(), 2);
       assert.equal(await frames.nth(0).getAttribute('data-frame-type'), 'mobile');
       assert.equal(await frames.nth(1).getAttribute('data-frame-type'), 'desktop');
+      assert.deepEqual(
+        [await frames.nth(0).getAttribute('data-review-condition-id'), await frames.nth(1).getAttribute('data-review-condition-id')],
+        ['phone-default', 'desktop-web-default']
+      );
       assert.equal(await frames.locator('[data-boundary-kind="section"]').count(), 0);
-      assert.equal((await frames.nth(0).locator('.screen-template-body').innerText()).trim(), '');
-      assert.equal((await frames.nth(1).locator('.screen-template-body').innerText()).trim(), '');
+      assert.equal(await frames.locator('.prototype-compile-error').count(), 0);
+      for (const screenId of ['home', 'web-home']) {
+        const prototype = await screenPrototype(page, boundaryId(bundle.manifest.project.id, 'screen', screenId));
+        assert.equal(await prototype.locator('[data-blueprint-section-boundary-id]').count(), 0, `${screenId} should mark no sections`);
+        assert.equal(
+          (await prototype.locator(`[data-blueprint-screen="${screenId}"]`).evaluate(element => element.innerHTML)).trim(),
+          '',
+          `${screenId} should render an empty base prototype`
+        );
+      }
     } finally {
       await page.close();
     }
   });
 
-  it('keeps all-screens review evidence tied to rendered section boundaries without a false top-level screen context', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
+  it('keeps all-screens review evidence tied to rendered screen frames without a false top-level screen context', async () => {
+    const bundle = await loadProjectFromFs(denseOpsRoot);
     const page = await openScreensBoard(bundle);
 
     try {
-      const expectedSectionBoundaries = bundle.screens.screens
-        .flatMap(screen => screen.sections.map(section => boundaryId(bundle.manifest.project.id, 'section', `${screen.id}/${section.id}`)))
+      const expectedScreenBoundaries = bundle.screens.screens
+        .map(screen => boundaryId(bundle.manifest.project.id, 'screen', screen.id))
         .sort();
       const manifest = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.manifest);
       assert.ok(manifest, 'Screens board should expose a review manifest');
       assert.equal(manifest.screenId, undefined, 'All-screens board review manifest should not claim one top-level screenId');
-      const manifestSections = manifest.boundaries.filter(boundary => boundary.kind === 'section');
-      assert.deepEqual(manifestSections.map(boundary => boundary.boundaryId).sort(), expectedSectionBoundaries);
+      const manifestScreens = manifest.boundaries.filter(boundary => boundary.kind === 'screen');
+      assert.deepEqual(manifestScreens.map(boundary => boundary.boundaryId).sort(), expectedScreenBoundaries);
       assert.ok(
-        manifestSections.every(boundary => boundary.screenId && boundary.screenshot.status === 'capture-ready' && boundary.packet.status === 'available'),
-        'Section manifest entries should carry screen context, screenshot status, and packet commands'
+        manifestScreens.every(boundary => boundary.screenId === boundary.localId
+          && boundary.screenshot.status === 'capture-ready'
+          && boundary.packet.status === 'available'
+          && boundary.packet.tool?.name === 'extract'
+          && boundary.packet.tool.arguments.boundary === `screen:${boundary.localId}`),
+        'Screen manifest entries should carry screen context, screenshot status, and extraction packet commands'
       );
 
       const styleEvidence = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.styleEvidence);
       assert.ok(styleEvidence, 'Screens board should expose style evidence');
-      const styleSections = styleEvidence.boundaries.filter(boundary => boundary.kind === 'section');
-      assert.deepEqual(styleSections.map(boundary => boundary.boundaryId).sort(), expectedSectionBoundaries);
-      assert.ok(styleSections.every(boundary => boundary.status === 'captured'), 'Section style evidence should be DOM-captured');
-    } finally {
-      await page.close();
-    }
-  });
-
-  it('does not restore the rejected metadata-card section projection pattern', async () => {
-    const bundle = await loadProjectFromFs(novaRoot);
-    const page = await openScreensBoard(bundle);
-
-    try {
-      const rejectedProjectionCount = await page.locator('.board-screens .screen-section-projection').count();
-      assert.equal(rejectedProjectionCount, 0, 'Screens board must not reintroduce rejected metadata-card section projections');
+      const styleScreens = styleEvidence.boundaries.filter(boundary => boundary.kind === 'screen');
+      assert.deepEqual(styleScreens.map(boundary => boundary.boundaryId).sort(), expectedScreenBoundaries);
+      assert.ok(styleScreens.every(boundary => boundary.status === 'captured'), 'Screen style evidence should be DOM-captured');
     } finally {
       await page.close();
     }
   });
 
   it('renders screen composition as prototype content rather than primary metadata labels', async () => {
-    const novaBundle = await loadProjectFromFs(novaRoot);
-    const novaPage = await openScreensBoard(novaBundle);
+    const bundle = await loadProjectFromFs(stillRoot);
+    const page = await openScreensBoard(bundle);
 
     try {
-      const novaText = await novaPage.locator('.board-screens .screen-template-body').first().innerText();
-      assert.match(novaText, /Today summary headline and care-plan details/);
-      assert.match(novaText, /Next care task call-to-action/);
-      assert.doesNotMatch(
-        novaText,
-        /\b(?:Info Card|Action Button|Status Pill|compact|primary|ready)\b/i,
-        'Phone body should not foreground primitive implementation names or variant chips as primary prototype content'
+      assert.equal(
+        await page.locator('.board-screens .frame .screen:not(.canonical-prototype-screen)').count(),
+        0,
+        'Every screen frame should render its canonical prototype rather than a projected section template'
       );
-
+      const frame = page.locator(boundarySelector('still-meditation/screen/home'));
+      const prototypeText = await (await screenPrototype(page, 'still-meditation/screen/home')).locator('body').innerText();
+      assert.match(prototypeText, /Your pause\s+is ready\./);
+      assert.match(prototypeText, /Find your\s+center/);
+      assert.match(prototypeText, /Start/);
+      const primaryMetadata = /\b(?:Personal Welcome|Featured Practice|Daily Rhythm|Badge|Button|tonal|primary|normal)\b/;
+      assert.doesNotMatch(
+        prototypeText,
+        primaryMetadata,
+        'Phone body should not foreground section names, primitive implementation names, or variant chips as primary prototype content'
+      );
+      assert.doesNotMatch(
+        await frame.innerText(),
+        primaryMetadata,
+        'Frame chrome should not overlay section or primitive metadata on the prototype'
+      );
     } finally {
-      await novaPage.close();
+      await page.close();
     }
   });
 
   it('composes screen frames from the same visual primitive vocabulary used on the primitives canvas', async () => {
-    const novaBundle = await loadProjectFromFs(novaRoot);
-    const novaPage = await openScreensBoard(novaBundle);
-    const starterBundle = await loadProjectFromFs(starterRoot);
-    const interactionPage = await openScreensBoard(withStarterInteractionProof(starterBundle));
+    const bundle = await loadProjectFromFs(stillRoot);
+    const screensPage = await openScreensBoard(bundle);
+    const primitivesPage = await openPrimitiveBoard(bundle);
+    const projectId = bundle.manifest.project.id;
 
     try {
-      assert.ok(
-        (await novaPage.locator('.screen-dependency-button .btn').count()) >= 1,
-        'Nova screen button dependencies should render as actual button specimens'
-      );
-      assert.ok(
-        (await novaPage.locator('.screen-dependency-card .card').count()) >= 1,
-        'Nova screen card dependencies should render as actual card specimens'
-      );
-      assert.ok(
-        (await novaPage.locator('.screen-dependency-badge .badge').count()) >= 1,
-        'Nova screen badge dependencies should render as actual badge specimens'
-      );
-      assert.equal(
-        await novaPage.locator('.screen-dependency-button .screen-prototype-button-label').count(),
-        0,
-        'Screens should not fall back to generic button label spans when a visual button renderer exists'
-      );
-      assert.ok(
-        (await interactionPage.locator('.screen-dependency-switch .sw').count()) >= 1,
-        'Switch screen dependencies should render as actual switch specimens'
-      );
-      assert.ok(
-        (await interactionPage.locator('.screen-dependency-slider .slider').count()) >= 1,
-        'Slider screen dependencies should render as actual slider specimens'
-      );
+      const prototype = await screenPrototype(screensPage, boundaryId(projectId, 'screen', 'home'));
+      const featured = prototype.locator(`[data-blueprint-section-boundary-id="${boundaryId(projectId, 'section', 'home/featured-practice')}"]`);
+      for (const use of [
+        { primitiveId: 'badge', variant: 'tonal', state: 'default' },
+        { primitiveId: 'button', variant: 'primary', state: 'normal' }
+      ]) {
+        const primitive = bundle.primitives.primitives.find(candidate => candidate.id === use.primitiveId);
+        assert.ok(primitive, `${use.primitiveId} should be declared`);
+        const screenSignature = await primitiveSignature(featured.locator(`[data-blueprint-primitive="${use.primitiveId}"]`));
+        const boardSignature = await primitiveSignature(
+          primitivesPage
+            .frameLocator(
+              `${boundarySelector(boundaryId(projectId, 'primitive', use.primitiveId))} .canonical-primitive-iframe[title="${escapeAttribute(`${primitive.name} · ${use.variant} · ${use.state}`)}"]`
+            )
+            .locator(`[data-blueprint-primitive="${use.primitiveId}"]`)
+        );
+        assert.equal(screenSignature.boundaryId, boundaryId(projectId, 'primitive', use.primitiveId), `screen ${use.primitiveId} should be the governed primitive boundary`);
+        assert.deepEqual(
+          { variant: screenSignature.variant, state: screenSignature.state },
+          { variant: use.variant, state: use.state },
+          `screen ${use.primitiveId} should render the invoked variant and state`
+        );
+        assert.deepEqual(screenSignature, boardSignature, `screen ${use.primitiveId} should render the same compiled specimen shown on the primitives canvas`);
+      }
     } finally {
-      await novaPage.close();
-      await interactionPage.close();
+      await screensPage.close();
+      await primitivesPage.close();
     }
   });
 
-  it('changes visible screen output when section composition binding changes', async () => {
-    const baseBundle = await loadProjectFromFs(novaRoot);
-    const mutatedBundle = mutateSectionBindingCopy(baseBundle, 'home', 'next-action', 'primaryContent', 'Schedule the care check-in now');
+  it('changes visible screen output when a section prototype source changes', async () => {
+    const baseBundle = await loadProjectFromFs(stillRoot);
+    const mutatedBundle = mutatePrototypeSource(baseBundle, 'prototype/screens/home.html', 'Find your<br />center', 'Settle into<br />stillness');
     const basePage = await openScreensBoard(baseBundle);
     const mutatedPage = await openScreensBoard(mutatedBundle);
 
     try {
-      const sectionBoundary = boundaryId(baseBundle.manifest.project.id, 'section', 'home/next-action');
-      const baseText = await boundaryText(basePage, sectionBoundary);
-      const mutatedText = await boundaryText(mutatedPage, sectionBoundary);
+      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'home');
+      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'home/featured-practice')}"]`;
+      const baseText = await (await screenPrototype(basePage, screenBoundary)).locator(sectionSelector).innerText();
+      const mutatedText = await (await screenPrototype(mutatedPage, screenBoundary)).locator(sectionSelector).innerText();
 
-      assert.match(baseText, /Next care task call-to-action/);
-      assert.match(mutatedText, /Schedule the care check-in now/);
-      assert.notEqual(mutatedText, baseText, 'Changing binding copy should visibly change the rendered section output');
+      assert.match(baseText, /Find your\s+center/);
+      assert.match(mutatedText, /Settle into\s+stillness/);
+      assert.notEqual(mutatedText, baseText, 'Changing the prototype source should visibly change the rendered section output');
     } finally {
       await basePage.close();
       await mutatedPage.close();
     }
   });
 
-  it('changes visible screen output when section dependency identity changes', async () => {
-    const baseBundle = await loadProjectFromFs(novaRoot);
-    const mutatedBundle = mutateSectionDependency(baseBundle, 'home', 'next-action', 0, 'info-card');
+  it('changes visible screen output when a section renders a different primitive', async () => {
+    const baseBundle = await loadProjectFromFs(stillRoot);
+    const mutatedBundle = mutatePrototypeSource(
+      baseBundle,
+      'prototype/screens/home.html',
+      '<blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">',
+      '<blueprint-use kind="primitive" ref="button" state="normal" variant="secondary">'
+    );
+    const mutatedHome = mutatedBundle.screens.screens.find(screen => screen.id === 'home');
+    const mutatedSection = mutatedHome?.sections.find(section => section.id === 'featured-practice');
+    assert.ok(mutatedHome && mutatedSection, 'Still home should declare the featured practice section');
+    mutatedHome.prototype.renderedUses = mutatedHome.prototype.renderedUses?.filter(use => use.id !== 'badge');
+    mutatedSection.uses = mutatedSection.uses.filter(use => use.id !== 'badge');
     const basePage = await openScreensBoard(baseBundle);
     const mutatedPage = await openScreensBoard(mutatedBundle);
 
     try {
-      const sectionBoundary = boundaryId(baseBundle.manifest.project.id, 'section', 'home/next-action');
-      const baseSignature = await boundaryPrototypeSignature(basePage, sectionBoundary);
-      const mutatedSignature = await boundaryPrototypeSignature(mutatedPage, sectionBoundary);
+      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'home');
+      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'home/featured-practice')}"]`;
+      const readRenderedPrimitives = async (page: Page) =>
+        (await screenPrototype(page, screenBoundary)).locator(`${sectionSelector} [data-blueprint-primitive]`).evaluateAll(elements =>
+          elements.map(element => `${(element as HTMLElement).dataset.blueprintPrimitive}:${(element as HTMLElement).dataset.blueprintVariant}`)
+        );
 
-      assert.deepEqual(baseSignature.families, ['button', 'button']);
-      assert.deepEqual(mutatedSignature.families, ['card', 'button']);
-      assert.match(baseSignature.text, /Next care task call-to-action/);
-      assert.match(mutatedSignature.text, /Next care task call-to-action/);
-      assert.notDeepEqual(mutatedSignature, baseSignature, 'Changing the section dependency identity should visibly change the rendered section output');
+      assert.deepEqual(await readRenderedPrimitives(basePage), ['badge:tonal', 'button:primary']);
+      assert.deepEqual(await readRenderedPrimitives(mutatedPage), ['button:secondary', 'button:primary']);
     } finally {
       await basePage.close();
       await mutatedPage.close();
@@ -1105,72 +1056,25 @@ function assertTokenGroupsVisible(bundle: BlueprintProjectBundle, records: Visib
 }
 
 async function assertFamilyCoverage(page: Page, bundle: BlueprintProjectBundle): Promise<void> {
-  const canonicalIds = new Set(
-    bundle.primitives.primitives.filter(primitive => primitive.prototype).map(primitive => primitive.id)
-  );
   const families = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
     elements.map(element => ({
       id: (element as HTMLElement).dataset.boundaryId ?? '',
-      family: (element as HTMLElement).dataset.primitiveFamily ?? '',
-      renderer: (element as HTMLElement).querySelector<HTMLElement>('.primitive-visual')?.dataset.primitiveRenderer ?? '',
-      renderMode: (element as HTMLElement).querySelector<HTMLElement>('[data-prototype-render-mode]')?.dataset.prototypeRenderMode ?? ''
+      family: (element as HTMLElement).dataset.primitiveFamily ?? ''
     }))
   );
   const missingFamily = families.filter(item => item.family.length === 0);
-  assert.deepEqual(missingFamily, [], `${bundle.manifest.project.id} primitive cards should name their renderer family`);
-  const missingRenderer = families.filter(item => {
-    const localId = item.id.split('/').pop() ?? '';
-    if (canonicalIds.has(localId)) {
-      return item.renderMode !== 'canonical-app-owned';
-    }
-    return item.family !== 'generic' && item.renderer !== item.family;
-  });
-  assert.deepEqual(missingRenderer, [], `${bundle.manifest.project.id} known primitive cards should use their canonical source or visual family renderer`);
+  assert.deepEqual(missingFamily, [], `${bundle.manifest.project.id} primitive cards should name their layout family`);
 
   const distinctFamilies = new Set(families.map(item => item.family));
   const minimumFamilies = Math.min(2, bundle.primitives.primitives.length);
   assert.ok(
     distinctFamilies.size >= minimumFamilies,
-    `${bundle.manifest.project.id} should use bounded family templates instead of one generic renderer for every primitive`
+    `${bundle.manifest.project.id} should group primitives into bounded families instead of one generic column`
   );
   assert.ok(
     [...distinctFamilies].some(family => family !== 'generic'),
-    `${bundle.manifest.project.id} should render known primitives with non-generic families`
+    `${bundle.manifest.project.id} should group known primitives under non-generic families`
   );
-}
-
-async function readTokenHookStyle(
-  page: Page,
-  primitiveBoundaryId: string,
-  tokenRole: string,
-  cssProperty: string
-): Promise<{ tokenRole: string; templateHook: string; value: string }> {
-  const hooks = await page
-    .locator(`${boundarySelector(primitiveBoundaryId)} [data-token-role="${escapeAttribute(tokenRole)}"][data-template-hook]`)
-    .evaluateAll((elements, property) =>
-      elements.map(element => {
-        const node = element as HTMLElement;
-        const computed = window.getComputedStyle(node);
-        return {
-          tokenRole: node.dataset.tokenRole ?? '',
-          templateHook: node.dataset.templateHook ?? '',
-          value: computed.getPropertyValue(property as string)
-        };
-      }), cssProperty
-    );
-
-  assert.ok(hooks.length > 0, `missing rendered token hook for ${tokenRole} on ${primitiveBoundaryId}`);
-  const hook = hooks.find(item => item.value.trim().length > 0);
-  assert.ok(hook, `token hook for ${tokenRole} should expose computed ${cssProperty}`);
-  return hook;
-}
-
-async function readVisibleStyle(page: Page, primitiveBoundaryId: string, selector: string, cssProperty: string): Promise<string> {
-  const value = await page
-    .locator(`${boundarySelector(primitiveBoundaryId)} ${selector}`)
-    .evaluate((element, property) => window.getComputedStyle(element).getPropertyValue(property as string), cssProperty);
-  assert.ok(value.trim().length > 0, `visible ${selector} should expose computed ${cssProperty}`);
-  return value;
 }
 
 function mutateToken(bundle: BlueprintProjectBundle, groupId: string, tokenId: string, value: string): BlueprintProjectBundle {
@@ -1180,106 +1084,6 @@ function mutateToken(bundle: BlueprintProjectBundle, groupId: string, tokenId: s
     throw new Error(`Missing token ${groupId}.${tokenId}`);
   }
   token.value = value;
-  return cloned;
-}
-
-function mutateSectionBindingCopy(bundle: BlueprintProjectBundle, screenId: string, sectionId: string, slot: string, copy: string): BlueprintProjectBundle {
-  const cloned = cloneBundle(bundle);
-  const section = cloned.screens.screens.find(screen => screen.id === screenId)?.sections.find(candidate => candidate.id === sectionId);
-  const dependency = section?.uses.find(item => item.binding?.slot === slot) ?? section?.uses[0];
-  if (!dependency) {
-    throw new Error(`Missing dependency for ${screenId}/${sectionId}`);
-  }
-  dependency.binding = {
-    ...dependency.binding,
-    slot,
-    copy
-  };
-  return cloned;
-}
-
-function mutateSectionDependency(bundle: BlueprintProjectBundle, screenId: string, sectionId: string, index: number, primitiveId: string): BlueprintProjectBundle {
-  const cloned = cloneBundle(bundle);
-  const section = cloned.screens.screens.find(screen => screen.id === screenId)?.sections.find(candidate => candidate.id === sectionId);
-  const dependency = section?.uses[index];
-  if (!dependency) {
-    throw new Error(`Missing dependency ${index} for ${screenId}/${sectionId}`);
-  }
-  dependency.kind = 'primitive';
-  dependency.id = primitiveId;
-  return cloned;
-}
-
-function withAdditionalScreen(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
-  const cloned = cloneBundle(bundle);
-  const first = cloned.screens.screens[0];
-  if (!first) {
-    throw new Error('Expected at least one screen fixture.');
-  }
-  const second = JSON.parse(JSON.stringify(first)) as ScreenDefinition;
-  second.id = 'settings';
-  second.name = 'Settings';
-  second.description = 'Second proof screen for placement and section rendering.';
-  cloned.screens.screens = [first, second];
-  return cloned;
-}
-
-function withStarterInteractionProof(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
-  const cloned = cloneBundle(bundle);
-  const first = cloned.screens.screens[0];
-  if (!first) {
-    throw new Error('Expected at least one starter screen.');
-  }
-  first.sections = [
-    {
-      id: 'interaction-proof',
-      name: 'Interaction Proof',
-      description: 'Test-only composition for generic interactive primitive rendering.',
-      styleRefs: [],
-      uses: [
-        { kind: 'primitive', id: 'switch', reason: 'Switch renderer coverage', binding: { copy: 'Enabled', layout: 'row' } },
-        { kind: 'primitive', id: 'slider', reason: 'Slider renderer coverage', binding: { copy: 'Level', layout: 'row' } }
-      ],
-      prototypeOnly: true,
-      notes: [],
-      implementationHints: []
-    }
-  ];
-  return cloned;
-}
-
-function withDesktopScreen(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
-  const cloned = cloneBundle(bundle);
-  const first = cloned.screens.screens[0];
-  if (!first) {
-    throw new Error('Expected at least one screen fixture.');
-  }
-  cloned.manifest.framePresets = [
-    ...cloned.manifest.framePresets,
-    {
-      id: 'desktop-web',
-      name: 'Desktop Web',
-      type: 'desktop',
-      width: 1440,
-      height: 900,
-      safeArea: {
-        top: 48,
-        right: 0,
-        bottom: 0,
-        left: 0
-      }
-    }
-  ];
-  const desktop = JSON.parse(JSON.stringify(first)) as ScreenDefinition;
-  desktop.id = 'web-dashboard';
-  desktop.name = 'Web Dashboard';
-  desktop.description = 'Desktop web proof screen for browser-frame rendering.';
-  desktop.framePresetId = 'desktop-web';
-  desktop.productionRelationship = {
-    kind: 'new-route',
-    routePath: '/web-dashboard'
-  };
-  cloned.screens.screens = [first, desktop];
   return cloned;
 }
 
@@ -1312,90 +1116,37 @@ async function frameCollisions(page: Page): Promise<string[]> {
   });
 }
 
-async function boundaryText(page: Page, id: string): Promise<string> {
-  const locator = page.locator(boundarySelector(id));
-  await locator.waitFor({ state: 'visible', timeout: 5000 });
-  return locator.innerText();
-}
-
-async function boundaryPrototypeSignature(page: Page, id: string): Promise<{ text: string; families: string[]; classes: string[] }> {
-  const locator = page.locator(boundarySelector(id));
-  await locator.waitFor({ state: 'visible', timeout: 5000 });
-  const dependencies = await locator.locator('.screen-dependency').evaluateAll(elements =>
-    elements.map(element => {
-      const node = element as HTMLElement;
-      return {
-        family: node.dataset.prototypeFamily ?? '',
-        className: node.className
-      };
-    })
-  );
-  return {
-    text: await locator.innerText(),
-    families: dependencies.map(dependency => dependency.family),
-    classes: dependencies.map(dependency => dependency.className)
-  };
-}
-
-function withUnknownPrimitive(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
+function mutatePrototypeSource(bundle: BlueprintProjectBundle, sourcePath: string, search: string, replacement: string): BlueprintProjectBundle {
   const cloned = cloneBundle(bundle);
-  const primitives: PrimitiveDefinition[] = [
-    {
-      id: 'timeline-band',
-      name: 'Timeline Band',
-      description: 'Unknown-family primitive used to prove the generic renderer fallback.',
-      tokenGroupIds: ['color', 'space'],
-      styleRefs: ['primitive.timeline-band'],
-      notes: [],
-      prototypeOnly: false,
-      implementationHints: ['Render as a generic primitive sample when no family template exists.'],
-      stateSets: [
-        {
-          id: 'density',
-          name: 'Density States',
-          description: 'Compact and expanded timeline density.',
-          styleRefs: ['primitive.timeline-band.density'],
-          states: [
-            {
-              id: 'compact',
-              name: 'Compact',
-              tokens: ['color.ink', 'space.cluster'],
-              prototypeOnly: false,
-              notes: [],
-              implementationHints: []
-            },
-            {
-              id: 'expanded',
-              name: 'Expanded',
-              tokens: ['color.accent', 'space.section'],
-              prototypeOnly: false,
-              notes: [],
-              implementationHints: []
-            }
-          ]
-        }
-      ]
-    },
-    createUnknownPrimitive('feedback-banner', 'Feedback Banner'),
-    createUnknownPrimitive('arrow-toggle', 'Arrow Toggle'),
-    createUnknownPrimitive('cardholder-field', 'Cardholder Field')
-  ];
-  cloned.primitives.primitives = [...cloned.primitives.primitives, ...primitives];
+  const source = cloned.prototypeSourceContents[sourcePath];
+  if (!source?.includes(search)) {
+    throw new Error(`Missing "${search}" in ${sourcePath}`);
+  }
+  cloned.prototypeSourceContents[sourcePath] = source.replace(search, replacement);
   return cloned;
 }
 
-function createUnknownPrimitive(id: string, name: string): PrimitiveDefinition {
-  return {
-    id,
-    name,
-    description: 'Ambiguous unknown-family primitive used to prevent substring family matches.',
-    tokenGroupIds: ['color', 'space'],
-    styleRefs: [`primitive.${id}`],
-    notes: [],
-    prototypeOnly: false,
-    implementationHints: ['Render through the generic fallback unless a neutral family term is explicit.'],
-    stateSets: []
-  };
+async function screenPrototype(page: Page, screenBoundaryId: string): Promise<FrameLocator> {
+  const prototype = page.frameLocator(`${boundarySelector(screenBoundaryId)} .canonical-prototype-iframe`);
+  await prototype.locator('[data-blueprint-screen]').waitFor({ state: 'attached', timeout: 5000 });
+  return prototype;
+}
+
+async function primitiveSignature(locator: Locator): Promise<{ boundaryId: string; variant: string; state: string; structure: string[] }> {
+  return locator.evaluate(element => {
+    const root = element as HTMLElement;
+    return {
+      boundaryId: root.dataset.blueprintBoundaryId ?? '',
+      variant: root.dataset.blueprintVariant ?? '',
+      state: root.dataset.blueprintState ?? '',
+      structure: [root, ...root.querySelectorAll<HTMLElement>('*')]
+        .filter(node => {
+          const slot = node.parentElement?.closest('[data-blueprint-slot]');
+          return !slot || !root.contains(slot);
+        })
+        .map(node => [node.tagName.toLowerCase(), node.getAttribute('class') ?? '', node.dataset.blueprintSlot ?? ''].join('|'))
+    };
+  });
 }
 
 function cloneBundle(bundle: BlueprintProjectBundle): BlueprintProjectBundle {

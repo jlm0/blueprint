@@ -146,6 +146,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     }
   }
 
+  validatePrototypeHost(errors, bundle.manifest.prototypeHost);
   validateBasePrimitiveContract(errors, bundle);
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
   recordPrototypeSourceGraphValidation(errors, bundle);
@@ -159,24 +160,19 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
 
 export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
   const items: ReadinessItem[] = [];
-  const fidelityTier: ReadinessReport['fidelityTier'] = hasPrototypeDeclarations(bundle)
-    ? 'high-fidelity'
-    : 'baseline-compatible';
   const prototypeSources = relativePrototypeSources(bundle);
 
-  if (fidelityTier === 'high-fidelity') {
-    for (const sourceRef of prototypeSources) {
-      if (!(sourceRef in bundle.prototypeSourceContents) && !(sourceRef in bundle.prototypeAssetContents)) {
-        items.push({
-          path: `prototypeSources.${sourceRef}`,
-          severity: 'blocker',
-          source: 'synthesized-missing',
-          message: `Declared prototype source "${sourceRef}" does not exist or could not be loaded.`
-        });
-      }
+  for (const sourceRef of prototypeSources) {
+    if (!(sourceRef in bundle.prototypeSourceContents) && !(sourceRef in bundle.prototypeAssetContents)) {
+      items.push({
+        path: `prototypeSources.${sourceRef}`,
+        severity: 'blocker',
+        source: 'synthesized-missing',
+        message: `Declared prototype source "${sourceRef}" does not exist or could not be loaded.`
+      });
     }
-    recordPrototypeSourceGraphReadiness(items, bundle);
   }
+  recordPrototypeSourceGraphReadiness(items, bundle);
 
   for (const primitive of bundle.primitives.primitives ?? []) {
     if (primitive.prototypeOnly) {
@@ -297,7 +293,6 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
 
   return {
     projectId: bundle.manifest.project.id,
-    fidelityTier,
     prototypeSources,
     tier,
     items,
@@ -990,12 +985,6 @@ function validateDependency(
 }
 
 function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjectBundle): void {
-  // The locked universal base floor applies only to the high-fidelity/prototype
-  // contract; legacy baseline projects without prototypeHost are unaffected.
-  if (!bundle.manifest.prototypeHost) {
-    return;
-  }
-
   const primitivesById = new Map(bundle.primitives.primitives.map(primitive => [primitive.id, primitive]));
   for (const base of BASE_PRIMITIVE_CONTRACT) {
     const primitive = primitivesById.get(base.id);
@@ -1031,6 +1020,7 @@ function validatePrototypeContracts(
 ): void {
   for (const primitive of bundle.primitives.primitives) {
     if (!primitive.prototype) {
+      errors.push(`primitive.${primitive.id}.prototype must declare a canonical HTML/CSS source.`);
       continue;
     }
     validatePrototypeSource(errors, bundle, `primitive.${primitive.id}.prototype`, primitive.prototype);
@@ -1058,6 +1048,7 @@ function validatePrototypeContracts(
 
   for (const screen of bundle.screens.screens) {
     if (!screen.prototype) {
+      errors.push(`screen.${screen.id}.prototype must declare a browser-native HTML/CSS source.`);
       continue;
     }
     validatePrototypeSource(errors, bundle, `screen.${screen.id}.prototype`, screen.prototype);
@@ -1158,10 +1149,18 @@ function validateRenderedUses(
   }
 }
 
-function hasPrototypeDeclarations(bundle: BlueprintProjectBundle): boolean {
-  return bundle.primitives.primitives.some(primitive => primitive.prototype !== undefined) ||
-    bundle.components.components.length > 0 ||
-    bundle.screens.screens.some(screen => screen.prototype !== undefined);
+function validatePrototypeHost(errors: string[], prototypeHost: BlueprintProjectBundle['manifest']['prototypeHost'] | undefined): void {
+  if (typeof prototypeHost !== 'object' || prototypeHost === null) {
+    errors.push('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none".');
+    return;
+  }
+  requireArray(errors, 'manifest.prototypeHost.assetRoots', prototypeHost.assetRoots);
+  if (prototypeHost.network !== 'deny') {
+    errors.push('manifest.prototypeHost.network must be "deny".');
+  }
+  if (prototypeHost.scripts !== 'none') {
+    errors.push('manifest.prototypeHost.scripts must be "none".');
+  }
 }
 
 function relativePrototypeSources(bundle: BlueprintProjectBundle): string[] {
