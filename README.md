@@ -1,8 +1,18 @@
-# Blueprint
+<p align="center">
+  <img src=".github/images/banner.png" alt="Blueprint: design canvas and MCP server" width="100%">
+</p>
 
 Blueprint is a local design canvas and MCP server for modeling an app's interface system as app-owned, agent-readable files. It sits beside an agent session: the agent edits tokens, primitives, components, and screens as plain JSON, HTML, and CSS inside the app repository, and Blueprint checks, renders, and hands them off.
 
 Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: an infinite canvas with Primitives and Screens boards, mobile and desktop frames, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
+
+## Example: Mira
+
+<p align="center">
+  <img src=".github/images/mira-ai.png" alt="Mira, an AI research assistant, rendered by Blueprint as a desktop workspace and a phone chat" width="100%">
+</p>
+
+[Mira](fixtures/valid/mira-ai/design/blueprint) is an AI research assistant built from the starter's tokens and base primitives, unchanged. Its four components and two screens, a desktop workspace and a phone chat, are the only authored layer, and both frames above are Blueprint renders of those files. [`fixtures/README.md`](fixtures/README.md) covers the other samples: Umbra, an expressive dark retheme, and Meridian, a full strict handoff.
 
 ## How it works
 
