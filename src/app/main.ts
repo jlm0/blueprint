@@ -971,7 +971,7 @@ function primitiveCellWidth(family: string, primitiveId: string): number {
 /** Width a canonical specimen card needs to hug its review grid. */
 function canonicalSpecimenCardWidth(family: string, primitive: PrimitiveDefinition): number {
   const cols = Math.max(1, primitive.prototype?.states.length ?? 1);
-  return 28 + 88 + 8 + cols * (primitiveCellWidth(family, primitive.id) + 8) + 4;
+  return 28 + 104 + 8 + cols * (primitiveCellWidth(family, primitive.id) + 8) + 4;
 }
 
 function renderVisualStateSets(
@@ -2473,13 +2473,13 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const tokenIndex = createTokenIndex(bundle);
   frameLayouts.forEach(layout => {
     if (layout.flowLabel) {
-      const label = el('div', 'screen-flow-label', layout.flowLabel.text);
+      const label = el('div', 'screen-flow-label bp-chrome-world-label', layout.flowLabel.text);
       label.style.left = `${layout.flowLabel.x}px`;
       label.style.top = `${layout.flowLabel.y}px`;
       root.append(label);
     }
     if (layout.routeLabel) {
-      const label = el('div', 'screen-route-label', layout.routeLabel.text);
+      const label = el('div', 'screen-route-label bp-chrome-world-label', layout.routeLabel.text);
       label.style.left = `${layout.routeLabel.x}px`;
       label.style.top = `${layout.routeLabel.y}px`;
       root.append(label);
@@ -3742,7 +3742,7 @@ function createSpecCard(options: {
   card.style.setProperty('--accent', options.accent);
   setBoundary(card, options.boundary[0], options.boundary[1], options.boundary[2], options.label);
 
-  const chip = el('button', 'spec-chip') as HTMLButtonElement;
+  const chip = el('button', 'spec-chip bp-chrome-world-label') as HTMLButtonElement;
   chip.type = 'button';
   chip.title = 'Drag canvas item';
   chip.append(el('span', 'dot'), el('span', '', options.label));

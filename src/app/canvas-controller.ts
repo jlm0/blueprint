@@ -52,6 +52,7 @@ export function createCanvasController({
 
   function apply(): void {
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.s})`;
+    world.style.setProperty('--bp-chrome-canvas-scale', String(view.s));
   }
 
   function zoomAt(cx: number, cy: number, factor: number): void {
