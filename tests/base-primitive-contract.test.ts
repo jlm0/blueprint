@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { BASE_PRIMITIVE_CONTRACT } from '../src/core/base-primitives';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateProject } from '../src/core/validate';
-import type { BlueprintProjectBundle } from '../src/core/types';
+import type { BlueprintProjectBundle, PrimitiveStateSet } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
 const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
@@ -21,9 +21,9 @@ describe('Blueprint locked base primitive contract', () => {
       const primitive = starterById.get(entry.id);
       assert.ok(primitive, `starter base declaration is missing ${entry.id}`);
       for (const required of entry.stateSets) {
-        const stateSet = primitive.stateSets.find(candidate => candidate.id === required.id);
+        const stateSet: PrimitiveStateSet | undefined = primitive.stateSets.find(candidate => candidate.id === required.id);
         assert.ok(stateSet, `starter ${entry.id} is missing locked state set ${required.id}`);
-        const stateIds = stateSet.states.map(state => state.id);
+        const stateIds: string[] = stateSet.states.map(state => state.id);
         assert.deepEqual(
           required.states.filter(state => !stateIds.includes(state)),
           [],
