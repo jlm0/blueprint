@@ -1,0 +1,60 @@
+[data-blueprint-component="source-item"] {
+  display: grid;
+  grid-template-columns: 18px auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--app-space-3);
+  padding: 10px var(--app-space-3);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  text-decoration: none;
+  transition: background-color var(--app-motion-state);
+}
+
+[data-blueprint-component="source-item"]:hover {
+  background: var(--app-color-surface-muted);
+}
+
+.source-item__index {
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 11px;
+  text-align: right;
+}
+
+.source-item__initials {
+  font-style: normal;
+  font-weight: 600;
+}
+
+[data-blueprint-component="source-item"] .source-item__mark {
+  border-radius: var(--app-radius-md);
+  font-size: 11px;
+}
+
+.source-item__body {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.source-item__title,
+.source-item__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-item__title {
+  font: var(--app-type-body);
+  font-weight: 500;
+}
+
+.source-item__meta {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+[data-blueprint-component="source-item"][data-blueprint-state="active"] {
+  background: var(--app-color-surface);
+  box-shadow: 0 0 0 1px var(--app-color-border), var(--app-shadow-sm);
+}

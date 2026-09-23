@@ -1,0 +1,90 @@
+<div class="match" data-blueprint-screen="match" data-blueprint-state="default">
+  <div class="match__glow" aria-hidden="true"></div>
+
+  <header class="match__bar" data-blueprint-section="header">
+    <blueprint-use kind="primitive" ref="nav-bar" state="back-and-right" class="match__nav">
+      <span slot="title">Match summary</span>
+    </blueprint-use>
+  </header>
+
+  <section class="result" data-blueprint-section="result" aria-labelledby="result-title">
+    <p class="result__meta">Blackout Ranked · Kessler Basin · 24:18</p>
+    <h1 class="result__title" id="result-title">Victory</h1>
+    <div class="result__row">
+      <p class="result__place"><b>1<sup>st</sup></b><span>of 60 squads</span></p>
+      <div class="result__rank">
+        <blueprint-use kind="primitive" ref="rank-emblem" state="diamond" size="md">
+          <span slot="tier">II</span>
+        </blueprint-use>
+        <span class="result__rp"><b>+42 RP</b><small>1,842 · Diamond II</small></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="xp" data-blueprint-section="xp" aria-label="Experience gained">
+    <blueprint-use kind="component" ref="pass-track" state="compact">
+      <span slot="tier">39</span>
+      <span slot="title">+4,860 XP earned</span>
+      <span slot="xp">Tier 38 → 39 · 1,080 to tier 40</span>
+      <span slot="reward">Corona wrap · Tier 40</span>
+    </blueprint-use>
+  </section>
+
+  <section class="stats" data-blueprint-section="stats" aria-label="Your performance">
+    <blueprint-use kind="component" ref="stat-meter" state="record">
+      <span slot="label">Eliminations</span>
+      <span slot="value">11</span>
+      <span slot="delta">Season best</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="stat-meter" state="above">
+      <span slot="label">Damage</span>
+      <span slot="value">2,847</span>
+      <span slot="delta">+38% vs average</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="stat-meter" state="average">
+      <span slot="label">Accuracy</span>
+      <span slot="value">34%</span>
+      <span slot="delta">On your average</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="stat-meter" state="below">
+      <span slot="label">Revives</span>
+      <span slot="value">1</span>
+      <span slot="delta">−2 vs average</span>
+    </blueprint-use>
+  </section>
+
+  <section class="board" data-blueprint-section="scoreboard" aria-labelledby="board-title">
+    <header class="board__head">
+      <h2 id="board-title">Squad</h2>
+      <span><i>Elims</i><i>Damage</i></span>
+    </header>
+    <blueprint-use kind="component" ref="squad-member" state="mvp">
+      <span slot="tag">V9</span>
+      <span slot="name">VESPER_09</span>
+      <span slot="status">MVP · you</span>
+      <b slot="stats"><i>11</i><i>2,847</i></b>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="squad-member" state="scoreboard">
+      <span slot="tag">KS</span>
+      <span slot="name">KESTREL</span>
+      <span slot="status">6 assists</span>
+      <b slot="stats"><i>7</i><i>1,904</i></b>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="squad-member" state="scoreboard">
+      <span slot="tag">NV</span>
+      <span slot="name">NOVA.EXE</span>
+      <span slot="status">3 revives</span>
+      <b slot="stats"><i>4</i><i>1,210</i></b>
+    </blueprint-use>
+  </section>
+
+  <footer class="match__actions" data-blueprint-section="actions">
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="match__again">
+      <span slot="label">Queue again</span>
+    </blueprint-use>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="icon" class="match__share">
+      <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span>
+      <span slot="label">Share result</span>
+    </blueprint-use>
+  </footer>
+</div>

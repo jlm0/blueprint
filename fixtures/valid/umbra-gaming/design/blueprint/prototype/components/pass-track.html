@@ -1,0 +1,26 @@
+<section class="pass-track" data-blueprint-component="pass-track" data-blueprint-state="default" data-blueprint-surface aria-label="Season pass progress">
+  <div class="pass-track__head">
+    <span class="pass-track__tier"><small>Tier</small><b data-blueprint-slot="tier">38</b></span>
+    <span class="pass-track__meta">
+      <b class="pass-track__title" data-blueprint-slot="title">Eclipse Pass</b>
+      <span class="pass-track__xp" data-blueprint-slot="xp">7,420 / 9,000 XP</span>
+    </span>
+    <blueprint-use kind="primitive" ref="badge" state="default" variant="accent" class="pass-track__badge">
+      <span slot="label">Premium</span>
+    </blueprint-use>
+  </div>
+  <ol class="pass-track__rail" aria-hidden="true">
+    <li class="is-claimed"><i>36</i><svg viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9Z"/></svg></li>
+    <li class="is-claimed"><i>37</i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v8M8 12h8"/></svg></li>
+    <li class="is-current"><i>38</i><svg viewBox="0 0 24 24"><path d="M5 19 12 5l7 14Z"/></svg></li>
+    <li><i>39</i><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></li>
+    <li class="is-reward"><i>40</i><svg viewBox="0 0 24 24"><path d="M12 2.5c.6 4.9 1.9 7 3.7 8.3 1 .7 2.7 1.1 5.8 1.2-3.1.1-4.8.5-5.8 1.2-1.8 1.3-3.1 3.4-3.7 8.3-.6-4.9-1.9-7-3.7-8.3-1-.7-2.7-1.1-5.8-1.2 3.1-.1 4.8-.5 5.8-1.2 1.8-1.3 3.1-3.4 3.7-8.3Z"/></svg></li>
+    <li><i>41</i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/></svg></li>
+  </ol>
+  <span class="pass-track__meter">
+    <blueprint-use kind="primitive" ref="progress" state="value">
+      <span slot="label">Progress to tier 39</span>
+    </blueprint-use>
+  </span>
+  <p class="pass-track__next"><span>Next reward</span><b data-blueprint-slot="reward">Corona wrap · Tier 40</b></p>
+</section>

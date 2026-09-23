@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0.0",
+  "project": {
+    "id": "mira-ai",
+    "name": "Mira",
+    "description": "Neutral fixture. An AI research assistant composed only from the starter tokens and primitives, unchanged, across a phone chat and a desktop workspace.",
+    "owner": "app-owned",
+    "sourceRoot": "design/blueprint"
+  },
+  "defaultBoardId": "primitives",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "App-owned primitive families, state samples, and token references."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "App-owned mobile and desktop frames with structured screen sections."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "phone",
+      "name": "Phone",
+      "type": "mobile",
+      "width": 393,
+      "height": 852,
+      "safeArea": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-web",
+      "name": "Desktop Web",
+      "type": "desktop",
+      "width": 1440,
+      "height": 900,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": [
+      "prototype/assets"
+    ],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

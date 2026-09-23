@@ -1,0 +1,92 @@
+[data-blueprint-component="squad-member"] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--app-space-3);
+  min-width: 0;
+}
+
+[data-blueprint-component="squad-member"] .squad-member__avatar {
+  border-color: var(--app-color-border-strong);
+  font-family: var(--app-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.squad-member__avatar i {
+  font-style: normal;
+}
+
+.squad-member__body {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.squad-member__name {
+  overflow: hidden;
+  font: var(--app-type-body);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.squad-member__status {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.squad-member__stats {
+  display: none;
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="in-match"] .squad-member__status {
+  color: var(--app-color-warning);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="in-match"] .avatar__status {
+  background: var(--app-color-warning);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="scoreboard"],
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 10px 14px 10px var(--app-space-3);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="scoreboard"] .squad-member__stats,
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .squad-member__stats {
+  display: flex;
+  gap: 18px;
+  font: var(--app-type-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.squad-member__stats b {
+  min-width: 36px;
+  font-weight: 500;
+  text-align: right;
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="scoreboard"] .avatar__status,
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .avatar__status {
+  display: none;
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--app-color-primary) 16%, transparent), transparent 70%),
+    var(--app-color-surface);
+  box-shadow: inset 2px 0 0 var(--app-color-primary);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .squad-member__status {
+  color: var(--app-color-primary);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .squad-member__stats b {
+  color: var(--app-color-foreground);
+  font-weight: 700;
+}

@@ -1,0 +1,21 @@
+<figure class="insight-chart" data-blueprint-component="insight-chart" data-blueprint-state="default" data-blueprint-surface>
+  <figcaption class="insight-chart__head">
+    <span class="insight-chart__titles">
+      <span class="insight-chart__eyebrow" data-blueprint-slot="eyebrow">Figure 1</span>
+      <b class="insight-chart__title" data-blueprint-slot="title">Monthly churn by signup cohort</b>
+    </span>
+    <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" class="insight-chart__range"></blueprint-use>
+  </figcaption>
+  <div class="insight-chart__plot" role="img" aria-label="Churn falls from 9.4 percent for the March cohort to 3.1 percent for the August cohort, with a spike to 11.2 percent for the June cohort.">
+    <span class="insight-chart__grid" aria-hidden="true"><i>12%</i><i>8%</i><i>4%</i><i>0</i></span>
+    <span class="insight-chart__bars" aria-hidden="true">
+      <span class="insight-chart__bar" style="--value: 0.78"><b>9.4</b><em>Mar</em></span>
+      <span class="insight-chart__bar" style="--value: 0.66"><b>7.9</b><em>Apr</em></span>
+      <span class="insight-chart__bar" style="--value: 0.61"><b>7.3</b><em>May</em></span>
+      <span class="insight-chart__bar insight-chart__bar--flag" style="--value: 0.93"><b>11.2</b><em>Jun</em></span>
+      <span class="insight-chart__bar" style="--value: 0.42"><b>5.0</b><em>Jul</em></span>
+      <span class="insight-chart__bar" style="--value: 0.26"><b>3.1</b><em>Aug</em></span>
+    </span>
+  </div>
+  <p class="insight-chart__note"><span class="insight-chart__key" aria-hidden="true"></span><span data-blueprint-slot="note">June cohort joined through the annual discount and churned at renewal.</span></p>
+</figure>

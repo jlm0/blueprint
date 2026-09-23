@@ -127,7 +127,7 @@ src/hooks/      agent activity hook
 src/scripts/    fixture validation, extraction, scope scan, browser smoke
 schema/         JSON Schema for sidecar files
 starter/        the sidecar that init copies
-fixtures/       sample sidecars used by tests, plus a minimal compile-contract case
+fixtures/       sample sidecars from neutral to full handoff, plus a failure catalog (see fixtures/README.md)
 tests/          node:test suites
 ```
 

@@ -1,0 +1,283 @@
+* {
+  box-sizing: border-box;
+}
+
+[data-blueprint-screen="transfer-mobile"] {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--blueprint-safe-area-top);
+  color: var(--app-color-foreground);
+  background: var(--app-color-background);
+  font: var(--app-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-blueprint-screen="transfer-mobile"] .pay__navbar {
+  border-bottom-color: transparent;
+  background: transparent;
+}
+
+[data-blueprint-screen="transfer-mobile"] .pay__navbar--review,
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .pay__navbar--send {
+  display: none;
+}
+
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .pay__navbar--review {
+  display: grid;
+}
+
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="success"] .pay__nav {
+  visibility: hidden;
+}
+
+.entry,
+.approve,
+.sent {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: var(--app-space-2) var(--app-space-5) calc(var(--blueprint-safe-area-bottom) + var(--app-space-2));
+}
+
+.approve,
+.sent {
+  display: none;
+}
+
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .entry,
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="success"] .entry {
+  display: none;
+}
+
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .approve,
+[data-blueprint-screen="transfer-mobile"][data-blueprint-state="success"] .sent {
+  display: flex;
+}
+
+.entry__stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: var(--app-space-4);
+}
+
+.entry__to {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--app-space-3);
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry__mark {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+  font-family: var(--app-font-serif);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.entry__who {
+  display: grid;
+}
+
+.entry__who b {
+  font: var(--app-type-heading);
+}
+
+.entry__who small {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry [data-blueprint-component="amount-field"] {
+  margin-top: 26px;
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry .amount-field__label {
+  display: none;
+}
+
+.entry__options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry__source .select__field {
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry__source .select__list {
+  display: none;
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry__method {
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-screen="transfer-mobile"] .entry__method .segmented-control__option {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--app-radius-full);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 calc(var(--app-space-2) * -1) var(--app-space-3);
+}
+
+.keypad__key {
+  height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: transparent;
+  font-family: var(--app-font-sans);
+  font-size: 26px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.keypad__key:active {
+  background: var(--app-color-pressed);
+}
+
+[data-blueprint-screen="transfer-mobile"] .pay__cta {
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--app-radius-full);
+  font-size: 16px;
+}
+
+.approve {
+  align-items: stretch;
+  gap: var(--app-space-4);
+  text-align: center;
+}
+
+.approve__kicker {
+  margin: var(--app-space-4) 0 0;
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.approve__amount {
+  margin: calc(var(--app-space-2) * -1) 0 0;
+  font: var(--app-type-display);
+  font-size: 68px;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.approve__amount span {
+  color: var(--app-color-muted);
+  font-size: 0.5em;
+}
+
+.approve__to {
+  margin: calc(var(--app-space-3) * -1) 0 var(--app-space-2);
+  color: var(--app-color-muted);
+  font: var(--app-type-display);
+  font-size: 22px;
+  font-style: italic;
+}
+
+[data-blueprint-screen="transfer-mobile"] .approve [data-blueprint-component="transfer-summary"] {
+  text-align: left;
+}
+
+.approve__code {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: auto;
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.sent {
+  align-items: center;
+  gap: 14px;
+  padding-top: 60px;
+  text-align: center;
+}
+
+.sent__seal svg {
+  width: 76px;
+  height: 76px;
+  fill: color-mix(in srgb, var(--app-color-success) 10%, var(--app-color-background));
+  stroke: var(--app-color-success);
+}
+
+.sent__seal circle {
+  stroke-width: 1;
+}
+
+.sent h1 {
+  margin: 0;
+  font: var(--app-type-display);
+  font-size: 46px;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.sent__lede {
+  max-width: 280px;
+  text-wrap: balance;
+  margin: 0;
+  color: var(--app-color-muted);
+  font-size: 15px;
+}
+
+.sent__facts {
+  display: grid;
+  width: 100%;
+  margin: var(--app-space-4) 0 0;
+  border-top: 1px solid var(--app-color-border-strong);
+  text-align: left;
+}
+
+.sent__facts div {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.sent__facts dt {
+  color: var(--app-color-muted);
+}
+
+.sent__facts dd {
+  margin: 0;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.sent__facts div:first-child dd {
+  font: var(--app-type-code);
+}
+
+.sent__actions {
+  display: grid;
+  width: 100%;
+  gap: var(--app-space-2);
+  margin-top: auto;
+}

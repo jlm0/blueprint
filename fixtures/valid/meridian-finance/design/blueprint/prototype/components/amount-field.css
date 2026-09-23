@@ -1,0 +1,95 @@
+[data-blueprint-component="amount-field"] {
+  display: grid;
+  gap: var(--app-space-2);
+  padding-bottom: 14px;
+  border-bottom: 1.5px solid var(--app-color-foreground);
+}
+
+.amount-field__label {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+}
+
+.amount-field__value {
+  display: flex;
+  align-items: baseline;
+  color: var(--app-color-foreground);
+  font: var(--app-type-display);
+  font-size: 84px;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.amount-field__value b {
+  font-weight: 400;
+}
+
+.amount-field__currency {
+  margin-right: 0.06em;
+  color: var(--app-color-muted);
+  font-size: 0.5em;
+  align-self: flex-start;
+  line-height: 1.3;
+}
+
+.amount-field__cents {
+  color: var(--app-color-muted);
+}
+
+.amount-field__caret {
+  width: 2px;
+  height: 0.8em;
+  margin-left: var(--app-space-1);
+  align-self: center;
+  background: var(--app-color-accent);
+}
+
+.amount-field__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.amount-field__hint {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-blueprint-component="amount-field"] .amount-field__currency-code {
+  font-family: var(--app-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="error"] {
+  border-bottom-color: var(--app-color-destructive);
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="error"] .amount-field__caret {
+  background: var(--app-color-destructive);
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="error"] .amount-field__hint {
+  color: var(--app-color-destructive);
+  font-weight: 500;
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="compact"] {
+  justify-items: center;
+  gap: 10px;
+  padding-bottom: 0;
+  border-bottom: 0;
+  text-align: center;
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="compact"] .amount-field__value {
+  font-size: 72px;
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-state="compact"] .amount-field__foot {
+  flex-direction: column-reverse;
+  gap: 10px;
+}

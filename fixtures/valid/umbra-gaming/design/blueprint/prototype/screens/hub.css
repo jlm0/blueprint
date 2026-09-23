@@ -1,0 +1,408 @@
+@font-face {
+  font-family: "Unbounded";
+  font-weight: 200 900;
+  src: url("../assets/fonts/unbounded.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-weight: 100 900;
+  src: url("../assets/fonts/geist.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 100 900;
+  src: url("../assets/fonts/geist-mono.woff2") format("woff2");
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[data-blueprint-screen="hub"] > * {
+  flex: none;
+}
+
+[data-blueprint-screen="hub"] {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100vh;
+  overflow: hidden;
+  padding: calc(var(--blueprint-safe-area-top) + 6px) var(--app-space-4) 0;
+  color: var(--app-color-foreground);
+  background: var(--app-color-background);
+  font: var(--app-type-body);
+  -webkit-font-smoothing: antialiased;
+  isolation: isolate;
+}
+
+.hub__art {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -2;
+  width: 100%;
+  height: 460px;
+  object-fit: cover;
+  object-position: 68% 0%;
+}
+
+.hub__veil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 100%;
+  height: 462px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-color-background) 30%, transparent) 0%, transparent 30%, var(--app-color-background) 82%),
+    linear-gradient(90deg, color-mix(in srgb, var(--app-color-background) 70%, transparent), transparent 70%);
+}
+
+.player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--app-space-3);
+  height: 48px;
+}
+
+[data-blueprint-screen="hub"] .player__avatar {
+  border: 2px solid var(--app-color-primary);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-primary);
+  font-family: var(--app-font-display);
+  font-weight: 800;
+}
+
+[data-blueprint-screen="hub"] .player__avatar .avatar__status {
+  border-color: var(--app-color-background);
+}
+
+.player__id {
+  display: grid;
+  gap: 1px;
+}
+
+.player__id b {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.player__id span {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  letter-spacing: 0.04em;
+}
+
+.player__coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 var(--app-space-3) 0 10px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 12%, transparent);
+  border-radius: var(--app-radius-full);
+  background: color-mix(in srgb, var(--app-color-background) 50%, transparent);
+  backdrop-filter: blur(12px);
+  font: var(--app-type-code);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.player__coins svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--app-color-primary);
+}
+
+.player__sync {
+  display: none;
+}
+
+.season {
+  display: grid;
+  gap: var(--app-space-1);
+  margin-top: var(--app-space-3);
+}
+
+.season__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  margin: 0;
+  color: var(--app-color-primary);
+  font: var(--app-type-label);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.season__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-primary);
+  box-shadow: 0 0 0 3px var(--app-color-glow);
+}
+
+.season__title {
+  margin: 0 0 var(--app-space-3);
+  font-family: var(--app-font-display);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.squad {
+  display: flex;
+  gap: 10px;
+  margin: 0 calc(var(--app-space-4) * -1);
+  overflow: hidden;
+  padding: 0 var(--app-space-4);
+}
+
+.squad [data-blueprint-component="squad-member"] {
+  flex: none;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-screen="hub"] .squad [data-blueprint-component="squad-member"] {
+  grid-template-columns: auto auto;
+  gap: 10px;
+}
+
+[data-blueprint-screen="hub"] .squad .squad-member__avatar {
+  width: var(--app-size-control-sm);
+  height: var(--app-size-control-sm);
+  font-size: 10px;
+}
+
+[data-blueprint-screen="hub"] .squad .squad-member__name {
+  font-size: 12px;
+}
+
+[data-blueprint-screen="hub"] .squad .squad-member__status {
+  font-size: 11px;
+}
+
+.challenges {
+  display: grid;
+  gap: 10px;
+  margin-top: var(--app-space-1);
+}
+
+.challenges__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.challenges__head h2 {
+  margin: 0;
+  font-family: var(--app-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.challenges__head span {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+}
+
+.challenges__list {
+  display: grid;
+  gap: var(--app-space-2);
+}
+
+.skel {
+  display: none;
+}
+
+.tabbar {
+  position: absolute;
+  right: var(--app-space-3);
+  bottom: calc(var(--blueprint-safe-area-bottom) - 6px);
+  left: var(--app-space-3);
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  height: 64px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 9%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--app-color-surface) 78%, transparent);
+  box-shadow: var(--app-shadow-lg);
+  backdrop-filter: blur(20px);
+}
+
+.tabbar::before {
+  position: absolute;
+  right: calc(var(--app-space-3) * -1);
+  bottom: calc(var(--blueprint-safe-area-bottom) * -1);
+  left: calc(var(--app-space-3) * -1);
+  z-index: -1;
+  height: 150px;
+  background: linear-gradient(180deg, transparent, var(--app-color-background) 60%);
+  content: '';
+  pointer-events: none;
+}
+
+.tabbar__item {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border-radius: var(--app-radius-xl);
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.tabbar__item svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tabbar__item.is-active {
+  color: var(--app-color-on-primary);
+  background: var(--app-color-primary);
+  box-shadow: 0 0 24px -4px var(--app-color-glow);
+}
+
+.tabbar__item.is-active svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .season__pass,
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .event [data-blueprint-component="event-card"],
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .challenges__list,
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .player__coins {
+  display: none;
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .skel,
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .player__sync {
+  display: grid;
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .skel--rows {
+  gap: var(--app-space-2);
+}
+
+[data-blueprint-screen="hub"] .skel .skeleton__block,
+[data-blueprint-screen="hub"] .skel .skeleton__line {
+  background: var(--app-color-surface-4);
+}
+
+[data-blueprint-screen="hub"] .skel--pass,
+[data-blueprint-screen="hub"] .skel--event,
+[data-blueprint-screen="hub"] .skel__row {
+  border: 1px solid var(--app-color-border);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .skel--pass {
+  gap: 14px;
+  padding: var(--app-space-4);
+  border-radius: var(--app-radius-xl);
+}
+
+.skel__head,
+.skel__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+[data-blueprint-screen="hub"] .skel__tile .skeleton__block {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+[data-blueprint-screen="hub"] .skel__text .skeleton__line {
+  height: 10px;
+}
+
+[data-blueprint-screen="hub"] .skel__text .skeleton__line:first-child {
+  width: 62%;
+}
+
+[data-blueprint-screen="hub"] .skel__text .skeleton__line--short {
+  width: 38%;
+}
+
+[data-blueprint-screen="hub"] .skel__rail .skeleton__block {
+  height: 46px;
+  background:
+    repeating-linear-gradient(90deg, var(--app-color-surface-4) 0 calc((100% - 30px) / 6), transparent 0 calc((100% - 30px) / 6 + 6px));
+}
+
+[data-blueprint-screen="hub"] .skel__foot .skeleton__line--short {
+  display: none;
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .skel--event {
+  height: 132px;
+  align-content: end;
+  padding: var(--app-space-4);
+  border-radius: var(--app-radius-xl);
+  background:
+    radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--app-color-accent) 12%, transparent), transparent 70%),
+    var(--app-color-surface);
+}
+
+.skel__row {
+  padding: var(--app-space-3);
+  border-radius: var(--app-radius-lg);
+}
+
+[data-blueprint-screen="hub"] .skel__glyph .skeleton__block {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--app-radius-lg);
+}
+
+.player__sync {
+  align-items: center;
+  gap: 6px;
+  grid-auto-flow: column;
+  height: 30px;
+  padding: 0 var(--app-space-3) 0 6px;
+  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 12%, transparent);
+  border-radius: var(--app-radius-full);
+  background: color-mix(in srgb, var(--app-color-background) 60%, transparent);
+  backdrop-filter: blur(12px);
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-blueprint-screen="hub"] .player__sync .loading-mark__arc {
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
+}
+
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .squad [data-blueprint-component="squad-member"] {
+  opacity: 0.35;
+}

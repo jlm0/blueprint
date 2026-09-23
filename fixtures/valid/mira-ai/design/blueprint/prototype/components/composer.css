@@ -1,0 +1,81 @@
+[data-blueprint-component="composer"] {
+  display: grid;
+  gap: var(--app-space-3);
+  padding: var(--app-space-4) var(--app-space-4) var(--app-space-3);
+  border: 1px solid var(--app-color-border);
+  border-radius: 20px;
+  background: var(--app-color-surface);
+  box-shadow: var(--app-shadow-md);
+}
+
+.composer__draft {
+  margin: 0;
+  padding: 0 var(--app-space-1);
+  color: var(--app-color-muted);
+  font: var(--app-type-body);
+  font-size: 15px;
+}
+
+.composer__bar,
+.composer__tools {
+  display: flex;
+  align-items: center;
+}
+
+.composer__bar {
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.composer__tools {
+  min-width: 0;
+  gap: var(--app-space-2);
+}
+
+[data-blueprint-component="composer"] .composer__attach {
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-component="composer"] .composer__send {
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-component="composer"] .composer__mode {
+  padding: 5px var(--app-space-3);
+}
+
+.composer__hint {
+  overflow: hidden;
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-blueprint-component="composer"][data-blueprint-state="hero"] {
+  gap: var(--app-space-6);
+  padding: var(--app-space-5) var(--app-space-5) var(--app-space-4);
+  border-radius: 24px;
+  box-shadow: var(--app-shadow-lg);
+}
+
+[data-blueprint-component="composer"][data-blueprint-state="hero"] .composer__draft {
+  font-size: 17px;
+}
+
+[data-blueprint-component="composer"][data-blueprint-state="compact"] {
+  gap: var(--app-space-2);
+  padding: var(--app-space-3) var(--app-space-3) var(--app-space-2) var(--app-space-4);
+  border-radius: 22px;
+}
+
+[data-blueprint-component="composer"][data-blueprint-state="compact"] .composer__hint {
+  display: none;
+}
+
+[data-blueprint-component="composer"][data-blueprint-state="compact"] .composer__attach,
+[data-blueprint-component="composer"][data-blueprint-state="compact"] .composer__send {
+  width: var(--app-size-control-sm);
+  min-height: var(--app-size-control-sm);
+}

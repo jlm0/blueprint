@@ -1,0 +1,33 @@
+<header class="web-header" data-blueprint-component="web-header" data-blueprint-state="overview">
+  <a class="web-header__brand" href="/" aria-label="Meridian home">
+    <svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.25"/><ellipse cx="14" cy="14" rx="5.25" ry="12.25"/><path d="M14 1.75v24.5M2 14h24"/></svg>
+    <span>Meridian</span>
+  </a>
+  <blueprint-use kind="primitive" ref="tabs" state="first-selected" class="web-header__tabs web-header__tabs--overview">
+    <a class="tabs__tab" href="/" role="tab" aria-selected="true">Overview</a>
+    <a class="tabs__tab" href="/transactions" role="tab" aria-selected="false">Transactions</a>
+    <a class="tabs__tab" href="/payments" role="tab" aria-selected="false">Payments</a>
+    <a class="tabs__tab" href="/cards" role="tab" aria-selected="false">Cards</a>
+    <a class="tabs__tab" href="/treasury" role="tab" aria-selected="false">Treasury</a>
+  </blueprint-use>
+  <blueprint-use kind="primitive" ref="tabs" state="second-selected" class="web-header__tabs web-header__tabs--transactions">
+    <a class="tabs__tab" href="/" role="tab" aria-selected="false">Overview</a>
+    <a class="tabs__tab" href="/transactions" role="tab" aria-selected="true">Transactions</a>
+    <a class="tabs__tab" href="/payments" role="tab" aria-selected="false">Payments</a>
+    <a class="tabs__tab" href="/cards" role="tab" aria-selected="false">Cards</a>
+    <a class="tabs__tab" href="/treasury" role="tab" aria-selected="false">Treasury</a>
+  </blueprint-use>
+  <div class="web-header__actions">
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="filled" class="web-header__search">
+      <span slot="label">Search</span>
+      <span slot="placeholder">Search or jump to</span>
+    </blueprint-use>
+    <kbd class="web-header__kbd">⌘K</kbd>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="sm">
+      <span slot="label">Move money</span>
+    </blueprint-use>
+    <blueprint-use kind="primitive" ref="avatar" state="initials" size="sm" class="web-header__avatar">
+      <span slot="initials">AL</span>
+    </blueprint-use>
+  </div>
+</header>

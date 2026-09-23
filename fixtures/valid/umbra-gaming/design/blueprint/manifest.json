@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0.0",
+  "project": {
+    "id": "umbra-gaming",
+    "name": "Umbra",
+    "description": "Expressive fixture. The season launch site and companion app for a competitive shooter, rethemed entirely through token values into a dark, typographic art direction with bundled fonts, SVG key art, app primitives, and shared components across phone and web.",
+    "owner": "app-owned",
+    "sourceRoot": "design/blueprint"
+  },
+  "defaultBoardId": "primitives",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "App-owned primitive families, state samples, and token references."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "App-owned mobile and desktop frames with structured screen sections."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "phone",
+      "name": "Phone",
+      "type": "mobile",
+      "width": 393,
+      "height": 852,
+      "safeArea": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      }
+    },
+    {
+      "id": "desktop-web-page",
+      "name": "Desktop Web Full Page",
+      "type": "desktop",
+      "width": 1440,
+      "height": 1760,
+      "safeArea": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": [
+      "prototype/assets"
+    ],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

@@ -1,0 +1,114 @@
+[data-blueprint-component="event-card"] {
+  position: relative;
+  display: grid;
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
+  isolation: isolate;
+  background: var(--app-color-surface);
+}
+
+.event-card__art {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% 30%;
+  transform: scale(2);
+  transform-origin: 39% 60%;
+}
+
+.event-card__shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, transparent 20%, color-mix(in srgb, var(--app-color-background) 92%, transparent) 88%);
+}
+
+.event-card__body {
+  display: grid;
+  align-content: space-between;
+  gap: var(--app-space-4);
+  padding: 18px;
+}
+
+.event-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-2);
+}
+
+.event-card__timer {
+  color: var(--app-color-foreground);
+  font: var(--app-type-label);
+  letter-spacing: 0.04em;
+}
+
+.event-card__copy {
+  display: grid;
+  gap: 6px;
+  align-self: end;
+}
+
+.event-card__title {
+  font-family: var(--app-font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.event-card__description {
+  color: color-mix(in srgb, var(--app-color-foreground) 72%, transparent);
+  font: var(--app-type-body);
+}
+
+[data-blueprint-component="event-card"] .event-card__cta {
+  justify-self: start;
+  border-radius: var(--app-radius-full);
+  padding: 0 var(--app-space-4);
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] {
+  min-height: 132px;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__art {
+  object-position: 80% 36%;
+  transform: scale(1.9);
+  transform-origin: 80% 36%;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__shade {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--app-color-background) 94%, transparent) 30%, transparent 85%);
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__body {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--app-space-3) var(--app-space-3);
+  padding: 14px var(--app-space-4) var(--app-space-4);
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__top {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__title {
+  font-size: 19px;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__description {
+  font-size: 13px;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__cta {
+  justify-self: end;
+}

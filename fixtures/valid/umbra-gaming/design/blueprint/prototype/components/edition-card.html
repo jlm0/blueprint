@@ -1,0 +1,16 @@
+<article class="edition-card" data-blueprint-component="edition-card" data-blueprint-state="default" data-blueprint-surface>
+  <header class="edition-card__head">
+    <span class="edition-card__kicker" data-blueprint-slot="kicker">Standard</span>
+    <blueprint-use kind="primitive" ref="badge" state="default" variant="default" class="edition-card__flag">
+      <span slot="label">Most chosen</span>
+    </blueprint-use>
+  </header>
+  <p class="edition-card__price"><b data-blueprint-slot="price">Free</b><span data-blueprint-slot="note">Forever</span></p>
+  <div class="edition-card__perks" data-blueprint-slot="perks"><ul><li>Every map, mode, and ranked queue</li></ul></div>
+  <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="lg" class="edition-card__cta edition-card__cta--quiet">
+    <b slot="label"><i data-blueprint-slot="cta">Play free</i></b>
+  </blueprint-use>
+  <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="edition-card__cta edition-card__cta--loud">
+    <b slot="label"><i data-blueprint-slot="featured-cta">Get the pass</i></b>
+  </blueprint-use>
+</article>

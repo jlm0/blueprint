@@ -1,0 +1,112 @@
+<div class="hub" data-blueprint-screen="hub" data-blueprint-state="default">
+  <img class="hub__art" src="../assets/art/eclipse.svg" alt="">
+  <div class="hub__veil" aria-hidden="true"></div>
+
+  <header class="player" data-blueprint-section="player">
+    <blueprint-use kind="primitive" ref="avatar" state="status" size="md" class="player__avatar">
+      <span slot="initials">V9</span>
+    </blueprint-use>
+    <span class="player__id">
+      <b>VESPER_09</b>
+      <span>Level 58 · Diamond II</span>
+    </span>
+    <span class="player__coins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 14 4.5v7L8 15 2 11.5v-7Z"/></svg>2,480</span>
+    <span class="player__sync">
+      <blueprint-use kind="primitive" ref="loading-mark" state="primary"></blueprint-use>
+      <span>Syncing</span>
+    </span>
+  </header>
+
+  <section class="season" data-blueprint-section="season" aria-labelledby="season-title">
+    <p class="season__meta"><span class="season__dot" aria-hidden="true"></span>Season 04 · 62d 14h left</p>
+    <h1 class="season__title" id="season-title">Eclipse</h1>
+    <blueprint-use kind="component" ref="pass-track" state="default" class="season__pass">
+      <span slot="tier">38</span>
+      <span slot="title">Eclipse Pass</span>
+      <span slot="xp">7,420 / 9,000 XP</span>
+      <span slot="reward">Corona wrap · Tier 40</span>
+    </blueprint-use>
+    <div class="skel skel--pass" aria-hidden="true">
+      <span class="skel__head">
+        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__tile"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+      </span>
+      <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__rail"></blueprint-use>
+      <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__foot"></blueprint-use>
+    </div>
+  </section>
+
+  <section class="squad" data-blueprint-section="squad" aria-label="Squad online">
+    <blueprint-use kind="component" ref="squad-member" state="online">
+      <span slot="tag">KS</span>
+      <span slot="name">KESTREL</span>
+      <span slot="status">In lobby</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="squad-member" state="in-match">
+      <span slot="tag">NV</span>
+      <span slot="name">NOVA.EXE</span>
+      <span slot="status">In match · 12m</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="squad-member" state="online">
+      <span slot="tag">HX</span>
+      <span slot="name">HEX</span>
+      <span slot="status">In lobby</span>
+    </blueprint-use>
+  </section>
+
+  <section class="event" data-blueprint-section="event" aria-label="Live event">
+    <blueprint-use kind="component" ref="event-card" state="compact">
+      <span slot="timer">1d 04:12:55</span>
+      <span slot="title">Blackout Weekend</span>
+      <span slot="description">Double XP on night maps</span>
+    </blueprint-use>
+    <div class="skel skel--event" aria-hidden="true">
+      <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+    </div>
+  </section>
+
+  <section class="challenges" data-blueprint-section="challenges" aria-labelledby="challenges-title">
+    <header class="challenges__head">
+      <h2 id="challenges-title">Daily challenges</h2>
+      <span>Resets 06:12:40</span>
+    </header>
+    <div class="challenges__list">
+      <blueprint-use kind="component" ref="challenge-row" state="complete">
+        <b slot="glyph"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></b>
+        <span slot="title">Survive past the second blackout</span>
+        <span slot="count">Done</span>
+        <span slot="reward">+800</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="challenge-row" state="halfway">
+        <b slot="glyph"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/></svg></b>
+        <span slot="title">Win 2 matches in Duo Rush</span>
+        <span slot="count">1 / 2</span>
+        <span slot="reward">+1,200</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="challenge-row" state="started">
+        <b slot="glyph"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/></svg></b>
+        <span slot="title">Revive 5 squadmates after dark</span>
+        <span slot="count">1 / 5</span>
+        <span slot="reward">+950</span>
+      </blueprint-use>
+    </div>
+    <div class="skel skel--rows" aria-hidden="true">
+      <span class="skel__row">
+        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__glyph"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+      </span>
+      <span class="skel__row">
+        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__glyph"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+      </span>
+    </div>
+  </section>
+
+  <nav class="tabbar" data-blueprint-section="tabbar" aria-label="Primary">
+    <a class="tabbar__item is-active" href="#" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6.5v11l9.5-5.5Z"/></svg><span>Play</span></a>
+    <a class="tabbar__item" href="/pass"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4zM9 7v10"/></svg><span>Pass</span></a>
+    <a class="tabbar__item" href="/squad"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.8-3 2.8-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15 14.6c2.4 0 4.2 1.3 4.9 3.9"/></svg><span>Squad</span></a>
+    <a class="tabbar__item" href="/store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6ZM9 8a3 3 0 0 1 6 0"/></svg><span>Store</span></a>
+    <a class="tabbar__item" href="/profile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9Z"/></svg><span>Career</span></a>
+  </nav>
+</div>

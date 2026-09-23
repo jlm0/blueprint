@@ -1,0 +1,390 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "meridian-finance",
+  "exploration": {
+    "id": "ledger-density",
+    "title": "Ledger row density",
+    "intent": "Compare a comfortable ledger that drops the account column with a compact ledger that fits a full day of activity above the fold.",
+    "lifecycle": "active",
+    "target": {
+      "screenId": "transactions",
+      "state": "default",
+      "framePresetId": "desktop-web",
+      "baseDigest": "3de6079a86b3967fefd38024b78771caf9297712404dccd8089f30efff4af6e3",
+      "baseline": {
+        "screen": {
+          "id": "transactions",
+          "name": "Transactions",
+          "description": "Dense ledger grouped by day with direction, search, account, and date filters, and the selected transaction open in a detail panel.",
+          "framePresetId": "desktop-web",
+          "flow": "Ledger",
+          "styleRefs": [
+            "prototype/screens/transactions.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transactions.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transactions.css"
+            }
+          ],
+          "notes": [],
+          "prototypeOnly": false,
+          "implementationHints": [
+            "Rows use the app table-row primitive with its default slot; keep amounts right-aligned in tabular figures."
+          ],
+          "productionRelationship": {
+            "kind": "new-route",
+            "routePath": "/transactions"
+          },
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transactions",
+              "symbolName": "TransactionsRoute",
+              "operationIntent": "create-screen",
+              "propMapping": {
+                "transactions": "transactions.page",
+                "filters": "filters",
+                "selected": "selectedTransaction"
+              },
+              "stateMapping": {
+                "default": "row selected"
+              },
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ],
+          "prototype": {
+            "source": "prototype/screens/transactions.html",
+            "styles": [
+              "prototype/styles/fonts.css",
+              "prototype/screens/transactions.css"
+            ],
+            "assetRefs": [
+              "prototype/assets/fonts/inter-tight-variable.woff2",
+              "prototype/assets/fonts/instrument-serif-400.woff2",
+              "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+              "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+            ],
+            "states": [
+              "default"
+            ],
+            "reviewConditions": [
+              {
+                "id": "desktop-web-default",
+                "framePresetId": "desktop-web",
+                "state": "default"
+              }
+            ],
+            "renderedUses": [
+              {
+                "kind": "component",
+                "id": "web-header"
+              },
+              {
+                "kind": "primitive",
+                "id": "segmented-control"
+              },
+              {
+                "kind": "primitive",
+                "id": "input"
+              },
+              {
+                "kind": "primitive",
+                "id": "select"
+              },
+              {
+                "kind": "primitive",
+                "id": "badge"
+              },
+              {
+                "kind": "primitive",
+                "id": "button"
+              },
+              {
+                "kind": "primitive",
+                "id": "table-row"
+              },
+              {
+                "kind": "primitive",
+                "id": "button"
+              },
+              {
+                "kind": "primitive",
+                "id": "badge"
+              },
+              {
+                "kind": "primitive",
+                "id": "select"
+              }
+            ]
+          },
+          "sections": [
+            {
+              "id": "header",
+              "name": "Header",
+              "description": "Shared top bar with the active section.",
+              "styleRefs": [
+                "prototype/screens/transactions.css"
+              ],
+              "styleEvidence": [
+                {
+                  "styleRef": "prototype/screens/transactions.css",
+                  "status": "source",
+                  "sourceAnchor": "prototype/screens/transactions.css"
+                }
+              ],
+              "uses": [
+                {
+                  "kind": "component",
+                  "id": "web-header",
+                  "reason": "Top bar.",
+                  "binding": {
+                    "slot": "header",
+                    "state": "transactions"
+                  }
+                }
+              ],
+              "prototypeOnly": false,
+              "notes": [],
+              "implementationHints": [],
+              "implementationTargets": [
+                {
+                  "platform": "web",
+                  "framework": "framework-neutral",
+                  "candidatePath": "src/routes/transactions",
+                  "symbolName": "AppHeader",
+                  "operationIntent": "create-section",
+                  "propMapping": {
+                    "section": "activeSection"
+                  },
+                  "stateMapping": {},
+                  "tokenAdapter": "Meridian semantic tokens",
+                  "testPaths": [],
+                  "storyPaths": [],
+                  "unresolvedDecisions": []
+                }
+              ]
+            },
+            {
+              "id": "ledger",
+              "name": "Ledger",
+              "description": "Totals, filters, and the day-grouped transaction table.",
+              "styleRefs": [
+                "prototype/screens/transactions.css"
+              ],
+              "styleEvidence": [
+                {
+                  "styleRef": "prototype/screens/transactions.css",
+                  "status": "source",
+                  "sourceAnchor": "prototype/screens/transactions.css"
+                }
+              ],
+              "uses": [
+                {
+                  "kind": "primitive",
+                  "id": "segmented-control",
+                  "reason": "Direction filter.",
+                  "binding": {
+                    "slot": "direction",
+                    "state": "first-selected",
+                    "copy": "All / Money in / Money out"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "input",
+                  "reason": "Search.",
+                  "binding": {
+                    "slot": "search",
+                    "variant": "outline",
+                    "state": "empty"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "select",
+                  "reason": "Account filter.",
+                  "binding": {
+                    "slot": "account",
+                    "state": "value",
+                    "copy": "All accounts"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "badge",
+                  "reason": "Active date range.",
+                  "binding": {
+                    "slot": "range",
+                    "variant": "outline",
+                    "copy": "Sep 1 – Sep 23"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "button",
+                  "reason": "More filters and export.",
+                  "binding": {
+                    "slot": "actions",
+                    "variant": "ghost, outline"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "table-row",
+                  "reason": "Transaction rows.",
+                  "binding": {
+                    "slot": "rows",
+                    "state": "default, selected",
+                    "data": "transactions.page"
+                  }
+                }
+              ],
+              "prototypeOnly": false,
+              "notes": [],
+              "implementationHints": [],
+              "implementationTargets": [
+                {
+                  "platform": "web",
+                  "framework": "framework-neutral",
+                  "candidatePath": "src/routes/transactions",
+                  "symbolName": "Ledger",
+                  "operationIntent": "create-section",
+                  "propMapping": {
+                    "rows": "transactions.page",
+                    "totals": "transactions.totals"
+                  },
+                  "stateMapping": {},
+                  "tokenAdapter": "Meridian semantic tokens",
+                  "testPaths": [],
+                  "storyPaths": [],
+                  "unresolvedDecisions": []
+                }
+              ]
+            },
+            {
+              "id": "detail",
+              "name": "Transaction Detail",
+              "description": "Amount, settlement timeline, references, category, and actions for the selected transaction.",
+              "styleRefs": [
+                "prototype/screens/transactions.css"
+              ],
+              "styleEvidence": [
+                {
+                  "styleRef": "prototype/screens/transactions.css",
+                  "status": "source",
+                  "sourceAnchor": "prototype/screens/transactions.css"
+                }
+              ],
+              "uses": [
+                {
+                  "kind": "primitive",
+                  "id": "button",
+                  "reason": "Close, download, and report commands.",
+                  "binding": {
+                    "slot": "actions",
+                    "variant": "ghost, outline, link"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "badge",
+                  "reason": "Settlement status.",
+                  "binding": {
+                    "slot": "status",
+                    "variant": "success",
+                    "copy": "Settled to Operating"
+                  }
+                },
+                {
+                  "kind": "primitive",
+                  "id": "select",
+                  "reason": "Category.",
+                  "binding": {
+                    "slot": "category",
+                    "state": "value",
+                    "copy": "Customer payment"
+                  }
+                }
+              ],
+              "prototypeOnly": false,
+              "notes": [],
+              "implementationHints": [],
+              "implementationTargets": [
+                {
+                  "platform": "web",
+                  "framework": "framework-neutral",
+                  "candidatePath": "src/routes/transactions",
+                  "symbolName": "TransactionDetail",
+                  "operationIntent": "create-section",
+                  "propMapping": {
+                    "transaction": "selectedTransaction"
+                  },
+                  "stateMapping": {},
+                  "tokenAdapter": "Meridian semantic tokens",
+                  "testPaths": [],
+                  "storyPaths": [],
+                  "unresolvedDecisions": []
+                }
+              ]
+            }
+          ]
+        },
+        "prototype": {
+          "source": "prototype/screens/transactions.exploration-ledger-density-baseline.html",
+          "styles": [
+            "prototype/styles/fonts.exploration-ledger-density-baseline.css",
+            "prototype/screens/transactions.exploration-ledger-density-baseline.css"
+          ],
+          "assetRefs": [
+            "prototype/assets/fonts/inter-tight-variable.woff2",
+            "prototype/assets/fonts/instrument-serif-400.woff2",
+            "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+            "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+          ]
+        }
+      }
+    },
+    "candidates": [
+      {
+        "id": "comfortable",
+        "label": "Comfortable",
+        "prototype": {
+          "source": "prototype/screens/transactions.exploration-ledger-density-comfortable.html",
+          "styles": [
+            "prototype/styles/fonts.exploration-ledger-density-comfortable.css",
+            "prototype/screens/transactions.exploration-ledger-density-comfortable.css"
+          ],
+          "assetRefs": [
+            "prototype/assets/fonts/inter-tight-variable.woff2",
+            "prototype/assets/fonts/instrument-serif-400.woff2",
+            "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+            "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+          ]
+        }
+      },
+      {
+        "id": "compact",
+        "label": "Compact",
+        "prototype": {
+          "source": "prototype/screens/transactions.exploration-ledger-density-compact.html",
+          "styles": [
+            "prototype/styles/fonts.exploration-ledger-density-compact.css",
+            "prototype/screens/transactions.exploration-ledger-density-compact.css"
+          ],
+          "assetRefs": [
+            "prototype/assets/fonts/inter-tight-variable.woff2",
+            "prototype/assets/fonts/instrument-serif-400.woff2",
+            "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+            "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+          ]
+        }
+      }
+    ]
+  }
+}

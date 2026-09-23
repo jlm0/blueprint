@@ -1,0 +1,2215 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "meridian-finance",
+  "screens": [
+    {
+      "id": "overview",
+      "name": "Overview",
+      "version": 1,
+      "description": "Original dashboard overview: sidebar navigation, a row of cash figures and runway, cash flow beside recent activity, and account tiles.",
+      "framePresetId": "desktop-web",
+      "flow": "Overview",
+      "styleRefs": [
+        "prototype/screens/overview.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/overview.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/overview.css"
+        }
+      ],
+      "notes": [
+        "Superseded by version 2, which leads with a single hero figure. Kept for comparison."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/overview",
+          "symbolName": "OverviewRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "position": "treasury.position",
+            "activity": "transactions.recent",
+            "accounts": "treasury.accounts"
+          },
+          "stateMapping": {
+            "default": "loaded"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/overview.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/overview.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "balance-card"
+          },
+          {
+            "kind": "component",
+            "id": "cashflow-chart"
+          },
+          {
+            "kind": "component",
+            "id": "transaction-row"
+          },
+          {
+            "kind": "component",
+            "id": "account-tile"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "navigation",
+          "name": "Navigation",
+          "description": "Sidebar with the organization switcher, sections, and member.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Signed-in member.",
+              "binding": {
+                "slot": "member",
+                "state": "status"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/layouts/Sidebar",
+              "symbolName": "Sidebar",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "organization": "organization",
+                "viewer": "viewer"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "Greeting with export and move-money commands.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Export and move-money commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "outline, primary",
+                "copy": "Export / Move money"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "OverviewTitle",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "viewer": "viewer"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "position",
+          "name": "Cash Position",
+          "description": "Total cash, money in and out over 30 days, and runway.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "balance-card",
+              "reason": "Cash figures.",
+              "binding": {
+                "slot": "figures",
+                "state": "card"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "CashFigures",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "totals": "treasury.totals",
+                "runway": "treasury.runway"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "cash-flow",
+          "name": "Cash Flow",
+          "description": "Twelve months of money in and out.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cashflow-chart",
+              "reason": "Monthly flows.",
+              "binding": {
+                "slot": "chart",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "CashFlow",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "months": "cashFlow.months"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "activity",
+          "name": "Recent Activity",
+          "description": "The latest posted and pending transactions.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transaction-row",
+              "reason": "Latest transactions.",
+              "binding": {
+                "slot": "rows",
+                "state": "default, pending"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "RecentActivity",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "transactions": "transactions.recent"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "accounts",
+          "name": "Accounts",
+          "description": "Each account with its balance and share of cash.",
+          "styleRefs": [
+            "prototype/screens/overview.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "account-tile",
+              "reason": "Account balances.",
+              "binding": {
+                "slot": "accounts",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "AccountTiles",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "accounts": "treasury.accounts"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overview-v2",
+      "name": "Overview",
+      "version": 2,
+      "description": "Editorial treasury overview: the total cash figure leads, with account allocation and runway beside it, then cash flow, recent activity, and the next seven days of payments.",
+      "framePresetId": "desktop-web",
+      "flow": "Overview",
+      "styleRefs": [
+        "prototype/screens/overview-v2.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/overview-v2.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/overview-v2.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "The hero figure is the page title; keep it the largest element and never truncate cents."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/overview",
+          "symbolName": "OverviewRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "position": "treasury.position",
+            "activity": "transactions.recent",
+            "upcoming": "payments.upcoming"
+          },
+          "stateMapping": {
+            "default": "loaded"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/overview-v2.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/overview-v2.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "web-header"
+          },
+          {
+            "kind": "component",
+            "id": "balance-card"
+          },
+          {
+            "kind": "component",
+            "id": "cashflow-chart"
+          },
+          {
+            "kind": "component",
+            "id": "transaction-row"
+          },
+          {
+            "kind": "component",
+            "id": "upcoming-payment"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Shared top bar with the active section.",
+          "styleRefs": [
+            "prototype/screens/overview-v2.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview-v2.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview-v2.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "web-header",
+              "reason": "Top bar.",
+              "binding": {
+                "slot": "header",
+                "state": "overview"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "AppHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "section": "activeSection"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "position",
+          "name": "Cash Position",
+          "description": "Total cash, change since the month began, allocation across accounts, and runway.",
+          "styleRefs": [
+            "prototype/screens/overview-v2.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview-v2.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview-v2.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "balance-card",
+              "reason": "Hero cash figure.",
+              "binding": {
+                "slot": "total",
+                "state": "hero",
+                "data": "treasury.totalCash"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "CashPosition",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "total": "treasury.totalCash",
+                "accounts": "treasury.accounts",
+                "runway": "treasury.runway"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "cash-flow",
+          "name": "Cash Flow",
+          "description": "Twelve months of money in and out.",
+          "styleRefs": [
+            "prototype/screens/overview-v2.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview-v2.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview-v2.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "cashflow-chart",
+              "reason": "Monthly flows.",
+              "binding": {
+                "slot": "chart",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "CashFlow",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "months": "cashFlow.months"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "activity",
+          "name": "Recent Activity",
+          "description": "The latest posted and pending transactions.",
+          "styleRefs": [
+            "prototype/screens/overview-v2.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview-v2.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview-v2.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transaction-row",
+              "reason": "Latest transactions.",
+              "binding": {
+                "slot": "rows",
+                "state": "default, pending"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "RecentActivity",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "transactions": "transactions.recent"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "upcoming",
+          "name": "Upcoming Payments",
+          "description": "Payments scheduled in the next seven days, flagged when they need approval.",
+          "styleRefs": [
+            "prototype/screens/overview-v2.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/overview-v2.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/overview-v2.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "upcoming-payment",
+              "reason": "Scheduled payments.",
+              "binding": {
+                "slot": "payments",
+                "state": "default, approval"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/overview",
+              "symbolName": "UpcomingPayments",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "payments": "payments.upcoming"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transactions",
+      "name": "Transactions",
+      "description": "Dense ledger grouped by day with direction, search, account, and date filters, and the selected transaction open in a detail panel.",
+      "framePresetId": "desktop-web",
+      "flow": "Ledger",
+      "styleRefs": [
+        "prototype/screens/transactions.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/transactions.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/transactions.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Rows use the app table-row primitive with its default slot; keep amounts right-aligned in tabular figures."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/transactions"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/transactions",
+          "symbolName": "TransactionsRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "transactions": "transactions.page",
+            "filters": "filters",
+            "selected": "selectedTransaction"
+          },
+          "stateMapping": {
+            "default": "row selected"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/transactions.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/transactions.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "component",
+            "id": "web-header"
+          },
+          {
+            "kind": "primitive",
+            "id": "segmented-control"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "select"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "table-row"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "select"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Shared top bar with the active section.",
+          "styleRefs": [
+            "prototype/screens/transactions.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transactions.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transactions.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "web-header",
+              "reason": "Top bar.",
+              "binding": {
+                "slot": "header",
+                "state": "transactions"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transactions",
+              "symbolName": "AppHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "section": "activeSection"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "ledger",
+          "name": "Ledger",
+          "description": "Totals, filters, and the day-grouped transaction table.",
+          "styleRefs": [
+            "prototype/screens/transactions.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transactions.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transactions.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "segmented-control",
+              "reason": "Direction filter.",
+              "binding": {
+                "slot": "direction",
+                "state": "first-selected",
+                "copy": "All / Money in / Money out"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "input",
+              "reason": "Search.",
+              "binding": {
+                "slot": "search",
+                "variant": "outline",
+                "state": "empty"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "select",
+              "reason": "Account filter.",
+              "binding": {
+                "slot": "account",
+                "state": "value",
+                "copy": "All accounts"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Active date range.",
+              "binding": {
+                "slot": "range",
+                "variant": "outline",
+                "copy": "Sep 1 – Sep 23"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "More filters and export.",
+              "binding": {
+                "slot": "actions",
+                "variant": "ghost, outline"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "table-row",
+              "reason": "Transaction rows.",
+              "binding": {
+                "slot": "rows",
+                "state": "default, selected",
+                "data": "transactions.page"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transactions",
+              "symbolName": "Ledger",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "rows": "transactions.page",
+                "totals": "transactions.totals"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "detail",
+          "name": "Transaction Detail",
+          "description": "Amount, settlement timeline, references, category, and actions for the selected transaction.",
+          "styleRefs": [
+            "prototype/screens/transactions.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transactions.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transactions.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Close, download, and report commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "ghost, outline, link"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Settlement status.",
+              "binding": {
+                "slot": "status",
+                "variant": "success",
+                "copy": "Settled to Operating"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "select",
+              "reason": "Category.",
+              "binding": {
+                "slot": "category",
+                "state": "value",
+                "copy": "Customer payment"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transactions",
+              "symbolName": "TransactionDetail",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "transaction": "selectedTransaction"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer",
+      "name": "Send payment",
+      "description": "Focused three-step payment flow: choose source, recipient, amount, and rail; approve with a one-time code; then confirm. The error state blocks a payment larger than the source balance.",
+      "framePresetId": "desktop-web",
+      "flow": "Send payment",
+      "styleRefs": [
+        "prototype/screens/transfer.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/transfer.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/transfer.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the summary in sync with every field; block review while the amount exceeds the source balance."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/transfer"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/transfer",
+          "symbolName": "TransferRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "draft": "transferDraft",
+            "accounts": "treasury.accounts"
+          },
+          "stateMapping": {
+            "default": "editing",
+            "review": "awaiting approval",
+            "error": "insufficient funds",
+            "success": "sent"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/transfer.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/transfer.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default",
+          "review",
+          "error",
+          "success"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          },
+          {
+            "id": "desktop-web-review",
+            "framePresetId": "desktop-web",
+            "state": "review"
+          },
+          {
+            "id": "desktop-web-error",
+            "framePresetId": "desktop-web",
+            "state": "error"
+          },
+          {
+            "id": "desktop-web-success",
+            "framePresetId": "desktop-web",
+            "state": "success"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "inline-alert"
+          },
+          {
+            "kind": "component",
+            "id": "account-tile"
+          },
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "amount-field"
+          },
+          {
+            "kind": "primitive",
+            "id": "segmented-control"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "otp-input"
+          },
+          {
+            "kind": "primitive",
+            "id": "checkbox"
+          },
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "toast"
+          },
+          {
+            "kind": "component",
+            "id": "transfer-summary"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "flow-header",
+          "name": "Flow Header",
+          "description": "Wordmark, step progress, and close command.",
+          "styleRefs": [
+            "prototype/screens/transfer.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Close the flow.",
+              "binding": {
+                "slot": "close",
+                "variant": "ghost",
+                "layout": "icon"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transfer",
+              "symbolName": "FlowHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "step": "step"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "details",
+          "name": "Payment Details",
+          "description": "Source account, recipient, amount, rail, and memo, with the overdraft alert in the error state.",
+          "styleRefs": [
+            "prototype/screens/transfer.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "inline-alert",
+              "reason": "Overdraft warning.",
+              "binding": {
+                "slot": "alert",
+                "variant": "destructive",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "account-tile",
+              "reason": "Source accounts.",
+              "binding": {
+                "slot": "source",
+                "state": "default, selected"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Recipient mark.",
+              "binding": {
+                "slot": "recipient",
+                "state": "initials"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Change recipient, continue, and save draft.",
+              "binding": {
+                "slot": "actions",
+                "variant": "link, primary, ghost",
+                "state": "normal, disabled"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "amount-field",
+              "reason": "Amount entry.",
+              "binding": {
+                "slot": "amount",
+                "state": "default, error"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "segmented-control",
+              "reason": "Payment rail.",
+              "binding": {
+                "slot": "method",
+                "state": "second-selected",
+                "copy": "ACH / Wire / Book"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "input",
+              "reason": "Memo.",
+              "binding": {
+                "slot": "memo",
+                "variant": "outline",
+                "state": "empty"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transfer",
+              "symbolName": "PaymentDetails",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "transferDraft"
+              },
+              "stateMapping": {
+                "default": "valid",
+                "error": "insufficient funds"
+              },
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "name": "Approval",
+          "description": "Plain-language recap, one-time code, and confirmation.",
+          "styleRefs": [
+            "prototype/screens/transfer.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "otp-input",
+              "reason": "One-time code.",
+              "binding": {
+                "slot": "code",
+                "state": "focused"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "checkbox",
+              "reason": "Recipient verification.",
+              "binding": {
+                "slot": "confirm",
+                "state": "on"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Approvers.",
+              "binding": {
+                "slot": "approvers",
+                "state": "status, initials"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Send and back commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, ghost",
+                "copy": "Send $18,400.00"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transfer",
+              "symbolName": "PaymentApproval",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "transferDraft",
+                "challenge": "otpChallenge"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "confirmation",
+          "name": "Confirmation",
+          "description": "Sent seal, arrival estimate, wire references, and next actions.",
+          "styleRefs": [
+            "prototype/screens/transfer.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Done and send another.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, outline"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "toast",
+              "reason": "Receipt emailed.",
+              "binding": {
+                "slot": "toast",
+                "variant": "success",
+                "copy": "Receipt emailed"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transfer",
+              "symbolName": "PaymentSent",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "receipt": "transferReceipt"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "summary",
+          "name": "Summary",
+          "description": "Live transfer summary and the approval policy.",
+          "styleRefs": [
+            "prototype/screens/transfer.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transfer-summary",
+              "reason": "Transfer summary.",
+              "binding": {
+                "slot": "summary",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/transfer",
+              "symbolName": "TransferSummaryPanel",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "transferDraft"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home",
+      "name": "Home",
+      "description": "Phone home: total cash with quick actions, a horizontal strip of accounts, and the latest activity.",
+      "framePresetId": "phone",
+      "flow": "Phone",
+      "styleRefs": [
+        "prototype/screens/home.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/home.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/home.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep quick actions within thumb reach and let the account strip scroll horizontally."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/HomeScreen",
+          "symbolName": "HomeScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "position": "treasury.position",
+            "accounts": "treasury.accounts",
+            "activity": "transactions.recent"
+          },
+          "stateMapping": {
+            "default": "loaded"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/home.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/home.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "balance-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "account-tile"
+          },
+          {
+            "kind": "component",
+            "id": "transaction-row"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Organization switcher and notifications.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Notifications.",
+              "binding": {
+                "slot": "notifications",
+                "variant": "ghost",
+                "layout": "icon"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "HomeHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "organization": "organization"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "balance",
+          "name": "Balance",
+          "description": "Total cash, its change this month, and four quick actions.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "balance-card",
+              "reason": "Total cash.",
+              "binding": {
+                "slot": "total",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Send, request, deposit, and cards.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, secondary",
+                "layout": "icon"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "BalanceHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "total": "treasury.totalCash"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "accounts",
+          "name": "Accounts",
+          "description": "Horizontally scrolling account balances.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "account-tile",
+              "reason": "Account balances.",
+              "binding": {
+                "slot": "accounts",
+                "state": "compact"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "AccountStrip",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "accounts": "treasury.accounts"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "activity",
+          "name": "Activity",
+          "description": "Most recent transactions.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transaction-row",
+              "reason": "Recent transactions.",
+              "binding": {
+                "slot": "rows",
+                "state": "default, pending"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "RecentActivity",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "transactions": "transactions.recent"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "navigation",
+          "name": "Tab Bar",
+          "description": "Persistent primary navigation with Home selected.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/navigation/Tabs",
+              "symbolName": "PrimaryTabs",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "default": "home selected"
+              },
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer-mobile",
+      "name": "Send money",
+      "description": "Phone payment flow: keypad amount entry with source and rail, approval with a one-time code, and confirmation.",
+      "framePresetId": "phone",
+      "flow": "Phone",
+      "styleRefs": [
+        "prototype/screens/transfer-mobile.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/transfer-mobile.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/transfer-mobile.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keypad keys are native buttons by design; keep the primary command pinned above the home indicator."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/transfer"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/TransferScreen",
+          "symbolName": "TransferScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "draft": "transferDraft"
+          },
+          "stateMapping": {
+            "default": "editing",
+            "review": "awaiting approval",
+            "success": "sent"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/transfer-mobile.html",
+        "styles": [
+          "prototype/styles/fonts.css",
+          "prototype/screens/transfer-mobile.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default",
+          "review",
+          "success"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          },
+          {
+            "id": "phone-review",
+            "framePresetId": "phone",
+            "state": "review"
+          },
+          {
+            "id": "phone-success",
+            "framePresetId": "phone",
+            "state": "success"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "nav-bar"
+          },
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "component",
+            "id": "amount-field"
+          },
+          {
+            "kind": "primitive",
+            "id": "select"
+          },
+          {
+            "kind": "primitive",
+            "id": "segmented-control"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "transfer-summary"
+          },
+          {
+            "kind": "primitive",
+            "id": "otp-input"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Navigation bar titled for the current step.",
+          "styleRefs": [
+            "prototype/screens/transfer-mobile.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer-mobile.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer-mobile.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "nav-bar",
+              "reason": "Step navigation bar.",
+              "binding": {
+                "slot": "title",
+                "state": "back-only",
+                "copy": "Send payment / Approve wire"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/TransferScreen",
+              "symbolName": "TransferHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "step": "step"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "amount",
+          "name": "Amount Entry",
+          "description": "Recipient, amount, source account, rail, keypad, and review command.",
+          "styleRefs": [
+            "prototype/screens/transfer-mobile.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer-mobile.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer-mobile.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Recipient mark.",
+              "binding": {
+                "slot": "recipient",
+                "state": "initials"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "amount-field",
+              "reason": "Amount.",
+              "binding": {
+                "slot": "amount",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "select",
+              "reason": "Source account.",
+              "binding": {
+                "slot": "source",
+                "state": "value",
+                "copy": "From Operating ··4821"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "segmented-control",
+              "reason": "Payment rail.",
+              "binding": {
+                "slot": "method",
+                "state": "second-selected",
+                "copy": "ACH / Wire / Book"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Review command.",
+              "binding": {
+                "slot": "cta",
+                "variant": "primary",
+                "copy": "Review payment"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/TransferScreen",
+              "symbolName": "AmountEntry",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "transferDraft"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "name": "Approval",
+          "description": "Amount, summary, filled one-time code, and send command.",
+          "styleRefs": [
+            "prototype/screens/transfer-mobile.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer-mobile.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer-mobile.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transfer-summary",
+              "reason": "Transfer summary.",
+              "binding": {
+                "slot": "summary",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "otp-input",
+              "reason": "One-time code.",
+              "binding": {
+                "slot": "code",
+                "state": "filled"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Send command.",
+              "binding": {
+                "slot": "cta",
+                "variant": "primary",
+                "copy": "Send $18,400.00"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/TransferScreen",
+              "symbolName": "Approval",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "transferDraft",
+                "challenge": "otpChallenge"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "confirmation",
+          "name": "Confirmation",
+          "description": "Sent seal, arrival, reference, and next actions.",
+          "styleRefs": [
+            "prototype/screens/transfer-mobile.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/transfer-mobile.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/transfer-mobile.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Done and share receipt.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, ghost"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/TransferScreen",
+              "symbolName": "Sent",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "receipt": "transferReceipt"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

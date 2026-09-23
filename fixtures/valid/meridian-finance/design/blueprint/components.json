@@ -1,0 +1,662 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "meridian-finance",
+  "components": [
+    {
+      "id": "web-header",
+      "name": "Web Header",
+      "description": "Desktop top bar with the wordmark, primary sections, search, the move-money command, and the member.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "tabs",
+          "reason": "Primary section navigation.",
+          "binding": {
+            "slot": "sections",
+            "state": "first-selected, second-selected"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "input",
+          "reason": "Global search.",
+          "binding": {
+            "slot": "search",
+            "variant": "filled",
+            "state": "empty"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Move money command.",
+          "binding": {
+            "slot": "action",
+            "variant": "primary",
+            "copy": "Move money"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "avatar",
+          "reason": "Signed-in member.",
+          "binding": {
+            "slot": "member",
+            "state": "initials"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/web-header.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/web-header.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/web-header.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/AppHeader",
+          "symbolName": "AppHeader",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "section": "activeSection",
+            "member": "viewer"
+          },
+          "stateMapping": {
+            "overview": "overview active",
+            "transactions": "transactions active"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/web-header.html",
+        "styles": [
+          "prototype/components/web-header.css"
+        ],
+        "slots": [],
+        "states": [
+          "overview",
+          "transactions"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "tabs"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          }
+        ]
+      }
+    },
+    {
+      "id": "balance-card",
+      "name": "Balance Card",
+      "description": "A cash figure with its change since the period start. Hero on the editorial overview, card in dashboards, compact on phone.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Period change.",
+          "binding": {
+            "slot": "change",
+            "variant": "success",
+            "data": "balance.changePercent"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/balance-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/balance-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/balance-card.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/BalanceCard",
+          "symbolName": "BalanceCard",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "amount": "balance.amount",
+            "change": "balance.change"
+          },
+          "stateMapping": {
+            "hero": "hero",
+            "card": "card",
+            "compact": "compact"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/balance-card.html",
+        "styles": [
+          "prototype/components/balance-card.css"
+        ],
+        "slots": [
+          "label",
+          "amount",
+          "cents",
+          "change",
+          "delta"
+        ],
+        "states": [
+          "hero",
+          "card",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cashflow-chart",
+      "name": "Cash Flow Chart",
+      "description": "Money in above and money out below a zero line for each month, with the current month called out.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "segmented-control",
+          "reason": "Chart range.",
+          "binding": {
+            "slot": "range",
+            "state": "first-selected",
+            "copy": "12M / 6M / YTD"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/cashflow-chart.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/cashflow-chart.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/cashflow-chart.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/CashFlowChart",
+          "symbolName": "CashFlowChart",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "series": "cashFlow.months",
+            "range": "range"
+          },
+          "stateMapping": {
+            "default": "twelve months",
+            "compact": "six months"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/cashflow-chart.html",
+        "styles": [
+          "prototype/components/cashflow-chart.css"
+        ],
+        "slots": [
+          "title",
+          "figure",
+          "caption"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "segmented-control"
+          }
+        ]
+      }
+    },
+    {
+      "id": "transaction-row",
+      "name": "Transaction Row",
+      "description": "One ledger entry with merchant mark, context, signed amount, and date.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "avatar",
+          "reason": "Merchant monogram.",
+          "binding": {
+            "slot": "mark",
+            "state": "initials"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Pending marker.",
+          "binding": {
+            "slot": "status",
+            "variant": "tonal",
+            "copy": "Pending"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/transaction-row.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/transaction-row.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/transaction-row.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/TransactionRow",
+          "symbolName": "TransactionRow",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "transaction": "transaction"
+          },
+          "stateMapping": {
+            "default": "posted",
+            "pending": "pending"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/transaction-row.html",
+        "styles": [
+          "prototype/components/transaction-row.css"
+        ],
+        "slots": [
+          "mark",
+          "name",
+          "meta",
+          "amount",
+          "date"
+        ],
+        "states": [
+          "default",
+          "pending"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "account-tile",
+      "name": "Account Tile",
+      "description": "An account with its type, masked number, balance, and share of cash. Selectable as a transfer source.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/account-tile.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/account-tile.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/account-tile.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/AccountTile",
+          "symbolName": "AccountTile",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "account": "account"
+          },
+          "stateMapping": {
+            "default": "idle",
+            "selected": "selected",
+            "compact": "compact"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/account-tile.html",
+        "styles": [
+          "prototype/components/account-tile.css"
+        ],
+        "slots": [
+          "kind",
+          "number",
+          "name",
+          "balance",
+          "meta"
+        ],
+        "states": [
+          "default",
+          "selected",
+          "compact"
+        ],
+        "renderedUses": []
+      }
+    },
+    {
+      "id": "amount-field",
+      "name": "Amount Field",
+      "description": "Large money entry with the available balance and currency.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Currency code.",
+          "binding": {
+            "slot": "currency",
+            "variant": "outline",
+            "copy": "USD"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/amount-field.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/amount-field.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/amount-field.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/AmountField",
+          "symbolName": "AmountField",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "value": "amount",
+            "hint": "availableBalance"
+          },
+          "stateMapping": {
+            "default": "valid",
+            "error": "exceeds balance",
+            "compact": "phone"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/amount-field.html",
+        "styles": [
+          "prototype/components/amount-field.css"
+        ],
+        "slots": [
+          "label",
+          "amount",
+          "cents",
+          "hint"
+        ],
+        "states": [
+          "default",
+          "error",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "upcoming-payment",
+      "name": "Upcoming Payment",
+      "description": "A scheduled outgoing payment with its date, payee, and approval status.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Approval status.",
+          "binding": {
+            "slot": "status",
+            "variant": "tonal",
+            "copy": "Needs approval"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/upcoming-payment.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/upcoming-payment.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/upcoming-payment.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/UpcomingPayment",
+          "symbolName": "UpcomingPayment",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "payment": "scheduledPayment"
+          },
+          "stateMapping": {
+            "default": "approved",
+            "approval": "awaiting approval"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/upcoming-payment.html",
+        "styles": [
+          "prototype/components/upcoming-payment.css"
+        ],
+        "slots": [
+          "day",
+          "month",
+          "name",
+          "meta",
+          "amount"
+        ],
+        "states": [
+          "default",
+          "approval"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "transfer-summary",
+      "name": "Transfer Summary",
+      "description": "What a transfer will send, from where, by which rail, and the balance it leaves.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/transfer-summary.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/transfer-summary.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/transfer-summary.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/TransferSummary",
+          "symbolName": "TransferSummary",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "transfer": "transferDraft"
+          },
+          "stateMapping": {
+            "default": "desktop",
+            "compact": "phone"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/transfer-summary.html",
+        "styles": [
+          "prototype/components/transfer-summary.css"
+        ],
+        "slots": [
+          "amount",
+          "recipient",
+          "source",
+          "method",
+          "arrival",
+          "after",
+          "note"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+[data-blueprint-component="challenge-row"] {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: var(--app-space-3) 14px var(--app-space-3) var(--app-space-3);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+}
+
+.challenge-row__glyph {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface-3);
+}
+
+.challenge-row__glyph svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.challenge-row__body {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.challenge-row__title {
+  overflow: hidden;
+  font: var(--app-type-body);
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-blueprint-component="challenge-row"] .progress__head {
+  display: none;
+}
+
+[data-blueprint-component="challenge-row"] .challenge-row__meter [data-blueprint-primitive="progress"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-blueprint-component="challenge-row"] .progress__track {
+  height: 3px;
+  grid-row: 1;
+  grid-column: 1;
+  background: var(--app-color-surface-4);
+}
+
+[data-blueprint-component="challenge-row"] .challenge-row__meter .progress__head {
+  display: block;
+  grid-row: 1;
+  grid-column: 2;
+  color: var(--app-color-muted);
+  font-size: 10px;
+}
+
+[data-blueprint-component="challenge-row"] .challenge-row__meter [data-blueprint-primitive="progress"] .progress__value {
+  display: none;
+}
+
+.challenge-row__meter i {
+  font-style: normal;
+}
+
+.challenge-row__reward {
+  display: grid;
+  justify-items: end;
+  color: var(--app-color-foreground);
+  font: var(--app-type-code);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.challenge-row__reward small {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="started"] .progress__bar {
+  width: 20%;
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="halfway"] .progress__bar {
+  width: 50%;
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="close"] .progress__bar {
+  width: 80%;
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] {
+  border-color: color-mix(in srgb, var(--app-color-primary) 36%, transparent);
+  background: color-mix(in srgb, var(--app-color-primary) 7%, var(--app-color-surface));
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .challenge-row__glyph {
+  color: var(--app-color-on-primary);
+  background: var(--app-color-primary);
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .progress__bar {
+  width: 100%;
+}
+
+[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .challenge-row__reward {
+  color: var(--app-color-primary);
+}

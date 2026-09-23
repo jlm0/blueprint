@@ -1,0 +1,300 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "mira-ai",
+  "components": [
+    {
+      "id": "composer",
+      "name": "Composer",
+      "description": "Prompt entry with attachment, research mode, and send commands. Docked under a thread, enlarged on the empty workspace, and compact on phone.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Attach and send commands.",
+          "binding": {
+            "slot": "actions",
+            "variant": "ghost, primary",
+            "layout": "icon"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Active research mode.",
+          "binding": {
+            "slot": "mode",
+            "variant": "accent",
+            "copy": "Deep research"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/composer.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/composer.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/composer.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/Composer",
+          "symbolName": "Composer",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "placeholder": "placeholder",
+            "mode": "researchMode"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/composer.html",
+        "styles": [
+          "prototype/components/composer.css"
+        ],
+        "slots": [
+          "placeholder"
+        ],
+        "states": [
+          "default",
+          "hero",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    },
+    {
+      "id": "insight-chart",
+      "name": "Insight Chart",
+      "description": "Figure card an answer embeds to show one ranked series with a single highlighted value.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "segmented-control",
+          "reason": "Date range for the series.",
+          "binding": {
+            "slot": "range",
+            "state": "second-selected"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/insight-chart.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/insight-chart.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/insight-chart.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/InsightChart",
+          "symbolName": "InsightChart",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "series": "figure.series",
+            "highlight": "figure.highlight"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/insight-chart.html",
+        "styles": [
+          "prototype/components/insight-chart.css"
+        ],
+        "slots": [
+          "eyebrow",
+          "title",
+          "note"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "segmented-control"
+          }
+        ]
+      }
+    },
+    {
+      "id": "prompt-card",
+      "name": "Prompt Card",
+      "description": "Starter prompt that opens a new thread with a prepared task.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/prompt-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/prompt-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/prompt-card.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/PromptCard",
+          "symbolName": "PromptCard",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "prompt": "starterPrompt"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/prompt-card.html",
+        "styles": [
+          "prototype/components/prompt-card.css"
+        ],
+        "slots": [
+          "kicker",
+          "title",
+          "description"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": []
+      }
+    },
+    {
+      "id": "source-item",
+      "name": "Source Item",
+      "description": "Numbered citation row linking an answer to the file, table, or page it read.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "avatar",
+          "reason": "Source monogram.",
+          "binding": {
+            "slot": "mark",
+            "state": "initials"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/source-item.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/source-item.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/source-item.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/SourceItem",
+          "symbolName": "SourceItem",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "citation": "source"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/source-item.html",
+        "styles": [
+          "prototype/components/source-item.css"
+        ],
+        "slots": [
+          "index",
+          "mark",
+          "title",
+          "meta"
+        ],
+        "states": [
+          "default",
+          "active"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          }
+        ]
+      }
+    }
+  ]
+}

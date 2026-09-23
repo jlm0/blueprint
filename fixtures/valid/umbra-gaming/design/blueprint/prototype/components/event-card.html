@@ -1,0 +1,19 @@
+<article class="event-card" data-blueprint-component="event-card" data-blueprint-state="default">
+  <img class="event-card__art" src="../assets/art/eclipse.svg" alt="">
+  <div class="event-card__shade" aria-hidden="true"></div>
+  <div class="event-card__body">
+    <span class="event-card__top">
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="success">
+        <span slot="label">Live event</span>
+      </blueprint-use>
+      <span class="event-card__timer" data-blueprint-slot="timer">Ends in 1d 04:12</span>
+    </span>
+    <span class="event-card__copy">
+      <b class="event-card__title" data-blueprint-slot="title">Blackout Weekend</b>
+      <span class="event-card__description" data-blueprint-slot="description">Double XP across every night map.</span>
+    </span>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="sm" class="event-card__cta">
+      <span slot="label">Queue now</span>
+    </blueprint-use>
+  </div>
+</article>

@@ -1,0 +1,101 @@
+[data-blueprint-component="web-header"] {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: stretch;
+  gap: var(--app-space-10);
+  height: 64px;
+  padding: 0 var(--app-space-8);
+  border-bottom: 1px solid var(--app-color-border);
+  background: var(--app-color-background);
+}
+
+.web-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-color-foreground);
+  text-decoration: none;
+}
+
+.web-header__brand svg {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+
+.web-header__brand span {
+  font-family: var(--app-font-serif);
+  font-size: 27px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+[data-blueprint-component="web-header"] .web-header__tabs {
+  align-self: stretch;
+  gap: var(--app-space-2);
+  border-bottom: 0;
+}
+
+[data-blueprint-component="web-header"] .tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--app-space-2);
+  border-radius: 0;
+}
+
+[data-blueprint-component="web-header"] .tabs__tab::after {
+  bottom: -1px;
+  height: 1.5px;
+}
+
+[data-blueprint-component="web-header"][data-blueprint-state="overview"] .web-header__tabs--transactions,
+[data-blueprint-component="web-header"][data-blueprint-state="transactions"] .web-header__tabs--overview {
+  display: none;
+}
+
+.web-header__actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+[data-blueprint-component="web-header"] .web-header__search {
+  width: 248px;
+}
+
+[data-blueprint-component="web-header"] .web-header__search .input__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+[data-blueprint-component="web-header"] .web-header__search .input__control {
+  min-height: var(--app-size-control-sm);
+  border-radius: var(--app-radius-full);
+  background: color-mix(in srgb, var(--app-color-foreground) 5%, transparent);
+}
+
+.web-header__kbd {
+  position: absolute;
+  left: 204px;
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 11px;
+}
+
+[data-blueprint-component="web-header"] [data-blueprint-primitive="button"] {
+  border-radius: var(--app-radius-full);
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+[data-blueprint-component="web-header"] .web-header__avatar {
+  border-color: transparent;
+  color: var(--app-color-on-primary);
+  background: var(--app-color-accent);
+}

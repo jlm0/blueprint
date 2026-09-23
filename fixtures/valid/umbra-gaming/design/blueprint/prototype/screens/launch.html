@@ -1,0 +1,168 @@
+<div class="launch" data-blueprint-screen="launch" data-blueprint-state="default">
+  <header class="site-nav" data-blueprint-section="nav">
+    <a class="wordmark" href="/" aria-label="Umbra home">
+      <svg class="wordmark__glyph" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="14.5"/></svg>
+      <span>UMBRA</span>
+    </a>
+    <nav class="site-nav__links" aria-label="Primary">
+      <a href="#season" aria-current="page">Season 04</a>
+      <a href="#modes">Modes</a>
+      <a href="#editions">Editions</a>
+      <a href="#patch">Patch notes</a>
+      <a href="/esports">Esports</a>
+    </nav>
+    <div class="site-nav__actions">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
+        <span slot="label">Sign in</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
+        <span slot="label">Play free</span>
+      </blueprint-use>
+    </div>
+  </header>
+
+  <section class="hero" id="season" data-blueprint-section="hero" aria-labelledby="hero-title">
+    <img class="hero__art" src="../assets/art/eclipse.svg" alt="">
+    <div class="hero__veil" aria-hidden="true"></div>
+
+    <div class="hero__intro">
+      <p class="hero__eyebrow"><span class="live-dot" aria-hidden="true"></span>Season 04 · Live now</p>
+      <p class="hero__lede">The sun goes dark over Kessler Basin. <em>Every light you carry gives you away.</em></p>
+      <p class="hero__body">Night-only maps, a new infiltrator operator, and a ranked ladder rebuilt from zero.</p>
+      <div class="hero__ctas">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="hero__play">
+          <span slot="label">Play free now</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="lg" class="hero__watch">
+          <b slot="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5Z"/></svg>Watch trailer</b>
+        </blueprint-use>
+      </div>
+    </div>
+
+    <div class="hero__clock" aria-label="Season ends in 62 days 14 hours 9 minutes">
+      <span class="hero__clock-label">Season ends in</span>
+      <span class="hero__clock-digits"><b>62</b><i>d</i><b>14</b><i>h</i><b>09</b><i>m</i></span>
+    </div>
+
+    <h1 class="hero__title" id="hero-title"><span class="hero__season">S04</span>Eclipse</h1>
+
+    <div class="hero__stats">
+      <blueprint-use kind="component" ref="stat-meter" state="plain">
+        <span slot="label">Players this week</span>
+        <span slot="value">12.4M</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="stat-meter" state="plain">
+        <span slot="label">New night maps</span>
+        <span slot="value">03</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="stat-meter" state="plain">
+        <span slot="label">Prize pool</span>
+        <span slot="value">$2M</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <div class="ticker" data-blueprint-section="ticker" aria-label="Season highlights">
+    <p class="ticker__track">
+      <span>New map · Kessler Basin</span><i aria-hidden="true">✦</i>
+      <span>New operator · Vesper</span><i aria-hidden="true">✦</i>
+      <span>Ranked reset</span><i aria-hidden="true">✦</i>
+      <span>Nightfall extraction</span><i aria-hidden="true">✦</i>
+      <span>New map · Kessler Basin</span><i aria-hidden="true">✦</i>
+      <span>New operator · Vesper</span><i aria-hidden="true">✦</i>
+    </p>
+  </div>
+
+  <section class="modes" id="modes" data-blueprint-section="modes" aria-labelledby="modes-title">
+    <header class="section-head">
+      <p class="section-head__index">01 — Modes</p>
+      <h2 class="section-head__title" id="modes-title">Four ways<br>to go dark.</h2>
+      <p class="section-head__copy">Every mode runs on the eclipse clock. When the corona fades, the map belongs to whoever sees first.</p>
+    </header>
+    <div class="bento">
+      <a class="trailer" href="#trailer" aria-label="Watch the launch trailer, 2 minutes 14 seconds">
+        <img class="trailer__art" src="../assets/art/eclipse.svg" alt="">
+        <span class="trailer__shade" aria-hidden="true"></span>
+        <span class="trailer__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></span>
+        <span class="trailer__caption">
+          <small>Launch trailer · 02:14</small>
+          <b>Kill the lights.</b>
+        </span>
+        <span class="trailer__frames" aria-hidden="true"><i></i><i></i><i></i><i class="is-on"></i><i></i><i></i><i></i><i></i></span>
+      </a>
+      <blueprint-use kind="component" ref="event-card" state="default" class="bento__event">
+        <span slot="timer">Ends in 1d 04:12</span>
+        <span slot="title">Blackout Weekend</span>
+        <span slot="description">Double XP across every night map.</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="mode-tile" state="default">
+        <span slot="index">01</span>
+        <b slot="glyph"><svg viewBox="0 0 120 64"><circle cx="60" cy="32" r="26"/><circle cx="60" cy="32" r="16"/><circle cx="60" cy="32" r="5"/><path d="M60 0v14M60 50v14M20 32h14M86 32h14"/></svg></b>
+        <span slot="name">Ranked Blackout</span>
+        <span slot="meta">60 squads · one life · lights out at 20:00</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="mode-tile" state="new">
+        <span slot="index">02</span>
+        <b slot="glyph"><svg viewBox="0 0 120 64"><path d="M6 58h108M18 58V30l22-14 22 14v28M62 58V22l20-12 20 12v36"/><path d="M40 58V42M82 58V36"/></svg></b>
+        <span slot="name">Nightfall Extraction</span>
+        <span slot="meta">Get in, get the core, get out before dawn</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="mode-tile" state="default">
+        <span slot="index">03</span>
+        <b slot="glyph"><svg viewBox="0 0 120 64"><rect x="14" y="8" width="92" height="48" rx="3"/><path d="M60 8v48M14 32h20M86 32h20"/><circle cx="60" cy="32" r="10"/></svg></b>
+        <span slot="name">Arena 3v3</span>
+        <span slot="meta">First to six rounds · no respawns</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <section class="editions" id="editions" data-blueprint-section="editions" aria-labelledby="editions-title">
+    <header class="section-head section-head--stacked">
+      <p class="section-head__index">02 — Editions</p>
+      <h2 class="section-head__title" id="editions-title">Choose how deep you go.</h2>
+      <p class="section-head__copy">Every edition plays every map, mode, and ranked queue. Passes only add cosmetics and tiers.</p>
+    </header>
+    <div class="editions__cards">
+      <blueprint-use kind="component" ref="edition-card" state="default">
+        <span slot="kicker">Standard</span>
+        <span slot="price">Free</span>
+        <span slot="note">Forever</span>
+        <ul slot="perks"><li>All maps, modes, and ranked play</li><li>25 free pass tiers</li><li>Cross-play and cross-progression</li></ul>
+        <span slot="cta">Play free</span>
+        <span slot="featured-cta">Play free</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="edition-card" state="featured">
+        <span slot="kicker">Eclipse Pass</span>
+        <span slot="price">950</span>
+        <span slot="note">UC · about $9.99</span>
+        <ul slot="perks"><li>100 tiers of season rewards</li><li>Vesper operator on day one</li><li>Corona weapon wrap collection</li></ul>
+        <span slot="cta">Get the pass</span>
+        <span slot="featured-cta">Get the pass</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="edition-card" state="default">
+        <span slot="kicker">Ultimate</span>
+        <span slot="price">2,800</span>
+        <span slot="note">UC · about $24.99</span>
+        <ul slot="perks"><li>Eclipse Pass plus 25 tier skips</li><li>Obsidian operator set</li><li>Animated eclipse finisher</li></ul>
+        <span slot="cta">Go ultimate</span>
+        <span slot="featured-cta">Go ultimate</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <footer class="site-footer" id="patch" data-blueprint-section="footer">
+    <div class="patch">
+      <p class="patch__version">Patch 4.0.0 <span>Oct 14</span></p>
+      <ul class="patch__notes">
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="success"><span slot="label">New</span></blueprint-use>Kessler Basin, a night-only map with dynamic blackouts</li>
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="accent"><span slot="label">Buff</span></blueprint-use>Suppressed rifles keep full range after dark</li>
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="destructive"><span slot="label">Nerf</span></blueprint-use>Flares now reveal the thrower for three seconds</li>
+      </ul>
+      <a class="patch__link" href="#patch">Read the full notes</a>
+    </div>
+    <nav class="site-footer__links" aria-label="Footer">
+      <a href="/support">Support</a><a href="/careers">Careers</a><a href="/press">Press</a><a href="/legal">Legal</a>
+    </nav>
+    <p class="site-footer__mark" aria-hidden="true">UMBRA</p>
+  </footer>
+</div>

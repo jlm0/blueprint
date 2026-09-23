@@ -1,0 +1,19 @@
+<div class="composer" data-blueprint-component="composer" data-blueprint-state="default">
+  <p class="composer__draft" data-blueprint-slot="placeholder">Ask a follow-up</p>
+  <div class="composer__bar">
+    <div class="composer__tools">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon" class="composer__attach">
+        <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span slot="label">Attach files</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="accent" class="composer__mode">
+        <span slot="label">Deep research</span>
+      </blueprint-use>
+      <span class="composer__hint">Searches 40+ sources</span>
+    </div>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="icon" class="composer__send">
+      <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
+      <span slot="label">Send</span>
+    </blueprint-use>
+  </div>
+</div>

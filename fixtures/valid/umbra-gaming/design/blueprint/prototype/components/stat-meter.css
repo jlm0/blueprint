@@ -1,0 +1,97 @@
+[data-blueprint-component="stat-meter"] {
+  --meter: 50%;
+  --meter-tone: var(--app-color-foreground);
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-color-surface);
+}
+
+.stat-meter__label {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stat-meter__value {
+  font-family: var(--app-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-meter__bar {
+  position: relative;
+  height: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface-4);
+}
+
+.stat-meter__bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--meter);
+  border-radius: inherit;
+  background: var(--meter-tone);
+}
+
+.stat-meter__delta {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  font-size: 11px;
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="above"] {
+  --meter: 74%;
+  --meter-tone: var(--app-color-primary);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="above"] .stat-meter__delta {
+  color: var(--app-color-primary);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="average"] {
+  --meter: 52%;
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="below"] {
+  --meter: 28%;
+  --meter-tone: var(--app-color-muted);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="record"] {
+  --meter: 100%;
+  --meter-tone: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 45%, transparent);
+  box-shadow: 0 0 32px -12px var(--app-color-glow);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="record"] .stat-meter__delta {
+  color: var(--app-color-primary);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="plain"] {
+  gap: var(--app-space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="plain"] .stat-meter__bar,
+[data-blueprint-component="stat-meter"][data-blueprint-state="plain"] .stat-meter__delta {
+  display: none;
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="plain"] .stat-meter__value {
+  order: -1;
+  font-size: 34px;
+}

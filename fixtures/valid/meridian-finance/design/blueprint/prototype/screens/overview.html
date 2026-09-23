@@ -1,0 +1,144 @@
+<div class="dash" data-blueprint-screen="overview" data-blueprint-state="default">
+  <nav class="side" data-blueprint-section="navigation" aria-label="Primary">
+    <a class="side__brand" href="/" aria-label="Meridian home">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.25"/><ellipse cx="14" cy="14" rx="5.25" ry="12.25"/><path d="M14 1.75v24.5M2 14h24"/></svg>
+      <span>Meridian</span>
+    </a>
+    <a class="side__org" href="#">
+      <span class="side__org-mark" aria-hidden="true">N</span>
+      <span class="side__org-name"><b>Northwind Labs</b><small>4 accounts</small></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+    </a>
+    <div class="side__links">
+      <a class="side__link side__link--active" href="/" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-5h-5v5H4Z"/></svg>Overview</a>
+      <a class="side__link" href="/transactions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Transactions</a>
+      <a class="side__link" href="/payments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Payments<span class="side__count">3</span></a>
+      <a class="side__link" href="/cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18"/></svg>Cards</a>
+      <a class="side__link" href="/treasury"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 17V10M10 17V10M14 17V10M18 17V10M3 9l9-5 9 5"/></svg>Treasury</a>
+      <a class="side__link" href="/accounting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10l3 3v15H4V3Z"/><path d="M8 11h8M8 15h5"/></svg>Accounting</a>
+    </div>
+    <a class="side__yield" href="/treasury">
+      <span class="side__yield-rate">4.62<small>% APY</small></span>
+      <span class="side__yield-copy">Reserve earned <b>$5,412.80</b> in September. Sweep idle Operating cash above $1.5M.</span>
+      <span class="side__yield-link">Set up a sweep</span>
+    </a>
+    <div class="side__member">
+      <blueprint-use kind="primitive" ref="avatar" state="status" size="sm">
+        <span slot="initials">AL</span>
+      </blueprint-use>
+      <span><b>Ari Lane</b><small>Finance lead</small></span>
+    </div>
+  </nav>
+
+  <main class="dash__main">
+    <header class="dash__top" data-blueprint-section="title">
+      <div>
+        <p class="dash__date">Tuesday, September 23</p>
+        <h1>Good morning, Ari</h1>
+      </div>
+      <div class="dash__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="sm">
+          <span slot="label">Export</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="sm">
+          <span slot="label">Move money</span>
+        </blueprint-use>
+      </div>
+    </header>
+
+    <section class="kpis" data-blueprint-section="position" aria-label="Cash position">
+      <blueprint-use kind="component" ref="balance-card" state="card">
+        <span slot="label">Total cash</span>
+        <span slot="amount">4,812,406</span>
+        <span slot="cents">.18</span>
+        <span slot="change">+4.6%</span>
+        <span slot="delta">since Sep 1</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="balance-card" state="card">
+        <span slot="label">Money in · 30 days</span>
+        <span slot="amount">1,240,512</span>
+        <span slot="cents">.00</span>
+        <span slot="change">+8.2%</span>
+        <span slot="delta">vs. August</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="balance-card" state="card">
+        <span slot="label">Money out · 30 days</span>
+        <span slot="amount">982,398</span>
+        <span slot="cents">.00</span>
+        <span slot="change">−3.1%</span>
+        <span slot="delta">vs. August</span>
+      </blueprint-use>
+      <div class="runway-card">
+        <p class="runway-card__label">Runway</p>
+        <p class="runway-card__figure">31<span>mo</span></p>
+        <p class="runway-card__note">Net burn $148K a month</p>
+      </div>
+    </section>
+
+    <div class="dash__row">
+      <div class="dash__chart" data-blueprint-section="cash-flow">
+        <blueprint-use kind="component" ref="cashflow-chart" state="default"></blueprint-use>
+      </div>
+      <section class="card-panel" data-blueprint-section="activity" aria-labelledby="v1-activity">
+        <header class="card-panel__head"><h2 id="v1-activity">Recent activity</h2><a href="/transactions">View all</a></header>
+        <blueprint-use kind="component" ref="transaction-row" state="pending">
+          <span slot="mark">AW</span>
+          <span slot="name">Amazon Web Services</span>
+          <span slot="meta">Infrastructure · Card ··1180</span>
+          <span slot="amount">−$23,861.52</span>
+          <span slot="date">Today</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">FG</span>
+          <span slot="name">Fieldgrove Capital</span>
+          <span slot="meta">Customer payment · Wire</span>
+          <span slot="amount" class="is-in">+$240,000.00</span>
+          <span slot="date">Today</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">LN</span>
+          <span slot="name">Linear</span>
+          <span slot="meta">Software · Card ··1180</span>
+          <span slot="amount">−$1,920.00</span>
+          <span slot="date">Sep 22</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">ST</span>
+          <span slot="name">Stripe payout</span>
+          <span slot="meta">Revenue · ACH</span>
+          <span slot="amount" class="is-in">+$86,412.07</span>
+          <span slot="date">Sep 22</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">WW</span>
+          <span slot="name">WeWork</span>
+          <span slot="meta">Rent · ACH</span>
+          <span slot="amount">−$32,500.00</span>
+          <span slot="date">Sep 21</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">GU</span>
+          <span slot="name">Gusto</span>
+          <span slot="meta">Payroll taxes · ACH</span>
+          <span slot="amount">−$61,208.33</span>
+          <span slot="date">Sep 20</span>
+        </blueprint-use>
+      </section>
+    </div>
+
+    <section class="accounts" data-blueprint-section="accounts" aria-label="Accounts">
+      <blueprint-use kind="component" ref="account-tile" state="default">
+        <span slot="kind">Checking</span><span slot="number">··4821</span><span slot="name">Operating</span><span slot="balance">$2,184,902.44</span><span slot="meta">45% of cash</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="account-tile" state="default">
+        <span slot="kind">Treasury · 4.62% APY</span><span slot="number">··7730</span><span slot="name">Reserve</span><span slot="balance">$1,402,118.20</span><span slot="meta">29% of cash</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="account-tile" state="default">
+        <span slot="kind">Checking</span><span slot="number">··3306</span><span slot="name">Payroll</span><span slot="balance">$861,440.02</span><span slot="meta">18% of cash</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="account-tile" state="default">
+        <span slot="kind">Savings</span><span slot="number">··5519</span><span slot="name">Tax</span><span slot="balance">$363,945.52</span><span slot="meta">8% of cash</span>
+      </blueprint-use>
+    </section>
+  </main>
+</div>

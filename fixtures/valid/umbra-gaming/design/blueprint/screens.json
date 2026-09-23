@@ -1,0 +1,1291 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "umbra-gaming",
+  "screens": [
+    {
+      "id": "launch",
+      "name": "Season Launch",
+      "description": "Season 04 launch page: cinematic eclipse hero with the season name as a giant horizon wordmark, a highlight ticker, modes bento with the trailer, editions, and patch notes.",
+      "framePresetId": "desktop-web-page",
+      "styleRefs": [
+        "prototype/screens/launch.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/launch.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/launch.css"
+        }
+      ],
+      "notes": [
+        "The hero wordmark, ticker rotation, and footer outline mark are page-level art direction, not reusable components."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the season wordmark as real text so it localizes; the fade is a background-clip gradient."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/season/eclipse"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/season",
+          "symbolName": "SeasonLaunchRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "season": "season"
+          },
+          "stateMapping": {
+            "default": "season live"
+          },
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/launch.html",
+        "styles": [
+          "prototype/screens/launch.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/unbounded.woff2",
+          "prototype/assets/fonts/geist.woff2",
+          "prototype/assets/fonts/geist-mono.woff2",
+          "prototype/assets/art/eclipse.svg"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-page-default",
+            "framePresetId": "desktop-web-page",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "stat-meter"
+          },
+          {
+            "kind": "component",
+            "id": "event-card"
+          },
+          {
+            "kind": "component",
+            "id": "mode-tile"
+          },
+          {
+            "kind": "component",
+            "id": "edition-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ],
+        "localValueExceptions": [
+          {
+            "property": "transform",
+            "value": "rotate(-1.6deg)",
+            "reason": "Ticker tilt is launch-page art direction."
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "nav",
+          "name": "Site Navigation",
+          "description": "Wordmark, section links, sign in, and play command floating over the hero.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Sign in and play commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "ghost, primary",
+                "copy": "Sign in, Play free"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "SiteNav",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "links": "navigation"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "hero",
+          "name": "Eclipse Hero",
+          "description": "Key art, season pitch with commands, countdown, headline stats, and the giant season wordmark.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Play and trailer commands.",
+              "binding": {
+                "slot": "ctas",
+                "variant": "primary, outline",
+                "copy": "Play free now, Watch trailer"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "stat-meter",
+              "reason": "Headline season figures.",
+              "binding": {
+                "slot": "stats",
+                "state": "plain",
+                "data": "season.stats"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "EclipseHero",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "season": "season",
+                "countdown": "season.endsAt"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "ticker",
+          "name": "Highlight Ticker",
+          "description": "Tilted lime band of season highlights bridging the hero and content.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "HighlightTicker",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "items": "season.highlights"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "modes",
+          "name": "Modes",
+          "description": "Trailer still, the live event, and the three core modes.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "event-card",
+              "reason": "Live event tile.",
+              "binding": {
+                "slot": "event",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "mode-tile",
+              "reason": "Core modes.",
+              "binding": {
+                "slot": "modes",
+                "state": "default, new"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "ModesBento",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "modes": "modes",
+                "event": "liveEvent",
+                "trailer": "season.trailer"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "editions",
+          "name": "Editions",
+          "description": "Free, pass, and ultimate editions with the pass featured.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "edition-card",
+              "reason": "Editions.",
+              "binding": {
+                "slot": "cards",
+                "state": "default, featured"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "Editions",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "editions": "editions"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "footer",
+          "name": "Patch Notes and Footer",
+          "description": "Patch 4.0 highlights, footer links, and the outline wordmark.",
+          "styleRefs": [
+            "prototype/screens/launch.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/launch.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/launch.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Change type per note.",
+              "binding": {
+                "slot": "change",
+                "variant": "success, accent, destructive",
+                "copy": "New, Buff, Nerf"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/season",
+              "symbolName": "SiteFooter",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "patch": "latestPatch"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hub",
+      "name": "Season Hub",
+      "description": "Companion app home: player identity, the season and pass progress over key art, squad presence, the live event, and daily challenges. Loading swaps data regions for skeletons while identity stays.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/hub.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/hub.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/hub.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the pass and challenges as the two dominant blocks; squad chips scroll horizontally."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/HubScreen",
+          "symbolName": "HubScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "player": "viewer",
+            "season": "season"
+          },
+          "stateMapping": {
+            "default": "season data loaded",
+            "loading": "season data syncing"
+          },
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/hub.html",
+        "styles": [
+          "prototype/screens/hub.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/unbounded.woff2",
+          "prototype/assets/fonts/geist.woff2",
+          "prototype/assets/fonts/geist-mono.woff2",
+          "prototype/assets/art/eclipse.svg"
+        ],
+        "states": [
+          "default",
+          "loading"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          },
+          {
+            "id": "phone-loading",
+            "framePresetId": "phone",
+            "state": "loading"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "loading-mark"
+          },
+          {
+            "kind": "component",
+            "id": "pass-track"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "component",
+            "id": "squad-member"
+          },
+          {
+            "kind": "component",
+            "id": "event-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "component",
+            "id": "challenge-row"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "skeleton"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "player",
+          "name": "Player Header",
+          "description": "Avatar, handle, level and rank, coin balance, and a sync indicator while loading.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Signed-in player.",
+              "binding": {
+                "slot": "avatar",
+                "state": "status",
+                "copy": "V9"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "loading-mark",
+              "reason": "Sync indicator in loading.",
+              "binding": {
+                "slot": "sync",
+                "state": "primary"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "PlayerHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "player": "viewer",
+                "coins": "wallet.coins"
+              },
+              "stateMapping": {
+                "default": "balance",
+                "loading": "syncing"
+              },
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "season",
+          "name": "Season and Pass",
+          "description": "Season countdown, season wordmark, and pass progress.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "pass-track",
+              "reason": "Pass progress.",
+              "binding": {
+                "slot": "pass",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Tier tile placeholder while loading.",
+              "binding": {
+                "slot": "pass",
+                "state": "block",
+                "layout": "tier tile"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Pass title placeholder while loading.",
+              "binding": {
+                "slot": "pass",
+                "state": "line",
+                "layout": "title and XP"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Reward rail placeholder while loading.",
+              "binding": {
+                "slot": "pass",
+                "state": "block",
+                "layout": "reward rail"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Next reward placeholder while loading.",
+              "binding": {
+                "slot": "pass",
+                "state": "line",
+                "layout": "next reward"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "SeasonPass",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "season": "season",
+                "pass": "pass"
+              },
+              "stateMapping": {
+                "default": "loaded",
+                "loading": "skeleton"
+              },
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "squad",
+          "name": "Squad Online",
+          "description": "Online squadmates with presence.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "squad-member",
+              "reason": "Squadmates.",
+              "binding": {
+                "slot": "members",
+                "state": "online, in-match"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "SquadStrip",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "members": "squad.online"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "event",
+          "name": "Live Event",
+          "description": "Compact live event card.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "event-card",
+              "reason": "Live event.",
+              "binding": {
+                "slot": "event",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Event copy placeholder while loading.",
+              "binding": {
+                "slot": "event",
+                "state": "line"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "LiveEvent",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "event": "liveEvent"
+              },
+              "stateMapping": {
+                "default": "loaded",
+                "loading": "skeleton"
+              },
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "challenges",
+          "name": "Daily Challenges",
+          "description": "Reset countdown and three daily challenges.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "challenge-row",
+              "reason": "Daily challenges.",
+              "binding": {
+                "slot": "rows",
+                "state": "complete, halfway, started"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Challenge glyph placeholder while loading.",
+              "binding": {
+                "slot": "rows",
+                "state": "block",
+                "layout": "glyph"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Challenge copy placeholder while loading.",
+              "binding": {
+                "slot": "rows",
+                "state": "line"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Challenge glyph placeholder while loading.",
+              "binding": {
+                "slot": "rows",
+                "state": "block",
+                "layout": "glyph"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "skeleton",
+              "reason": "Challenge copy placeholder while loading.",
+              "binding": {
+                "slot": "rows",
+                "state": "line"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "DailyChallenges",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "challenges": "dailyChallenges",
+                "resetsAt": "dailyResetAt"
+              },
+              "stateMapping": {
+                "default": "loaded",
+                "loading": "skeleton"
+              },
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "tabbar",
+          "name": "Tab Bar",
+          "description": "Floating five-destination tab bar with Play selected.",
+          "styleRefs": [
+            "prototype/screens/hub.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hub.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hub.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HubScreen",
+              "symbolName": "PrimaryTabs",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "default": "play selected"
+              },
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "match",
+      "name": "Match Summary",
+      "description": "Post-match summary: victory wordmark, placement and rank change, XP into the pass, four stat meters against the player average, the squad scoreboard, and requeue.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/match.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/match.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/match.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Animate the XP fill and rank change on entry; the static frame shows the settled result."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/matches/:matchId"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/MatchSummaryScreen",
+          "symbolName": "MatchSummaryScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "match": "match",
+            "player": "viewer"
+          },
+          "stateMapping": {
+            "default": "victory"
+          },
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/match.html",
+        "styles": [
+          "prototype/screens/match.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/unbounded.woff2",
+          "prototype/assets/fonts/geist.woff2",
+          "prototype/assets/fonts/geist-mono.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "nav-bar"
+          },
+          {
+            "kind": "primitive",
+            "id": "rank-emblem"
+          },
+          {
+            "kind": "component",
+            "id": "pass-track"
+          },
+          {
+            "kind": "component",
+            "id": "stat-meter"
+          },
+          {
+            "kind": "component",
+            "id": "squad-member"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Transparent navigation bar.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "nav-bar",
+              "reason": "Back and match actions.",
+              "binding": {
+                "slot": "title",
+                "state": "back-and-right",
+                "copy": "Match summary"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "MatchHeader",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "result",
+          "name": "Result",
+          "description": "Mode, map, duration, result wordmark, placement, and rank change.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "rank-emblem",
+              "reason": "Rank after the match.",
+              "binding": {
+                "slot": "rank",
+                "state": "diamond",
+                "copy": "II"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "MatchResult",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "result": "match.result",
+                "rank": "match.rankChange"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "xp",
+          "name": "XP Earned",
+          "description": "XP gained and the pass tier it moved.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "pass-track",
+              "reason": "Pass progress with XP gained.",
+              "binding": {
+                "slot": "xp",
+                "state": "compact"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "XpEarned",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "xp": "match.xp",
+                "pass": "pass"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "stats",
+          "name": "Performance",
+          "description": "Eliminations, damage, accuracy, and revives against the player average.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "stat-meter",
+              "reason": "Performance stats.",
+              "binding": {
+                "slot": "stats",
+                "state": "record, above, average, below"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "PerformanceStats",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "stats": "match.stats"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "scoreboard",
+          "name": "Squad Scoreboard",
+          "description": "Squad rows with eliminations and damage, MVP first.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "squad-member",
+              "reason": "Squad rows.",
+              "binding": {
+                "slot": "rows",
+                "state": "mvp, scoreboard"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "SquadScoreboard",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "squad": "match.squad"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "actions",
+          "name": "Actions",
+          "description": "Queue again and share.",
+          "styleRefs": [
+            "prototype/screens/match.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/match.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/match.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Requeue and share commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, outline",
+                "copy": "Queue again"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/MatchSummaryScreen",
+              "symbolName": "MatchActions",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Umbra Eclipse tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

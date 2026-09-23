@@ -1,0 +1,340 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "meridian-finance",
+  "entry": {
+    "screenId": "home",
+    "version": 1,
+    "state": "default",
+    "framePresetId": "phone",
+    "screen": {
+      "id": "home",
+      "name": "Home",
+      "description": "Phone home: total cash with quick actions, a horizontal strip of accounts, and the latest activity.",
+      "framePresetId": "phone",
+      "flow": "Phone",
+      "styleRefs": [
+        "prototype/screens/home.history-home-v1.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/home.history-home-v1.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/home.history-home-v1.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep quick actions within thumb reach and let the account strip scroll horizontally."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/HomeScreen",
+          "symbolName": "HomeScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "position": "treasury.position",
+            "accounts": "treasury.accounts",
+            "activity": "transactions.recent"
+          },
+          "stateMapping": {
+            "default": "loaded"
+          },
+          "tokenAdapter": "Meridian semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/home.history-home-v1.html",
+        "styles": [
+          "prototype/styles/fonts.history-home-v1.css",
+          "prototype/screens/home.history-home-v1.css"
+        ],
+        "assetRefs": [
+          "prototype/assets/fonts/inter-tight-variable.woff2",
+          "prototype/assets/fonts/instrument-serif-400.woff2",
+          "prototype/assets/fonts/instrument-serif-400-italic.woff2",
+          "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+        ],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "balance-card"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "account-tile"
+          },
+          {
+            "kind": "component",
+            "id": "transaction-row"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Organization switcher and notifications.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Notifications.",
+              "binding": {
+                "slot": "notifications",
+                "variant": "ghost",
+                "layout": "icon"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "HomeHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "organization": "organization"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "balance",
+          "name": "Balance",
+          "description": "Total cash, its change this month, and four quick actions.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "balance-card",
+              "reason": "Total cash.",
+              "binding": {
+                "slot": "total",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Send, request, deposit, and cards.",
+              "binding": {
+                "slot": "actions",
+                "variant": "primary, secondary",
+                "layout": "icon"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "BalanceHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "total": "treasury.totalCash"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "accounts",
+          "name": "Accounts",
+          "description": "Horizontally scrolling account balances.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "account-tile",
+              "reason": "Account balances.",
+              "binding": {
+                "slot": "accounts",
+                "state": "compact"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "AccountStrip",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "accounts": "treasury.accounts"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "activity",
+          "name": "Activity",
+          "description": "Most recent transactions.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "transaction-row",
+              "reason": "Recent transactions.",
+              "binding": {
+                "slot": "rows",
+                "state": "default, pending"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/HomeScreen",
+              "symbolName": "RecentActivity",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "transactions": "transactions.recent"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "navigation",
+          "name": "Tab Bar",
+          "description": "Persistent primary navigation with Home selected.",
+          "styleRefs": [
+            "prototype/screens/home.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/home.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/home.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/navigation/Tabs",
+              "symbolName": "PrimaryTabs",
+              "operationIntent": "create-section",
+              "propMapping": {},
+              "stateMapping": {
+                "default": "home selected"
+              },
+              "tokenAdapter": "Meridian semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    "replacedBy": {
+      "type": "exploration-candidate",
+      "explorationId": "home-balance-treatment",
+      "candidateId": "ink-panel"
+    }
+  }
+}

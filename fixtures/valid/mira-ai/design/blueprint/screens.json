@@ -1,0 +1,814 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "mira-ai",
+  "screens": [
+    {
+      "id": "workspace",
+      "name": "Workspace",
+      "description": "Three-column research workspace: thread library, the active answer with its figure and findings, and the sources the answer cites. The empty state opens a new thread.",
+      "framePresetId": "desktop-web",
+      "styleRefs": [
+        "prototype/screens/workspace.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/workspace.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/workspace.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the answer column at a readable 720px measure and dock the composer over the thread."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/threads/:threadId"
+      },
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/routes/workspace",
+          "symbolName": "WorkspaceRoute",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "thread": "thread",
+            "sources": "thread.sources"
+          },
+          "stateMapping": {
+            "default": "thread with answer",
+            "empty": "new thread"
+          },
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/workspace.html",
+        "styles": [
+          "prototype/screens/workspace.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default",
+          "empty"
+        ],
+        "reviewConditions": [
+          {
+            "id": "desktop-web-default",
+            "framePresetId": "desktop-web",
+            "state": "default"
+          },
+          {
+            "id": "desktop-web-empty",
+            "framePresetId": "desktop-web",
+            "state": "empty"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "input"
+          },
+          {
+            "kind": "primitive",
+            "id": "progress"
+          },
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "select"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "insight-chart"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          },
+          {
+            "kind": "component",
+            "id": "composer"
+          },
+          {
+            "kind": "component",
+            "id": "prompt-card"
+          },
+          {
+            "kind": "component",
+            "id": "composer"
+          },
+          {
+            "kind": "component",
+            "id": "source-item"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "library",
+          "name": "Thread Library",
+          "description": "Brand, new thread command, search, grouped threads, research quota, and account.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "New thread and collapse commands.",
+              "binding": {
+                "slot": "actions",
+                "variant": "outline",
+                "copy": "New thread"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "input",
+              "reason": "Thread search.",
+              "binding": {
+                "slot": "search",
+                "variant": "filled",
+                "state": "empty"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "progress",
+              "reason": "Deep research quota.",
+              "binding": {
+                "slot": "usage",
+                "state": "value",
+                "data": "quota.used / quota.limit"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "avatar",
+              "reason": "Signed-in member.",
+              "binding": {
+                "slot": "account",
+                "state": "status"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Plan tier.",
+              "binding": {
+                "slot": "plan",
+                "variant": "outline",
+                "copy": "Pro"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "ThreadLibrary",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "threads": "threads",
+                "account": "viewer"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "thread-header",
+          "name": "Thread Header",
+          "description": "Breadcrumb title, model picker, and share command.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "select",
+              "reason": "Model picker.",
+              "binding": {
+                "slot": "model",
+                "state": "value",
+                "copy": "Mira 2 Pro"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Share command.",
+              "binding": {
+                "slot": "share",
+                "variant": "outline",
+                "copy": "Share"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "ThreadHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "title": "thread.title",
+                "model": "thread.model"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "conversation",
+          "name": "Conversation",
+          "description": "The question with its attachment, then the answer: summary, figure, ranked findings, answer actions, and follow-ups.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "insight-chart",
+              "reason": "Figure embedded in the answer.",
+              "binding": {
+                "slot": "figure",
+                "state": "default"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Answer actions and follow-up prompts.",
+              "binding": {
+                "slot": "actions",
+                "variant": "ghost, secondary"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "Conversation",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "messages": "thread.messages"
+              },
+              "stateMapping": {
+                "default": "answer complete"
+              },
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "welcome",
+          "name": "New Thread",
+          "description": "Empty-state greeting, large composer, and three starter prompts.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "composer",
+              "reason": "Hero prompt entry.",
+              "binding": {
+                "slot": "composer",
+                "state": "hero"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "prompt-card",
+              "reason": "Starter prompts.",
+              "binding": {
+                "slot": "starters",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "NewThread",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "starters": "starterPrompts"
+              },
+              "stateMapping": {
+                "empty": "no messages"
+              },
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "composer",
+          "name": "Docked Composer",
+          "description": "Follow-up composer docked over the thread with the accuracy note.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "composer",
+              "reason": "Follow-up prompt entry.",
+              "binding": {
+                "slot": "composer",
+                "state": "default"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "DockedComposer",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "draft"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "sources",
+          "name": "Sources",
+          "description": "Citations the answer read, and the artifact Mira is drafting from it.",
+          "styleRefs": [
+            "prototype/screens/workspace.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/workspace.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/workspace.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "source-item",
+              "reason": "Numbered citations.",
+              "binding": {
+                "slot": "sources",
+                "state": "default, active"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Artifact status.",
+              "binding": {
+                "slot": "status",
+                "variant": "tonal",
+                "copy": "Drafting"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "button",
+              "reason": "Open the artifact.",
+              "binding": {
+                "slot": "open",
+                "variant": "primary",
+                "copy": "Open draft"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "web",
+              "framework": "framework-neutral",
+              "candidatePath": "src/routes/workspace",
+              "symbolName": "SourcesPanel",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "sources": "thread.sources",
+                "artifact": "thread.artifact"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "name": "Chat",
+      "description": "Phone thread: the same answer condensed around a compact figure and citations, with the composer above the home indicator. The empty state opens a new thread.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/chat.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/chat.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/chat.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Keep the composer pinned above the keyboard and home indicator."
+      ],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/threads/:threadId"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/ChatScreen",
+          "symbolName": "ChatScreen",
+          "operationIntent": "create-screen",
+          "propMapping": {
+            "thread": "thread"
+          },
+          "stateMapping": {
+            "default": "thread with answer",
+            "empty": "new thread"
+          },
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/chat.html",
+        "styles": [
+          "prototype/screens/chat.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default",
+          "empty"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          },
+          {
+            "id": "phone-empty",
+            "framePresetId": "phone",
+            "state": "empty"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "nav-bar"
+          },
+          {
+            "kind": "component",
+            "id": "insight-chart"
+          },
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "component",
+            "id": "prompt-card"
+          },
+          {
+            "kind": "component",
+            "id": "composer"
+          },
+          {
+            "kind": "component",
+            "id": "composer"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "header",
+          "name": "Header",
+          "description": "Navigation bar with the thread title.",
+          "styleRefs": [
+            "prototype/screens/chat.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/chat.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/chat.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "nav-bar",
+              "reason": "Back to threads and thread actions.",
+              "binding": {
+                "slot": "title",
+                "state": "back-and-right",
+                "copy": "Q3 churn drivers"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ChatScreen",
+              "symbolName": "ChatHeader",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "title": "thread.title"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "conversation",
+          "name": "Conversation",
+          "description": "Question, answer summary, compact figure, and citation chips.",
+          "styleRefs": [
+            "prototype/screens/chat.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/chat.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/chat.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "insight-chart",
+              "reason": "Figure embedded in the answer.",
+              "binding": {
+                "slot": "figure",
+                "state": "compact"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Citation chips.",
+              "binding": {
+                "slot": "citations",
+                "variant": "outline"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ChatScreen",
+              "symbolName": "Conversation",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "messages": "thread.messages"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "welcome",
+          "name": "New Thread",
+          "description": "Greeting and starter prompts for an empty thread.",
+          "styleRefs": [
+            "prototype/screens/chat.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/chat.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/chat.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "prompt-card",
+              "reason": "Starter prompts.",
+              "binding": {
+                "slot": "starters",
+                "state": "compact"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ChatScreen",
+              "symbolName": "NewThread",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "starters": "starterPrompts"
+              },
+              "stateMapping": {
+                "empty": "no messages"
+              },
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "composer",
+          "name": "Composer",
+          "description": "Compact composer pinned above the home indicator.",
+          "styleRefs": [
+            "prototype/screens/chat.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/chat.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/chat.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "component",
+              "id": "composer",
+              "reason": "Follow-up entry under a thread.",
+              "binding": {
+                "slot": "composer",
+                "state": "compact",
+                "copy": "Ask a follow-up"
+              }
+            },
+            {
+              "kind": "component",
+              "id": "composer",
+              "reason": "First prompt entry on a new thread.",
+              "binding": {
+                "slot": "composer",
+                "state": "compact",
+                "copy": "Ask Mira anything"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ChatScreen",
+              "symbolName": "ChatComposer",
+              "operationIntent": "create-section",
+              "propMapping": {
+                "draft": "draft"
+              },
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

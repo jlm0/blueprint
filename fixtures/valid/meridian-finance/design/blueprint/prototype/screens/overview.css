@@ -1,0 +1,333 @@
+* {
+  box-sizing: border-box;
+}
+
+[data-blueprint-screen="overview"] {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+  color: var(--app-color-foreground);
+  background: var(--app-color-background);
+  font: var(--app-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.side {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--app-space-5);
+  padding: 22px var(--app-space-4) var(--app-space-4);
+  border-right: 1px solid var(--app-color-border);
+  background: var(--app-color-surface-muted);
+}
+
+.side__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--app-space-2);
+  color: var(--app-color-foreground);
+  text-decoration: none;
+}
+
+.side__brand svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+
+.side__brand span {
+  font-family: var(--app-font-serif);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.side__org {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  text-decoration: none;
+}
+
+.side__org-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+  font-family: var(--app-font-serif);
+  font-size: 18px;
+}
+
+.side__org-name {
+  display: grid;
+  flex: 1;
+}
+
+.side__org-name b {
+  font-weight: 600;
+}
+
+.side__org-name small {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.side__org svg {
+  width: 14px;
+  height: 14px;
+  color: var(--app-color-muted);
+}
+
+.side__links {
+  display: grid;
+  gap: 2px;
+}
+
+.side__link {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.side__link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.side__link--active {
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  box-shadow: var(--app-shadow-sm), 0 0 0 1px var(--app-color-border);
+}
+
+.side__count {
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: var(--app-radius-full);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-accent);
+  font: var(--app-type-code);
+  font-size: 10.5px;
+  line-height: 18px;
+}
+
+.side__yield {
+  display: grid;
+  gap: var(--app-space-2);
+  margin-top: auto;
+  padding: var(--app-space-4);
+  border: 1px solid var(--app-color-border-strong);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  text-decoration: none;
+}
+
+.side__yield-rate {
+  font: var(--app-type-display);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.side__yield-rate small {
+  margin-left: var(--app-space-1);
+  color: var(--app-color-muted);
+  font-family: var(--app-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.side__yield-copy {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.side__yield-copy b {
+  color: var(--app-color-foreground);
+  font-weight: 600;
+}
+
+.side__yield-link {
+  color: var(--app-color-accent);
+  font: var(--app-type-label);
+}
+
+.side__member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px var(--app-space-2) 0;
+  border-top: 1px solid var(--app-color-border);
+}
+
+.side__member span:last-child {
+  display: grid;
+}
+
+.side__member b {
+  font-weight: 600;
+}
+
+.side__member small {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.dash__main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--app-space-5);
+  min-width: 0;
+  min-height: 0;
+  padding: 28px var(--app-space-8) var(--app-space-6);
+}
+
+.dash__top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.dash__date {
+  margin: 0 0 6px;
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dash__top h1 {
+  margin: 0;
+  font: var(--app-type-display);
+  font-size: 40px;
+  letter-spacing: -0.015em;
+}
+
+.dash__actions {
+  display: flex;
+  gap: var(--app-space-2);
+}
+
+[data-blueprint-screen="overview"] .dash__actions [data-blueprint-primitive="button"] {
+  border-radius: var(--app-radius-full);
+  padding: 0 14px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr 0.7fr;
+  gap: var(--app-space-4);
+}
+
+[data-blueprint-screen="overview"] .kpis .balance-card__amount {
+  font-size: 38px;
+}
+
+.runway-card {
+  display: grid;
+  align-content: start;
+  gap: var(--app-space-3);
+  padding: var(--app-space-5);
+  border-radius: var(--app-radius-xl);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+}
+
+.runway-card p {
+  margin: 0;
+}
+
+.runway-card__label {
+  color: color-mix(in srgb, var(--app-color-on-primary) 64%, transparent);
+  font: var(--app-type-label);
+}
+
+.runway-card__figure {
+  font: var(--app-type-display);
+  font-size: 46px;
+  line-height: 1;
+}
+
+.runway-card__figure span {
+  margin-left: 6px;
+  font-size: 22px;
+  font-style: italic;
+}
+
+.runway-card__note {
+  color: color-mix(in srgb, var(--app-color-on-primary) 64%, transparent);
+  font: var(--app-type-caption);
+}
+
+.dash__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--app-space-4);
+  min-height: 0;
+}
+
+.dash__chart {
+  display: grid;
+  min-height: 0;
+}
+
+[data-blueprint-screen="overview"] .dash__chart .cashflow__plot {
+  min-height: 0;
+}
+
+.card-panel {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--app-space-2) var(--app-space-6) 0;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-color-surface);
+}
+
+.card-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--app-space-4) 0 var(--app-space-2);
+}
+
+.card-panel__head h2 {
+  margin: 0;
+  font: var(--app-type-heading);
+}
+
+.card-panel__head a {
+  color: var(--app-color-accent);
+  font: var(--app-type-label);
+  text-decoration: none;
+}
+
+[data-blueprint-screen="overview"] .card-panel [data-blueprint-component="transaction-row"]:last-child {
+  border-bottom: 0;
+}
+
+.accounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--app-space-4);
+}

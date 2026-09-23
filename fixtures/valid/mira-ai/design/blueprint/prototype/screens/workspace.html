@@ -1,0 +1,238 @@
+<div class="workspace" data-blueprint-screen="workspace" data-blueprint-state="default">
+  <aside class="rail" data-blueprint-section="library" aria-label="Threads">
+    <div class="rail__brand">
+      <a class="wordmark" href="/" aria-label="Mira home">
+        <svg class="wordmark__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+        <span>Mira</span>
+      </a>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+        <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></span>
+        <span slot="label">Collapse sidebar</span>
+      </blueprint-use>
+    </div>
+
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" class="rail__new">
+      <span slot="label">New thread<kbd>⌘ N</kbd></span>
+    </blueprint-use>
+
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="filled" class="rail__search">
+      <span slot="label">Search threads</span>
+      <span slot="placeholder">Search threads</span>
+    </blueprint-use>
+
+    <nav class="rail__threads" aria-label="Recent threads">
+      <p class="rail__group">Pinned</p>
+      <a class="thread" href="#"><span>Pricing page teardown</span><small>Doc</small></a>
+      <a class="thread" href="#"><span>Hiring plan for H2</span><small>Sheet</small></a>
+      <p class="rail__group">Today</p>
+      <a class="thread thread--active" href="#" aria-current="page"><span>Q3 churn drivers</span><small>Now</small></a>
+      <a class="thread" href="#"><span>Summarize board deck feedback</span><small>11:02</small></a>
+      <p class="rail__group">Previous 7 days</p>
+      <a class="thread" href="#"><span>Onboarding email rewrite</span><small>Tue</small></a>
+      <a class="thread" href="#"><span>Competitor pricing matrix</span><small>Mon</small></a>
+      <a class="thread" href="#"><span>SOC 2 evidence checklist</span><small>Mon</small></a>
+      <a class="thread" href="#"><span>Interview notes · Design lead</span><small>Sun</small></a>
+    </nav>
+
+    <div class="rail__foot">
+      <blueprint-use kind="primitive" ref="progress" state="value" class="rail__usage">
+        <span slot="label">Deep research · 15 of 25</span>
+      </blueprint-use>
+      <div class="account">
+        <blueprint-use kind="primitive" ref="avatar" state="status" size="sm">
+          <span slot="initials">AL</span>
+        </blueprint-use>
+        <span class="account__name"><b>Ari Lane</b><small>Northwind · Team</small></span>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline">
+          <span slot="label">Pro</span>
+        </blueprint-use>
+      </div>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <header class="stage__bar" data-blueprint-section="thread-header">
+      <div class="crumbs">
+        <span class="crumbs__project">Growth research</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <h1>Q3 churn drivers</h1>
+      </div>
+      <div class="stage__actions">
+        <blueprint-use kind="primitive" ref="select" state="value" class="model-select">
+          <span slot="value">Mira 2 Pro</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="sm">
+          <span slot="label">Share</span>
+        </blueprint-use>
+      </div>
+    </header>
+
+    <div class="thread-view">
+      <section class="conversation" data-blueprint-section="conversation" aria-label="Conversation">
+        <div class="ask">
+          <span class="attachment">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+            <span><b>q3-retention.csv</b><small>48,210 rows · 2.4 MB</small></span>
+          </span>
+          <p class="ask__bubble">Why did churn jump in Q3? Break it down by cohort and tell me what we should change before the October renewals.</p>
+        </div>
+
+        <article class="answer">
+          <header class="answer__meta">
+            <svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+            <b>Mira</b>
+            <span class="reasoned">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              Reasoned for 14s · read 5 sources
+            </span>
+          </header>
+
+          <h2>Three drivers explain 71% of the Q3 increase.</h2>
+          <p>Churn rose from <strong>4.2% to 6.8%</strong> quarter over quarter, but the rise is concentrated. Most of it comes from the June cohort, which joined on the annual discount<sup>1</sup>, from accounts with a single data source<sup>2</sup>, and from seat-heavy teams downgrading after the August price change<sup>3</sup>.</p>
+
+          <blueprint-use kind="component" ref="insight-chart" state="default"></blueprint-use>
+
+          <ol class="findings">
+            <li>
+              <span class="findings__index">01</span>
+              <span class="findings__copy"><b>Discount cohorts renew at half the rate.</b> Annual-discount signups churned at 11.2% against 4.9% for full-price signups.</span>
+              <span class="findings__metric">+6.3 pts</span>
+            </li>
+            <li>
+              <span class="findings__index">02</span>
+              <span class="findings__copy"><b>A second integration is the retention line.</b> Two or more connected sources cut churn to 2.7%.</span>
+              <span class="findings__metric">−61%</span>
+            </li>
+            <li>
+              <span class="findings__index">03</span>
+              <span class="findings__copy"><b>Seat pricing drives downgrades, not exits.</b> 38% of affected teams moved to a smaller plan.</span>
+              <span class="findings__metric">38%</span>
+            </li>
+          </ol>
+
+          <footer class="answer__actions">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+              <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
+              <span slot="label">Copy answer</span>
+            </blueprint-use>
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+              <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span>
+              <span slot="label">Regenerate</span>
+            </blueprint-use>
+            <span class="answer__usage">Mira 2 Pro · 1,284 tokens</span>
+          </footer>
+
+          <div class="followups" aria-label="Suggested follow-ups">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+              <span slot="label">Model a 5% renewal discount</span>
+            </blueprint-use>
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+              <span slot="label">Draft the retention memo</span>
+            </blueprint-use>
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+              <span slot="label">Which accounts are at risk?</span>
+            </blueprint-use>
+          </div>
+        </article>
+      </section>
+
+      <section class="welcome" data-blueprint-section="welcome" aria-labelledby="welcome-title">
+        <p class="welcome__eyebrow"><span class="welcome__dot" aria-hidden="true"></span>Mira 2 Pro · Deep research ready</p>
+        <h2 class="welcome__title" id="welcome-title">What should we figure out today, Ari?</h2>
+        <blueprint-use kind="component" ref="composer" state="hero">
+          <span slot="placeholder">Ask anything, or drop in a file to analyze</span>
+        </blueprint-use>
+        <div class="starters">
+          <blueprint-use kind="component" ref="prompt-card" state="default">
+            <span slot="kicker">01 · Analyze</span>
+            <span slot="title">Find what moved retention this quarter</span>
+            <span slot="description">Upload a cohort export and isolate the drivers.</span>
+          </blueprint-use>
+          <blueprint-use kind="component" ref="prompt-card" state="default">
+            <span slot="kicker">02 · Research</span>
+            <span slot="title">Map competitor pricing changes</span>
+            <span slot="description">Compare plans, limits, and recent moves.</span>
+          </blueprint-use>
+          <blueprint-use kind="component" ref="prompt-card" state="default">
+            <span slot="kicker">03 · Write</span>
+            <span slot="title">Turn meeting notes into a decision memo</span>
+            <span slot="description">Keep owners, dates, and open questions.</span>
+          </blueprint-use>
+        </div>
+      </section>
+    </div>
+
+    <div class="dock" data-blueprint-section="composer">
+      <blueprint-use kind="component" ref="composer" state="default">
+        <span slot="placeholder">Ask a follow-up about the June cohort</span>
+      </blueprint-use>
+      <p class="dock__note">Mira can make mistakes. Check figures against the source data.</p>
+    </div>
+  </main>
+
+  <aside class="sources" data-blueprint-section="sources" aria-labelledby="sources-title">
+    <header class="sources__head">
+      <h2 id="sources-title">Sources</h2>
+      <span class="sources__count">5</span>
+    </header>
+    <div class="sources__list">
+      <blueprint-use kind="component" ref="source-item" state="active">
+        <span slot="index">1</span>
+        <span slot="title">Q3 retention export</span>
+        <span slot="meta">q3-retention.csv · Uploaded</span>
+        <span slot="mark">CS</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="source-item" state="default">
+        <span slot="index">2</span>
+        <span slot="title">Integration usage by account</span>
+        <span slot="meta">Warehouse · usage_daily</span>
+        <span slot="mark">WH</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="source-item" state="default">
+        <span slot="index">3</span>
+        <span slot="title">August pricing change log</span>
+        <span slot="meta">Notion · Pricing</span>
+        <span slot="mark">NO</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="source-item" state="default">
+        <span slot="index">4</span>
+        <span slot="title">Renewal calls, July to September</span>
+        <span slot="meta">Gong · 38 calls</span>
+        <span slot="mark">GO</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="source-item" state="default">
+        <span slot="index">5</span>
+        <span slot="title">SaaS retention benchmarks 2026</span>
+        <span slot="meta">openview.co · Report</span>
+        <span slot="mark">OV</span>
+      </blueprint-use>
+    </div>
+
+    <div class="plan">
+      <p class="plan__title">Research steps</p>
+      <ol>
+        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Profiled 48,210 accounts</span><small>3s</small></li>
+        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Joined usage by account</span><small>5s</small></li>
+        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Compared six signup cohorts</span><small>4s</small></li>
+        <li><span class="plan__check plan__check--active" aria-hidden="true"></span><span>Drafting the renewal memo</span><small>Now</small></li>
+      </ol>
+    </div>
+
+    <div class="artifact" data-blueprint-surface>
+      <div class="artifact__head">
+        <span class="artifact__kind">Artifact</span>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">
+          <span slot="label">Drafting</span>
+        </blueprint-use>
+      </div>
+      <b class="artifact__title">Retention memo for the October renewals</b>
+      <div class="artifact__page" aria-hidden="true">
+        <i></i><i></i><i></i><i class="short"></i>
+        <i class="gap"></i><i></i><i></i><i class="short"></i>
+      </div>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" class="artifact__open">
+        <span slot="label">Open draft</span>
+      </blueprint-use>
+    </div>
+  </aside>
+</div>

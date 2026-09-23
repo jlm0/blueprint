@@ -1,0 +1,184 @@
+<div class="send" data-blueprint-screen="transfer" data-blueprint-state="default">
+  <header class="send__bar" data-blueprint-section="flow-header">
+    <a class="send__brand" href="/" aria-label="Meridian home">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="14" cy="14" r="12.25"/><ellipse cx="14" cy="14" rx="5.25" ry="12.25"/><path d="M14 1.75v24.5M2 14h24"/></svg>
+      <span>Meridian</span>
+    </a>
+    <ol class="steps" aria-label="Progress">
+      <li class="steps__item steps__item--details"><span>1</span>Details</li>
+      <li class="steps__item steps__item--review"><span>2</span>Review</li>
+      <li class="steps__item steps__item--sent"><span>3</span>Sent</li>
+    </ol>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon" class="send__close">
+      <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      <span slot="label">Close</span>
+    </blueprint-use>
+  </header>
+
+  <main class="send__body">
+    <section class="details" data-blueprint-section="details" aria-labelledby="details-title">
+      <div class="send__intro">
+        <p class="send__kicker">Move money</p>
+        <h1 id="details-title">Send a payment</h1>
+      </div>
+
+      <blueprint-use kind="primitive" ref="inline-alert" state="default" variant="destructive" class="details__alert">
+        <span slot="title">This wire is more than Operating holds</span>
+        <span slot="message">Move $215,097.56 from Reserve first, or split the payment across two days.</span>
+      </blueprint-use>
+
+      <div class="field">
+        <span class="field__label">From</span>
+        <div class="field__accounts">
+          <blueprint-use kind="component" ref="account-tile" state="selected">
+            <span slot="kind">Checking</span><span slot="number">··4821</span><span slot="name">Operating</span><span slot="balance">$2,184,902.44</span><span slot="meta">Available now</span>
+          </blueprint-use>
+          <blueprint-use kind="component" ref="account-tile" state="default">
+            <span slot="kind">Treasury</span><span slot="number">··7730</span><span slot="name">Reserve</span><span slot="balance">$1,402,118.20</span><span slot="meta">Sells same day</span>
+          </blueprint-use>
+          <blueprint-use kind="component" ref="account-tile" state="default">
+            <span slot="kind">Checking</span><span slot="number">··3306</span><span slot="name">Payroll</span><span slot="balance">$861,440.02</span><span slot="meta">Available now</span>
+          </blueprint-use>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field__label">To</span>
+        <div class="recipient">
+          <blueprint-use kind="primitive" ref="avatar" state="initials" size="lg" class="recipient__mark">
+            <span slot="initials">HS</span>
+          </blueprint-use>
+          <span class="recipient__body"><b>Halcyon Studio</b><small>Wells Fargo ··0917 · Paid 6 times since March</small></span>
+          <blueprint-use kind="primitive" ref="button" state="normal" variant="link" class="recipient__change">
+            <span slot="label">Change</span>
+          </blueprint-use>
+        </div>
+      </div>
+
+      <blueprint-use kind="component" ref="amount-field" state="default" class="details__amount details__amount--valid">
+        <span slot="label">Amount</span>
+        <span slot="amount">18,400</span>
+        <span slot="cents">.00</span>
+        <span slot="hint">$2,184,902.44 available in Operating</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="amount-field" state="error" class="details__amount details__amount--error">
+        <span slot="label">Amount</span>
+        <span slot="amount">2,400,000</span>
+        <span slot="cents">.00</span>
+        <span slot="hint">Exceeds the $2,184,902.44 available in Operating</span>
+      </blueprint-use>
+
+      <div class="details__row">
+        <div class="field">
+          <span class="field__label">Method</span>
+          <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" class="details__method">
+            <span class="segmented-control__option" role="radio" aria-checked="false">ACH<small>1–2 days</small></span>
+            <span class="segmented-control__option" role="radio" aria-checked="true">Wire<small>Today</small></span>
+            <span class="segmented-control__option" role="radio" aria-checked="false">Book<small>Instant</small></span>
+          </blueprint-use>
+        </div>
+        <blueprint-use kind="primitive" ref="input" state="empty" variant="outline" class="details__memo">
+          <span slot="label">Memo</span>
+          <span slot="placeholder">Brand retainer, September</span>
+        </blueprint-use>
+      </div>
+
+      <div class="send__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="details__continue details__continue--valid">
+          <span slot="label">Review payment</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="disabled" variant="primary" size="lg" class="details__continue details__continue--error">
+          <span slot="label">Review payment</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="lg">
+          <span slot="label">Save as draft</span>
+        </blueprint-use>
+      </div>
+    </section>
+
+    <section class="review" data-blueprint-section="review" aria-labelledby="review-title">
+      <div class="send__intro">
+        <p class="send__kicker">Step 2 of 3</p>
+        <h1 id="review-title">Approve this wire</h1>
+      </div>
+      <p class="review__sentence">You're sending <b>$18,400.00</b> from <b>Operating</b> to <b>Halcyon Studio</b> by domestic wire, arriving <b>today by 5:00 PM ET</b>.</p>
+      <div class="review__code">
+        <span class="field__label">Enter the 6-digit code sent to ••• ••42</span>
+        <blueprint-use kind="primitive" ref="otp-input" state="focused" class="review__otp"></blueprint-use>
+        <span class="review__resend">Didn't get it? <a href="#">Resend in 0:24</a></span>
+      </div>
+      <blueprint-use kind="primitive" ref="checkbox" state="on" class="review__confirm">
+        <span slot="label">I confirmed the account number with Halcyon Studio by phone.</span>
+      </blueprint-use>
+      <ol class="approvals" aria-label="Approval chain">
+        <li>
+          <blueprint-use kind="primitive" ref="avatar" state="status" size="sm"><span slot="initials">AL</span></blueprint-use>
+          <span class="approvals__who"><b>Ari Lane</b><small>Initiator · approving now</small></span>
+          <em class="approvals__state approvals__state--now">You</em>
+        </li>
+        <li>
+          <blueprint-use kind="primitive" ref="avatar" state="initials" size="sm"><span slot="initials">MC</span></blueprint-use>
+          <span class="approvals__who"><b>Maya Chen</b><small>Controller · second approver over $10,000</small></span>
+          <em class="approvals__state">Notified on send</em>
+        </li>
+      </ol>
+      <div class="send__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg">
+          <span slot="label">Send $18,400.00</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="lg">
+          <span slot="label">Back to details</span>
+        </blueprint-use>
+      </div>
+    </section>
+
+    <section class="done" data-blueprint-section="confirmation" aria-labelledby="done-title">
+      <span class="done__seal" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="23"/><path d="m15 24.5 6.2 6L33.5 18" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <p class="send__kicker">Wire sent · 10:52 AM ET</p>
+      <h1 id="done-title">$18,400.00 is on its way to Halcyon Studio</h1>
+      <p class="done__lede">It will arrive today by 5:00 PM ET. We'll email you and Halcyon when it lands.</p>
+      <dl class="done__receipt">
+        <div><dt>Reference</dt><dd class="done__mono">FW-0923-8812</dd></div>
+        <div><dt>IMAD</dt><dd class="done__mono">20260923MMQFMP9T000418</dd></div>
+        <div><dt>From</dt><dd>Operating ··4821</dd></div>
+        <div><dt>Operating balance</dt><dd>$2,166,502.44</dd></div>
+      </dl>
+      <div class="done__actions">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg">
+          <span slot="label">Done</span>
+        </blueprint-use>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="lg">
+          <span slot="label">Send another</span>
+        </blueprint-use>
+      </div>
+      <blueprint-use kind="primitive" ref="toast" state="default" variant="success" class="done__toast">
+        <span slot="label">Receipt emailed to ari@northwind.co</span>
+        <span slot="action">View</span>
+      </blueprint-use>
+    </section>
+
+    <div class="send__aside" data-blueprint-section="summary">
+      <blueprint-use kind="component" ref="transfer-summary" state="default" class="send__summary send__summary--valid">
+        <span slot="amount">$18,400.00</span>
+        <span slot="recipient">Halcyon Studio ··0917</span>
+        <span slot="source">Operating ··4821</span>
+        <span slot="method">Domestic wire</span>
+        <span slot="arrival">Today by 5:00 PM ET</span>
+        <span slot="after">$2,166,502.44</span>
+        <span slot="note">Wires sent before 4:00 PM ET settle the same business day and can't be recalled once sent.</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="transfer-summary" state="default" class="send__summary send__summary--error">
+        <span slot="amount">$2,400,000.00</span>
+        <span slot="recipient">Halcyon Studio ··0917</span>
+        <span slot="source">Operating ··4821</span>
+        <span slot="method">Domestic wire</span>
+        <span slot="arrival">Blocked</span>
+        <span slot="after" class="is-negative">−$215,097.56</span>
+        <span slot="note">Payments can't overdraw an account. Move funds first or lower the amount.</span>
+      </blueprint-use>
+      <p class="send__assure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg>Payments over $10,000 need a second approver. Maya Chen will be notified.</p>
+    </div>
+  </main>
+</div>

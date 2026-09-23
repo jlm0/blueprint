@@ -1,0 +1,12 @@
+[data-blueprint-screen="unmarked-section"] {
+  min-height: 100vh;
+  padding: calc(var(--blueprint-safe-area-top) + var(--app-space-6)) var(--app-space-5);
+  color: var(--app-color-foreground);
+  background: var(--app-color-background);
+  font: var(--app-type-body);
+}
+
+h1 {
+  margin: 0 0 var(--app-space-4);
+  font: var(--app-type-title);
+}

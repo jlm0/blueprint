@@ -1,0 +1,607 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "broken-sidecar",
+  "screens": [
+    {
+      "id": "undeclared-state",
+      "name": "Undeclared state",
+      "description": "Defect: renders the badge primitive in a state it does not declare.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/undeclared-state.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/undeclared-state.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/undeclared-state.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/undeclared-state"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Undeclaredstate",
+          "symbolName": "Undeclaredstate",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/undeclared-state.html",
+        "styles": [
+          "prototype/screens/undeclared-state.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/undeclared-state.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/undeclared-state.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/undeclared-state.css"
+            }
+          ],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "badge",
+              "reason": "Status chip.",
+              "binding": {
+                "slot": "label",
+                "state": "celebrating"
+              }
+            }
+          ],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unknown-component",
+      "name": "Unknown component",
+      "description": "Defect: renders a component that no components.json record defines.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/unknown-component.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/unknown-component.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/unknown-component.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/unknown-component"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Unknowncomponent",
+          "symbolName": "Unknowncomponent",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/unknown-component.html",
+        "styles": [
+          "prototype/screens/unknown-component.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/unknown-component.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/unknown-component.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/unknown-component.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "remote-asset",
+      "name": "Remote asset",
+      "description": "Defect: loads an image from the network instead of a declared local asset.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/remote-asset.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/remote-asset.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/remote-asset.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/remote-asset"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Remoteasset",
+          "symbolName": "Remoteasset",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/remote-asset.html",
+        "styles": [
+          "prototype/screens/remote-asset.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/remote-asset.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/remote-asset.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/remote-asset.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "literal-color",
+      "name": "Literal color",
+      "description": "Defect: hard-codes a color instead of reading a token role. Fails strict validation.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/literal-color.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/literal-color.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/literal-color.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/literal-color"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Literalcolor",
+          "symbolName": "Literalcolor",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/literal-color.html",
+        "styles": [
+          "prototype/screens/literal-color.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/literal-color.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/literal-color.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/literal-color.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hand-built-control",
+      "name": "Hand-built control",
+      "description": "Defect: hand-builds a native button instead of using the button primitive. Fails strict validation.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/hand-built-control.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/hand-built-control.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/hand-built-control.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/hand-built-control"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Handbuiltcontrol",
+          "symbolName": "Handbuiltcontrol",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/hand-built-control.html",
+        "styles": [
+          "prototype/screens/hand-built-control.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/hand-built-control.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/hand-built-control.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/hand-built-control.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unmarked-section",
+      "name": "Unmarked section",
+      "description": "Defect: declares a section that the source never marks. Fails strict validation.",
+      "framePresetId": "phone",
+      "styleRefs": [
+        "prototype/screens/unmarked-section.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/screens/unmarked-section.css",
+          "status": "source",
+          "sourceAnchor": "prototype/screens/unmarked-section.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "productionRelationship": {
+        "kind": "new-route",
+        "routePath": "/unmarked-section"
+      },
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/screens/Unmarkedsection",
+          "symbolName": "Unmarkedsection",
+          "operationIntent": "create-screen",
+          "propMapping": {},
+          "stateMapping": {},
+          "tokenAdapter": "Starter semantic tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/screens/unmarked-section.html",
+        "styles": [
+          "prototype/screens/unmarked-section.css"
+        ],
+        "assetRefs": [],
+        "states": [
+          "default"
+        ],
+        "reviewConditions": [
+          {
+            "id": "phone-default",
+            "framePresetId": "phone",
+            "state": "default"
+          }
+        ],
+        "renderedUses": []
+      },
+      "sections": [
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The defect under test.",
+          "styleRefs": [
+            "prototype/screens/unmarked-section.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/unmarked-section.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/unmarked-section.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/ContentSection",
+              "symbolName": "ContentSection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        },
+        {
+          "id": "summary",
+          "name": "Summary",
+          "description": "Declared but never marked in the source.",
+          "styleRefs": [
+            "prototype/screens/unmarked-section.css"
+          ],
+          "styleEvidence": [
+            {
+              "styleRef": "prototype/screens/unmarked-section.css",
+              "status": "source",
+              "sourceAnchor": "prototype/screens/unmarked-section.css"
+            }
+          ],
+          "uses": [],
+          "prototypeOnly": false,
+          "notes": [],
+          "implementationHints": [],
+          "implementationTargets": [
+            {
+              "platform": "mobile",
+              "framework": "framework-neutral",
+              "candidatePath": "src/screens/SummarySection",
+              "symbolName": "SummarySection",
+              "operationIntent": "create-screen",
+              "propMapping": {},
+              "stateMapping": {},
+              "tokenAdapter": "Starter semantic tokens",
+              "testPaths": [],
+              "storyPaths": [],
+              "unresolvedDecisions": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

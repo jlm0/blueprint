@@ -1,0 +1,32 @@
+<figure class="cashflow" data-blueprint-component="cashflow-chart" data-blueprint-state="default" data-blueprint-surface>
+  <figcaption class="cashflow__head">
+    <span class="cashflow__titles">
+      <span class="cashflow__eyebrow" data-blueprint-slot="title">Cash flow</span>
+      <b class="cashflow__figure" data-blueprint-slot="figure">+$258,114</b>
+      <span class="cashflow__caption" data-blueprint-slot="caption">Net in September · $1.24M in, $982K out</span>
+    </span>
+    <blueprint-use kind="primitive" ref="segmented-control" state="first-selected" class="cashflow__range">
+      <span class="segmented-control__option" role="radio" aria-checked="true">12M</span>
+      <span class="segmented-control__option" role="radio" aria-checked="false">6M</span>
+      <span class="segmented-control__option" role="radio" aria-checked="false">YTD</span>
+    </blueprint-use>
+  </figcaption>
+  <div class="cashflow__plot" role="img" aria-label="Monthly money in and out for the last twelve months. Money in grew from $880K in October to $1.24M in September while money out stayed near $1M.">
+    <span class="cashflow__scale" aria-hidden="true"><i>+1.5M</i><i>0</i><i>−1.5M</i></span>
+    <ol class="cashflow__months" aria-hidden="true">
+      <li style="--in: 0.587; --out: 0.507"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Oct</em></li>
+      <li style="--in: 0.613; --out: 0.54"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Nov</em></li>
+      <li style="--in: 0.673; --out: 0.66"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Dec</em></li>
+      <li style="--in: 0.56; --out: 0.58"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Jan</em></li>
+      <li style="--in: 0.62; --out: 0.573"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Feb</em></li>
+      <li style="--in: 0.72; --out: 0.6"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Mar</em></li>
+      <li style="--in: 0.66; --out: 0.627"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Apr</em></li>
+      <li style="--in: 0.747; --out: 0.64"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>May</em></li>
+      <li style="--in: 0.707; --out: 0.673"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Jun</em></li>
+      <li style="--in: 0.767; --out: 0.653"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Jul</em></li>
+      <li style="--in: 0.793; --out: 0.68"><span class="cashflow__in"></span><span class="cashflow__out"></span><em>Aug</em></li>
+      <li class="is-current" style="--in: 0.827; --out: 0.655"><span class="cashflow__in"><b>$1.24M</b></span><span class="cashflow__out"><b>$982K</b></span><em>Sep</em></li>
+    </ol>
+  </div>
+  <p class="cashflow__legend"><span><i class="cashflow__key cashflow__key--in"></i>Money in</span><span><i class="cashflow__key cashflow__key--out"></i>Money out</span></p>
+</figure>

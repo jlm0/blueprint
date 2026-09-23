@@ -1,0 +1,67 @@
+<div class="chat" data-blueprint-screen="chat" data-blueprint-state="default">
+  <header class="chat__header" data-blueprint-section="header">
+    <blueprint-use kind="primitive" ref="nav-bar" state="back-and-right" class="chat__nav chat__nav--thread">
+      <span slot="title">Q3 churn drivers</span>
+    </blueprint-use>
+    <blueprint-use kind="primitive" ref="nav-bar" state="right-only" class="chat__nav chat__nav--new">
+      <span slot="title">New thread</span>
+    </blueprint-use>
+  </header>
+
+  <section class="thread" data-blueprint-section="conversation" aria-label="Conversation">
+    <p class="stamp">Today · 2:14 PM</p>
+    <p class="ask">Why did churn jump in Q3? Break it down by cohort.</p>
+
+    <article class="answer">
+      <header class="answer__meta">
+        <svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+        <b>Mira</b>
+        <span>Reasoned for 14s</span>
+      </header>
+      <h1>Three drivers explain 71% of the Q3 increase.</h1>
+      <p>Churn rose from <strong>4.2% to 6.8%</strong>. Most of it comes from the June cohort, which joined on the annual discount and left at renewal.</p>
+      <blueprint-use kind="component" ref="insight-chart" state="compact">
+        <span slot="eyebrow">Figure 1</span>
+        <span slot="title">Churn by signup cohort</span>
+        <span slot="note">June joined on the annual discount.</span>
+      </blueprint-use>
+      <div class="citations" aria-label="Sources">
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">1 · Retention export</span></blueprint-use>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">2 · Usage</span></blueprint-use>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">+4</span></blueprint-use>
+      </div>
+    </article>
+  </section>
+
+  <section class="welcome" data-blueprint-section="welcome" aria-labelledby="welcome-title">
+    <p class="welcome__eyebrow"><span class="welcome__dot" aria-hidden="true"></span>Mira 2 Pro</p>
+    <h1 class="welcome__title" id="welcome-title">What should we figure out today, Ari?</h1>
+    <p class="welcome__lede">Ask a question, attach a file, or start from a prompt.</p>
+    <div class="welcome__starters">
+      <blueprint-use kind="component" ref="prompt-card" state="compact">
+        <span slot="kicker">Analyze</span>
+        <span slot="title">Find what moved retention</span>
+        <span slot="description">From a cohort export</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="prompt-card" state="compact">
+        <span slot="kicker">Research</span>
+        <span slot="title">Map competitor pricing</span>
+        <span slot="description">Plans, limits, and recent moves</span>
+      </blueprint-use>
+      <blueprint-use kind="component" ref="prompt-card" state="compact">
+        <span slot="kicker">Write</span>
+        <span slot="title">Notes to a decision memo</span>
+        <span slot="description">Owners, dates, open questions</span>
+      </blueprint-use>
+    </div>
+  </section>
+
+  <div class="dock" data-blueprint-section="composer">
+    <blueprint-use kind="component" ref="composer" state="compact" class="dock__composer dock__composer--thread">
+      <span slot="placeholder">Ask a follow-up</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="composer" state="compact" class="dock__composer dock__composer--new">
+      <span slot="placeholder">Ask Mira anything</span>
+    </blueprint-use>
+  </div>
+</div>

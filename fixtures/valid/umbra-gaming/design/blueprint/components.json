@@ -1,0 +1,568 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "umbra-gaming",
+  "components": [
+    {
+      "id": "pass-track",
+      "name": "Pass Track",
+      "description": "Season pass progress: current tier, XP to the next tier, the reward rail around it, and the next reward.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Pass ownership.",
+          "binding": {
+            "slot": "ownership",
+            "variant": "accent",
+            "copy": "Premium"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "progress",
+          "reason": "XP toward the next tier.",
+          "binding": {
+            "slot": "meter",
+            "state": "value",
+            "data": "pass.xp / pass.xpForNextTier"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/pass-track.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/pass-track.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/pass-track.css"
+        }
+      ],
+      "notes": [
+        "Compact drops the reward rail and shows XP gained this match in bone over the lime base."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/PassTrack",
+          "symbolName": "PassTrack",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "tier": "pass.tier",
+            "xp": "pass.xp",
+            "reward": "pass.nextReward"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/pass-track.html",
+        "styles": [
+          "prototype/components/pass-track.css"
+        ],
+        "slots": [
+          "tier",
+          "title",
+          "xp",
+          "reward"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "progress"
+          }
+        ]
+      }
+    },
+    {
+      "id": "event-card",
+      "name": "Event Card",
+      "description": "Live limited-time event over cropped key art, with a countdown and queue command.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Live status.",
+          "binding": {
+            "slot": "status",
+            "variant": "success",
+            "copy": "Live event"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Queue into the event.",
+          "binding": {
+            "slot": "cta",
+            "variant": "primary",
+            "copy": "Queue now"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/event-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/event-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/event-card.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "shared",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/EventCard",
+          "symbolName": "EventCard",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "event": "liveEvent"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/event-card.html",
+        "styles": [
+          "prototype/components/event-card.css"
+        ],
+        "slots": [
+          "timer",
+          "title",
+          "description"
+        ],
+        "states": [
+          "default",
+          "compact"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "challenge-row",
+      "name": "Challenge Row",
+      "description": "Daily challenge with objective, progress, and XP reward. State encodes progress band.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "progress",
+          "reason": "Objective progress.",
+          "binding": {
+            "slot": "meter",
+            "state": "value",
+            "data": "challenge.progress"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/challenge-row.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/challenge-row.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/challenge-row.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/ChallengeRow",
+          "symbolName": "ChallengeRow",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "challenge": "challenge"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/challenge-row.html",
+        "styles": [
+          "prototype/components/challenge-row.css"
+        ],
+        "slots": [
+          "glyph",
+          "title",
+          "count",
+          "reward"
+        ],
+        "states": [
+          "started",
+          "halfway",
+          "close",
+          "complete"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "progress"
+          }
+        ]
+      }
+    },
+    {
+      "id": "squad-member",
+      "name": "Squad Member",
+      "description": "Squadmate identity with presence, and match stats in scoreboard and MVP rows.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "avatar",
+          "reason": "Player mark with presence.",
+          "binding": {
+            "slot": "avatar",
+            "state": "status"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/squad-member.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/squad-member.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/squad-member.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "mobile",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/SquadMember",
+          "symbolName": "SquadMember",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "player": "player",
+            "stats": "player.matchStats"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/squad-member.html",
+        "styles": [
+          "prototype/components/squad-member.css"
+        ],
+        "slots": [
+          "tag",
+          "name",
+          "status",
+          "stats"
+        ],
+        "states": [
+          "online",
+          "in-match",
+          "scoreboard",
+          "mvp"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "avatar"
+          }
+        ]
+      }
+    },
+    {
+      "id": "stat-meter",
+      "name": "Stat Meter",
+      "description": "One performance stat with a bar against the player average. Plain drops the frame and bar for headline figures.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/stat-meter.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/stat-meter.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/stat-meter.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "shared",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/StatMeter",
+          "symbolName": "StatMeter",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "stat": "stat"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/stat-meter.html",
+        "styles": [
+          "prototype/components/stat-meter.css"
+        ],
+        "slots": [
+          "label",
+          "value",
+          "delta"
+        ],
+        "states": [
+          "above",
+          "average",
+          "below",
+          "record",
+          "plain"
+        ],
+        "renderedUses": []
+      }
+    },
+    {
+      "id": "edition-card",
+      "name": "Edition Card",
+      "description": "Purchasable edition with price, perks, and a purchase command. Featured raises the card and swaps to the primary command.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "Featured flag.",
+          "binding": {
+            "slot": "flag",
+            "variant": "default",
+            "copy": "Most chosen"
+          }
+        },
+        {
+          "kind": "primitive",
+          "id": "button",
+          "reason": "Purchase commands; featured shows the primary one.",
+          "binding": {
+            "slot": "cta",
+            "variant": "outline, primary",
+            "layout": "full width"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/edition-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/edition-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/edition-card.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/EditionCard",
+          "symbolName": "EditionCard",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "edition": "edition"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/edition-card.html",
+        "styles": [
+          "prototype/components/edition-card.css"
+        ],
+        "slots": [
+          "kicker",
+          "price",
+          "note",
+          "perks",
+          "cta",
+          "featured-cta"
+        ],
+        "states": [
+          "default",
+          "featured"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "button"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mode-tile",
+      "name": "Mode Tile",
+      "description": "Game mode entry with index, line glyph, name, and rules summary.",
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "badge",
+          "reason": "New mode flag.",
+          "binding": {
+            "slot": "flag",
+            "variant": "accent",
+            "copy": "New mode"
+          }
+        }
+      ],
+      "tokenGroupIds": [
+        "color",
+        "space",
+        "shape",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/mode-tile.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/mode-tile.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/mode-tile.css"
+        }
+      ],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": [],
+      "implementationTargets": [
+        {
+          "platform": "web",
+          "framework": "framework-neutral",
+          "candidatePath": "src/components/ModeTile",
+          "symbolName": "ModeTile",
+          "operationIntent": "create-component",
+          "propMapping": {
+            "mode": "mode"
+          },
+          "stateMapping": {},
+          "tokenAdapter": "Umbra Eclipse tokens",
+          "testPaths": [],
+          "storyPaths": [],
+          "unresolvedDecisions": []
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/mode-tile.html",
+        "styles": [
+          "prototype/components/mode-tile.css"
+        ],
+        "slots": [
+          "index",
+          "glyph",
+          "name",
+          "meta"
+        ],
+        "states": [
+          "default",
+          "new"
+        ],
+        "renderedUses": [
+          {
+            "kind": "primitive",
+            "id": "badge"
+          }
+        ]
+      }
+    }
+  ]
+}

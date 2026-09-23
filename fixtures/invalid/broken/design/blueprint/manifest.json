@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "handoffContractVersion": "1.0.0",
+  "project": {
+    "id": "broken-sidecar",
+    "name": "Broken Sidecar",
+    "description": "Failure fixture. Each screen, token, and primitive below breaks exactly one Blueprint rule, named by its id, so validation reports a known list of errors.",
+    "owner": "app-owned",
+    "sourceRoot": "design/blueprint"
+  },
+  "defaultBoardId": "primitives",
+  "boards": [
+    {
+      "id": "primitives",
+      "kind": "primitives",
+      "name": "Primitives",
+      "description": "App-owned primitive families, state samples, and token references."
+    },
+    {
+      "id": "screens",
+      "kind": "screens",
+      "name": "Screens",
+      "description": "App-owned mobile and desktop frames with structured screen sections."
+    }
+  ],
+  "framePresets": [
+    {
+      "id": "phone",
+      "name": "Phone",
+      "type": "mobile",
+      "width": 393,
+      "height": 852,
+      "safeArea": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      }
+    }
+  ],
+  "prototypeHost": {
+    "assetRoots": [
+      "prototype/assets"
+    ],
+    "network": "deny",
+    "scripts": "none"
+  }
+}

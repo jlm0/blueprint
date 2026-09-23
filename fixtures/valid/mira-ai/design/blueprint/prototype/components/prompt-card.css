@@ -1,0 +1,80 @@
+[data-blueprint-component="prompt-card"] {
+  display: grid;
+  align-content: start;
+  gap: var(--app-space-2);
+  min-height: 136px;
+  box-sizing: border-box;
+  padding: var(--app-space-4) var(--app-space-4) var(--app-space-5);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  text-decoration: none;
+  transition: border-color var(--app-motion-state), box-shadow var(--app-motion-state);
+}
+
+[data-blueprint-component="prompt-card"]:hover {
+  border-color: var(--app-color-border-strong);
+  box-shadow: var(--app-shadow-sm);
+}
+
+.prompt-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--app-space-4);
+}
+
+.prompt-card__kicker {
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prompt-card__arrow {
+  width: var(--app-size-icon-sm);
+  height: var(--app-size-icon-sm);
+  color: var(--app-color-muted);
+}
+
+.prompt-card__title {
+  font: var(--app-type-heading);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.prompt-card__description {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  font-size: 13px;
+}
+
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] {
+  grid-template-columns: 1fr auto;
+  min-height: 0;
+  gap: 2px var(--app-space-3);
+  padding: var(--app-space-4);
+}
+
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] .prompt-card__top {
+  display: contents;
+}
+
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] .prompt-card__kicker {
+  grid-column: 1;
+  margin-bottom: var(--app-space-1);
+}
+
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] .prompt-card__arrow {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] .prompt-card__title,
+[data-blueprint-component="prompt-card"][data-blueprint-state="compact"] .prompt-card__description {
+  grid-column: 1;
+}

@@ -1,0 +1,188 @@
+<div class="ledger-page" data-blueprint-screen="transactions" data-blueprint-state="default">
+  <div class="ledger-page__header" data-blueprint-section="header">
+    <blueprint-use kind="component" ref="web-header" state="transactions"></blueprint-use>
+  </div>
+
+  <main class="ledger-page__main" data-blueprint-section="ledger" aria-labelledby="ledger-title">
+    <header class="ledger-page__title">
+      <div>
+        <h1 id="ledger-title">Transactions</h1>
+        <p>September 2026 · 1,284 transactions across four accounts</p>
+      </div>
+      <dl class="ledger-page__totals">
+        <div><dt>Money in</dt><dd class="is-in">$1,240,512.00</dd></div>
+        <div><dt>Money out</dt><dd>$982,398.00</dd></div>
+        <div><dt>Net</dt><dd>+$258,114.00</dd></div>
+      </dl>
+    </header>
+
+    <div class="filters" role="search">
+      <blueprint-use kind="primitive" ref="segmented-control" state="first-selected" class="filters__direction">
+        <span class="segmented-control__option" role="radio" aria-checked="true">All</span>
+        <span class="segmented-control__option" role="radio" aria-checked="false">Money in</span>
+        <span class="segmented-control__option" role="radio" aria-checked="false">Money out</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="input" state="empty" variant="outline" class="filters__search">
+        <span slot="label">Search transactions</span>
+        <span slot="placeholder">Merchant, memo, or amount</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="select" state="value" class="filters__account">
+        <span slot="value">All accounts</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="badge" state="default" variant="outline" class="filters__chip">
+        <span slot="label">Sep 1 – Sep 23</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="sm" class="filters__more">
+        <span slot="label">More filters</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="sm" class="filters__export">
+        <span slot="label">Export CSV</span>
+      </blueprint-use>
+    </div>
+
+    <div class="ledger" role="table" aria-label="Transactions">
+      <div class="ledger__head" role="row">
+        <span role="columnheader">Time</span>
+        <span role="columnheader">Description</span>
+        <span role="columnheader">Account</span>
+        <span role="columnheader">Category</span>
+        <span role="columnheader">Method</span>
+        <span role="columnheader">Amount</span>
+      </div>
+      <div class="ledger__group" role="row"><span role="cell">Today · Tuesday, September 23</span><span role="cell">3 transactions</span><span role="cell">+$214,218.48</span></div>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">10:41</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">AW</i>Amazon Web Services</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Infrastructure</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Card ··1180</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$23,861.52 <em class="ledger__pending">Pending</em></span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="selected">
+        <span class="table-row__cell ledger__time" role="cell">10:14</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">FG</i>Fieldgrove Capital</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Customer payment</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Wire</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount ledger__amount--in" role="cell">+$240,000.00</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">08:02</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">FM</i>Figma</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Software</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Card ··1180</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$1,920.00</span>
+      </blueprint-use>
+      <div class="ledger__group" role="row"><span role="cell">Monday, September 22</span><span role="cell">4 transactions</span><span role="cell">+$50,092.07</span></div>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">17:30</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">ST</i>Stripe payout</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Revenue</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">ACH</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount ledger__amount--in" role="cell">+$86,412.07</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">14:12</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">LN</i>Linear</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Software</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Card ··1180</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$4,320.00</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">11:05</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">UB</i>Uber for Business</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Travel</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Card ··2207</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$1,248.60</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">09:47</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">GL</i>Greenleaf Catering</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Office</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">ACH</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$30,751.40</span>
+      </blueprint-use>
+      <div class="ledger__group" role="row"><span role="cell">Sunday, September 21</span><span role="cell">3 transactions</span><span role="cell">−$99,617.93</span></div>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">23:59</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">WW</i>WeWork</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Rent</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">ACH</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$32,500.00</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">16:20</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">GU</i>Gusto</span>
+        <span class="table-row__cell ledger__muted" role="cell">Payroll ··3306</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Payroll taxes</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">ACH</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$61,208.33</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="table-row" state="default">
+        <span class="table-row__cell ledger__time" role="cell">12:44</span>
+        <span class="table-row__cell table-row__cell--primary ledger__name" role="cell"><i class="ledger__mark" aria-hidden="true">NT</i>Notion</span>
+        <span class="table-row__cell ledger__muted" role="cell">Operating ··4821</span>
+        <span class="table-row__cell" role="cell"><span class="table-row__status">Software</span></span>
+        <span class="table-row__cell ledger__muted" role="cell">Card ··1180</span>
+        <span class="table-row__cell table-row__cell--numeric ledger__amount" role="cell">−$5,909.60</span>
+      </blueprint-use>
+      <div class="ledger__foot" role="row">
+        <span role="cell">Showing 10 of 1,284</span>
+        <a href="#" role="cell">Load 50 more</a>
+      </div>
+    </div>
+  </main>
+
+  <aside class="detail" data-blueprint-section="detail" aria-labelledby="detail-title">
+    <header class="detail__bar">
+      <span class="detail__kicker">Transaction</span>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+        <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+        <span slot="label">Close details</span>
+      </blueprint-use>
+    </header>
+    <div class="detail__who">
+      <span class="detail__mark" aria-hidden="true">FG</span>
+      <span><h2 id="detail-title">Fieldgrove Capital</h2><small>Incoming wire · Sep 23, 10:14 AM ET</small></span>
+    </div>
+    <p class="detail__amount">+$240,000<span>.00</span></p>
+    <blueprint-use kind="primitive" ref="badge" state="default" variant="success" class="detail__status">
+      <span slot="label">Settled to Operating</span>
+    </blueprint-use>
+
+    <ol class="detail__timeline">
+      <li><b>Sent by Fieldgrove</b><span>10:02</span></li>
+      <li><b>Received by Meridian</b><span>10:09</span></li>
+      <li><b>Credited to Operating ··4821</b><span>10:14</span></li>
+    </ol>
+
+    <dl class="detail__facts">
+      <div><dt>Reference</dt><dd class="detail__mono">FW-0923-7741</dd></div>
+      <div><dt>Sender account</dt><dd>Chase ··2210</dd></div>
+      <div><dt>Matched invoice</dt><dd><a href="#">INV-1042</a></dd></div>
+      <div><dt>Memo</dt><dd>Q3 platform license</dd></div>
+    </dl>
+
+    <div class="detail__category">
+      <span>Category</span>
+      <blueprint-use kind="primitive" ref="select" state="value" class="detail__select">
+        <span slot="value">Customer payment</span>
+      </blueprint-use>
+    </div>
+
+    <footer class="detail__actions">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="outline">
+        <span slot="label">Download confirmation</span>
+      </blueprint-use>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="link">
+        <span slot="label">Report an issue</span>
+      </blueprint-use>
+    </footer>
+  </aside>
+</div>
