@@ -2478,12 +2478,6 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
       label.style.top = `${layout.flowLabel.y}px`;
       root.append(label);
     }
-    if (layout.routeLabel) {
-      const label = el('div', 'screen-route-label bp-chrome-world-label', layout.routeLabel.text);
-      label.style.left = `${layout.routeLabel.x}px`;
-      label.style.top = `${layout.routeLabel.y}px`;
-      root.append(label);
-    }
     root.append(createPrototypeFrame(
       bundle,
       tokenIndex,
@@ -2989,7 +2983,6 @@ interface ScreenFrameLayout {
   y: number;
   flow?: string;
   flowLabel?: { text: string; x: number; y: number };
-  routeLabel?: { text: string; x: number; y: number };
   prototypeSelection?: SelectedPrototypeReviewCondition;
   selectionError?: string;
 }
@@ -3014,7 +3007,7 @@ function layoutScreenFrames(
 
   // Screens group by declared sub-flow (first-seen order); a flow filter narrows
   // the board to one flow's subpage. Within a flow, each top-level route gets its
-  // own labeled row in first-seen order.
+  // own row in first-seen order; the frame chip names the route.
   const groups = new Map<string | undefined, ScreenDefinition[]>();
   for (const screen of bundle.screens.screens) {
     const key = screen.flow;
@@ -3042,20 +3035,15 @@ function layoutScreenFrames(
       rows.get(key)?.push(screen);
     }
     let flowLabeled = !showFlowLabels;
-    for (const [route, rowScreens] of rows) {
+    for (const rowScreens of rows.values()) {
       let x = startX;
       let rowHeight = 0;
-      let routeLabeled = false;
       for (const screen of rowScreens) {
         for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
           const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, flow, ...resolved.prototype };
           if (!flowLabeled && flow !== undefined) {
             layout.flowLabel = { text: flow, x: startX, y: y - 70 };
             flowLabeled = true;
-          }
-          if (!routeLabeled) {
-            layout.routeLabel = { text: route, x: startX, y: y - 44 };
-            routeLabeled = true;
           }
           layouts.push(layout);
           x += resolved.preset.width + gapX;
@@ -3795,14 +3783,14 @@ function wireFrameCapture(options: {
     const blobPromise = capture();
     try {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
-      flashCaptureButton(options.shot, 'done');
+      flashCaptureButton(options.shot, 'done', 'Copied');
     } catch {
       const blob = await blobPromise.catch(() => null);
       if (blob) {
         downloadBlob(blob, options.screenId);
-        flashCaptureButton(options.shot, 'done');
+        flashCaptureButton(options.shot, 'done', 'Saved');
       } else {
-        flashCaptureButton(options.shot, 'fail');
+        flashCaptureButton(options.shot, 'fail', 'Failed');
       }
     }
   });
@@ -3816,7 +3804,7 @@ function wireFrameCapture(options: {
     if (blob) {
       downloadBlob(blob, options.screenId);
     }
-    flashCaptureButton(options.save, blob ? 'done' : 'fail');
+    flashCaptureButton(options.save, blob ? 'done' : 'fail', blob ? 'Saved' : 'Failed');
   });
 }
 
@@ -3933,10 +3921,33 @@ function downloadBlob(blob: Blob, id: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-function flashCaptureButton(button: HTMLButtonElement, result: 'done' | 'fail'): void {
+const captureButtonResets = new WeakMap<HTMLButtonElement, () => void>();
+
+function flashCaptureButton(button: HTMLButtonElement, result: 'done' | 'fail', label: string): void {
+  captureButtonResets.get(button)?.();
+  const icon = button.innerHTML;
+  const title = button.getAttribute('aria-label') ?? '';
   button.classList.remove('busy');
   button.classList.add(result);
-  window.setTimeout(() => button.classList.remove(result), 1200);
+  button.innerHTML = `${result === 'done' ? checkIcon() : failIcon()}<span class="bp-chrome-frame-tool-label" role="status">${label}</span>`;
+  button.setAttribute('aria-label', label);
+  const reset = (): void => {
+    window.clearTimeout(timer);
+    captureButtonResets.delete(button);
+    button.classList.remove(result);
+    button.innerHTML = icon;
+    button.setAttribute('aria-label', title);
+  };
+  const timer = window.setTimeout(reset, 1600);
+  captureButtonResets.set(button, reset);
+}
+
+function checkIcon(): string {
+  return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+}
+
+function failIcon(): string {
+  return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 }
 
 const ICON_PATHS = {

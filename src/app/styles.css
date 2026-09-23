@@ -1012,17 +1012,6 @@ body {
   opacity: 0.7;
 }
 
-.screen-route-label {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  color: var(--bp-sample-muted-fg);
-  font-family: var(--bp-mono, ui-monospace, monospace);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  opacity: 0.75;
-}
 
 .bp-chrome-history-row-label {
   position: absolute;
@@ -2768,14 +2757,27 @@ body {
   opacity: 0.45;
 }
 
+.bp-chrome-frame-tool.done,
+.bp-chrome-frame-tool.fail {
+  width: auto;
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  animation: bp-chrome-fade-in 160ms ease-out both;
+}
+
 .bp-chrome-frame-tool.done {
-  border-color: rgba(238, 243, 248, 0.36);
+  border-color: color-mix(in srgb, var(--bp-chrome-success) 55%, transparent);
   color: var(--bp-chrome-success);
 }
 
 .bp-chrome-frame-tool.fail {
-  border-color: rgba(230, 107, 107, 0.64);
+  border-color: color-mix(in srgb, var(--bp-chrome-destructive) 64%, transparent);
   color: var(--bp-chrome-destructive);
+}
+
+.bp-chrome-frame-tool-label {
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .screen {
