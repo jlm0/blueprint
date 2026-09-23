@@ -1,3 +1,27 @@
+:where([data-blueprint-surface]) {
+  background-color: var(--app-color-surface);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-2);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-3);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-4);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-5);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-6);
+}
+
 [data-blueprint-primitive="list"] {
   display: grid;
   box-sizing: border-box;
@@ -5,7 +29,6 @@
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-lg);
   color: var(--app-color-foreground);
-  background: var(--app-color-surface);
   font: var(--app-type-body);
 }
 
@@ -85,10 +108,10 @@
   font: var(--app-type-label);
 }
 
-[data-blueprint-primitive="list"][data-blueprint-state="plain"] {
+[data-blueprint-primitive="list"][data-blueprint-state="plain"][data-blueprint-surface] {
   border-color: transparent;
   border-radius: 0;
-  background: transparent;
+  background-color: transparent;
 }
 
 [data-blueprint-primitive="list"][data-blueprint-state="plain"] .list__row {

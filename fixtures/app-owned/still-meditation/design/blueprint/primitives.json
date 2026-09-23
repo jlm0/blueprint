@@ -310,38 +310,42 @@
     {
       "id": "surface",
       "name": "Surface",
-      "description": "Nested surface ladder primitive.",
+      "description": "Sequential surface ladder: each nested surface, card, grouped list, or pressable row sits one level deeper than its parent.",
       "tokenGroupIds": ["color", "space", "size", "shape", "typography"],
       "styleRefs": ["primitive.surface"],
-      "notes": ["All containers should resolve to a known surface level."],
+      "notes": ["Roots marked data-blueprint-surface take the level after their nearest marked ancestor; a surface state sets an explicit level for its subtree."],
       "prototypeOnly": false,
-      "implementationHints": ["Use surface levels instead of ad hoc translucent fills."],
+      "implementationHints": ["Carry the parent surface level through context so nested cards, lists, and rows render one level deeper."],
       "prototype": {
         "source": "prototype/primitives/surface.html",
         "styles": ["prototype/primitives/surface.css"],
         "slots": ["label"],
         "variants": ["default"],
-        "states": ["1", "2", "3"],
+        "states": ["1", "2", "3", "4", "5"],
         "accessibilityIntent": "A non-interactive container level; nested content keeps its own semantics and reachability.",
         "tokenRoles": {
-          "color.background": "level-1-fill",
-          "color.surface": "level-2-fill",
-          "color.surface-raised": "level-3-fill",
+          "color.surface": "level-1",
+          "color.surface-2": "level-2",
+          "color.surface-3": "level-3",
+          "color.surface-4": "level-4",
+          "color.surface-5": "level-5",
+          "color.surface-6": "level-6",
           "color.border": "outline",
-          "shape.radius-lg": "radius",
-          "shape.shadow-md": "level-3-elevation"
+          "shape.radius-lg": "radius"
         }
       },
       "stateSets": [
         {
           "id": "level",
           "name": "Surface Levels",
-          "description": "Levels 1 through 8.",
+          "description": "Explicit surface levels 1 through 5; nested surfaces step one level deeper.",
           "styleRefs": ["primitive.surface.level"],
           "states": [
-            { "id": "1", "name": "Surface 1", "tokens": ["color.background"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
-            { "id": "2", "name": "Surface 2", "tokens": ["color.surface"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
-            { "id": "3", "name": "Surface 3", "tokens": ["color.surface-raised", "shape.shadow-md"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+            { "id": "1", "name": "Surface 1", "tokens": ["color.surface", "color.surface-2"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "2", "name": "Surface 2", "tokens": ["color.surface-2", "color.surface-3"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "3", "name": "Surface 3", "tokens": ["color.surface-3", "color.surface-4"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "4", "name": "Surface 4", "tokens": ["color.surface-4", "color.surface-5"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "5", "name": "Surface 5", "tokens": ["color.surface-5", "color.surface-6"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
           ]
         }
       ]
@@ -363,7 +367,7 @@
         "states": ["default"],
         "accessibilityIntent": "A neutral content container; interactive children remain individually reachable.",
         "tokenRoles": {
-          "color.surface": "background",
+          "color.surface": "surface-ladder-level",
           "color.border": "outline",
           "color.accent": "status-accent",
           "space.space-4": "padding",
@@ -381,8 +385,8 @@
           "styleRefs": ["primitive.card.variant"],
           "states": [
             { "id": "default", "name": "Default", "tokens": ["color.surface", "color.border"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
-            { "id": "flat", "name": "Flat", "tokens": ["color.surface-muted"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
-            { "id": "elevated", "name": "Elevated", "tokens": ["color.surface-raised", "shape.shadow-md"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "flat", "name": "Flat", "tokens": ["color.surface"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "elevated", "name": "Elevated", "tokens": ["color.surface", "shape.shadow-md"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "status-accent", "name": "Status Accent", "tokens": ["color.accent"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
           ]
         }
@@ -520,7 +524,7 @@
         "states": ["grouped", "plain"],
         "accessibilityIntent": "A list of rows exposed with list and listitem semantics.",
         "tokenRoles": {
-          "color.surface": "group-background",
+          "color.surface": "surface-ladder-level",
           "color.border": "row-rule",
           "color.foreground": "row-text",
           "color.muted": "row-meta",
@@ -561,7 +565,7 @@
         "states": ["standalone", "group-first", "group-middle", "group-last"],
         "accessibilityIntent": "A single keyboard-reachable row-shaped button with a text-backed accessible name.",
         "tokenRoles": {
-          "color.surface": "background",
+          "color.surface": "surface-ladder-level",
           "color.border": "outline",
           "color.foreground": "title",
           "color.muted": "trailing",

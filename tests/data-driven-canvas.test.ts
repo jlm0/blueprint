@@ -331,45 +331,27 @@ describe('Blueprint data-driven primitives canvas', () => {
       const surfaceFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .canonical-primitive-iframe`
       );
-      const surfaceEvidence: Array<{ background: string; shadow: string; nested: number; label: string }> = [];
-      for (let index = 0; index < 3; index += 1) {
-        surfaceEvidence.push(
-          await surfaceFrames.nth(index).locator('[data-blueprint-primitive="surface"]').evaluate(element => {
-            const visibleName = [...element.querySelectorAll<HTMLElement>('.surface__name')].find(
-              name => window.getComputedStyle(name).display !== 'none'
-            );
-            return {
-              background: window.getComputedStyle(element).backgroundColor,
-              shadow: window.getComputedStyle(element).boxShadow,
-              nested: element.querySelectorAll('.surface__nested').length,
-              label: visibleName?.textContent?.trim() ?? ''
-            };
-          })
+      const ladder = ['rgb(255, 255, 255)', 'rgb(247, 247, 248)', 'rgb(240, 240, 242)', 'rgb(233, 233, 236)', 'rgb(226, 226, 230)', 'rgb(219, 219, 224)'];
+      for (let level = 1; level <= 5; level += 1) {
+        const evidence = await surfaceFrames.nth(level - 1).locator('[data-blueprint-primitive="surface"]').evaluate(element => {
+          const tile = element.querySelector<HTMLElement>('.surface__nested');
+          const card = document.createElement('article');
+          card.setAttribute('data-blueprint-surface', '');
+          tile?.append(card);
+          return {
+            label: `Surface ${window.getComputedStyle(element.querySelector('.surface__level') as Element, '::after').content.replace(/"/g, '')}`,
+            surface: window.getComputedStyle(element).backgroundColor,
+            tile: tile ? window.getComputedStyle(tile).backgroundColor : '',
+            nestedCard: window.getComputedStyle(card).backgroundColor
+          };
+        });
+        assert.equal(evidence.label, `Surface ${level}`, 'each surface specimen should name its own level');
+        assert.deepEqual(
+          [evidence.surface, evidence.tile, evidence.nestedCard],
+          [ladder[level - 1], ladder[level], ladder[Math.min(level + 1, 5)]],
+          `surface ${level} and its nested surfaces should each step one level deeper`
         );
       }
-      assert.equal(surfaceEvidence.length, 3, 'surface should render one canonical specimen per declared level state');
-      assert.ok(surfaceEvidence.every(level => level.nested === 1), 'each surface level should render its nested +1 tile');
-      assert.ok(
-        surfaceEvidence.every((level, index) => level.label === `Surface ${index + 1}`),
-        'each surface specimen should name its own level'
-      );
-      const surfaceLightness = surfaceEvidence.map(level => {
-        const rgb = /rgb\((\d+), (\d+), (\d+)\)/.exec(level.background);
-        if (rgb) {
-          return Number(rgb[1]) + Number(rgb[2]) + Number(rgb[3]);
-        }
-        const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)/.exec(level.background);
-        return srgb ? (Number(srgb[1]) + Number(srgb[2]) + Number(srgb[3])) * 255 : 0;
-      });
-      assert.ok(
-        surfaceLightness[0] !== undefined &&
-          surfaceLightness[1] !== undefined &&
-          surfaceLightness[2] !== undefined &&
-          surfaceLightness[0] < surfaceLightness[1] &&
-          surfaceLightness[1] <= surfaceLightness[2] &&
-          surfaceEvidence[2]?.shadow !== 'none',
-        `surface levels should step from canvas to surface to raised elevation: ${JSON.stringify(surfaceEvidence)}`
-      );
 
       const cardSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'card'))} .canonical-primitive-iframe`)
@@ -378,7 +360,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { background: style.backgroundColor, borderRadius: style.borderTopLeftRadius };
       });
-      assert.equal(cardStyles.background, 'rgb(255, 255, 255)', 'canonical card should use the default color.surface background');
+      assert.equal(cardStyles.background, 'rgb(255, 255, 255)', 'a top-level card should sit on surface level 1');
       assert.equal(cardStyles.borderRadius, '8px', 'canonical card should use the default shape.radius-lg radius');
 
       const badgeSpecimen = page

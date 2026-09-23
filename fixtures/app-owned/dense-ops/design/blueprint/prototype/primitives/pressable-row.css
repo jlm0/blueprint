@@ -1,3 +1,27 @@
+:where([data-blueprint-surface]) {
+  background-color: var(--app-color-surface);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-2);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-3);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-4);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-5);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-6);
+}
+
 [data-blueprint-primitive="pressable-row"] {
   display: flex;
   align-items: center;
@@ -7,7 +31,6 @@
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-lg);
   color: var(--app-color-foreground);
-  background-color: var(--app-color-surface);
   font: var(--app-type-body);
   cursor: pointer;
 }

@@ -1,3 +1,107 @@
+:where([data-blueprint-surface]) {
+  background-color: var(--app-color-surface);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-2);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-3);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-4);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-5);
+}
+
+:where([data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface]) {
+  background-color: var(--app-color-surface-6);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] {
+  background-color: var(--app-color-surface);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-2);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-3);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-4);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-5);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-6);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] {
+  background-color: var(--app-color-surface-2);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-3);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-4);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-5);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-6);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] {
+  background-color: var(--app-color-surface-3);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-4);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-5);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] [data-blueprint-surface] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-6);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="4"] {
+  background-color: var(--app-color-surface-4);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="4"] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-5);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="4"] [data-blueprint-surface] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-6);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="5"] {
+  background-color: var(--app-color-surface-5);
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="5"] [data-blueprint-surface] {
+  background-color: var(--app-color-surface-6);
+}
+
 [data-blueprint-primitive="surface"] {
   display: grid;
   align-content: start;
@@ -8,29 +112,12 @@
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-lg);
   color: var(--app-color-foreground);
-  background: var(--app-color-background);
-}
-
-[data-blueprint-primitive="surface"][data-blueprint-state="2"] {
-  background: var(--app-color-surface);
-}
-
-[data-blueprint-primitive="surface"][data-blueprint-state="3"] {
-  background: var(--app-color-surface-raised);
-  box-shadow: var(--app-shadow-md);
 }
 
 .surface__name,
 .surface__tile-hint {
-  display: none;
   color: var(--app-color-muted);
   font: var(--app-type-label);
-}
-
-[data-blueprint-primitive="surface"][data-blueprint-state="1"] .surface__name--1,
-[data-blueprint-primitive="surface"][data-blueprint-state="2"] .surface__name--2,
-[data-blueprint-primitive="surface"][data-blueprint-state="3"] .surface__name--3 {
-  display: block;
 }
 
 .surface__nested {
@@ -40,20 +127,44 @@
   justify-content: center;
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-md);
-  background: var(--app-color-surface);
 }
 
-[data-blueprint-primitive="surface"][data-blueprint-state="2"] .surface__nested {
-  background: var(--app-color-surface-raised);
-  box-shadow: var(--app-shadow-sm);
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] .surface__level::after {
+  content: "1";
 }
 
-[data-blueprint-primitive="surface"][data-blueprint-state="3"] .surface__nested {
-  background: var(--app-color-surface-muted);
+[data-blueprint-primitive="surface"][data-blueprint-state="1"] .surface__child-level::after {
+  content: "level 2";
 }
 
-[data-blueprint-primitive="surface"][data-blueprint-state="1"] .surface__tile-hint--1,
-[data-blueprint-primitive="surface"][data-blueprint-state="2"] .surface__tile-hint--2,
-[data-blueprint-primitive="surface"][data-blueprint-state="3"] .surface__tile-hint--3 {
-  display: inline;
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] .surface__level::after {
+  content: "2";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="2"] .surface__child-level::after {
+  content: "level 3";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] .surface__level::after {
+  content: "3";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="3"] .surface__child-level::after {
+  content: "level 4";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="4"] .surface__level::after {
+  content: "4";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="4"] .surface__child-level::after {
+  content: "level 5";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="5"] .surface__level::after {
+  content: "5";
+}
+
+[data-blueprint-primitive="surface"][data-blueprint-state="5"] .surface__child-level::after {
+  content: "level 6";
 }

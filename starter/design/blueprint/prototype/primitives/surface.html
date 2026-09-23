@@ -1,10 +1,6 @@
-<div data-blueprint-primitive="surface" data-blueprint-state="1" data-blueprint-variant="default">
-  <b class="surface__name surface__name--1" data-blueprint-slot="label">Surface 1</b>
-  <b class="surface__name surface__name--2">Surface 2</b>
-  <b class="surface__name surface__name--3">Surface 3</b>
-  <div class="surface__nested">
-    <span class="surface__tile-hint surface__tile-hint--1">Surface 2</span>
-    <span class="surface__tile-hint surface__tile-hint--2">Surface 3</span>
-    <span class="surface__tile-hint surface__tile-hint--3">Surface 4</span>
+<div data-blueprint-primitive="surface" data-blueprint-state="1" data-blueprint-variant="default" data-blueprint-surface>
+  <b class="surface__name" data-blueprint-slot="label">Surface <span class="surface__level"></span></b>
+  <div class="surface__nested" data-blueprint-surface>
+    <span class="surface__tile-hint">Card at <span class="surface__child-level"></span></span>
   </div>
 </div>
