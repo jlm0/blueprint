@@ -1,5 +1,6 @@
 import { findSectionMarkers } from '../prototype/compiler';
 import { boundaryId } from './address';
+import { contrastMessage, lintColorContrast } from './contrast-lint';
 import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
 import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
 import type { BlueprintProjectBundle, BoundaryKind, ScreenDefinition } from './types';
@@ -8,7 +9,7 @@ export interface DesignFinding {
   boundaryId: string;
   kind: BoundaryKind;
   localId: string;
-  rule: 'local-value' | 'native-control' | 'section-marker';
+  rule: 'local-value' | 'native-control' | 'section-marker' | 'contrast';
   location: string;
   message: string;
 }
@@ -32,7 +33,8 @@ export function collectDesignFindings(bundle: BlueprintProjectBundle): DesignFin
       'section-marker',
       screen.prototype?.source ?? '',
       `section "${sectionId}" has no data-blueprint-section="${sectionId}" marker, so it cannot be addressed on the canvas.`
-    )))
+    ))),
+    ...lintColorContrast(bundle).map(issue => finding(`token-group.${issue.groupId}`, 'contrast', 'tokens.json', contrastMessage(issue)))
   ];
 }
 

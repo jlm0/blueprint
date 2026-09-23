@@ -28,6 +28,7 @@ import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-prim
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
+import { contrastMessage, lintColorContrast } from './contrast-lint';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
 import { storageRecordSegment } from './storage-records';
@@ -272,6 +273,15 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
       severity: 'blocker',
       source: 'declared',
       message: handBuiltControlMessage(issue)
+    });
+  }
+
+  for (const issue of lintColorContrast(bundle)) {
+    items.push({
+      path: `tokenGroup.${issue.groupId}.contrast.${issue.foreground.styleRef}.${issue.background.styleRef}`,
+      severity: 'blocker',
+      source: 'declared',
+      message: contrastMessage(issue)
     });
   }
 
@@ -1200,6 +1210,9 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
   }
   for (const issue of lintHandBuiltControls(bundle)) {
     errors.push(`${issue.boundary} ${issue.sourceRef}:${issue.line} ${handBuiltControlMessage(issue)}`);
+  }
+  for (const issue of lintColorContrast(bundle)) {
+    errors.push(`token-group.${issue.groupId} ${contrastMessage(issue)}`);
   }
 
   if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {

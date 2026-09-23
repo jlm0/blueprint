@@ -4488,7 +4488,8 @@ function frameFindingBoundaryIds(bundle: BlueprintProjectBundle, screen: ScreenD
   const iframe = screenEl.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
   return [...new Set([
     boundaryId(bundle.manifest.project.id, 'screen', screen.id),
-    ...iframe ? observedBoundaryIds(iframe) : []
+    ...iframe ? observedBoundaryIds(iframe) : [],
+    ...bundle.tokens.tokenGroups.map(group => boundaryId(bundle.manifest.project.id, 'token-group', group.id))
   ])];
 }
 
