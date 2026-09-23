@@ -154,7 +154,14 @@ describe('Blueprint data-driven primitives canvas', () => {
         'radio',
         'select',
         'tabs',
-        'toast'
+        'toast',
+        'textarea',
+        'avatar',
+        'progress',
+        'tooltip',
+        'inline-alert',
+        'segmented-control',
+        'table-row'
       ];
 
       for (const primitiveId of canonicalExpectations) {

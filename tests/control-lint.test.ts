@@ -30,8 +30,10 @@ describe('hand-built control lint', () => {
 </main>`);
     assert.deepEqual(
       lintHandBuiltControls(bundle).map(issue => `${issue.element}:${issue.primitiveId}`),
-      ['input:checkbox', 'input:radio', 'input:slider', 'input:input', 'select:select', 'textarea:input', 'input:button']
+      ['input:checkbox', 'input:radio', 'input:slider', 'input:input', 'select:select', 'textarea:textarea', 'input:button']
     );
+    const withoutTextarea = { ...bundle, primitives: { ...bundle.primitives, primitives: bundle.primitives.primitives.filter(primitive => primitive.id !== 'textarea') } };
+    assert.ok(lintHandBuiltControls(withoutTextarea).some(issue => issue.element === 'textarea' && issue.primitiveId === 'input'));
 
     const strict = validateProject(bundle, { mode: 'strict' });
     assert.match(

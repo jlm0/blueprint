@@ -32,8 +32,8 @@ export function lintHandBuiltControls(bundle: BlueprintProjectBundle): HandBuilt
       const element = match[1].toLowerCase();
       const attributes = match[2];
       if (/\bdata-blueprint-native\s*=/i.test(attributes)) continue;
-      const primitiveId = matchingPrimitiveId(element, attributes);
-      if (primitiveId && canonicalPrimitives.has(primitiveId)) {
+      const primitiveId = matchingPrimitiveIds(element, attributes).find(candidate => canonicalPrimitives.has(candidate));
+      if (primitiveId) {
         issues.push({
           boundary: label,
           sourceRef,
@@ -47,15 +47,15 @@ export function lintHandBuiltControls(bundle: BlueprintProjectBundle): HandBuilt
   return issues;
 }
 
-function matchingPrimitiveId(element: string, attributes: string): string | undefined {
-  if (element === 'button') return 'button';
-  if (element === 'select') return 'select';
-  if (element === 'textarea') return 'input';
+function matchingPrimitiveIds(element: string, attributes: string): string[] {
+  if (element === 'button') return ['button'];
+  if (element === 'select') return ['select'];
+  if (element === 'textarea') return ['textarea', 'input'];
   const type = (/\btype\s*=\s*(['"]?)([\w-]+)\1/i.exec(attributes)?.[2] ?? 'text').toLowerCase();
-  if (ignoredInputTypes.has(type)) return undefined;
-  if (buttonInputTypes.has(type)) return 'button';
-  if (type === 'checkbox') return 'checkbox';
-  if (type === 'radio') return 'radio';
-  if (type === 'range') return 'slider';
-  return 'input';
+  if (ignoredInputTypes.has(type)) return [];
+  if (buttonInputTypes.has(type)) return ['button'];
+  if (type === 'checkbox') return ['checkbox'];
+  if (type === 'radio') return ['radio'];
+  if (type === 'range') return ['slider'];
+  return ['input'];
 }

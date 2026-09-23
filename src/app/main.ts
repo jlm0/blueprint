@@ -632,8 +632,11 @@ const FAMILY_ORDER = [
   'loading',
   'badge',
   'icon',
+  'avatar',
   'skeleton',
   'toast',
+  'tooltip',
+  'alert',
   'dialog',
   'menu',
   'sheet',
@@ -653,7 +656,7 @@ const FAMILY_COLUMN_GROUPS: string[][] = [
   ['surface', 'card', 'media'],
   ['navigation', 'tabs'],
   ['separator', 'list', 'row'],
-  ['loading', 'badge', 'icon', 'skeleton', 'toast'],
+  ['loading', 'badge', 'icon', 'avatar', 'skeleton', 'toast', 'tooltip', 'alert'],
   ['dialog', 'menu', 'sheet']
 ];
 
@@ -942,8 +945,11 @@ function familyCellWidth(family: string): number {
     loading: 120,
     badge: 96,
     icon: 96,
+    avatar: 96,
     skeleton: 220,
     toast: 240,
+    tooltip: 160,
+    alert: 300,
     dialog: 240,
     menu: 240,
     sheet: 240
@@ -953,7 +959,9 @@ function familyCellWidth(family: string): number {
 
 /** Primitives whose natural footprint exceeds their family's default cell. */
 const PRIMITIVE_CELL_WIDTH_OVERRIDES: Record<string, number> = {
-  'otp-input': 344
+  'otp-input': 344,
+  'table-row': 440,
+  progress: 240
 };
 
 function primitiveCellWidth(family: string, primitiveId: string): number {
@@ -2264,13 +2272,13 @@ function groupPrimitivesByFamily(primitives: PrimitiveDefinition[]): FamilyGroup
 function inferPrimitiveFamily(primitive: PrimitiveDefinition): string {
   const terms = primitiveFamilyTerms(primitive);
   if (hasFamilyTerm(terms, 'button')) return 'button';
-  if (hasFamilyTerm(terms, 'otp', 'input')) return 'input';
+  if (hasFamilyTerm(terms, 'otp', 'input', 'textarea')) return 'input';
   if (hasFamilyTerm(terms, 'select')) return 'select';
   if (hasFamilyTerm(terms, 'checkbox')) return 'checkbox';
   if (hasFamilyTerm(terms, 'radio')) return 'radio';
   if (hasFamilyTerm(terms, 'switch')) return 'switch';
   if (hasFamilyTerm(terms, 'slider')) return 'slider';
-  if (hasFamilyTerm(terms, 'tabs', 'tab')) return 'tabs';
+  if (hasFamilyTerm(terms, 'tabs', 'tab', 'segmented')) return 'tabs';
   if (hasFamilyTerm(terms, 'text', 'typography')) return 'text';
   if (hasFamilyTerm(terms, 'surface')) return 'surface';
   if (hasFamilyTerm(terms, 'media')) return 'media';
@@ -2279,12 +2287,15 @@ function inferPrimitiveFamily(primitive: PrimitiveDefinition): string {
   if (hasFamilyTerm(terms, 'separator')) return 'separator';
   if (hasFamilyTerm(terms, 'list')) return 'list';
   if (hasFamilyTerm(terms, 'row')) return 'row';
-  if (hasFamilyTerm(terms, 'loading')) return 'loading';
+  if (hasFamilyTerm(terms, 'loading', 'progress')) return 'loading';
   if (hasFamilyTerm(terms, 'badge', 'pill')) return 'badge';
   if (hasFamilyTerm(terms, 'icon')) return 'icon';
+  if (hasFamilyTerm(terms, 'avatar')) return 'avatar';
   if (hasFamilyTerm(terms, 'skeleton')) return 'skeleton';
   if (hasFamilyTerm(terms, 'toast')) return 'toast';
+  if (hasFamilyTerm(terms, 'tooltip')) return 'tooltip';
   if (hasFamilyTerm(terms, 'dialog')) return 'dialog';
+  if (hasFamilyTerm(terms, 'alert')) return 'alert';
   if (hasFamilyTerm(terms, 'menu')) return 'menu';
   if (hasFamilyTerm(terms, 'sheet')) return 'sheet';
   return 'generic';
@@ -2332,6 +2343,9 @@ function familyAccent(family: string): string {
     icon: 'var(--bp-sample-accent-feedback)',
     skeleton: 'var(--bp-sample-accent-feedback)',
     toast: 'var(--bp-sample-accent-feedback)',
+    avatar: 'var(--bp-sample-accent-feedback)',
+    tooltip: 'var(--bp-sample-accent-feedback)',
+    alert: 'var(--bp-sample-accent-feedback)',
     dialog: 'var(--bp-sample-accent-overlay)',
     menu: 'var(--bp-sample-accent-overlay)',
     sheet: 'var(--bp-sample-accent-overlay)',

@@ -1157,6 +1157,301 @@
           ]
         }
       ]
+    },
+    {
+      "id": "textarea",
+      "name": "Textarea",
+      "description": "Multi-line text field with label, hint, and validation states.",
+      "tokenGroupIds": ["color", "space", "shape", "typography", "motion"],
+      "styleRefs": ["primitive.textarea"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Map to the target platform multi-line text field and keep the visible label as its accessible name."],
+      "prototype": {
+        "source": "prototype/primitives/textarea.html",
+        "styles": ["prototype/primitives/textarea.css"],
+        "slots": ["label", "placeholder", "hint"],
+        "variants": ["default"],
+        "states": ["empty", "value", "focused", "invalid", "disabled"],
+        "accessibilityIntent": "A labelled native textarea whose hint text describes the field.",
+        "tokenRoles": {
+          "color.surface": "field-background",
+          "color.border-strong": "field-border",
+          "color.foreground": "value",
+          "color.muted": "placeholder-and-hint",
+          "color.focus-ring": "focus-ring",
+          "color.destructive": "invalid",
+          "shape.radius-md": "radius",
+          "typography.body": "text",
+          "typography.label": "label",
+          "typography.caption": "hint",
+          "motion.state": "state-transition"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "interaction",
+          "name": "Interaction States",
+          "description": "Field entry and validation states.",
+          "styleRefs": ["primitive.textarea.interaction"],
+          "states": [
+            { "id": "empty", "name": "Empty", "tokens": ["color.muted"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "value", "name": "Value", "tokens": ["color.foreground"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "focused", "name": "Focused", "tokens": ["color.focus-ring"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "invalid", "name": "Invalid", "tokens": ["color.destructive"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "avatar",
+      "name": "Avatar",
+      "description": "Person or entity mark with initials, fallback glyph, and presence status.",
+      "tokenGroupIds": ["color", "size", "shape", "typography"],
+      "styleRefs": ["primitive.avatar"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Map to the target avatar component; replace initials with a controlled image asset when one exists."],
+      "prototype": {
+        "source": "prototype/primitives/avatar.html",
+        "styles": ["prototype/primitives/avatar.css"],
+        "slots": ["initials"],
+        "variants": ["default"],
+        "sizes": ["sm", "md", "lg"],
+        "states": ["initials", "fallback", "status"],
+        "accessibilityIntent": "An image-role mark whose accessible name is the person or entity name.",
+        "tokenRoles": {
+          "color.secondary": "background",
+          "color.on-secondary": "initials",
+          "color.success": "presence",
+          "shape.radius-full": "radius",
+          "size.control-md": "diameter",
+          "typography.label": "initials"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "size",
+          "name": "Size States",
+          "description": "Avatar diameters.",
+          "styleRefs": ["primitive.avatar.size"],
+          "states": [
+            { "id": "sm", "name": "Small", "tokens": ["size.control-sm"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "md", "name": "Medium", "tokens": ["size.control-md"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "lg", "name": "Large", "tokens": ["size.control-lg"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        },
+        {
+          "id": "content",
+          "name": "Content States",
+          "description": "What the avatar shows.",
+          "styleRefs": ["primitive.avatar.content"],
+          "states": [
+            { "id": "initials", "name": "Initials", "tokens": ["color.secondary", "color.on-secondary"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "fallback", "name": "Fallback", "tokens": ["color.surface-muted", "color.muted"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "status", "name": "Status", "tokens": ["color.success"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "progress",
+      "name": "Progress",
+      "description": "Labelled determinate and indeterminate progress bar.",
+      "tokenGroupIds": ["color", "space", "shape", "typography", "motion"],
+      "styleRefs": ["primitive.progress"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Expose progress through the platform progress API with the visible label as its name."],
+      "prototype": {
+        "source": "prototype/primitives/progress.html",
+        "styles": ["prototype/primitives/progress.css"],
+        "slots": ["label"],
+        "variants": ["default"],
+        "states": ["value", "complete", "indeterminate"],
+        "accessibilityIntent": "A progressbar with a visible label and current value.",
+        "tokenRoles": {
+          "color.border": "track",
+          "color.primary": "bar",
+          "color.success": "complete-bar",
+          "color.muted": "value",
+          "shape.radius-full": "radius",
+          "typography.label": "label",
+          "motion.state": "value-transition"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "progress",
+          "name": "Progress States",
+          "description": "Determinate, complete, and indeterminate progress.",
+          "styleRefs": ["primitive.progress.progress"],
+          "states": [
+            { "id": "value", "name": "Value", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "complete", "name": "Complete", "tokens": ["color.success"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "indeterminate", "name": "Indeterminate", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "description": "Short inverse label anchored to a control.",
+      "tokenGroupIds": ["color", "space", "shape", "typography"],
+      "styleRefs": ["primitive.tooltip"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Show on hover and keyboard focus; never put required information only in a tooltip."],
+      "prototype": {
+        "source": "prototype/primitives/tooltip.html",
+        "styles": ["prototype/primitives/tooltip.css"],
+        "slots": ["label"],
+        "variants": ["default"],
+        "states": ["top", "bottom"],
+        "accessibilityIntent": "A tooltip role describing its anchor control.",
+        "tokenRoles": {
+          "color.foreground": "background",
+          "color.background": "label",
+          "shape.radius-md": "radius",
+          "shape.shadow-md": "elevation",
+          "typography.label": "label"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "placement",
+          "name": "Placement States",
+          "description": "Which side of the anchor the tooltip sits on.",
+          "styleRefs": ["primitive.tooltip.placement"],
+          "states": [
+            { "id": "top", "name": "Top", "tokens": ["color.foreground"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "bottom", "name": "Bottom", "tokens": ["color.foreground"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inline-alert",
+      "name": "Inline Alert",
+      "description": "Persistent in-flow message with a tone, title, and message.",
+      "tokenGroupIds": ["color", "space", "size", "shape", "typography"],
+      "styleRefs": ["primitive.inline-alert"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Use role=\"alert\" only for urgent messages that must interrupt assistive technology."],
+      "prototype": {
+        "source": "prototype/primitives/inline-alert.html",
+        "styles": ["prototype/primitives/inline-alert.css"],
+        "slots": ["title", "message"],
+        "variants": ["info", "success", "warning", "destructive"],
+        "states": ["default"],
+        "accessibilityIntent": "A status message whose title and message are read together.",
+        "tokenRoles": {
+          "color.surface": "background",
+          "color.border": "outline",
+          "color.accent": "info-tone",
+          "color.muted": "message",
+          "shape.radius-lg": "radius",
+          "size.icon-md": "icon-size",
+          "typography.body": "text"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "tone",
+          "name": "Tone States",
+          "description": "Semantic message tones.",
+          "styleRefs": ["primitive.inline-alert.tone"],
+          "states": [
+            { "id": "info", "name": "Info", "tokens": ["color.accent"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "success", "name": "Success", "tokens": ["color.success"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "warning", "name": "Warning", "tokens": ["color.warning"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "destructive", "name": "Destructive", "tokens": ["color.destructive"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "segmented-control",
+      "name": "Segmented Control",
+      "description": "Single-choice set of adjacent options for switching views or ranges.",
+      "tokenGroupIds": ["color", "space", "size", "shape", "typography", "motion"],
+      "styleRefs": ["primitive.segmented-control"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Map to the target segmented control; use tabs instead when options switch whole panels."],
+      "prototype": {
+        "source": "prototype/primitives/segmented-control.html",
+        "styles": ["prototype/primitives/segmented-control.css"],
+        "slots": ["options"],
+        "variants": ["default"],
+        "states": ["first-selected", "second-selected", "disabled"],
+        "accessibilityIntent": "A radiogroup whose options are radios named by their visible labels.",
+        "tokenRoles": {
+          "color.surface-muted": "track",
+          "color.surface": "selected-option",
+          "color.foreground": "selected-label",
+          "color.muted": "unselected-label",
+          "shape.radius-md": "radius",
+          "shape.shadow-sm": "selected-elevation",
+          "typography.body": "label",
+          "motion.state": "state-transition"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "state",
+          "name": "Selection States",
+          "description": "Selected and unavailable options.",
+          "styleRefs": ["primitive.segmented-control.state"],
+          "states": [
+            { "id": "first-selected", "name": "First Selected", "tokens": ["color.surface", "shape.shadow-sm"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "second-selected", "name": "Second Selected", "tokens": ["color.surface", "shape.shadow-sm"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "table-row",
+      "name": "Table Row",
+      "description": "Data table row with primary, text, numeric, and status cells.",
+      "tokenGroupIds": ["color", "space", "size", "shape", "typography"],
+      "styleRefs": ["primitive.table-row"],
+      "notes": [],
+      "prototypeOnly": false,
+      "implementationHints": ["Map to the target data table row and keep numeric columns end-aligned with tabular figures."],
+      "prototype": {
+        "source": "prototype/primitives/table-row.html",
+        "styles": ["prototype/primitives/table-row.css"],
+        "slots": ["cells"],
+        "variants": ["default"],
+        "states": ["default", "hover", "selected"],
+        "accessibilityIntent": "A table row of cells inside a table or grid.",
+        "tokenRoles": {
+          "color.surface": "background",
+          "color.border": "row-rule",
+          "color.hover": "hover-layer",
+          "color.surface-muted": "selected-background",
+          "size.control-lg": "row-height",
+          "typography.body": "cell"
+        }
+      },
+      "stateSets": [
+        {
+          "id": "state",
+          "name": "Row States",
+          "description": "Resting, hovered, and selected rows.",
+          "styleRefs": ["primitive.table-row.state"],
+          "states": [
+            { "id": "default", "name": "Default", "tokens": ["color.surface"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "hover", "name": "Hover", "tokens": ["color.hover"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "selected", "name": "Selected", "tokens": ["color.surface-muted", "color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        }
+      ]
     }
   ]
 }

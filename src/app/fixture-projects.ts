@@ -18,6 +18,8 @@ import starterActionClusterCss from '../../starter/design/blueprint/prototype/co
 import starterActionClusterHtml from '../../starter/design/blueprint/prototype/components/action-cluster.html?raw';
 import starterAlertDialogCss from '../../starter/design/blueprint/prototype/primitives/alert-dialog.css?raw';
 import starterAlertDialogHtml from '../../starter/design/blueprint/prototype/primitives/alert-dialog.html?raw';
+import starterAvatarCss from '../../starter/design/blueprint/prototype/primitives/avatar.css?raw';
+import starterAvatarHtml from '../../starter/design/blueprint/prototype/primitives/avatar.html?raw';
 import starterBackButtonCss from '../../starter/design/blueprint/prototype/primitives/back-button.css?raw';
 import starterBackButtonHtml from '../../starter/design/blueprint/prototype/primitives/back-button.html?raw';
 import starterBadgeCss from '../../starter/design/blueprint/prototype/primitives/badge.css?raw';
@@ -34,6 +36,8 @@ import starterContextMenuCss from '../../starter/design/blueprint/prototype/prim
 import starterContextMenuHtml from '../../starter/design/blueprint/prototype/primitives/context-menu.html?raw';
 import starterIconCss from '../../starter/design/blueprint/prototype/primitives/icon.css?raw';
 import starterIconHtml from '../../starter/design/blueprint/prototype/primitives/icon.html?raw';
+import starterInlineAlertCss from '../../starter/design/blueprint/prototype/primitives/inline-alert.css?raw';
+import starterInlineAlertHtml from '../../starter/design/blueprint/prototype/primitives/inline-alert.html?raw';
 import starterInputCss from '../../starter/design/blueprint/prototype/primitives/input.css?raw';
 import starterInputHtml from '../../starter/design/blueprint/prototype/primitives/input.html?raw';
 import starterListCss from '../../starter/design/blueprint/prototype/primitives/list.css?raw';
@@ -48,10 +52,14 @@ import starterOtpInputCss from '../../starter/design/blueprint/prototype/primiti
 import starterOtpInputHtml from '../../starter/design/blueprint/prototype/primitives/otp-input.html?raw';
 import starterPressableRowCss from '../../starter/design/blueprint/prototype/primitives/pressable-row.css?raw';
 import starterPressableRowHtml from '../../starter/design/blueprint/prototype/primitives/pressable-row.html?raw';
+import starterProgressCss from '../../starter/design/blueprint/prototype/primitives/progress.css?raw';
+import starterProgressHtml from '../../starter/design/blueprint/prototype/primitives/progress.html?raw';
 import starterRadioCss from '../../starter/design/blueprint/prototype/primitives/radio.css?raw';
 import starterRadioHtml from '../../starter/design/blueprint/prototype/primitives/radio.html?raw';
 import starterRowLayoutCss from '../../starter/design/blueprint/prototype/primitives/row-layout.css?raw';
 import starterRowLayoutHtml from '../../starter/design/blueprint/prototype/primitives/row-layout.html?raw';
+import starterSegmentedControlCss from '../../starter/design/blueprint/prototype/primitives/segmented-control.css?raw';
+import starterSegmentedControlHtml from '../../starter/design/blueprint/prototype/primitives/segmented-control.html?raw';
 import starterSelectCss from '../../starter/design/blueprint/prototype/primitives/select.css?raw';
 import starterSelectHtml from '../../starter/design/blueprint/prototype/primitives/select.html?raw';
 import starterSeparatorCss from '../../starter/design/blueprint/prototype/primitives/separator.css?raw';
@@ -64,12 +72,18 @@ import starterSurfaceCss from '../../starter/design/blueprint/prototype/primitiv
 import starterSurfaceHtml from '../../starter/design/blueprint/prototype/primitives/surface.html?raw';
 import starterSwitchCss from '../../starter/design/blueprint/prototype/primitives/switch.css?raw';
 import starterSwitchHtml from '../../starter/design/blueprint/prototype/primitives/switch.html?raw';
+import starterTableRowCss from '../../starter/design/blueprint/prototype/primitives/table-row.css?raw';
+import starterTableRowHtml from '../../starter/design/blueprint/prototype/primitives/table-row.html?raw';
 import starterTabsCss from '../../starter/design/blueprint/prototype/primitives/tabs.css?raw';
 import starterTabsHtml from '../../starter/design/blueprint/prototype/primitives/tabs.html?raw';
 import starterTextCss from '../../starter/design/blueprint/prototype/primitives/text.css?raw';
 import starterTextHtml from '../../starter/design/blueprint/prototype/primitives/text.html?raw';
+import starterTextareaCss from '../../starter/design/blueprint/prototype/primitives/textarea.css?raw';
+import starterTextareaHtml from '../../starter/design/blueprint/prototype/primitives/textarea.html?raw';
 import starterToastCss from '../../starter/design/blueprint/prototype/primitives/toast.css?raw';
 import starterToastHtml from '../../starter/design/blueprint/prototype/primitives/toast.html?raw';
+import starterTooltipCss from '../../starter/design/blueprint/prototype/primitives/tooltip.css?raw';
+import starterTooltipHtml from '../../starter/design/blueprint/prototype/primitives/tooltip.html?raw';
 
 export function loadStarterProject(): BlueprintProjectBundle {
   const sourceRoot = 'starter/design/blueprint';
@@ -84,6 +98,8 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/components/action-cluster.html': starterActionClusterHtml,
       'prototype/primitives/alert-dialog.css': starterAlertDialogCss,
       'prototype/primitives/alert-dialog.html': starterAlertDialogHtml,
+      'prototype/primitives/avatar.css': starterAvatarCss,
+      'prototype/primitives/avatar.html': starterAvatarHtml,
       'prototype/primitives/back-button.css': starterBackButtonCss,
       'prototype/primitives/back-button.html': starterBackButtonHtml,
       'prototype/primitives/badge.css': starterBadgeCss,
@@ -100,6 +116,8 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/primitives/context-menu.html': starterContextMenuHtml,
       'prototype/primitives/icon.css': starterIconCss,
       'prototype/primitives/icon.html': starterIconHtml,
+      'prototype/primitives/inline-alert.css': starterInlineAlertCss,
+      'prototype/primitives/inline-alert.html': starterInlineAlertHtml,
       'prototype/primitives/input.css': starterInputCss,
       'prototype/primitives/input.html': starterInputHtml,
       'prototype/primitives/list.css': starterListCss,
@@ -114,10 +132,14 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/primitives/otp-input.html': starterOtpInputHtml,
       'prototype/primitives/pressable-row.css': starterPressableRowCss,
       'prototype/primitives/pressable-row.html': starterPressableRowHtml,
+      'prototype/primitives/progress.css': starterProgressCss,
+      'prototype/primitives/progress.html': starterProgressHtml,
       'prototype/primitives/radio.css': starterRadioCss,
       'prototype/primitives/radio.html': starterRadioHtml,
       'prototype/primitives/row-layout.css': starterRowLayoutCss,
       'prototype/primitives/row-layout.html': starterRowLayoutHtml,
+      'prototype/primitives/segmented-control.css': starterSegmentedControlCss,
+      'prototype/primitives/segmented-control.html': starterSegmentedControlHtml,
       'prototype/primitives/select.css': starterSelectCss,
       'prototype/primitives/select.html': starterSelectHtml,
       'prototype/primitives/separator.css': starterSeparatorCss,
@@ -130,12 +152,18 @@ export function loadStarterProject(): BlueprintProjectBundle {
       'prototype/primitives/surface.html': starterSurfaceHtml,
       'prototype/primitives/switch.css': starterSwitchCss,
       'prototype/primitives/switch.html': starterSwitchHtml,
+      'prototype/primitives/table-row.css': starterTableRowCss,
+      'prototype/primitives/table-row.html': starterTableRowHtml,
       'prototype/primitives/tabs.css': starterTabsCss,
       'prototype/primitives/tabs.html': starterTabsHtml,
       'prototype/primitives/text.css': starterTextCss,
       'prototype/primitives/text.html': starterTextHtml,
+      'prototype/primitives/textarea.css': starterTextareaCss,
+      'prototype/primitives/textarea.html': starterTextareaHtml,
       'prototype/primitives/toast.css': starterToastCss,
-      'prototype/primitives/toast.html': starterToastHtml
+      'prototype/primitives/toast.html': starterToastHtml,
+      'prototype/primitives/tooltip.css': starterTooltipCss,
+      'prototype/primitives/tooltip.html': starterTooltipHtml
     }
   });
 }
