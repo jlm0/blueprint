@@ -13,41 +13,42 @@ import {
 import { loadProjectFromFs } from '../src/core/load';
 import { captureInputSchema } from '../src/mcp/schemas';
 
-const fixtureRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
+const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
 describe('source-focused prototype MCP contract', () => {
   it('resolves only declared state and viewport combinations at exact CSS-pixel dimensions', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const desktop = resolvePrototypeReviewSelection(bundle, {
-      screenId: 'waitlist',
-      state: 'initial',
-      viewport: 'desktop-reference'
+      screenId: 'workspace',
+      state: 'default',
+      viewport: 'desktop-web'
     });
     const phone = resolvePrototypeReviewSelection(bundle, {
-      screenId: 'waitlist',
-      viewport: 'phone-initial'
+      screenId: 'chat',
+      viewport: 'phone-empty'
     });
 
     assert.deepEqual(desktop, {
-      screenId: 'waitlist',
-      boundaryId: 'high-fidelity-red/screen/waitlist',
-      conditionId: 'desktop-initial',
-      framePresetId: 'desktop-reference',
-      state: 'initial',
-      width: 1280,
-      height: 800
+      screenId: 'workspace',
+      boundaryId: 'mira-ai/screen/workspace',
+      conditionId: 'desktop-web-default',
+      framePresetId: 'desktop-web',
+      state: 'default',
+      width: 1440,
+      height: 900
     });
-    assert.equal(phone.conditionId, 'phone-initial');
-    assert.equal(phone.framePresetId, 'phone-review');
-    assert.equal(phone.width, 390);
-    assert.equal(phone.height, 844);
+    assert.equal(phone.conditionId, 'phone-empty');
+    assert.equal(phone.framePresetId, 'phone');
+    assert.equal(phone.state, 'empty');
+    assert.equal(phone.width, 393);
+    assert.equal(phone.height, 852);
 
     assert.throws(
-      () => resolvePrototypeReviewSelection(bundle, { screenId: 'waitlist', viewport: 'tablet' }),
+      () => resolvePrototypeReviewSelection(bundle, { screenId: 'chat', viewport: 'tablet' }),
       /does not declare a review condition/
     );
     assert.throws(
-      () => resolvePrototypeReviewSelection(bundle, { screenId: 'waitlist', state: 'submitted' }),
+      () => resolvePrototypeReviewSelection(bundle, { screenId: 'chat', state: 'submitted' }),
       /does not declare a review condition/
     );
   });
@@ -55,39 +56,44 @@ describe('source-focused prototype MCP contract', () => {
   it('compiles the selected screen itself without editor chrome or unexpanded uses', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const selection = resolvePrototypeReviewSelection(bundle, {
-      screenId: 'waitlist',
-      state: 'initial',
-      viewport: 'phone-review'
+      screenId: 'chat',
+      state: 'default',
+      viewport: 'phone'
     });
     const compiled = compilePrototypeReview(bundle, selection);
 
     assert.match(compiled.html, /^<!doctype html>/);
-    assert.match(compiled.html, /data-blueprint-boundary-id="high-fidelity-red\/screen\/waitlist"/);
+    assert.match(compiled.html, /data-blueprint-boundary-id="mira-ai\/screen\/chat"/);
     assert.doesNotMatch(compiled.html, /<blueprint-use\b/i);
     assert.doesNotMatch(compiled.html, /canvas-toolbar|board-switcher|frame-save/);
     assert.deepEqual(compiled.observedBoundaryIds, [
-      'high-fidelity-red/component/email-signup',
-      'high-fidelity-red/primitive/action-button'
+      'mira-ai/primitive/nav-bar',
+      'mira-ai/component/insight-chart',
+      'mira-ai/primitive/segmented-control',
+      'mira-ai/primitive/badge',
+      'mira-ai/component/prompt-card',
+      'mira-ai/component/composer',
+      'mira-ai/primitive/button'
     ]);
   });
 
   it('fails closed on malformed review route input', () => {
     assert.deepEqual(
       parsePrototypeReviewRequest(
-        new URL('http://127.0.0.1/__blueprint/prototype?screen=waitlist&state=initial&viewport=phone-review')
+        new URL('http://127.0.0.1/__blueprint/prototype?screen=chat&state=default&viewport=phone')
       ),
-      { screenId: 'waitlist', state: 'initial', viewport: 'phone-review' }
+      { screenId: 'chat', state: 'default', viewport: 'phone' }
     );
     assert.throws(
       () => parsePrototypeReviewRequest(new URL('http://127.0.0.1/__blueprint/prototype?state=initial')),
       /Missing prototype review parameter "screen"/
     );
     assert.throws(
-      () => parsePrototypeReviewRequest(new URL('http://127.0.0.1/__blueprint/prototype?screen=waitlist&screen=other')),
+      () => parsePrototypeReviewRequest(new URL('http://127.0.0.1/__blueprint/prototype?screen=chat&screen=other')),
       /must appear exactly once/
     );
     assert.throws(
-      () => parsePrototypeReviewRequest(new URL('http://127.0.0.1/__blueprint/prototype?screen=waitlist&debug=true')),
+      () => parsePrototypeReviewRequest(new URL('http://127.0.0.1/__blueprint/prototype?screen=chat&debug=true')),
       /Unsupported prototype review parameter "debug"/
     );
   });
@@ -102,10 +108,10 @@ describe('source-focused prototype MCP contract', () => {
   it('publishes typed state and viewport capture inputs plus the source-focused capture path', async () => {
     assert.equal(captureInputSchema.safeParse({
       project: fixtureRoot,
-      boundary: 'screen:waitlist',
-      state: 'initial',
-      viewport: 'phone-review',
-      out: '.blueprint-artifacts/waitlist.png'
+      boundary: 'screen:chat',
+      state: 'default',
+      viewport: 'phone',
+      out: '.blueprint-artifacts/chat.png'
     }).success, true);
 
     const operationsSource = await readFile('src/mcp/operations.ts', 'utf8');

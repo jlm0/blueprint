@@ -18,7 +18,7 @@ import { applyPrototypeIframeIsolation } from '../src/prototype/host-policy';
 import { createBlueprintResponseHeaders } from '../src/prototype/host-policy';
 import { captureInputSchema } from '../src/mcp/schemas';
 
-const fixtureRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
+const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
 interface PrototypeSource {
   source: string;
@@ -76,7 +76,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     assert.equal(bundle.components.projectId, bundle.manifest.project.id);
     assert.ok(bundle.sourceFiles.components.endsWith('/components.json'));
     assert.ok(
-      bundle.sourceFiles.prototypeSources.includes(`${fixtureRoot}/prototype/screens/waitlist.html`),
+      bundle.sourceFiles.prototypeSources.includes(`${fixtureRoot}/prototype/screens/chat.html`),
       'T1 contract gap: governed browser-native prototype sources must be part of bundle provenance'
     );
   });
@@ -85,7 +85,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const primitive = (bundle.primitives.primitives as RedPrimitive[])[0];
     assert.ok(primitive?.prototype, 'red fixture must declare a canonical primitive prototype source');
-    primitive.prototype.source = '../../outside-sidecar/action-button.html';
+    primitive.prototype.source = '../../outside-sidecar/button.html';
 
     const result = validateProject(bundle);
     assert.equal(
@@ -99,9 +99,9 @@ describe('Blueprint high-fidelity prototype red contract', () => {
   it('T1/R3/R8 rejects duplicate component IDs and unknown screen component dependencies', async () => {
     const bundle = await withComponents(await loadProjectFromFs(fixtureRoot));
     bundle.components.components.push(structuredClone(bundle.components.components[0]));
-    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'waitlist');
+    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'chat');
     assert.ok(screen);
-    screen.sections[0].uses[0].id = 'missing-email-signup';
+    screen.sections[1].uses[0].id = 'missing-insight-chart';
 
     const result = validateProject(bundle);
     assert.equal(
@@ -114,9 +114,9 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
   it('T1/R4/R8 blocks high-fidelity readiness when a declared screen prototype source is missing', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'waitlist');
+    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'chat');
     assert.ok(screen?.prototype);
-    screen.prototype.source = 'prototype/screens/missing-waitlist.html';
+    screen.prototype.source = 'prototype/screens/missing-chat.html';
 
     const strict = validateProject(bundle, { mode: 'strict' });
     assert.equal(
@@ -124,18 +124,18 @@ describe('Blueprint high-fidelity prototype red contract', () => {
       false,
       'T1 contract gap: strict readiness must not pass a high-fidelity screen whose declared visual source is missing'
     );
-    assert.match(strict.errors.join('\n'), /waitlist.*prototype.*source.*(?:missing|exist)/i);
+    assert.match(strict.errors.join('\n'), /chat.*prototype.*source.*(?:missing|exist)/i);
   });
 
   it('T2/R1-R2 selects the app-owned canonical source for prototype-backed primitives', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const packet = showBoundary(bundle, 'primitive:action-button');
+    const packet = showBoundary(bundle, 'primitive:button');
 
     assert.deepEqual(
       packet.rendering,
       {
         mode: 'canonical-app-owned',
-        source: 'prototype/primitives/action-button.html'
+        source: 'prototype/primitives/button.html'
       },
       'T2 runtime gap: a prototype-backed primitive must select its app-owned canonical source'
     );
@@ -146,19 +146,34 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
     assert.doesNotThrow(
       () => {
-        const packet = createExtractionPacket(bundle, 'screen:waitlist', { mode: 'deep' }) as DeepHandoffPacket;
+        const packet = createExtractionPacket(bundle, 'screen:chat', { mode: 'deep' }) as DeepHandoffPacket;
         assert.deepEqual(
           packet.extraction.includedBoundaryIds,
           [
-            'high-fidelity-red/screen/waitlist',
-            'high-fidelity-red/section/waitlist/hero',
-            'high-fidelity-red/component/email-signup',
-            'high-fidelity-red/primitive/action-button',
-            'high-fidelity-red/token-group/color',
-            'high-fidelity-red/token-group/shape',
-            'high-fidelity-red/token-group/space',
-            'high-fidelity-red/token-group/typography',
-            'high-fidelity-red/state-set/action-button/interaction'
+            'mira-ai/screen/chat',
+            'mira-ai/section/chat/header',
+            'mira-ai/section/chat/conversation',
+            'mira-ai/section/chat/welcome',
+            'mira-ai/section/chat/composer',
+            'mira-ai/primitive/nav-bar',
+            'mira-ai/component/insight-chart',
+            'mira-ai/primitive/badge',
+            'mira-ai/component/prompt-card',
+            'mira-ai/component/composer',
+            'mira-ai/state-set/nav-bar/slots',
+            'mira-ai/token-group/color',
+            'mira-ai/token-group/shape',
+            'mira-ai/token-group/size',
+            'mira-ai/token-group/space',
+            'mira-ai/token-group/typography',
+            'mira-ai/primitive/segmented-control',
+            'mira-ai/state-set/badge/variant',
+            'mira-ai/primitive/button',
+            'mira-ai/state-set/segmented-control/state',
+            'mira-ai/token-group/motion',
+            'mira-ai/state-set/button/interaction',
+            'mira-ai/state-set/button/size',
+            'mira-ai/state-set/button/variant'
           ],
           'T3 contract gap: deep extraction must expose the complete declared composition graph in stable order'
         );
@@ -167,14 +182,14 @@ describe('Blueprint high-fidelity prototype red contract', () => {
     );
 
     assert.ok(
-      listBoundaryReferences(bundle).some(reference => reference.id === 'high-fidelity-red/component/email-signup'),
+      listBoundaryReferences(bundle).some(reference => reference.id === 'mira-ai/component/insight-chart'),
       'T3 contract gap: component boundaries must be indexed and queryable'
     );
   });
 
   it('T4/R4-R5 requires an isolated no-script prototype host instead of main-document section projection', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'waitlist' }, state: 'initial' });
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' }, state: 'default' });
     const iframeAttributes = new Map<string, string>();
     applyPrototypeIframeIsolation({ setAttribute: (name, value) => iframeAttributes.set(name, value) });
 
@@ -198,10 +213,10 @@ describe('Blueprint high-fidelity prototype red contract', () => {
   it('T5/R5 exposes deterministic state and viewport selection on the public capture tool', () => {
     assert.equal(captureInputSchema.safeParse({
       project: fixtureRoot,
-      boundary: 'screen:waitlist',
-      state: 'initial',
-      viewport: 'desktop-reference',
-      out: '.blueprint-artifacts/waitlist.png'
+      boundary: 'screen:workspace',
+      state: 'default',
+      viewport: 'desktop-web',
+      out: '.blueprint-artifacts/workspace.png'
     }).success, true);
   });
 
@@ -225,32 +240,32 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
     assert.doesNotMatch(
       runtimeSource,
-      /nowwhat|waitlist-pass1|screens\/waitlist/i,
+      /nowwhat|mira-ai|screens\/(?:chat|workspace)/i,
       'T6 portability guard: Blueprint runtime code must not branch on NowWhat fixture identity or paths'
     );
   });
 
   it('T7/R7 carries prototype provenance and review conditions in focused handoff packets', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'waitlist');
+    const screen = (bundle.screens.screens as RedScreen[]).find(candidate => candidate.id === 'chat');
     assert.ok(screen);
     screen.sections[0].uses = [
       {
         kind: 'primitive',
-        id: 'action-button',
+        id: 'button',
         reason: 'Supported dependency used to isolate prototype provenance from component traversal.',
-        binding: { slot: 'signup', state: 'default' }
+        binding: { slot: 'actions', state: 'normal' }
       }
     ];
 
-    const packet = showBoundary(bundle, 'screen:waitlist');
+    const packet = showBoundary(bundle, 'screen:chat');
     assert.ok(
-      packet.sourceFiles.includes(`${fixtureRoot}/prototype/screens/waitlist.html`),
+      packet.sourceFiles.includes(`${fixtureRoot}/prototype/screens/chat.html`),
       'T7 handoff gap: a focused screen packet must include the browser-native source that produced the reviewed screen'
     );
     assert.deepEqual(
       (packet.data as RedScreen).prototype.reviewConditions.map(condition => condition.id),
-      ['desktop-initial', 'phone-initial']
+      ['phone-default', 'phone-empty']
     );
   });
 
@@ -269,7 +284,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
   it('T8/R8 reports governed prototype sources in readiness', async () => {
     const readiness = createReadinessReport(await loadProjectFromFs(fixtureRoot));
-    assert.ok(readiness.prototypeSources.includes('prototype/screens/waitlist.html'));
+    assert.ok(readiness.prototypeSources.includes('prototype/screens/chat.html'));
   });
 
   it('T9/R1-R8 retains the complete repository QA command contract', async () => {

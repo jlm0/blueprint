@@ -6,9 +6,9 @@ import { validateProject } from '../src/core/validate';
 import type { BlueprintProjectBundle, PrimitiveStateSet } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
-const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
-const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 describe('Blueprint locked base primitive contract', () => {
   it('is carried in full by the canonical starter declaration', async () => {
@@ -33,7 +33,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('accepts compliant high-fidelity projects carrying the themed base set', async () => {
-    for (const root of [starterRoot, blankSlateRoot, denseRoot, stillRoot]) {
+    for (const root of [starterRoot, miraRoot, umbraRoot, meridianRoot]) {
       const bundle = await loadProjectFromFs(root);
       assert.ok(bundle.manifest.prototypeHost, `${root} should declare the prototype-era contract`);
       assert.equal(validateProject(bundle).ok, true, `${root} should remain baseline-valid`);
@@ -41,7 +41,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('rejects a high-fidelity project missing a base primitive', async () => {
-    const broken = cloneBundle(await loadProjectFromFs(denseRoot));
+    const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     broken.primitives.primitives = broken.primitives.primitives.filter(primitive => primitive.id !== 'switch');
 
     const result = validateProject(broken);
@@ -52,7 +52,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('rejects a high-fidelity project with a reduced base state set', async () => {
-    const broken = cloneBundle(await loadProjectFromFs(denseRoot));
+    const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     const switchPrimitive = requirePrimitive(broken, 'switch');
     const stateSet = switchPrimitive.stateSets.find(candidate => candidate.id === 'state');
     assert.ok(stateSet);
@@ -65,7 +65,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('rejects a high-fidelity project missing a required base state-set id', async () => {
-    const broken = cloneBundle(await loadProjectFromFs(denseRoot));
+    const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     const button = requirePrimitive(broken, 'button');
     button.stateSets = button.stateSets.filter(stateSet => stateSet.id !== 'interaction');
 
@@ -76,7 +76,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('allows app-added primitives, state sets, and states on top of the base set', async () => {
-    const extended = cloneBundle(await loadProjectFromFs(denseRoot));
+    const extended = cloneBundle(await loadProjectFromFs(meridianRoot));
     const switchStateSet = requirePrimitive(extended, 'switch').stateSets.find(candidate => candidate.id === 'state');
     assert.ok(switchStateSet);
     switchStateSet.states.push({ id: 'indeterminate', name: 'Indeterminate', tokens: [], prototypeOnly: false, notes: [], implementationHints: [] });
@@ -99,7 +99,7 @@ describe('Blueprint locked base primitive contract', () => {
   });
 
   it('applies the locked floor independently of the prototype host declaration', async () => {
-    const broken = cloneBundle(await loadProjectFromFs(denseRoot));
+    const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     delete (broken.manifest as Partial<BlueprintProjectBundle['manifest']>).prototypeHost;
     broken.primitives.primitives = broken.primitives.primitives.filter(primitive => primitive.id !== 'button');
 

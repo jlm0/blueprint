@@ -1,9 +1,0 @@
-[data-blueprint-component="email-signup"] {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--app-color-ink) 28%, transparent);
-  border-radius: var(--app-radius-control);
-  background: color-mix(in srgb, var(--app-color-ink) 10%, transparent);
-  backdrop-filter: blur(18px);
-}

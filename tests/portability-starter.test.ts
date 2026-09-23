@@ -8,7 +8,7 @@ import type { DeepHandoffPacket } from '../src/core/types';
 import { createReadinessReport, validateProject } from '../src/core/validate';
 
 const starterRoot = 'starter/design/blueprint';
-const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 describe('starter and high-fidelity portability contract', () => {
   it('keeps the initialized starter sparse while providing a governed canonical composition foundation', async () => {
@@ -55,37 +55,59 @@ describe('starter and high-fidelity portability contract', () => {
     assert.doesNotMatch(governedSource, /<script\b|https?:\/\//i);
   });
 
-  it('compiles the unrelated dense application through the same component and primitive graph', async () => {
-    const bundle = await loadProjectFromFs(denseRoot);
+  it('compiles the unrelated finance application through the same component and primitive graph', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
     const readiness = createReadinessReport(bundle);
-    const deep = createExtractionPacket(bundle, 'screen:service-health', { mode: 'deep' }) as DeepHandoffPacket;
+    const deep = createExtractionPacket(bundle, 'screen:transactions', { mode: 'deep' }) as DeepHandoffPacket;
     const compiled = compilePrototypeDocument({
       bundle,
-      target: { kind: 'screen', id: 'service-health' },
-      state: 'populated'
+      target: { kind: 'screen', id: 'transactions' },
+      state: 'default'
     });
 
     assert.equal(validateProject(bundle).ok, true);
     assert.equal(validateProject(bundle, { mode: 'strict' }).ok, true);
-    assert.ok(readiness.prototypeSources.includes('prototype/screens/service-health.html'));
+    assert.ok(readiness.prototypeSources.includes('prototype/screens/transactions.html'));
     assert.equal(readiness.tier, 'ready');
     assert.deepEqual(deep.extraction.includedBoundaryIds, [
-      'dense-ops/screen/service-health',
-      'dense-ops/section/service-health/service-table',
-      'dense-ops/component/service-health-table',
-      'dense-ops/primitive/action-button',
-      'dense-ops/token-group/color',
-      'dense-ops/token-group/shape',
-      'dense-ops/token-group/space',
-      'dense-ops/token-group/typography',
-      'dense-ops/state-set/action-button/interaction'
+      'meridian-finance/screen/transactions',
+      'meridian-finance/section/transactions/header',
+      'meridian-finance/section/transactions/ledger',
+      'meridian-finance/section/transactions/detail',
+      'meridian-finance/component/web-header',
+      'meridian-finance/primitive/segmented-control',
+      'meridian-finance/primitive/input',
+      'meridian-finance/primitive/select',
+      'meridian-finance/primitive/badge',
+      'meridian-finance/primitive/button',
+      'meridian-finance/primitive/table-row',
+      'meridian-finance/primitive/avatar',
+      'meridian-finance/primitive/tabs',
+      'meridian-finance/token-group/color',
+      'meridian-finance/token-group/shape',
+      'meridian-finance/token-group/space',
+      'meridian-finance/token-group/typography',
+      'meridian-finance/state-set/segmented-control/state',
+      'meridian-finance/token-group/motion',
+      'meridian-finance/token-group/size',
+      'meridian-finance/state-set/input/interaction',
+      'meridian-finance/state-set/input/variant',
+      'meridian-finance/state-set/select/state',
+      'meridian-finance/state-set/badge/variant',
+      'meridian-finance/state-set/button/interaction',
+      'meridian-finance/state-set/button/size',
+      'meridian-finance/state-set/button/variant',
+      'meridian-finance/state-set/table-row/state',
+      'meridian-finance/state-set/avatar/content',
+      'meridian-finance/state-set/avatar/size',
+      'meridian-finance/state-set/tabs/state'
     ]);
     assert.doesNotMatch(compiled.html, /<blueprint-use\b/i);
-    assert.match(compiled.html, /data-blueprint-boundary-id="dense-ops\/component\/service-health-table"/);
-    assert.equal(compiled.observedUses.filter(use => use.kind === 'primitive' && use.id === 'action-button').length, 6);
-    assert.match(compiled.html, /<aside class="ops-rail"/);
-    assert.match(compiled.html, /<table>/);
-    assert.doesNotMatch(compiled.html, /email-signup|waitlist/i);
+    assert.match(compiled.html, /data-blueprint-boundary-id="meridian-finance\/component\/web-header"/);
+    assert.equal(compiled.observedUses.filter(use => use.kind === 'primitive' && use.id === 'table-row').length, 10);
+    assert.match(compiled.html, /<aside class="detail"/);
+    assert.match(compiled.html, /role="table"/);
+    assert.doesNotMatch(compiled.html, /composer|insight-chart/i);
   });
 
   it('keeps runtime code free of fixture-specific branches', async () => {
@@ -99,6 +121,6 @@ describe('starter and high-fidelity portability contract', () => {
       'src/mcp/operations.ts',
       'src/mcp/schemas.ts'
     ].map(file => readFile(file, 'utf8')))).join('\n');
-    assert.doesNotMatch(runtime, /dense-ops|service-health-table|Dense Ops/i);
+    assert.doesNotMatch(runtime, /meridian-finance|mira-ai|umbra-gaming|transfer-summary|insight-chart|rank-emblem/i);
   });
 });

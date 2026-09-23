@@ -29,11 +29,14 @@ import {
 import type { BlueprintProjectBundle } from '../src/core/types';
 import { validateProject } from '../src/core/validate';
 
-const fixtureRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
+const workspaceTarget = { screenId: 'workspace', state: 'default', framePresetId: 'desktop-web' };
+const transferTarget = { screenId: 'transfer', state: 'review', framePresetId: 'desktop-web' };
 
 describe('persistent screen exploration core', () => {
   it('keeps explorations optional and outside canonical screen boundaries', async () => {
-    const bundle = await loadProjectFromFs(fixtureRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
 
     assert.deepEqual(bundle.explorations.explorations, []);
     assert.deepEqual(bundle.sourceFiles.explorationRecords, []);
@@ -41,19 +44,17 @@ describe('persistent screen exploration core', () => {
     assert.deepEqual(bundle.sourceFiles.explorationSources, []);
     assert.deepEqual(bundle.sourceFiles.historySources, []);
     assert.deepEqual(bundle.history.entries, []);
-    assert.deepEqual(bundle.screens.screens.map(screen => screen.id), ['service-health']);
+    assert.deepEqual(bundle.screens.screens.map(screen => screen.id), ['workspace', 'chat']);
     assert.equal(validateProject(bundle).ok, true);
   });
 
   it('persists and reloads a baseline plus 2-5 deterministic candidate copies through governed loading', async () => {
-    await withFixture(async root => {
+    await withFixture(miraRoot, async root => {
       const bundle = await loadProjectFromFs(root);
       const created = createExplorationMetadata(bundle, {
-        screenId: 'service-health',
-        state: 'populated',
-        framePresetId: 'desktop-ops',
+        ...workspaceTarget,
         title: 'A very long exploration title intended to prove generated identifiers remain safely bounded for filesystem use',
-        intent: 'Compare service summary density.',
+        intent: 'Compare thread density.',
         candidateLabels: ['A', 'B', 'C']
       });
 
@@ -69,35 +70,31 @@ describe('persistent screen exploration core', () => {
       assert.equal(reloaded.sourceFiles.explorationRecords.length, 1);
       assert.equal(reloaded.sourceFiles.explorationSources.length, 8);
       assert.equal(reloaded.sourceFiles.prototypeSources.length, bundle.sourceFiles.prototypeSources.length);
-      assert.deepEqual(reloaded.screens.screens.map(screen => screen.id), ['service-health']);
+      assert.deepEqual(reloaded.screens.screens.map(screen => screen.id), ['workspace', 'chat']);
       assert.deepEqual(listExplorations(reloaded)[0]?.candidates.map(candidate => candidate.label), ['A', 'B', 'C']);
       assert.equal(inspectExploration(reloaded, created.exploration.id).currentDigest, created.exploration.target.baseDigest);
     });
   });
 
   it('rejects ambiguous active targets and invalid pairing, IDs, labels, lifecycles, digests, and sources', async () => {
-    const bundle = await loadProjectFromFs(fixtureRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     assert.throws(() => createExplorationMetadata(bundle, {
-      screenId: 'service-health',
-      state: 'empty',
-      framePresetId: 'desktop-ops',
+      screenId: 'workspace',
+      state: 'loading',
+      framePresetId: 'desktop-web',
       title: 'Wrong state',
       intent: 'Invalid pairing.',
       candidateLabels: ['A', 'B']
     }), /does not declare review state/);
     assert.throws(() => createExplorationMetadata(bundle, {
       id: '../unsafe',
-      screenId: 'service-health',
-      state: 'populated',
-      framePresetId: 'desktop-ops',
+      ...workspaceTarget,
       title: 'Unsafe',
       intent: 'Invalid id.',
       candidateLabels: ['A', 'B']
     }), /must use 1-64 lowercase/);
     assert.throws(() => createExplorationMetadata(bundle, {
-      screenId: 'service-health',
-      state: 'populated',
-      framePresetId: 'desktop-ops',
+      ...workspaceTarget,
       title: 'Duplicate labels',
       intent: 'Invalid labels.',
       candidateLabels: ['A', 'a']
@@ -124,7 +121,7 @@ describe('persistent screen exploration core', () => {
   });
 
   it('archives without deleting candidate sources', async () => {
-    const bundle = await loadProjectFromFs(fixtureRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     const created = createExplorationMetadata(bundle, explorationInput('archive'));
     const activeBundle = applyMutation(bundle, created);
     const before = structuredClone(activeBundle.prototypeSourceContents);
@@ -138,21 +135,21 @@ describe('persistent screen exploration core', () => {
   });
 
   it('rejects stale promotion digests, stores V1 outside screens.json, and restores it without losing V2', async () => {
-    await withFixture(async root => {
+    await withFixture(meridianRoot, async root => {
       const original = await loadProjectFromFs(root);
-      const created = createExplorationMetadata(original, explorationInput('promotion'));
+      const created = createExplorationMetadata(original, explorationInput('promotion', transferTarget));
       await persistExplorationMutation(root, created);
       const bundle = await loadProjectFromFs(root);
-      const exploration = bundle.explorations.explorations[0]!;
+      const exploration = bundle.explorations.explorations.find(candidate => candidate.id === created.exploration.id)!;
       const candidate = exploration.candidates[1]!;
       const candidateHtml = bundle.prototypeSourceContents[candidate.prototype.source]!.replace(
-        'System overview',
-        'Selected system overview'
+        'Approve this wire',
+        'Approve this selected wire'
       );
       bundle.prototypeSourceContents[candidate.prototype.source] = candidateHtml;
       await writeFile(path.join(root, candidate.prototype.source), candidateHtml);
 
-      const expectedCurrentDigest = computeCanonicalScreenDigest(bundle, 'service-health');
+      const expectedCurrentDigest = computeCanonicalScreenDigest(bundle, 'transfer');
       const expectedCandidateDigest = computeExplorationCandidateDigest(bundle, exploration.id, candidate.id);
       const input = {
         explorationId: exploration.id,
@@ -165,16 +162,16 @@ describe('persistent screen exploration core', () => {
       assert.throws(() => promoteExploration(bundle, { ...input, expectedCandidateDigest: '0'.repeat(64) }), /expectedCandidateDigest is stale/);
 
       const promoted = promoteExploration(bundle, input);
-      assert.equal(bundle.screens.screens[0]?.version, undefined, 'promotion must not mutate its input bundle');
-      assert.equal(promoted.promotedScreen.id, 'service-health');
+      assert.equal(bundle.screens.screens.find(screen => screen.id === 'transfer')?.version, undefined, 'promotion must not mutate its input bundle');
+      assert.equal(promoted.promotedScreen.id, 'transfer');
       assert.equal(promoted.promotedScreen.version, undefined);
-      assert.equal(promoted.historicalVersion.screenId, 'service-health');
+      assert.equal(promoted.historicalVersion.screenId, 'transfer');
       assert.equal(promoted.historicalVersion.version, 1);
-      assert.equal(promoted.historicalVersion.screen.id, 'service-health');
+      assert.equal(promoted.historicalVersion.screen.id, 'transfer');
       assert.equal(promoted.exploration.lifecycle, 'promoted');
       assert.equal(promoted.exploration.selectedCandidateId, candidate.id);
-      assert.equal(promoted.exploration.promotedScreenId, 'service-health');
-      assert.match(promoted.prototypeSourceContents['prototype/screens/service-health.html'] ?? '', /Selected system overview/);
+      assert.equal(promoted.exploration.promotedScreenId, 'transfer');
+      assert.match(promoted.prototypeSourceContents['prototype/screens/transfer.html'] ?? '', /Approve this selected wire/);
 
       await persistPromotion(root, promoted);
       const reloaded = await loadProjectFromFs(root);
@@ -184,42 +181,42 @@ describe('persistent screen exploration core', () => {
       assert.equal(strictValidation.ok, true, strictValidation.errors.join('\n'));
       assert.deepEqual(
         reloaded.screens.screens.map(screen => ({ id: screen.id, version: screen.version })),
-        [{ id: 'service-health', version: undefined }]
+        original.screens.screens.map(screen => ({ id: screen.id, version: screen.version }))
       );
-      assert.equal(reloaded.history.entries.length, 1);
-      assert.equal(reloaded.sourceFiles.historyRecords.length, 1);
-      assert.equal(listScreenHistory(reloaded, 'service-health')[0]?.version, 1);
-      assert.equal(reloaded.explorations.explorations[0]?.lifecycle, 'promoted');
+      assert.equal(reloaded.history.entries.length, original.history.entries.length + 1);
+      assert.equal(reloaded.sourceFiles.historyRecords.length, original.sourceFiles.historyRecords.length + 1);
+      assert.equal(listScreenHistory(reloaded, 'transfer')[0]?.version, 1);
+      assert.equal(reloaded.explorations.explorations.find(candidate => candidate.id === exploration.id)?.lifecycle, 'promoted');
 
-      const inspectedV1 = inspectScreenHistory(reloaded, 'service-health', 1);
+      const inspectedV1 = inspectScreenHistory(reloaded, 'transfer', 1);
       const restored = restoreScreenHistory(reloaded, {
-        screenId: 'service-health',
+        screenId: 'transfer',
         version: 1,
         expectedCurrentDigest: inspectedV1.currentDigest,
         expectedVersionDigest: inspectedV1.versionDigest
       });
       assert.equal(restored.historicalVersion.version, 2);
       assert.equal(restored.historicalVersion.replacedBy.type, 'history-restore');
-      assert.match(restored.prototypeSourceContents['prototype/screens/service-health.html'] ?? '', /System overview/);
+      assert.match(restored.prototypeSourceContents['prototype/screens/transfer.html'] ?? '', /Approve this wire/);
       assert.throws(() => restoreScreenHistory(reloaded, {
-        screenId: 'service-health',
+        screenId: 'transfer',
         version: 1,
         expectedCurrentDigest: '0'.repeat(64),
-        expectedVersionDigest: computeHistoryVersionDigest(reloaded, 'service-health', 1)
+        expectedVersionDigest: computeHistoryVersionDigest(reloaded, 'transfer', 1)
       }), /expectedCurrentDigest is stale/);
       await persistRestore(root, reloaded.manifest.project.id, restored);
       const restoredReloaded = await loadProjectFromFs(root);
       assert.equal(validateProject(restoredReloaded).ok, true);
-      assert.deepEqual(listScreenHistory(restoredReloaded, 'service-health').map(entry => entry.version), [2, 1]);
+      assert.deepEqual(listScreenHistory(restoredReloaded, 'transfer').map(entry => entry.version), [2, 1]);
 
-      const nextCreated = createExplorationMetadata(restoredReloaded, explorationInput('promotion-next'));
+      const nextCreated = createExplorationMetadata(restoredReloaded, explorationInput('promotion-next', transferTarget));
       const nextBundle = applyMutation(restoredReloaded, nextCreated);
       const nextCandidate = nextCreated.exploration.candidates[0]!;
       const nextPromoted = promoteExploration(nextBundle, {
         explorationId: nextCreated.exploration.id,
         candidateId: nextCandidate.id,
         expectedBaseDigest: nextCreated.exploration.target.baseDigest,
-        expectedCurrentDigest: computeCanonicalScreenDigest(nextBundle, 'service-health'),
+        expectedCurrentDigest: computeCanonicalScreenDigest(nextBundle, 'transfer'),
         expectedCandidateDigest: computeExplorationCandidateDigest(nextBundle, nextCreated.exploration.id, nextCandidate.id)
       });
       assert.equal(nextPromoted.promotedScreen.version, undefined);
@@ -228,13 +225,11 @@ describe('persistent screen exploration core', () => {
   });
 });
 
-function explorationInput(title: string) {
+function explorationInput(title: string, target = workspaceTarget) {
   return {
-    screenId: 'service-health',
-    state: 'populated',
-    framePresetId: 'desktop-ops',
+    ...target,
     title,
-    intent: 'Compare the service summary.',
+    intent: 'Compare the layout.',
     candidateLabels: ['A', 'B', 'C']
   };
 }
@@ -294,7 +289,7 @@ async function persistSourceWrites(root: string, writes: ExplorationMutationResu
   }
 }
 
-async function withFixture(run: (root: string) => Promise<void>): Promise<void> {
+async function withFixture(fixtureRoot: string, run: (root: string) => Promise<void>): Promise<void> {
   const tempRoot = await mkdtemp(path.join(tmpdir(), 'blueprint-exploration-'));
   const root = path.join(tempRoot, 'design', 'blueprint');
   try {

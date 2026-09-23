@@ -8,9 +8,9 @@ import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../s
 import type { BlueprintProjectBundle } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
-const denseOpsRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
-const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -39,11 +39,11 @@ describe('Blueprint data-driven primitives canvas', () => {
     await server?.close();
   });
 
-  it('renders distinct primitive canvases for starter, Still, and Dense Ops without source edits', async () => {
+  it('renders distinct primitive canvases for starter, Umbra, and Meridian without source edits', async () => {
     const fixtures = [
       { name: 'starter', bundle: await loadProjectFromFs(starterRoot) },
-      { name: 'still-meditation', bundle: await loadProjectFromFs(stillRoot) },
-      { name: 'dense-ops', bundle: await loadProjectFromFs(denseOpsRoot) }
+      { name: 'umbra-gaming', bundle: await loadProjectFromFs(umbraRoot) },
+      { name: 'meridian-finance', bundle: await loadProjectFromFs(meridianRoot) }
     ];
     const allPrimitiveIds = new Set(fixtures.flatMap(fixture => fixture.bundle.primitives.primitives.map(primitive => primitive.id)));
 
@@ -166,8 +166,9 @@ describe('Blueprint data-driven primitives canvas', () => {
   it('renders every shipped primitive card as a compiled canonical specimen', async () => {
     const fixtures = [
       await loadProjectFromFs(starterRoot),
-      await loadProjectFromFs(stillRoot),
-      await loadProjectFromFs(denseOpsRoot)
+      await loadProjectFromFs(miraRoot),
+      await loadProjectFromFs(umbraRoot),
+      await loadProjectFromFs(meridianRoot)
     ];
 
     for (const bundle of fixtures) {
@@ -501,7 +502,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('keeps generated primitive cards collision-free for all proof fixtures', async () => {
-    for (const root of [starterRoot, stillRoot, denseOpsRoot]) {
+    for (const root of [starterRoot, umbraRoot, meridianRoot]) {
       const bundle = await loadProjectFromFs(root);
       const page = await openPrimitiveBoard(bundle);
 
@@ -549,7 +550,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('fits every canonical primitive specimen inside its review cell and root', async () => {
-    for (const root of [starterRoot, blankSlateRoot]) {
+    for (const root of [starterRoot, umbraRoot, meridianRoot]) {
       const bundle = await loadProjectFromFs(root);
       const page = await openPrimitiveBoard(bundle);
 
@@ -643,7 +644,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('renders every screen frame and section boundary from structured screen composition', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     const page = await openScreensBoard(bundle);
     const projectId = bundle.manifest.project.id;
 
@@ -653,33 +654,36 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(sync.ok, true, sync.errors.join('\n'));
 
       const expectedScreenBoundaries = bundle.screens.screens
-        .map(screen => boundaryId(projectId, 'screen', screen.id))
+        .flatMap(screen => screen.prototype.reviewConditions.map(() => boundaryId(projectId, 'screen', screen.id)))
         .sort();
       const screenRecords = records.filter(record => record.kind === 'screen');
-      assert.deepEqual(screenRecords.map(record => record.id).sort(), expectedScreenBoundaries, 'Screens board should render every screen in the loaded bundle');
+      assert.deepEqual(screenRecords.map(record => record.id).sort(), expectedScreenBoundaries, 'Screens board should render every screen review condition in the loaded bundle');
       assert.ok(
         screenRecords.every(record => record.id === boundaryId(projectId, 'screen', record.screenId ?? '')),
         'Screen review records should carry their own screenId context'
       );
 
       for (const screen of bundle.screens.screens) {
-        const frame = page.locator(boundarySelector(boundaryId(projectId, 'screen', screen.id)));
-        assert.equal(
-          await frame.locator('.canonical-prototype-screen[data-prototype-render-mode="canonical-app-owned"] .canonical-prototype-iframe').count(),
-          1,
-          `${screen.id} should render one canonical sandboxed prototype`
-        );
-        assert.equal(await frame.locator('.prototype-compile-error').count(), 0, `${screen.id} prototype should compile`);
-        const prototype = await screenPrototype(page, boundaryId(projectId, 'screen', screen.id));
-        assert.equal(await prototype.locator(`[data-blueprint-screen="${escapeAttribute(screen.id)}"]`).count(), 1, `${screen.id} prototype should render its own screen root`);
-        const sectionBoundaries = await prototype.locator('[data-blueprint-section-boundary-id]').evaluateAll(elements =>
-          elements.map(element => (element as HTMLElement).dataset.blueprintSectionBoundaryId ?? '')
-        );
-        assert.deepEqual(
-          sectionBoundaries.sort(),
-          screen.sections.map(section => boundaryId(projectId, 'section', `${screen.id}/${section.id}`)).sort(),
-          `${screen.id} prototype should mark every declared section boundary inside its owning frame`
-        );
+        for (const condition of screen.prototype.reviewConditions) {
+          const label = `${screen.id} ${condition.state}`;
+          const frame = page.locator(screenFrameSelector(boundaryId(projectId, 'screen', screen.id), condition.state));
+          assert.equal(
+            await frame.locator('.canonical-prototype-screen[data-prototype-render-mode="canonical-app-owned"] .canonical-prototype-iframe').count(),
+            1,
+            `${label} should render one canonical sandboxed prototype`
+          );
+          assert.equal(await frame.locator('.prototype-compile-error').count(), 0, `${label} prototype should compile`);
+          const prototype = await screenPrototype(page, boundaryId(projectId, 'screen', screen.id), condition.state);
+          assert.equal(await prototype.locator(`[data-blueprint-screen="${escapeAttribute(screen.id)}"]`).count(), 1, `${label} prototype should render its own screen root`);
+          const sectionBoundaries = await prototype.locator('[data-blueprint-section-boundary-id]').evaluateAll(elements =>
+            elements.map(element => (element as HTMLElement).dataset.blueprintSectionBoundaryId ?? '')
+          );
+          assert.deepEqual(
+            sectionBoundaries.sort(),
+            screen.sections.map(section => boundaryId(projectId, 'section', `${screen.id}/${section.id}`)).sort(),
+            `${label} prototype should mark every declared section boundary inside its owning frame`
+          );
+        }
       }
 
       const collisions = await frameCollisions(page);
@@ -690,12 +694,12 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('renders desktop web frames and mobile frames from frame presets on the same canvas', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     const page = await openScreensBoard(bundle);
 
     try {
-      const mobileFrame = page.locator(boundarySelector('still-meditation/screen/home'));
-      const desktopFrame = page.locator(boundarySelector('still-meditation/screen/web-home'));
+      const mobileFrame = page.locator(screenFrameSelector('mira-ai/screen/chat'));
+      const desktopFrame = page.locator(screenFrameSelector('mira-ai/screen/workspace'));
       await mobileFrame.waitFor({ state: 'visible', timeout: 5000 });
       await desktopFrame.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -727,7 +731,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await desktopFrame.locator('.status-bar').count(), 0, 'desktop frame should not render phone status chrome');
       assert.equal(await desktopFrame.locator('.home-indicator').count(), 0, 'desktop frame should not render phone home indicator');
       assert.equal(await desktopFrame.locator('.browser-bar').count(), 1, 'desktop frame should render browser chrome');
-      assert.equal((await desktopFrame.locator('.browser-address').textContent())?.trim(), 'Browser Base', 'desktop frame without a route should name the screen in the address bar');
+      assert.equal((await desktopFrame.locator('.browser-address').textContent())?.trim(), '/threads/:threadId', 'desktop frame should show its production route in the address bar');
 
       const collisions = await frameCollisions(page);
       assert.deepEqual(collisions, [], `Mixed mobile and desktop screen frames should not overlap:\n${collisions.join('\n')}`);
@@ -737,12 +741,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('splits the screens board into flow subpages that deep links bypass', async () => {
-    const bundle = await loadProjectFromFs(blankSlateRoot);
-    // Synthetic flow declarations: the page rail groups whatever flows screens declare.
-    const flowByScreen: Record<string, string> = { home: 'marketing', pricing: 'marketing', platform: 'product' };
-    for (const screen of bundle.screens.screens) {
-      screen.flow = flowByScreen[screen.id];
-    }
+    const bundle = await loadProjectFromFs(meridianRoot);
     const page = await openScreensBoard(bundle);
 
     try {
@@ -750,34 +749,34 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await switcher.isVisible(), true, 'Flow subpage switcher should render on the screens board');
       assert.deepEqual(
         (await switcher.locator('button').allTextContents()).map(text => text.trim()),
-        ['marketing', 'product'],
+        ['Overview', 'Ledger', 'Send payment', 'Phone'],
         'Flow pills should be the declared flows in first-seen order'
       );
       assert.equal(
-        await switcher.locator('button[data-flow="marketing"]').getAttribute('aria-pressed'),
+        await switcher.locator('button[data-flow="Overview"]').getAttribute('aria-pressed'),
         'true',
         'First declared flow should be the default canvas'
       );
       assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
 
-      await switcher.locator('button[data-flow="product"]').click();
+      await switcher.locator('button[data-flow="Ledger"]').click();
       await page.waitForFunction(
         () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 1,
         undefined,
         { timeout: 5000 }
       );
-      const productFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
+      const ledgerFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
         elements.map(element => (element as HTMLElement).dataset.boundaryId)
       );
       assert.deepEqual(
-        productFrames,
-        ['blank-slate-proof/screen/platform'],
-        'Product subpage should mount only the product-flow frames'
+        ledgerFrames,
+        ['meridian-finance/screen/transactions'],
+        'Ledger subpage should mount only the ledger-flow frames'
       );
-      assert.equal(await switcher.locator('button[data-flow="product"]').getAttribute('aria-pressed'), 'true');
-      assert.match(page.url(), /flow=product/);
+      assert.equal(await switcher.locator('button[data-flow="Ledger"]').getAttribute('aria-pressed'), 'true');
+      assert.match(page.url(), /flow=Ledger/);
 
-      await switcher.locator('button[data-flow="marketing"]').click();
+      await switcher.locator('button[data-flow="Overview"]').click();
       await page.waitForFunction(
         () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 2,
         undefined,
@@ -786,8 +785,8 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
 
       // Deep links (state/viewport, used by capture) resolve every screen regardless of the active subpage.
-      await page.goto(`${baseUrl}?board=screens&flow=product&state=initial&viewport=desktop-web-tall`);
-      await page.waitForSelector('.board-screens [data-boundary-id="blank-slate-proof/screen/home"]', { timeout: 5000 });
+      await page.goto(`${baseUrl}?board=screens&flow=Ledger&state=review&viewport=phone`);
+      await page.waitForSelector('.board-screens [data-boundary-id="meridian-finance/screen/transfer-mobile"]', { timeout: 5000 });
     } finally {
       await page.close();
     }
@@ -831,12 +830,15 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('keeps all-screens review evidence tied to rendered screen frames without a false top-level screen context', async () => {
-    const bundle = await loadProjectFromFs(denseOpsRoot);
+    const bundle = cloneBundle(await loadProjectFromFs(meridianRoot));
+    for (const screen of bundle.screens.screens) {
+      delete screen.flow;
+    }
     const page = await openScreensBoard(bundle);
 
     try {
       const expectedScreenBoundaries = bundle.screens.screens
-        .map(screen => boundaryId(bundle.manifest.project.id, 'screen', screen.id))
+        .flatMap(screen => screen.prototype.reviewConditions.map(() => boundaryId(bundle.manifest.project.id, 'screen', screen.id)))
         .sort();
       const manifest = await page.evaluate(() => window.__BLUEPRINT_REVIEW__?.manifest);
       assert.ok(manifest, 'Screens board should expose a review manifest');
@@ -863,7 +865,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('renders screen composition as prototype content rather than primary metadata labels', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     const page = await openScreensBoard(bundle);
 
     try {
@@ -872,12 +874,12 @@ describe('Blueprint data-driven primitives canvas', () => {
         0,
         'Every screen frame should render its canonical prototype rather than a projected section template'
       );
-      const frame = page.locator(boundarySelector('still-meditation/screen/home'));
-      const prototypeText = await (await screenPrototype(page, 'still-meditation/screen/home')).locator('body').innerText();
-      assert.match(prototypeText, /Your pause\s+is ready\./);
-      assert.match(prototypeText, /Find your\s+center/);
-      assert.match(prototypeText, /Start/);
-      const primaryMetadata = /\b(?:Personal Welcome|Featured Practice|Daily Rhythm|Badge|Button|tonal|primary|normal)\b/;
+      const frame = page.locator(screenFrameSelector('mira-ai/screen/chat'));
+      const prototypeText = await (await screenPrototype(page, 'mira-ai/screen/chat')).locator('body').innerText();
+      assert.match(prototypeText, /Why did churn jump in Q3\?/);
+      assert.match(prototypeText, /Three drivers explain 71% of the Q3 increase\./);
+      assert.match(prototypeText, /Retention export/);
+      const primaryMetadata = /\b(?:Conversation|Composer|Insight Chart|Badge|Button|outline|compact|normal)\b/;
       assert.doesNotMatch(
         prototypeText,
         primaryMetadata,
@@ -894,14 +896,14 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('composes screen frames from the same visual primitive vocabulary used on the primitives canvas', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = mutatePrototypeSource(await loadProjectFromFs(miraRoot), 'prototype/screens/workspace.html', ' class="artifact__open"', '');
     const screensPage = await openScreensBoard(bundle);
     const primitivesPage = await openPrimitiveBoard(bundle);
     const projectId = bundle.manifest.project.id;
 
     try {
-      const prototype = await screenPrototype(screensPage, boundaryId(projectId, 'screen', 'home'));
-      const featured = prototype.locator(`[data-blueprint-section-boundary-id="${boundaryId(projectId, 'section', 'home/featured-practice')}"]`);
+      const prototype = await screenPrototype(screensPage, boundaryId(projectId, 'screen', 'workspace'));
+      const featured = prototype.locator(`[data-blueprint-section-boundary-id="${boundaryId(projectId, 'section', 'workspace/sources')}"]`);
       for (const use of [
         { primitiveId: 'badge', variant: 'tonal', state: 'default' },
         { primitiveId: 'button', variant: 'primary', state: 'normal' }
@@ -931,19 +933,19 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('changes visible screen output when a section prototype source changes', async () => {
-    const baseBundle = await loadProjectFromFs(stillRoot);
-    const mutatedBundle = mutatePrototypeSource(baseBundle, 'prototype/screens/home.html', 'Find your<br />center', 'Settle into<br />stillness');
+    const baseBundle = await loadProjectFromFs(miraRoot);
+    const mutatedBundle = mutatePrototypeSource(baseBundle, 'prototype/screens/chat.html', 'Three drivers explain 71% of the Q3 increase.', 'Two drivers explain most of the Q3 increase.');
     const basePage = await openScreensBoard(baseBundle);
     const mutatedPage = await openScreensBoard(mutatedBundle);
 
     try {
-      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'home');
-      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'home/featured-practice')}"]`;
+      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'chat');
+      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'chat/conversation')}"]`;
       const baseText = await (await screenPrototype(basePage, screenBoundary)).locator(sectionSelector).innerText();
       const mutatedText = await (await screenPrototype(mutatedPage, screenBoundary)).locator(sectionSelector).innerText();
 
-      assert.match(baseText, /Find your\s+center/);
-      assert.match(mutatedText, /Settle into\s+stillness/);
+      assert.match(baseText, /Three drivers explain 71%/);
+      assert.match(mutatedText, /Two drivers explain most/);
       assert.notEqual(mutatedText, baseText, 'Changing the prototype source should visibly change the rendered section output');
     } finally {
       await basePage.close();
@@ -952,31 +954,31 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 
   it('changes visible screen output when a section renders a different primitive', async () => {
-    const baseBundle = await loadProjectFromFs(stillRoot);
+    const baseBundle = await loadProjectFromFs(miraRoot);
     const mutatedBundle = mutatePrototypeSource(
       baseBundle,
-      'prototype/screens/home.html',
-      '<blueprint-use kind="primitive" ref="badge" state="default" variant="tonal">',
-      '<blueprint-use kind="primitive" ref="button" state="normal" variant="secondary">'
+      'prototype/screens/chat.html',
+      '<blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">+4</span></blueprint-use>',
+      '<blueprint-use kind="primitive" ref="button" state="normal" variant="secondary"><span slot="label">+4</span></blueprint-use>'
     );
-    const mutatedHome = mutatedBundle.screens.screens.find(screen => screen.id === 'home');
-    const mutatedSection = mutatedHome?.sections.find(section => section.id === 'featured-practice');
-    assert.ok(mutatedHome && mutatedSection, 'Still home should declare the featured practice section');
-    mutatedHome.prototype.renderedUses = mutatedHome.prototype.renderedUses?.filter(use => use.id !== 'badge');
-    mutatedSection.uses = mutatedSection.uses.filter(use => use.id !== 'badge');
+    const mutatedChat = mutatedBundle.screens.screens.find(screen => screen.id === 'chat');
+    const mutatedSection = mutatedChat?.sections.find(section => section.id === 'conversation');
+    assert.ok(mutatedChat && mutatedSection, 'Mira chat should declare the conversation section');
+    mutatedChat.prototype.renderedUses = [...(mutatedChat.prototype.renderedUses ?? []), { kind: 'primitive', id: 'button' }];
+    mutatedSection.uses = [...mutatedSection.uses, { ...mutatedSection.uses.find(use => use.id === 'badge')!, id: 'button' }];
     const basePage = await openScreensBoard(baseBundle);
     const mutatedPage = await openScreensBoard(mutatedBundle);
 
     try {
-      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'home');
-      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'home/featured-practice')}"]`;
+      const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'chat');
+      const sectionSelector = `[data-blueprint-section-boundary-id="${boundaryId(baseBundle.manifest.project.id, 'section', 'chat/conversation')}"]`;
       const readRenderedPrimitives = async (page: Page) =>
         (await screenPrototype(page, screenBoundary)).locator(`${sectionSelector} [data-blueprint-primitive]`).evaluateAll(elements =>
           elements.map(element => `${(element as HTMLElement).dataset.blueprintPrimitive}:${(element as HTMLElement).dataset.blueprintVariant}`)
         );
 
-      assert.deepEqual(await readRenderedPrimitives(basePage), ['badge:tonal', 'button:primary']);
-      assert.deepEqual(await readRenderedPrimitives(mutatedPage), ['button:secondary', 'button:primary']);
+      assert.deepEqual(await readRenderedPrimitives(basePage), ['segmented-control:default', 'badge:outline', 'badge:outline', 'badge:outline']);
+      assert.deepEqual(await readRenderedPrimitives(mutatedPage), ['segmented-control:default', 'badge:outline', 'badge:outline', 'button:secondary']);
     } finally {
       await basePage.close();
       await mutatedPage.close();
@@ -1126,8 +1128,8 @@ function mutatePrototypeSource(bundle: BlueprintProjectBundle, sourcePath: strin
   return cloned;
 }
 
-async function screenPrototype(page: Page, screenBoundaryId: string): Promise<FrameLocator> {
-  const prototype = page.frameLocator(`${boundarySelector(screenBoundaryId)} .canonical-prototype-iframe`);
+async function screenPrototype(page: Page, screenBoundaryId: string, state = 'default'): Promise<FrameLocator> {
+  const prototype = page.frameLocator(`${screenFrameSelector(screenBoundaryId, state)} .canonical-prototype-iframe`);
   await prototype.locator('[data-blueprint-screen]').waitFor({ state: 'attached', timeout: 5000 });
   return prototype;
 }
@@ -1155,6 +1157,10 @@ function cloneBundle(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
 
 function boundarySelector(id: string): string {
   return `[data-boundary-id="${escapeAttribute(id)}"]`;
+}
+
+function screenFrameSelector(id: string, state = 'default'): string {
+  return `${boundarySelector(id)}[data-review-state="${escapeAttribute(state)}"]`;
 }
 
 function escapeAttribute(value: string): string {

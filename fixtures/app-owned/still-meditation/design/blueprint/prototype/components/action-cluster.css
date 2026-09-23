@@ -1,5 +1,0 @@
-[data-blueprint-component="action-cluster"] {
-  display: flex;
-  align-items: center;
-  gap: var(--app-space-row);
-}

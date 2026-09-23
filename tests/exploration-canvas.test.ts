@@ -5,7 +5,7 @@ import { createServer, type ViteDevServer } from 'vite';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, ExplorationPrototypeSource, ScreenDefinition } from '../src/core/types';
 
-const fixtureRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
+const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -63,7 +63,7 @@ describe('Blueprint focused exploration canvas', () => {
       const root = page.locator('[data-board-root="screens"][data-canvas-mode="exploration"]');
       await root.waitFor({ state: 'visible', timeout: 5000 });
       assert.equal(await root.getAttribute('data-exploration-id'), 'hero-directions');
-      assert.equal(await root.getAttribute('data-screen-id'), 'waitlist');
+      assert.equal(await root.getAttribute('data-screen-id'), 'workspace');
 
       const frames = root.locator('.frame');
       assert.equal(await frames.count(), 4);
@@ -75,7 +75,7 @@ describe('Blueprint focused exploration canvas', () => {
       assert.equal(await root.locator('.frame[data-boundary-kind="screen"]').count(), 1, 'Only Current may remain a canonical screen boundary.');
       assert.equal(
         await root.locator('.frame[data-exploration-role="baseline"]').getAttribute('data-boundary-id'),
-        'high-fidelity-red/screen/waitlist'
+        'mira-ai/screen/workspace'
       );
       for (const candidate of await root.locator('.frame[data-exploration-role="candidate"]').all()) {
         assert.equal(await candidate.getAttribute('data-boundary-id'), null);
@@ -93,14 +93,14 @@ describe('Blueprint focused exploration canvas', () => {
           height: style ? Number.parseFloat(style.height) : 0
         };
       }));
-      assert.ok(contexts.every(context => context.state === 'initial'));
-      assert.ok(contexts.every(context => context.preset === 'desktop-reference'));
-      assert.ok(contexts.every(context => context.width === 1280 && context.height === 800));
+      assert.ok(contexts.every(context => context.state === 'default'));
+      assert.ok(contexts.every(context => context.preset === 'desktop-web'));
+      assert.ok(contexts.every(context => context.width === 1440 && context.height === 900));
 
       const directionA = page.frameLocator('.frame[data-exploration-candidate-id="direction-a"] iframe');
       const directionB = page.frameLocator('.frame[data-exploration-candidate-id="direction-b"] iframe');
-      assert.match(await directionA.locator('body').innerText(), /Direction A for modern sellers/);
-      assert.match(await directionB.locator('body').innerText(), /Direction B for modern sellers/);
+      assert.match(await directionA.locator('body').innerText(), /Direction A explains the Q3 increase/);
+      assert.match(await directionB.locator('body').innerText(), /Direction B explains the Q3 increase/);
 
       const unavailable = root.locator('.frame[data-exploration-candidate-id="direction-c"]');
       assert.equal(await unavailable.getAttribute('data-exploration-status'), 'unavailable');
@@ -161,7 +161,7 @@ describe('Blueprint focused exploration canvas', () => {
 
       const root = page.locator('[data-board-root="screens"][data-canvas-mode="history"]');
       await root.waitFor({ state: 'visible', timeout: 5000 });
-      assert.equal(new URL(page.url()).searchParams.get('history'), 'waitlist');
+      assert.equal(new URL(page.url()).searchParams.get('history'), 'workspace');
       assert.deepEqual(
         (await root.locator('.bp-chrome-history-row-label').allTextContents()).map(label => label.trim()),
         ['Versions', 'Hero directions · Promoted']
@@ -201,10 +201,10 @@ async function openBundle(bundle: BlueprintProjectBundle, query: string): Promis
 
 async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
   const bundle = structuredClone(await loadProjectFromFs(fixtureRoot));
-  const screen = bundle.screens.screens.find(candidate => candidate.id === 'waitlist');
-  const other = bundle.screens.screens.find(candidate => candidate.id === 'dense-dashboard');
+  const screen = bundle.screens.screens.find(candidate => candidate.id === 'workspace');
+  const other = bundle.screens.screens.find(candidate => candidate.id === 'chat');
   if (!screen?.prototype || !other) {
-    throw new Error('Expected the high-fidelity screen fixture.');
+    throw new Error('Expected the Mira screen fixture.');
   }
   screen.flow = 'marketing';
   other.flow = 'ops';
@@ -223,12 +223,12 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
   const candidateB = 'prototype/explorations/direction-b.html';
   const candidateStyles = 'prototype/explorations/directions.css';
   bundle.prototypeSourceContents[candidateA] = source.replace(
-    'The control room for modern sellers.',
-    'Direction A for modern sellers.'
+    'Three drivers explain 71% of the Q3 increase.',
+    'Direction A explains the Q3 increase.'
   );
   bundle.prototypeSourceContents[candidateB] = source.replace(
-    'The control room for modern sellers.',
-    'Direction B for modern sellers.'
+    'Three drivers explain 71% of the Q3 increase.',
+    'Direction B explains the Q3 increase.'
   );
   bundle.prototypeSourceContents[candidateStyles] = styles;
   bundle.explorations = {
@@ -242,8 +242,8 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
         lifecycle: 'active',
         target: {
           screenId: screen.id,
-          state: 'initial',
-          framePresetId: 'desktop-reference',
+          state: 'default',
+          framePresetId: 'desktop-web',
           baseDigest: 'a'.repeat(64),
           baseline: {
             screen: baselineScreen,
@@ -285,7 +285,7 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
 async function bundleWithHistory(): Promise<BlueprintProjectBundle> {
   const bundle = await bundleWithExploration();
   const exploration = bundle.explorations.explorations[0];
-  const screen = bundle.screens.screens.find(candidate => candidate.id === 'waitlist');
+  const screen = bundle.screens.screens.find(candidate => candidate.id === 'workspace');
   if (!exploration || !screen?.prototype) {
     throw new Error('Expected exploration history fixture inputs.');
   }
@@ -297,8 +297,8 @@ async function bundleWithHistory(): Promise<BlueprintProjectBundle> {
   if (!historicalScreen.prototype) {
     throw new Error('Expected historical screen prototype.');
   }
-  const historicalSource = 'prototype/screens/waitlist.history-waitlist-v1.html';
-  const historicalStyle = 'prototype/screens/waitlist.history-waitlist-v1.css';
+  const historicalSource = 'prototype/screens/workspace.history-workspace-v1.html';
+  const historicalStyle = 'prototype/screens/workspace.history-workspace-v1.css';
   bundle.prototypeSourceContents[historicalSource] = bundle.prototypeSourceContents[historicalScreen.prototype.source] ?? '';
   bundle.prototypeSourceContents[historicalStyle] = bundle.prototypeSourceContents[historicalScreen.prototype.styles[0] ?? ''] ?? '';
   historicalScreen.prototype.source = historicalSource;
@@ -308,8 +308,8 @@ async function bundleWithHistory(): Promise<BlueprintProjectBundle> {
     {
       screenId: screen.id,
       version: 1,
-      state: 'initial',
-      framePresetId: 'desktop-reference',
+      state: 'default',
+      framePresetId: 'desktop-web',
       screen: historicalScreen,
       replacedBy: {
         type: 'exploration-candidate',

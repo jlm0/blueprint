@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     await assertNoViewportTextOverlap(mobile, 'starter-screens-mobile');
     await mobile.screenshot({ path: path.join(screenshotRoot, 'blueprint-screens-mobile.png'), fullPage: true });
 
-    const appOwned = await loadProjectFromFs('fixtures/app-owned/still-meditation/design/blueprint');
+    const appOwned = await loadProjectFromFs('fixtures/valid/mira-ai/design/blueprint');
     const configured = await browser.newPage({ viewport: { width: 1024, height: 780 } });
     await configured.addInitScript(bundle => {
       Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
@@ -106,13 +106,13 @@ async function main(): Promise<void> {
       });
     }, appOwned);
     await configured.goto(`${url}?board=screens`);
-    await configured.waitForSelector('.board-screens .frame[data-boundary-id="still-meditation/screen/home"]', { timeout: 10000 });
+    await configured.waitForSelector('.board-screens .frame[data-boundary-id="mira-ai/screen/workspace"]', { timeout: 10000 });
     await assertScreenCompositionRendered(configured, appOwned);
     await assertNoProjectManagerChrome(configured);
-    const configuredScreensScreenshot = path.join(screenshotRoot, 'still-meditation-screens.png');
+    const configuredScreensScreenshot = path.join(screenshotRoot, 'mira-ai-screens.png');
     await configured.screenshot({ path: configuredScreensScreenshot, fullPage: true });
-    await writeScreenReviewArtifacts(configured, appOwned.manifest.project.id, 'still-meditation-screens', configuredScreensScreenshot);
-    await assertAppSampleStyleStability(configured, 'still-meditation-screens', async () => {
+    await writeScreenReviewArtifacts(configured, appOwned.manifest.project.id, 'mira-ai-screens', configuredScreensScreenshot);
+    await assertAppSampleStyleStability(configured, 'mira-ai-screens', async () => {
       await configured.locator('.board-screens .frame-chip').first().focus();
       await configured.locator('.board-screens .frame-shot').first().focus();
     });
@@ -295,8 +295,9 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
 async function assertProofFixturePrimitiveBoards(browser: import('playwright').Browser, url: string): Promise<void> {
   const proofRoots = [
     'starter/design/blueprint',
-    'fixtures/app-owned/still-meditation/design/blueprint',
-    'fixtures/app-owned/dense-ops/design/blueprint'
+    'fixtures/valid/mira-ai/design/blueprint',
+    'fixtures/valid/umbra-gaming/design/blueprint',
+    'fixtures/valid/meridian-finance/design/blueprint'
   ];
 
   for (const projectRoot of proofRoots) {
@@ -564,7 +565,9 @@ async function assertScreenCompositionRendered(page: import('playwright').Page, 
     throw new Error(`Screens board visible boundaries do not match ${bundle.manifest.project.id} structured data:\n${sync.errors.join('\n')}`);
   }
 
-  const expectedScreenIds = bundle.screens.screens.map(screen => `${bundle.manifest.project.id}/screen/${screen.id}`).sort();
+  const expectedScreenIds = bundle.screens.screens
+    .flatMap(screen => screen.prototype.reviewConditions.map(() => `${bundle.manifest.project.id}/screen/${screen.id}`))
+    .sort();
   const visibleScreenIds = records.filter(record => record.kind === 'screen').map(record => record.id).sort();
   if (visibleScreenIds.join(',') !== expectedScreenIds.join(',')) {
     throw new Error(`${bundle.manifest.project.id} Screens board missing screen frames: expected ${expectedScreenIds.join(',')}, received ${visibleScreenIds.join(',')}`);
@@ -676,8 +679,8 @@ async function writeScreenReviewArtifacts(page: import('playwright').Page, proje
 async function assertNoProjectManagerChrome(page: import('playwright').Page): Promise<void> {
   await assertDashboardChromeRemoved(page);
   const projectId = await page.locator('.board-screens .frame').first().getAttribute('data-boundary-id');
-  if (projectId !== 'still-meditation/screen/home') {
-    throw new Error(`Configured single-project bundle should render still-meditation without source edits, received ${projectId}.`);
+  if (projectId !== 'mira-ai/screen/workspace') {
+    throw new Error(`Configured single-project bundle should render mira-ai without source edits, received ${projectId}.`);
   }
 }
 
@@ -763,7 +766,7 @@ async function assertFrameTools(page: import('playwright').Page): Promise<void> 
 }
 
 async function assertCanonicalFrameExports(browser: import('playwright').Browser, url: string): Promise<void> {
-  const bundle = await loadProjectFromFs('fixtures/red/high-fidelity-prototype/design/blueprint');
+  const bundle = await loadProjectFromFs('fixtures/valid/mira-ai/design/blueprint');
   const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url });
   await page.addInitScript(projectBundle => {

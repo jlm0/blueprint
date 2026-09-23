@@ -4,64 +4,64 @@ import { loadProjectFromFs } from '../src/core/load';
 import { parseCanvasSelection, selectionReference, selectionSourceFiles } from '../src/core/selection';
 import type { ExplorationDefinition } from '../src/core/types';
 
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
 const buttonInSection = {
-  boundaryId: 'still-meditation/primitive/button',
+  boundaryId: 'mira-ai/primitive/button',
   kind: 'primitive',
   localId: 'button',
   label: 'Button',
   context: [
-    { boundaryId: 'still-meditation/section/home/featured-practice', kind: 'section', localId: 'home/featured-practice', label: 'Featured Practice' },
-    { boundaryId: 'still-meditation/screen/home', kind: 'screen', localId: 'home', label: 'Today' }
+    { boundaryId: 'mira-ai/section/workspace/thread-header', kind: 'section', localId: 'workspace/thread-header', label: 'Thread Header' },
+    { boundaryId: 'mira-ai/screen/workspace', kind: 'screen', localId: 'workspace', label: 'Workspace' }
   ],
-  screenId: 'home',
+  screenId: 'workspace',
   state: 'default',
-  framePresetId: 'phone'
+  framePresetId: 'desktop-web'
 };
 
 describe('canvas selection contract', () => {
   it('references the selected boundary inside its enclosing boundaries', () => {
     const selection = parseCanvasSelection(buttonInSection);
     assert.ok(selection);
-    assert.equal(selectionReference(selection), 'primitive:button in section:home/featured-practice in screen:home');
+    assert.equal(selectionReference(selection), 'primitive:button in section:workspace/thread-header in screen:workspace');
   });
 
   it('resolves the owning prototype files from the innermost boundary that has them', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     const button = parseCanvasSelection(buttonInSection);
     const section = parseCanvasSelection({ ...buttonInSection.context[0], context: [buttonInSection.context[1]] });
     assert.ok(button && section);
     assert.deepEqual(selectionSourceFiles(bundle, button), ['prototype/primitives/button.html', 'prototype/primitives/button.css']);
-    assert.deepEqual(selectionSourceFiles(bundle, section), ['prototype/screens/home.html', 'prototype/screens/home.css']);
+    assert.deepEqual(selectionSourceFiles(bundle, section), ['prototype/screens/workspace.html', 'prototype/screens/workspace.css']);
   });
 
   it('names the exploration candidate or history version and resolves its own source files', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(miraRoot);
     bundle.explorations.explorations.push({
-      id: 'home-hero',
-      title: 'Home hero',
+      id: 'workspace-hero',
+      title: 'Workspace hero',
       intent: 'Compare hero directions.',
       lifecycle: 'active',
       target: {} as ExplorationDefinition['target'],
-      candidates: [{ id: 'calm', label: 'Calm', prototype: { source: 'prototype/screens/home.calm.html', styles: ['prototype/screens/home.calm.css'], assetRefs: [] } }]
+      candidates: [{ id: 'calm', label: 'Calm', prototype: { source: 'prototype/screens/workspace.calm.html', styles: ['prototype/screens/workspace.calm.css'], assetRefs: [] } }]
     });
     const screenInCandidate = parseCanvasSelection({
       ...buttonInSection.context[1],
       context: [],
-      screenId: 'home',
-      explorationId: 'home-hero',
+      screenId: 'workspace',
+      explorationId: 'workspace-hero',
       explorationRole: 'candidate',
       candidateId: 'calm'
     });
-    const buttonInCandidate = parseCanvasSelection({ ...buttonInSection, explorationId: 'home-hero', explorationRole: 'candidate', candidateId: 'calm' });
+    const buttonInCandidate = parseCanvasSelection({ ...buttonInSection, explorationId: 'workspace-hero', explorationRole: 'candidate', candidateId: 'calm' });
     assert.ok(screenInCandidate && buttonInCandidate);
-    assert.equal(selectionReference(screenInCandidate), 'screen:home in exploration:home-hero candidate:calm');
-    assert.deepEqual(selectionSourceFiles(bundle, screenInCandidate), ['prototype/screens/home.calm.html', 'prototype/screens/home.calm.css']);
+    assert.equal(selectionReference(screenInCandidate), 'screen:workspace in exploration:workspace-hero candidate:calm');
+    assert.deepEqual(selectionSourceFiles(bundle, screenInCandidate), ['prototype/screens/workspace.calm.html', 'prototype/screens/workspace.calm.css']);
     assert.deepEqual(selectionSourceFiles(bundle, buttonInCandidate), ['prototype/primitives/button.html', 'prototype/primitives/button.css']);
     const version = parseCanvasSelection({ ...buttonInSection.context[1], context: [], explorationRole: 'version', historyVersion: 2 });
     assert.ok(version);
-    assert.equal(selectionReference(version), 'screen:home in history version:2');
+    assert.equal(selectionReference(version), 'screen:workspace in history version:2');
   });
 
   it('rejects malformed, mismatched, or non-selectable boundaries', () => {
@@ -73,7 +73,7 @@ describe('canvas selection contract', () => {
     assert.equal(parseCanvasSelection({ ...buttonInSection, state: 7 }), undefined);
     assert.equal(parseCanvasSelection({ ...buttonInSection, explorationRole: 'draft' }), undefined);
     assert.equal(parseCanvasSelection({ ...buttonInSection, historyVersion: 0 }), undefined);
-    assert.equal(parseCanvasSelection({ ...buttonInSection, context: [{ boundaryId: 'x', kind: 'screen', localId: 'home', label: 'Today' }] }), undefined);
+    assert.equal(parseCanvasSelection({ ...buttonInSection, context: [{ boundaryId: 'x', kind: 'screen', localId: 'workspace', label: 'Workspace' }] }), undefined);
     assert.equal(parseCanvasSelection({ ...buttonInSection, context: Array(17).fill(buttonInSection.context[1]) }), undefined);
   });
 });

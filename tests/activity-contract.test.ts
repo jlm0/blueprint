@@ -13,8 +13,7 @@ import {
   type BlueprintActivityRuntimeDescriptor
 } from '../src/mcp/activity';
 
-const projectRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
+const projectRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
 describe('Codex activity contract', () => {
   it('resolves typed MCP boundaries and governed source paths to visible canvas focus', async () => {
@@ -22,13 +21,13 @@ describe('Codex activity contract', () => {
 
     assert.deepEqual(resolveActivityFocus(bundle, {
       project: projectRoot,
-      query: { type: 'show', boundary: 'section:waitlist/hero' }
+      query: { type: 'show', boundary: 'section:chat/conversation' }
     }), {
-      boundaryId: 'high-fidelity-red/section/waitlist/hero',
+      boundaryId: 'mira-ai/section/chat/conversation',
       kind: 'section',
-      localId: 'waitlist/hero',
+      localId: 'chat/conversation',
       board: 'screens',
-      screenId: 'waitlist'
+      screenId: 'chat'
     });
 
     const screen = bundle.screens.screens[0];
@@ -36,7 +35,7 @@ describe('Codex activity contract', () => {
     assert.deepEqual(resolveActivityFocus(bundle, {
       command: `sed -n '1,200p' ${screen.prototype.source}`
     }), {
-      boundaryId: `high-fidelity-red/screen/${screen.id}`,
+      boundaryId: `mira-ai/screen/${screen.id}`,
       kind: 'screen',
       localId: screen.id,
       board: 'screens',
@@ -60,7 +59,7 @@ describe('Codex activity contract', () => {
       toolName: 'mcp__blueprint__query',
       phase: 'started',
       emittedAt: '2026-08-18T12:00:00.000Z',
-      toolInput: { project: projectRoot, query: { type: 'show', boundary: 'screen:waitlist' } }
+      toolInput: { project: projectRoot, query: { type: 'show', boundary: 'screen:chat' } }
     });
     assert.ok(parsed);
     assert.deepEqual(createBlueprintAgentActivityEvent(bundle, parsed), {
@@ -70,28 +69,28 @@ describe('Codex activity contract', () => {
       toolUseId: 'tool-1',
       toolName: 'mcp__blueprint__query',
       phase: 'started',
-      label: 'Codex is looking at Waitlist',
+      label: 'Codex is looking at Chat',
       emittedAt: '2026-08-18T12:00:00.000Z',
       focus: {
-        boundaryId: 'high-fidelity-red/screen/waitlist',
+        boundaryId: 'mira-ai/screen/chat',
         kind: 'screen',
-        localId: 'waitlist',
+        localId: 'chat',
         board: 'screens',
-        screenId: 'waitlist'
+        screenId: 'chat'
       },
       focuses: [{
-        boundaryId: 'high-fidelity-red/screen/waitlist',
+        boundaryId: 'mira-ai/screen/chat',
         kind: 'screen',
-        localId: 'waitlist',
+        localId: 'chat',
         board: 'screens',
-        screenId: 'waitlist'
+        screenId: 'chat'
       }]
     });
     assert.equal(parseBlueprintHookBridgeEvent({ version: 1, sessionId: 'missing-fields' }), undefined);
   });
 
   it('focuses every boundary a multi-file edit or shared stylesheet touches', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(projectRoot);
     const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
     const badge = bundle.primitives.primitives.find(primitive => primitive.id === 'badge');
     assert.ok(button?.prototype && badge?.prototype);
@@ -101,13 +100,13 @@ describe('Codex activity contract', () => {
     const patch = `*** Update File: design/blueprint/${buttonCss}\n*** Update File: design/blueprint/${badgeCss}`;
     assert.deepEqual(
       resolveActivityFocuses(bundle, { command: patch }).map(focus => focus.boundaryId).sort(),
-      ['still-meditation/primitive/badge', 'still-meditation/primitive/button']
+      ['mira-ai/primitive/badge', 'mira-ai/primitive/button']
     );
 
     badge.prototype.styles.push(buttonCss);
     assert.deepEqual(
       resolveActivityFocuses(bundle, { command: `apply_patch ${buttonCss}` }).map(focus => focus.boundaryId).sort(),
-      ['still-meditation/primitive/badge', 'still-meditation/primitive/button']
+      ['mira-ai/primitive/badge', 'mira-ai/primitive/button']
     );
 
     const event = createBlueprintAgentActivityEvent(bundle, {
@@ -123,20 +122,20 @@ describe('Codex activity contract', () => {
     assert.match(event.label, /^Codex is looking at (Button and Badge|Badge and Button)$/);
 
     assert.deepEqual(
-      activityFocusesForChangedPaths(bundle, [buttonCss, 'screens.json', 'prototype/screens/home.html']).map(focus => focus.boundaryId),
-      ['still-meditation/primitive/button', 'still-meditation/primitive/badge', 'still-meditation/screen/home']
+      activityFocusesForChangedPaths(bundle, [buttonCss, 'screens.json', 'prototype/screens/chat.html']).map(focus => focus.boundaryId),
+      ['mira-ai/primitive/button', 'mira-ai/primitive/badge', 'mira-ai/screen/chat']
     );
   });
 
   it('credits a source path only to the longest governed reference that contains it', async () => {
-    const bundle = await loadProjectFromFs(stillRoot);
+    const bundle = await loadProjectFromFs(projectRoot);
     const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
     const badge = bundle.primitives.primitives.find(primitive => primitive.id === 'badge');
     assert.ok(button?.prototype && badge?.prototype);
     badge.prototype.styles = [`${button.prototype.styles[0]}.theme.css`];
     assert.deepEqual(
       activityFocusesForSourceText(bundle, `edit ${badge.prototype.styles[0]}`).map(focus => focus.boundaryId),
-      ['still-meditation/primitive/badge']
+      ['mira-ai/primitive/badge']
     );
   });
 
@@ -189,7 +188,7 @@ describe('Codex activity contract', () => {
       toolName: 'mcp__blueprint__query',
       phase: 'started',
       emittedAt: '2026-08-18T12:00:00.000Z',
-      toolInput: { project: projectRoot, query: { type: 'show', boundary: 'screen:waitlist' } }
+      toolInput: { project: projectRoot, query: { type: 'show', boundary: 'screen:chat' } }
     });
     hub.publishActivity(started);
     hub.publishActivity({ ...started, emittedAt: '2026-08-18T12:00:00.010Z' });
@@ -197,7 +196,7 @@ describe('Codex activity contract', () => {
     const completed = {
       ...started,
       phase: 'completed' as const,
-      label: 'Codex finished Waitlist',
+      label: 'Codex finished Chat',
       emittedAt: '2026-08-18T12:00:00.020Z'
     };
     hub.publishActivity(completed);

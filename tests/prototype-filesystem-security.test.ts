@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 
-const fixtureRoot = path.resolve('fixtures/red/high-fidelity-prototype/design/blueprint');
+const fixtureRoot = path.resolve('fixtures/valid/umbra-gaming/design/blueprint');
 const mebibyte = 1024 * 1024;
 const fixedJsonByteLimit = 1 * mebibyte;
 const prototypeSourceByteLimit = 2 * mebibyte;
@@ -16,33 +16,33 @@ test('loads ordinary governed regular files within the bounded project policy', 
   const { projectRoot } = await temporaryProject(t);
   const bundle = await loadProjectFromFs(projectRoot);
 
-  assert.match(bundle.prototypeSourceContents['prototype/screens/waitlist.html'] ?? '', /data-blueprint-screen="waitlist"/);
-  assert.ok(bundle.prototypeAssetContents['prototype/assets/product-preview.svg']);
+  assert.match(bundle.prototypeSourceContents['prototype/screens/launch.html'] ?? '', /data-blueprint-screen="launch"/);
+  assert.ok(bundle.prototypeAssetContents['prototype/assets/art/eclipse.svg']);
 });
 
 test('allows an in-root symlink whose canonical target is a regular file', async t => {
   const { projectRoot } = await temporaryProject(t);
-  const sourcePath = path.join(projectRoot, 'prototype/screens/waitlist.html');
-  const inRootTarget = path.join(projectRoot, 'prototype/screens/waitlist-canonical.html');
+  const sourcePath = path.join(projectRoot, 'prototype/screens/launch.html');
+  const inRootTarget = path.join(projectRoot, 'prototype/screens/launch-canonical.html');
   await writeFile(inRootTarget, await readFile(sourcePath));
   await unlink(sourcePath);
   await symlink(inRootTarget, sourcePath);
 
   const bundle = await loadProjectFromFs(projectRoot);
-  assert.match(bundle.prototypeSourceContents['prototype/screens/waitlist.html'] ?? '', /data-blueprint-screen="waitlist"/);
+  assert.match(bundle.prototypeSourceContents['prototype/screens/launch.html'] ?? '', /data-blueprint-screen="launch"/);
 });
 
 test('rejects a governed source symlink whose canonical target escapes the project root', async t => {
   const { tempRoot, projectRoot } = await temporaryProject(t);
   const outsideSource = path.join(tempRoot, 'outside-source.html');
   await writeFile(outsideSource, '<main>outside-source-marker</main>', 'utf8');
-  const sourcePath = path.join(projectRoot, 'prototype/screens/waitlist.html');
+  const sourcePath = path.join(projectRoot, 'prototype/screens/launch.html');
   await unlink(sourcePath);
   await symlink(outsideSource, sourcePath);
 
   await assert.rejects(
     () => loadProjectFromFs(projectRoot),
-    /prototype source "prototype\/screens\/waitlist\.html" resolves outside the canonical Blueprint source root/
+    /prototype source "prototype\/screens\/launch\.html" resolves outside the canonical Blueprint source root/
   );
 });
 
@@ -50,13 +50,13 @@ test('rejects a governed asset symlink whose canonical target escapes the projec
   const { tempRoot, projectRoot } = await temporaryProject(t);
   const outsideAsset = path.join(tempRoot, 'outside-asset.svg');
   await writeFile(outsideAsset, '<svg xmlns="http://www.w3.org/2000/svg"><text>outside-asset-marker</text></svg>', 'utf8');
-  const assetPath = path.join(projectRoot, 'prototype/assets/product-preview.svg');
+  const assetPath = path.join(projectRoot, 'prototype/assets/art/eclipse.svg');
   await unlink(assetPath);
   await symlink(outsideAsset, assetPath);
 
   await assert.rejects(
     () => loadProjectFromFs(projectRoot),
-    /prototype asset "prototype\/assets\/product-preview\.svg" resolves outside the canonical Blueprint source root/
+    /prototype asset "prototype\/assets\/art\/eclipse\.svg" resolves outside the canonical Blueprint source root/
   );
 });
 
@@ -90,13 +90,13 @@ test('rejects an independently stored exploration record whose symlink escapes t
 
 test('rejects a governed input whose canonical target is not a regular file', async t => {
   const { projectRoot } = await temporaryProject(t);
-  const sourcePath = path.join(projectRoot, 'prototype/screens/waitlist.html');
+  const sourcePath = path.join(projectRoot, 'prototype/screens/launch.html');
   await unlink(sourcePath);
   await mkdir(sourcePath);
 
   await assert.rejects(
     () => loadProjectFromFs(projectRoot),
-    /prototype source "prototype\/screens\/waitlist\.html" must resolve to a regular file/
+    /prototype source "prototype\/screens\/launch\.html" must resolve to a regular file/
   );
 });
 
@@ -114,23 +114,23 @@ test('rejects a fixed JSON file over the per-file byte limit before parsing it',
 
 test('rejects a governed source over the per-file byte limit', async t => {
   const { projectRoot } = await temporaryProject(t);
-  const sourcePath = path.join(projectRoot, 'prototype/screens/waitlist.html');
+  const sourcePath = path.join(projectRoot, 'prototype/screens/launch.html');
   await writeFile(sourcePath, `<main>${'x'.repeat(prototypeSourceByteLimit + 1)}</main>`, 'utf8');
 
   await assert.rejects(
     () => loadProjectFromFs(projectRoot),
-    new RegExp(`prototype source "prototype/screens/waitlist\\.html" exceeds the ${prototypeSourceByteLimit}-byte per-file limit`)
+    new RegExp(`prototype source "prototype/screens/launch\\.html" exceeds the ${prototypeSourceByteLimit}-byte per-file limit`)
   );
 });
 
 test('rejects a governed asset over the per-file byte limit', async t => {
   const { projectRoot } = await temporaryProject(t);
-  const assetPath = path.join(projectRoot, 'prototype/assets/product-preview.svg');
+  const assetPath = path.join(projectRoot, 'prototype/assets/art/eclipse.svg');
   await writeFile(assetPath, Buffer.alloc(prototypeAssetByteLimit + 1, 0x61));
 
   await assert.rejects(
     () => loadProjectFromFs(projectRoot),
-    new RegExp(`prototype asset "prototype/assets/product-preview\\.svg" exceeds the ${prototypeAssetByteLimit}-byte per-file limit`)
+    new RegExp(`prototype asset "prototype/assets/art/eclipse\\.svg" exceeds the ${prototypeAssetByteLimit}-byte per-file limit`)
   );
 });
 

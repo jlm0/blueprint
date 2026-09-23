@@ -1,8 +1,0 @@
-[data-blueprint-primitive="action-button"] {
-  padding: 12px var(--app-space-control);
-  border: 0;
-  border-radius: var(--app-radius-control);
-  color: var(--app-color-canvas);
-  background: var(--app-color-accent);
-  font: var(--app-type-body);
-}

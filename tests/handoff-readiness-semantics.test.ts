@@ -18,9 +18,9 @@ import type {
 } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
-const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
-const blankSlateRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
 
 type ReadinessTier = 'ready' | 'pending' | 'unresolved' | 'blocked';
 type ReadinessSeverity = 'ready' | 'pending' | 'unresolved' | 'blocker';
@@ -65,14 +65,14 @@ const validateProject = validateCore.validateProject as (
 describe('Blueprint handoff readiness semantics', () => {
   it('reports ready, pending, declared unresolved, and synthesized missing readiness states without conflating them', async () => {
     const createReadinessReport = readinessReportFactory();
-    const ready = fullyResolveStyleEvidence(await loadProjectFromFs(denseRoot));
+    const ready = fullyResolveStyleEvidence(await loadProjectFromFs(meridianRoot));
     const readyReport = createReadinessReport(ready);
-    assert.equal(readyReport.projectId, 'dense-ops');
+    assert.equal(readyReport.projectId, 'meridian-finance');
     assert.equal(readyReport.tier, 'ready');
     assert.deepEqual(readyReport.blockers, []);
 
     const declared = cloneBundle(ready);
-    requirePrimitive(declared, 'action-button').implementationTargets?.[0].unresolvedDecisions.push('Choose final press feedback timing after native prototype review.');
+    requirePrimitive(declared, 'button').implementationTargets?.[0].unresolvedDecisions.push('Choose final press feedback timing after native prototype review.');
     const declaredReport = createReadinessReport(declared);
     assert.equal(declaredReport.tier, 'unresolved');
     assert.ok(
@@ -87,18 +87,18 @@ describe('Blueprint handoff readiness semantics', () => {
     assert.equal(validateProject(declared).ok, true, 'declared unresolved decisions should not break baseline schema validity');
 
     const synthesizedMissing = cloneBundle(ready);
-    delete requirePrimitive(synthesizedMissing, 'action-button').styleEvidence;
+    delete requirePrimitive(synthesizedMissing, 'button').styleEvidence;
     const synthesizedReport = createReadinessReport(synthesizedMissing);
     assert.equal(synthesizedReport.tier, 'blocked');
     assert.ok(
       synthesizedReport.blockers.some(
-        item => item.source === 'synthesized-missing' && item.path === 'primitive.action-button.styleEvidence'
+        item => item.source === 'synthesized-missing' && item.path === 'primitive.button.styleEvidence'
       ),
       'missing style evidence should be distinct from declared unresolved evidence'
     );
 
     const unsupported = fullyResolveStyleEvidence(ready);
-    const unsupportedEvidence = requirePrimitive(unsupported, 'action-button').styleEvidence?.[0] as { status: string };
+    const unsupportedEvidence = requirePrimitive(unsupported, 'button').styleEvidence?.[0] as { status: string };
     unsupportedEvidence.status = 'mystery-status';
     const unsupportedReport = createReadinessReport(unsupported);
     assert.equal(unsupportedReport.tier, 'blocked');
@@ -107,7 +107,7 @@ describe('Blueprint handoff readiness semantics', () => {
         item =>
           item.severity === 'blocker' &&
           item.source === 'declared' &&
-          item.path === 'primitive.action-button.styleEvidence' &&
+          item.path === 'primitive.button.styleEvidence' &&
           item.message.includes('mystery-status')
       ),
       'unsupported declared style evidence statuses should block readiness instead of disappearing'
@@ -119,10 +119,10 @@ describe('Blueprint handoff readiness semantics', () => {
     const tempProjectRoot = await copyProjectToTemp('blueprint-readiness-artifact-');
     const ready = fullyResolveStyleEvidence(await loadProjectFromFs(tempProjectRoot));
     const missing = cloneBundle(ready);
-    const missingRef = 'artifacts/does-not-exist/action-button.json';
-    requirePrimitive(missing, 'action-button').styleEvidence = [
+    const missingRef = 'artifacts/does-not-exist/button.json';
+    requirePrimitive(missing, 'button').styleEvidence = [
       {
-        styleRef: 'prototype/primitives/action-button.css',
+        styleRef: 'primitive.button',
         status: 'linked-artifact-pending',
         artifactRef: missingRef,
         notes: ['Declared artifact path for a future review artifact.']
@@ -142,14 +142,14 @@ describe('Blueprint handoff readiness semantics', () => {
       'missing linked artifacts should be surfaced as evidence blockers'
     );
 
-    const artifactRef = 'artifacts/action-button-style.json';
+    const artifactRef = 'artifacts/button-style.json';
     const artifactPath = path.join(tempProjectRoot, artifactRef);
     await mkdir(path.dirname(artifactPath), { recursive: true });
     await writeFile(artifactPath, '{"status":"captured"}\n', 'utf8');
     const linked = cloneBundle(ready);
-    requirePrimitive(linked, 'action-button').styleEvidence = [
+    requirePrimitive(linked, 'button').styleEvidence = [
       {
-        styleRef: 'prototype/primitives/action-button.css',
+        styleRef: 'primitive.button',
         status: 'linked-artifact-pending',
         artifactRef,
         notes: ['Review artifact captured outside the sidecar.']
@@ -171,49 +171,51 @@ describe('Blueprint handoff readiness semantics', () => {
   });
 
   it('adds role-aware token usage to deep packets without inventing mode data', async () => {
-    const bundle = await loadProjectFromFs(denseRoot);
-    const actionButton = requirePrimitive(bundle, 'action-button');
-    const defaultState = actionButton.stateSets[0].states.find(state => state.id === 'default') as
-      | (typeof actionButton.stateSets[0]['states'][number] & PrimitiveStateWithTokenRoles)
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const button = requirePrimitive(bundle, 'button');
+    assert.equal(button.prototype?.tokenRoles['color.primary'], 'background');
+    const destructive = button.stateSets
+      .find(stateSet => stateSet.id === 'variant')
+      ?.states.find(state => state.id === 'destructive') as
+      | (typeof button.stateSets[0]['states'][number] & PrimitiveStateWithTokenRoles)
       | undefined;
-    assert.deepEqual(defaultState?.tokenRoles, {
-      'color.accent': 'background',
-      'color.canvas': 'foreground',
-      'space.control-x': 'inline-padding',
-      'shape.control': 'radius',
-      'typography.label': 'label'
-    });
+    assert.ok(destructive);
+    destructive.tokenRoles = {
+      'color.destructive': 'destructive-background',
+      'color.on-destructive': 'destructive-foreground'
+    };
+    assert.equal(validateProject(bundle).ok, true);
 
-    const packet = createExtractionPacket(bundle, 'screen:service-health', { mode: 'deep' }) as EnrichedDeepHandoffPacket;
+    const packet = createExtractionPacket(bundle, 'screen:transfer', { mode: 'deep' }) as EnrichedDeepHandoffPacket;
     assert.equal(packet.extraction.mode, 'deep');
     assert.equal(Array.isArray(packet.tokenUsage), true, 'deep packet should expose role-aware token usage');
 
-    const accentUsage = packet.tokenUsage.find(
-      usage => usage.tokenId === 'color.accent' && usage.boundaryId === 'dense-ops/primitive/action-button'
+    const primaryUsage = packet.tokenUsage.find(
+      usage => usage.tokenId === 'color.primary' && usage.boundaryId === 'meridian-finance/primitive/button'
     );
-    assert.ok(accentUsage, 'action-button should name the color.accent token usage');
-    assert.equal(accentUsage.role, 'background');
-    assert.equal(accentUsage.boundaryKind, 'primitive');
-    assert.equal(accentUsage.styleRef, '--ops-color-accent');
-    const canvasUsage = packet.tokenUsage.find(
-      usage => usage.tokenId === 'color.canvas' && usage.boundaryId === 'dense-ops/primitive/action-button'
+    assert.ok(primaryUsage, 'button should name the color.primary token usage');
+    assert.equal(primaryUsage.role, 'background');
+    assert.equal(primaryUsage.boundaryKind, 'primitive');
+    assert.equal(primaryUsage.styleRef, '--app-color-primary');
+    const destructiveUsage = packet.tokenUsage.find(
+      usage => usage.tokenId === 'color.destructive' && usage.boundaryId === 'meridian-finance/primitive/button'
     );
-    assert.ok(canvasUsage, 'action-button should name the color.canvas token usage');
-    assert.equal(canvasUsage.role, 'foreground');
-    assert.equal(canvasUsage.boundaryKind, 'primitive');
-    assert.equal(canvasUsage.styleRef, '--ops-color-canvas');
+    assert.ok(destructiveUsage, 'button should name the state-level color.destructive token usage');
+    assert.equal(destructiveUsage.role, 'destructive-background');
+    assert.equal(destructiveUsage.boundaryKind, 'primitive');
+    assert.equal(destructiveUsage.styleRef, '--app-color-destructive');
     assert.equal('declaredModes' in packet, false, 'packet must not invent mode/theme data when sidecars declare none');
   });
 
   it('validates, traverses, and reverses primitive-to-primitive dependencies', async () => {
-    const bundle = await loadProjectFromFs(denseRoot);
+    const bundle = await loadProjectFromFs(meridianRoot);
     const composed = cloneBundle(bundle);
     const card = requirePrimitive(composed, 'card');
     card.uses = [
       {
         kind: 'primitive',
-        id: 'action-button',
-        reason: 'Cards can expose the same inspection action in compact summaries.'
+        id: 'button',
+        reason: 'Cards can expose the same primary action in compact summaries.'
       }
     ];
     assert.ok(card.prototype);
@@ -221,24 +223,24 @@ describe('Blueprint handoff readiness semantics', () => {
       card.prototype.source
     ].replace(
       '</slot>',
-      '<blueprint-use kind="primitive" ref="action-button" state="default"><span slot="label">Inspect</span></blueprint-use></slot>'
+      '<blueprint-use kind="primitive" ref="button" state="normal"><span slot="label">Review</span></blueprint-use></slot>'
     );
 
     assert.equal(validateProject(composed).ok, true);
     const primitivePacket = showBoundary(composed, 'primitive:card') as BoundaryPacket<PrimitiveWithUses>;
     assert.ok(
-      primitivePacket.dependencies.uses.some(ref => ref.id === 'dense-ops/primitive/action-button'),
+      primitivePacket.dependencies.uses.some(ref => ref.id === 'meridian-finance/primitive/button'),
       'primitive packets should include primitive-to-primitive uses'
     );
 
-    const usedBy = queryUsedBy(composed, 'primitive:action-button');
+    const usedBy = queryUsedBy(composed, 'primitive:button');
     assert.ok(
-      (usedBy.results as BoundaryReference[]).some(ref => ref.id === 'dense-ops/primitive/card'),
+      (usedBy.results as BoundaryReference[]).some(ref => ref.id === 'meridian-finance/primitive/card'),
       'used-by should include primitive-to-primitive reverse dependencies'
     );
 
     const deep = createExtractionPacket(composed, 'primitive:card', { mode: 'deep' }) as DeepHandoffPacket;
-    assert.ok(deep.boundaries.some(boundary => boundary.id === 'dense-ops/primitive/action-button'));
+    assert.ok(deep.boundaries.some(boundary => boundary.id === 'meridian-finance/primitive/button'));
 
     const broken = cloneBundle(composed);
     requirePrimitive(broken, 'card').uses = [
@@ -254,7 +256,7 @@ describe('Blueprint handoff readiness semantics', () => {
   });
 
   it('keeps representative fixtures baseline-valid while readiness semantics evolve', async () => {
-    for (const root of [starterRoot, denseRoot, stillRoot, blankSlateRoot]) {
+    for (const root of [starterRoot, miraRoot, umbraRoot, meridianRoot]) {
       const bundle = await loadProjectFromFs(root);
       assert.equal(validateProject(bundle).ok, true, `${root} should remain baseline-valid`);
     }
@@ -337,7 +339,7 @@ function fullyResolveStyleEvidence(bundle: BlueprintProjectBundle): BlueprintPro
 async function copyProjectToTemp(prefix: string): Promise<string> {
   const tempDir = await mkdtemp(path.join(tmpdir(), prefix));
   const projectRoot = path.join(tempDir, 'design', 'blueprint');
-  await cp(denseRoot, projectRoot, { recursive: true });
+  await cp(meridianRoot, projectRoot, { recursive: true });
   return projectRoot;
 }
 

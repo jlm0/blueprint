@@ -12,10 +12,9 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
 const codexHookPath = path.join(projectRoot, 'dist/mcp/codex-activity-hook.js');
-const highFidelityRoot = 'fixtures/red/high-fidelity-prototype/design/blueprint';
-const explorationRoot = 'fixtures/app-owned/blank-slate/design/blueprint';
-const stillRoot = 'fixtures/app-owned/still-meditation/design/blueprint';
-const denseOpsRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
+const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
 interface McpSession {
@@ -89,9 +88,9 @@ describe('Blueprint MCP and template governance', () => {
     try {
       assert.equal(session.client.getProtocolEra(), 'legacy');
       assert.deepEqual(session.tools.map(tool => tool.name), toolNames);
-      const result = await call(session, 'index', { project: stillRoot });
+      const result = await call(session, 'index', { project: miraRoot });
       assert.equal(result.command, 'index');
-      assert.ok((result.results as Array<{ id: string }>).some(item => item.id === 'still-meditation/screen/home'));
+      assert.ok((result.results as Array<{ id: string }>).some(item => item.id === 'mira-ai/screen/workspace'));
     } finally {
       await session.close();
     }
@@ -142,41 +141,41 @@ describe('Blueprint MCP and template governance', () => {
       const session = await openSession();
       try {
         const validationOut = path.join(tempDir, 'validation.json');
-        const validation = await call(session, 'validate', { project: stillRoot, out: validationOut });
+        const validation = await call(session, 'validate', { project: miraRoot, out: validationOut });
         assert.equal(validation.ok, true);
         assert.deepEqual(JSON.parse(await readFile(validationOut, 'utf8')), validation);
 
-        const strict = await call(session, 'validate', { project: denseOpsRoot, mode: 'strict' });
+        const strict = await call(session, 'validate', { project: meridianRoot, mode: 'strict' });
         assert.equal(strict.mode, 'strict');
         assert.equal(strict.ok, true);
 
-        const blocked = await session.client.callTool({ name: 'validate', arguments: { project: stillRoot, mode: 'readiness' } });
+        const blocked = await session.client.callTool({ name: 'validate', arguments: { project: miraRoot, mode: 'readiness' } });
         assert.equal(blocked.isError, true);
         const blockedOutput = structured(blocked);
         assert.equal(blockedOutput.ok, false);
         assert.equal((blockedOutput.readiness as { tier: string }).tier, 'blocked');
 
-        const index = await call(session, 'index', { project: stillRoot });
-        assert.ok((index.results as Array<{ id: string }>).some(item => item.id === 'still-meditation/screen/home'));
+        const index = await call(session, 'index', { project: miraRoot });
+        assert.ok((index.results as Array<{ id: string }>).some(item => item.id === 'mira-ai/screen/workspace'));
 
-        const show = await call(session, 'query', { project: stillRoot, query: { type: 'show', boundary: 'screen:home' } });
-        assert.equal(show.id, 'still-meditation/screen/home');
-        const uses = await call(session, 'query', { project: stillRoot, query: { type: 'uses', boundary: 'screen:home' } });
+        const show = await call(session, 'query', { project: miraRoot, query: { type: 'show', boundary: 'screen:workspace' } });
+        assert.equal(show.id, 'mira-ai/screen/workspace');
+        const uses = await call(session, 'query', { project: miraRoot, query: { type: 'uses', boundary: 'screen:workspace' } });
         assert.ok((uses.results as Array<{ localId: string }>).some(item => item.localId === 'button'));
-        const usedBy = await call(session, 'query', { project: stillRoot, query: { type: 'used-by', boundary: 'primitive:button' } });
+        const usedBy = await call(session, 'query', { project: miraRoot, query: { type: 'used-by', boundary: 'primitive:button' } });
         assert.ok((usedBy.results as unknown[]).length > 0);
-        const sections = await call(session, 'query', { project: stillRoot, query: { type: 'sections', screen: 'home' } });
-        assert.equal((sections.results as unknown[]).length, 5);
-        const prototypeOnly = await call(session, 'query', { project: stillRoot, query: { type: 'prototype-only' } });
+        const sections = await call(session, 'query', { project: miraRoot, query: { type: 'sections', screen: 'workspace' } });
+        assert.equal((sections.results as unknown[]).length, 6);
+        const prototypeOnly = await call(session, 'query', { project: miraRoot, query: { type: 'prototype-only' } });
         assert.ok(Array.isArray(prototypeOnly.results));
 
         const focusedOut = path.join(tempDir, 'focused.json');
-        const focused = await call(session, 'extract', { project: stillRoot, boundary: 'screen:home', out: focusedOut });
-        assert.equal(focused.id, 'still-meditation/screen/home');
+        const focused = await call(session, 'extract', { project: miraRoot, boundary: 'screen:workspace', out: focusedOut });
+        assert.equal(focused.id, 'mira-ai/screen/workspace');
         assert.equal('boundaries' in focused, false);
         assert.deepEqual(JSON.parse(await readFile(focusedOut, 'utf8')), focused);
 
-        const deep = await call(session, 'extract', { project: stillRoot, boundary: 'section:home/featured-practice', mode: 'deep' });
+        const deep = await call(session, 'extract', { project: miraRoot, boundary: 'section:workspace/thread-header', mode: 'deep' });
         assert.equal((deep.extraction as { mode: string }).mode, 'deep');
         assert.ok((deep.boundaries as unknown[]).length > 1);
         assert.ok((deep.resolvedTokens as unknown[]).length > 0);
@@ -189,18 +188,18 @@ describe('Blueprint MCP and template governance', () => {
   it('creates, queries, archives, serves, promotes, and restores persistent explorations and history', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(explorationRoot, projectCopy, { recursive: true });
+      await cp(umbraRoot, projectCopy, { recursive: true });
       const session = await openSession();
       try {
         const created = await call(session, 'explore', {
           project: projectCopy,
           operation: {
             type: 'create',
-            id: 'home-hero',
-            screenId: 'home',
-            state: 'initial',
-            framePresetId: 'desktop-web-tall',
-            title: 'Home hero',
+            id: 'launch-hero',
+            screenId: 'launch',
+            state: 'default',
+            framePresetId: 'desktop-web-page',
+            title: 'Launch hero',
             intent: 'Compare three hero directions without changing the canonical canvas.',
             candidateLabels: ['A', 'B', 'C']
           }
@@ -213,24 +212,24 @@ describe('Blueprint MCP and template governance', () => {
           target: { baseDigest: string };
           candidates: Array<{ id: string; prototype: { source: string } }>;
         };
-        assert.equal(createdExploration.id, 'home-hero');
+        assert.equal(createdExploration.id, 'launch-hero');
         assert.equal(createdExploration.lifecycle, 'active');
         assert.match(createdExploration.target.baseDigest, /^[a-f0-9]{64}$/);
         assert.deepEqual(createdExploration.candidates.map(candidate => candidate.id), ['a', 'b', 'c']);
         assert.equal(existsSync(path.join(projectCopy, 'explorations.json')), false);
-        assert.equal((await stat(path.join(projectCopy, 'explorations', 'home-hero.json'))).isFile(), true);
+        assert.equal((await stat(path.join(projectCopy, 'explorations', 'launch-hero.json'))).isFile(), true);
         for (const candidate of createdExploration.candidates) {
           assert.equal((await stat(path.join(projectCopy, candidate.prototype.source))).isFile(), true);
         }
 
         const listed = await call(session, 'query', {
           project: projectCopy,
-          query: { type: 'explorations', screenId: 'home', lifecycle: 'active' }
+          query: { type: 'explorations', screenId: 'launch', lifecycle: 'active' }
         });
-        assert.equal((listed.results as Array<{ id: string }>)[0]?.id, 'home-hero');
+        assert.equal((listed.results as Array<{ id: string }>)[0]?.id, 'launch-hero');
         const inspected = await call(session, 'query', {
           project: projectCopy,
-          query: { type: 'exploration', explorationId: 'home-hero' }
+          query: { type: 'exploration', explorationId: 'launch-hero' }
         });
         const inspection = (inspected.results as Array<{
           exploration: { target: { baseDigest: string } };
@@ -244,20 +243,20 @@ describe('Blueprint MCP and template governance', () => {
         const served = await call(session, 'serve', {
           project: projectCopy,
           port: 0,
-          explorationId: 'home-hero'
+          explorationId: 'launch-hero'
         });
         const servedUrl = new URL(served.url as string);
         assert.equal(servedUrl.searchParams.get('board'), 'screens');
-        assert.equal(servedUrl.searchParams.get('exploration'), 'home-hero');
+        assert.equal(servedUrl.searchParams.get('exploration'), 'launch-hero');
         assert.deepEqual(served.selection, {
           kind: 'exploration',
-          explorationId: 'home-hero',
-          screenId: 'home'
+          explorationId: 'launch-hero',
+          screenId: 'launch'
         });
 
         const screensPath = path.join(projectCopy, 'screens.json');
-        const explorationRecordPath = path.join(projectCopy, 'explorations', 'home-hero.json');
-        const canonicalSourcePath = path.join(projectCopy, 'prototype/screens/home.html');
+        const explorationRecordPath = path.join(projectCopy, 'explorations', 'launch-hero.json');
+        const canonicalSourcePath = path.join(projectCopy, 'prototype/screens/launch.html');
         const beforeStale = {
           screens: await readFile(screensPath),
           exploration: await readFile(explorationRecordPath),
@@ -267,7 +266,7 @@ describe('Blueprint MCP and template governance', () => {
           name: 'promote',
           arguments: {
             project: projectCopy,
-            explorationId: 'home-hero',
+            explorationId: 'launch-hero',
             candidateId: 'b',
             expectedBaseDigest: inspection.exploration.target.baseDigest,
             expectedCurrentDigest: inspection.currentDigest,
@@ -281,13 +280,13 @@ describe('Blueprint MCP and template governance', () => {
 
         const promoted = await call(session, 'promote', {
           project: projectCopy,
-          explorationId: 'home-hero',
+          explorationId: 'launch-hero',
           candidateId: 'b',
           expectedBaseDigest: inspection.exploration.target.baseDigest,
           expectedCurrentDigest: inspection.currentDigest,
           expectedCandidateDigest: inspection.candidateDigests.b
         });
-        assert.equal((promoted.promotedScreen as { id: string }).id, 'home');
+        assert.equal((promoted.promotedScreen as { id: string }).id, 'launch');
         assert.equal('version' in (promoted.promotedScreen as object), false);
         assert.equal((promoted.historicalVersion as { version: number }).version, 1);
         assert.equal((promoted.exploration as { lifecycle: string }).lifecycle, 'promoted');
@@ -295,19 +294,19 @@ describe('Blueprint MCP and template governance', () => {
         const persistedScreens = JSON.parse(await readFile(screensPath, 'utf8')) as {
           screens: Array<{ id: string; version?: number }>;
         };
-        assert.equal(persistedScreens.screens.filter(screen => screen.id === 'home').length, 1);
-        assert.equal(persistedScreens.screens.some(screen => screen.id !== 'home' && screen.version === 1), false);
-        assert.equal((await stat(path.join(projectCopy, 'history', 'home-v1.json'))).isFile(), true);
+        assert.equal(persistedScreens.screens.filter(screen => screen.id === 'launch').length, 1);
+        assert.equal(persistedScreens.screens.some(screen => screen.id !== 'launch' && screen.version === 1), false);
+        assert.equal((await stat(path.join(projectCopy, 'history', 'launch-v1.json'))).isFile(), true);
         assert.equal((await stat(path.join(projectCopy, createdExploration.candidates[1]!.prototype.source))).isFile(), true);
 
         const historyList = await call(session, 'query', {
           project: projectCopy,
-          query: { type: 'history', screenId: 'home' }
+          query: { type: 'history', screenId: 'launch' }
         });
         assert.deepEqual((historyList.results as Array<{ version: number }>).map(entry => entry.version), [1]);
         const historyInspection = await call(session, 'query', {
           project: projectCopy,
-          query: { type: 'history-version', screenId: 'home', version: 1 }
+          query: { type: 'history-version', screenId: 'launch', version: 1 }
         });
         const versionInspection = (historyInspection.results as Array<{
           currentDigest: string;
@@ -316,20 +315,20 @@ describe('Blueprint MCP and template governance', () => {
         assert.ok(versionInspection);
         const restored = await call(session, 'restore', {
           project: projectCopy,
-          screenId: 'home',
+          screenId: 'launch',
           version: 1,
           expectedCurrentDigest: versionInspection.currentDigest,
           expectedVersionDigest: versionInspection.versionDigest
         });
         assert.equal(restored.restoredFromVersion, 1);
         assert.equal((restored.historicalVersion as { version: number }).version, 2);
-        assert.equal((await stat(path.join(projectCopy, 'history', 'home-v2.json'))).isFile(), true);
+        assert.equal((await stat(path.join(projectCopy, 'history', 'launch-v2.json'))).isFile(), true);
 
         const repeated = await session.client.callTool({
           name: 'promote',
           arguments: {
             project: projectCopy,
-            explorationId: 'home-hero',
+            explorationId: 'launch-hero',
             candidateId: 'b',
             expectedBaseDigest: inspection.exploration.target.baseDigest,
             expectedCurrentDigest: inspection.currentDigest,
@@ -342,18 +341,18 @@ describe('Blueprint MCP and template governance', () => {
           project: projectCopy,
           operation: {
             type: 'create',
-            id: 'home-copy',
-            screenId: 'home',
-            state: 'initial',
-            framePresetId: 'desktop-web-tall',
-            title: 'Home copy',
+            id: 'launch-copy',
+            screenId: 'launch',
+            state: 'default',
+            framePresetId: 'desktop-web-page',
+            title: 'Launch copy',
             intent: 'Save two copy directions for later review.',
             candidateLabels: ['Short', 'Warm']
           }
         });
         const archived = await call(session, 'explore', {
           project: projectCopy,
-          operation: { type: 'archive', explorationId: 'home-copy' }
+          operation: { type: 'archive', explorationId: 'launch-copy' }
         });
         assert.equal((archived.exploration as { lifecycle: string }).lifecycle, 'archived');
         const secondSource = ((second.exploration as {
@@ -376,7 +375,7 @@ describe('Blueprint MCP and template governance', () => {
     try {
       const missing = await session.client.callTool({
         name: 'serve',
-        arguments: { project: explorationRoot, port, explorationId: 'missing-exploration' }
+        arguments: { project: umbraRoot, port, explorationId: 'missing-exploration' }
       });
       assertToolError(missing, /exploration.*does not exist/i);
       const stillAvailable = await occupyPort(port);
@@ -389,11 +388,11 @@ describe('Blueprint MCP and template governance', () => {
   it('returns domain and schema failures as tool errors while unknown tools remain protocol errors', async () => {
     const session = await openSession();
     try {
-      const missing = await session.client.callTool({ name: 'query', arguments: { project: stillRoot, query: { type: 'show', boundary: 'screen:missing' } } });
+      const missing = await session.client.callTool({ name: 'query', arguments: { project: miraRoot, query: { type: 'show', boundary: 'screen:missing' } } });
       assertToolError(missing, /not found|unknown/i);
-      const invalidQuery = await session.client.callTool({ name: 'query', arguments: { project: stillRoot, query: { type: 'sections', boundary: 'screen:home' } } });
+      const invalidQuery = await session.client.callTool({ name: 'query', arguments: { project: miraRoot, query: { type: 'sections', boundary: 'screen:workspace' } } });
       assertToolError(invalidQuery, /input validation error|invalid/i);
-      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: stillRoot, boundary: 'primitive:button', out: 'button.png' } });
+      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: miraRoot, boundary: 'primitive:button', out: 'button.png' } });
       assertToolError(invalidCapture, /input validation error|screen/i);
       await assert.rejects(session.client.callTool({ name: 'missing-tool', arguments: {} }), /not found|unknown|missing-tool/i);
     } finally {
@@ -405,23 +404,23 @@ describe('Blueprint MCP and template governance', () => {
     await withTempDir(async tempDir => {
       const session = await openSession();
       try {
-        const focusedOut = path.join(tempDir, 'waitlist-phone.png');
+        const focusedOut = path.join(tempDir, 'chat-phone.png');
         const focused = await call(session, 'capture', {
-          project: highFidelityRoot,
-          boundary: 'screen:waitlist',
-          state: 'initial',
-          viewport: 'phone-review',
+          project: miraRoot,
+          boundary: 'screen:chat',
+          state: 'empty',
+          viewport: 'phone',
           out: focusedOut
         });
-        assert.deepEqual(focused.dimensions, { width: 390, height: 844 });
-        assert.equal(focused.state, 'initial');
-        assert.equal(focused.viewport, 'phone-review');
+        assert.deepEqual(focused.dimensions, { width: 393, height: 852 });
+        assert.equal(focused.state, 'empty');
+        assert.equal(focused.viewport, 'phone');
         assert.equal((focused.source as { editorChrome: boolean }).editorChrome, false);
         assert.equal((focused.source as { captureTarget: string }).captureTarget, 'compiled-prototype-document');
         const focusedPng = await readFile(focusedOut);
         assert.equal(focusedPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-        assert.equal(focusedPng.readUInt32BE(16), 390);
-        assert.equal(focusedPng.readUInt32BE(20), 844);
+        assert.equal(focusedPng.readUInt32BE(16), 393);
+        assert.equal(focusedPng.readUInt32BE(20), 852);
       } finally {
         await session.close();
       }
@@ -431,7 +430,7 @@ describe('Blueprint MCP and template governance', () => {
   it('streams Codex focus, applies file changes live, retains last-good content, and closes listeners with the MCP session', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const manifestPath = path.join(projectCopy, 'manifest.json');
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
       manifest.project.name = 'Serve Copy';
@@ -480,12 +479,12 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-focus',
             tool_input: {
               project: 'design/blueprint',
-              query: { type: 'show', boundary: 'screen:home' }
+              query: { type: 'show', boundary: 'screen:workspace' }
             }
           });
-          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-agent-focus').first().waitFor();
+          await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-agent-focus').first().waitFor();
           assert.equal(await page.locator('.board-screens').getAttribute('hidden'), null);
-          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at Today/);
+          assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at Workspace/);
 
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
@@ -496,7 +495,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-button-focus',
             tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css")`
           });
-          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/primitive/button"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="mira-ai/primitive/button"] .bp-chrome-agent-frame-focus-box').first().waitFor();
           const buttonFocus = await page.evaluate(() => {
             const layer = document.querySelector<HTMLElement>('.bp-chrome-agent-frame-focus');
             const frame = layer?.parentElement?.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
@@ -533,11 +532,11 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-section-focus',
             tool_input: {
               project: 'design/blueprint',
-              query: { type: 'show', boundary: 'section:home/featured-practice' }
+              query: { type: 'show', boundary: 'section:workspace/thread-header' }
             }
           });
-          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/section/home/featured-practice"] .bp-chrome-agent-frame-focus-box').first().waitFor();
-          assert.equal(await page.locator('.bp-chrome-agent-frame-focus-box').count(), 1);
+          await page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="mira-ai/section/workspace/thread-header"] .bp-chrome-agent-frame-focus-box').first().waitFor();
+          assert.equal(await page.locator('.bp-chrome-agent-frame-focus-box').count(), 2);
 
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
@@ -548,7 +547,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-multi-focus',
             tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/primitives/button.css\n*** Update File: design/blueprint/prototype/primitives/badge.css")`
           });
-          const multiFocus = page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="still-meditation/primitive/button"][data-focus-boundary-ids~="still-meditation/primitive/badge"]');
+          const multiFocus = page.locator('.bp-chrome-agent-frame-focus[data-focus-boundary-ids~="mira-ai/primitive/button"][data-focus-boundary-ids~="mira-ai/primitive/badge"]');
           await multiFocus.locator('.bp-chrome-agent-frame-focus-box').first().waitFor();
           assert.ok(await multiFocus.locator('.bp-chrome-agent-frame-focus-box').count() >= 2);
           assert.match(await page.locator('.bp-chrome-agent-status').innerText(), /Codex is looking at (Button and Badge|Badge and Button)/);
@@ -560,11 +559,11 @@ describe('Blueprint MCP and template governance', () => {
           });
           await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
           const preservedTransform = await page.locator('#world').getAttribute('style');
-          const screenCssPath = path.join(projectCopy, 'prototype/screens/home.css');
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.still-home { --blueprint-live-test: 1; }\n`, 'utf8');
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.workspace { --blueprint-live-test: 1; }\n`, 'utf8');
           await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
             .some(frame => frame.srcdoc.includes('--blueprint-live-test: 1')));
-          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-agent-focus').first().waitFor();
+          await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-agent-focus').first().waitFor();
 
           await page.evaluate(() => {
             const status = document.querySelector<HTMLElement>('.bp-chrome-agent-status');
@@ -575,7 +574,7 @@ describe('Blueprint MCP and template governance', () => {
                 .some(frame => frame.srcdoc.includes('--blueprint-complete-test: 1'));
             }).observe(status!, { attributes: true, attributeFilter: ['data-phase'] });
           });
-          const editPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.css")`;
+          const editPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`;
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
             turn_id: 'turn-live-complete',
@@ -585,7 +584,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-complete',
             tool_input: editPatch
           });
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.still-home { --blueprint-complete-test: 1; }\n`, 'utf8');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.workspace { --blueprint-complete-test: 1; }\n`, 'utf8');
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
             turn_id: 'turn-live-complete',
@@ -634,7 +633,7 @@ describe('Blueprint MCP and template governance', () => {
   it('shares the canvas selection with agents through the selection tool', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const manifestPath = path.join(projectCopy, 'manifest.json');
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
       manifest.project.sourceRoot = normalize(projectCopy);
@@ -686,20 +685,20 @@ describe('Blueprint MCP and template governance', () => {
           assert.deepEqual(boxes[0], boxes[1]);
           assert.deepEqual(
             await page.locator('.bp-chrome-selection-crumb').allInnerTexts(),
-            ['Today', 'Featured Practice', 'Button']
+            ['Workspace', 'Thread Library', 'Button']
           );
 
           const selected = (await call(session, 'selection', {})).selection as Record<string, unknown>;
-          assert.equal(selected.boundaryId, 'still-meditation/primitive/button');
-          assert.equal(selected.reference, 'primitive:button in section:home/featured-practice in screen:home');
+          assert.equal(selected.boundaryId, 'mira-ai/primitive/button');
+          assert.equal(selected.reference, 'primitive:button in section:workspace/library in screen:workspace');
           assert.deepEqual(selected.files, ['prototype/primitives/button.html', 'prototype/primitives/button.css']);
-          assert.equal(selected.screenId, 'home');
-          assert.equal(selected.framePresetId, 'phone');
+          assert.equal(selected.screenId, 'workspace');
+          assert.equal(selected.framePresetId, 'desktop-web');
 
-          await page.locator('.bp-chrome-selection-crumb', { hasText: 'Featured Practice' }).click();
-          await page.locator('.bp-chrome-selection-layer[data-selection-boundary-id="still-meditation/section/home/featured-practice"]').waitFor();
+          await page.locator('.bp-chrome-selection-crumb', { hasText: 'Thread Library' }).click();
+          await page.locator('.bp-chrome-selection-layer[data-selection-boundary-id="mira-ai/section/workspace/library"]').waitFor();
           const ancestor = (await call(session, 'selection', {})).selection as Record<string, unknown>;
-          assert.equal(ancestor.reference, 'section:home/featured-practice in screen:home');
+          assert.equal(ancestor.reference, 'section:workspace/library in screen:workspace');
 
           await page.keyboard.press('Escape');
           await page.locator('.bp-chrome-selection').waitFor({ state: 'hidden' });
@@ -709,16 +708,16 @@ describe('Blueprint MCP and template governance', () => {
             project: 'design/blueprint',
             operation: {
               type: 'create',
-              id: 'home-hero',
-              screenId: 'home',
+              id: 'workspace-hero',
+              screenId: 'workspace',
               state: 'default',
-              framePresetId: 'phone',
-              title: 'Home hero',
+              framePresetId: 'desktop-web',
+              title: 'Workspace hero',
               intent: 'Compare hero directions.',
               candidateLabels: ['Calm', 'Bold']
             }
           });
-          await page.goto(`${url}?board=screens&exploration=home-hero`);
+          await page.goto(`${url}?board=screens&exploration=workspace-hero`);
           const boldFrame = page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] iframe.canonical-prototype-iframe');
           await boldFrame.waitFor();
           await page.waitForFunction(() => document.querySelectorAll('.exploration-frame-slot iframe.canonical-prototype-iframe').length === 3);
@@ -728,13 +727,13 @@ describe('Blueprint MCP and template governance', () => {
           await assertEventually(async () => (await call(session, 'selection', {})).selection !== null);
           const inCandidate = (await call(session, 'selection', {})).selection as Record<string, unknown>;
           assert.equal(inCandidate.candidateId, 'bold');
-          assert.match(inCandidate.reference as string, / in screen:home in exploration:home-hero candidate:bold$/);
+          assert.match(inCandidate.reference as string, / in screen:workspace in exploration:workspace-hero candidate:bold$/);
           assert.equal(await page.locator('.exploration-frame-slot:not([data-exploration-candidate-id="bold"]) :is(.bp-chrome-selection-layer, .bp-chrome-selected)').count(), 0);
           await page.locator('.bp-chrome-selection-crumb').first().click();
           await page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] .frame.bp-chrome-selected').waitFor();
           const candidateScreen = (await call(session, 'selection', {})).selection as Record<string, unknown>;
-          assert.equal(candidateScreen.reference, 'screen:home in exploration:home-hero candidate:bold');
-          assert.ok((candidateScreen.files as string[]).every(file => file.includes('exploration-home-hero-bold')));
+          assert.equal(candidateScreen.reference, 'screen:workspace in exploration:workspace-hero candidate:bold');
+          assert.ok((candidateScreen.files as string[]).every(file => file.includes('exploration-workspace-hero-bold')));
         } finally {
           await browser.close();
         }
@@ -747,7 +746,7 @@ describe('Blueprint MCP and template governance', () => {
   it('marks what the latest agent turn changed and shows the canvas before it', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const manifestPath = path.join(projectCopy, 'manifest.json');
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
       manifest.project.sourceRoot = normalize(projectCopy);
@@ -761,12 +760,12 @@ describe('Blueprint MCP and template governance', () => {
           const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
           await page.goto(`${served.url as string}?board=screens`);
           await page.locator('iframe.canonical-prototype-iframe').first().waitFor();
-          const homeHtml = path.join(projectCopy, 'prototype/screens/home.html');
+          const workspaceHtml = path.join(projectCopy, 'prototype/screens/workspace.html');
           const buttonCss = path.join(projectCopy, 'prototype/primitives/button.css');
-          const firstPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.html")`;
+          const firstPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.html")`;
           const hookBase = { session_id: 'thread-diff', cwd: tempDir, tool_name: 'functions.exec' };
           await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-a', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-a', tool_input: firstPatch });
-          await writeFile(homeHtml, (await readFile(homeHtml, 'utf8')).replace('Find your', 'Find our'), 'utf8');
+          await writeFile(workspaceHtml, (await readFile(workspaceHtml, 'utf8')).replace('Growth research', 'Growth insights'), 'utf8');
           await writeFile(buttonCss, `${await readFile(buttonCss, 'utf8')}\n/* live diff */\n`, 'utf8');
           await runCodexHook(tempDir, {
             ...hookBase,
@@ -776,28 +775,28 @@ describe('Blueprint MCP and template governance', () => {
             tool_input: firstPatch,
             tool_response: { isError: false }
           });
-          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Featured Practice');
-          const changeLayer = page.locator('.bp-chrome-change-layer[data-change-boundary-ids~="still-meditation/primitive/button"][data-change-boundary-ids~="still-meditation/section/home/featured-practice"]');
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Thread Header');
+          const changeLayer = page.locator('.bp-chrome-change-layer[data-change-boundary-ids~="mira-ai/primitive/button"][data-change-boundary-ids~="mira-ai/section/workspace/thread-header"]');
           await changeLayer.locator('.bp-chrome-change-box').first().waitFor();
           assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
 
-          const homeFrames = 'iframe.canonical-prototype-iframe[data-prototype-target-boundary="still-meditation/screen/home"]';
+          const workspaceFrames = 'iframe.canonical-prototype-iframe[data-prototype-target-boundary="mira-ai/screen/workspace"]';
           const frameShowsEdit = (): Promise<boolean> => page.evaluate(selector => [...document.querySelectorAll<HTMLIFrameElement>(selector)]
-            .every(frame => frame.srcdoc.includes('Find our')), homeFrames);
+            .every(frame => frame.srcdoc.includes('Growth insights')), workspaceFrames);
           await page.locator('.bp-chrome-changes-toggle').click();
           await page.locator('.bp-chrome-changes-toggle[aria-pressed="true"]').waitFor();
           await page.waitForFunction(selector => [...document.querySelectorAll<HTMLIFrameElement>(selector)]
-            .every(frame => frame.srcdoc.includes('Find your')), homeFrames);
+            .every(frame => frame.srcdoc.includes('Growth research')), workspaceFrames);
           await page.locator('.bp-chrome-changes-toggle').click();
           await page.locator('.bp-chrome-changes-toggle[aria-pressed="false"]').waitFor();
           await assertEventually(frameShowsEdit);
 
-          const homeCss = path.join(projectCopy, 'prototype/screens/home.css');
-          const secondPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/home.css")`;
+          const workspaceCss = path.join(projectCopy, 'prototype/screens/workspace.css');
+          const secondPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`;
           await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-b', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-b', tool_input: secondPatch });
-          await writeFile(homeCss, `${await readFile(homeCss, 'utf8')}\n.still-home { --blueprint-diff-test: 1; }\n`, 'utf8');
-          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Today');
-          await page.locator('[data-boundary-id="still-meditation/screen/home"].bp-chrome-changed').first().waitFor();
+          await writeFile(workspaceCss, `${await readFile(workspaceCss, 'utf8')}\n.workspace { --blueprint-diff-test: 1; }\n`, 'utf8');
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Workspace');
+          await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-changed').first().waitFor();
 
           await page.locator('.bp-chrome-changes-dismiss').click();
           await page.locator('.bp-chrome-changes').waitFor({ state: 'hidden' });
@@ -814,7 +813,11 @@ describe('Blueprint MCP and template governance', () => {
   it('marks design findings on screens and their components and refreshes them as the agent fixes them', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(explorationRoot, projectCopy, { recursive: true });
+      await cp(umbraRoot, projectCopy, { recursive: true });
+      const modeTileCss = path.join(projectCopy, 'prototype/components/mode-tile.css');
+      const launchCss = path.join(projectCopy, 'prototype/screens/launch.css');
+      await writeFile(modeTileCss, `${await readFile(modeTileCss, 'utf8')}\n[data-blueprint-component="mode-tile"] { outline-color: #000; }\n`, 'utf8');
+      await writeFile(launchCss, `${await readFile(launchCss, 'utf8')}\n[data-blueprint-screen="launch"] { outline-color: #fff; }\n`, 'utf8');
       const session = await openSession(tempDir);
       try {
         const served = await call(session, 'serve', { port: 0 });
@@ -823,23 +826,22 @@ describe('Blueprint MCP and template governance', () => {
         try {
           const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
           await page.goto(`${served.url as string}?board=screens`);
-          const homeBadge = page.locator('[data-findings-screen-id="home"]');
-          await homeBadge.waitFor();
-          await page.locator('.bp-chrome-finding-layer[data-finding-boundary-ids~="blank-slate-proof/component/site-footer"] .bp-chrome-finding-box').first().waitFor();
+          const launchBadge = page.locator('[data-findings-screen-id="launch"]');
+          await launchBadge.waitFor();
+          await page.locator('.bp-chrome-finding-layer[data-finding-boundary-ids~="umbra-gaming/component/mode-tile"] .bp-chrome-finding-box').first().waitFor();
 
-          await homeBadge.click();
+          await launchBadge.click();
           const items = page.locator('.bp-chrome-findings-item');
           await items.first().waitFor();
           const initialCount = await items.count();
-          assert.match(await homeBadge.innerText(), new RegExp(`^${initialCount} findings$`));
-          const footerLiteral = page.locator('.bp-chrome-findings-item[data-finding-boundary-id="blank-slate-proof/component/site-footer"]', { hasText: '#000' });
-          assert.equal(await footerLiteral.count(), 1);
+          assert.match(await launchBadge.innerText(), new RegExp(`^${initialCount} findings$`));
+          const tileLiteral = page.locator('.bp-chrome-findings-item[data-finding-boundary-id="umbra-gaming/component/mode-tile"]', { hasText: '#000' });
+          assert.equal(await tileLiteral.count(), 1);
 
-          const footerCss = path.join(projectCopy, 'prototype/components/site-footer.css');
-          await writeFile(footerCss, (await readFile(footerCss, 'utf8')).replace('88%, #000)', '88%, var(--app-color-foreground))'), 'utf8');
+          await writeFile(modeTileCss, (await readFile(modeTileCss, 'utf8')).replace('outline-color: #000;', 'outline-color: var(--app-color-foreground);'), 'utf8');
           await page.waitForFunction(count => document.querySelectorAll('.bp-chrome-findings-item').length === count - 1, initialCount);
-          assert.equal(await footerLiteral.count(), 0);
-          assert.match(await page.locator('[data-findings-screen-id="home"]').innerText(), new RegExp(`^${initialCount - 1} findings$`));
+          assert.equal(await tileLiteral.count(), 0);
+          assert.match(await page.locator('[data-findings-screen-id="launch"]').innerText(), new RegExp(`^${initialCount - 1} findings?$`));
 
           await page.keyboard.press('Escape');
           await page.locator('.bp-chrome-findings').waitFor({ state: 'hidden' });
@@ -856,8 +858,8 @@ describe('Blueprint MCP and template governance', () => {
     await withTempDir(async tempDir => {
       const repoA = path.join(tempDir, 'repo-a', 'design', 'blueprint');
       const repoB = path.join(tempDir, 'repo-b', 'design', 'blueprint');
-      await cp(stillRoot, repoA, { recursive: true });
-      await cp(explorationRoot, repoB, { recursive: true });
+      await cp(miraRoot, repoA, { recursive: true });
+      await cp(umbraRoot, repoB, { recursive: true });
       const session = await openSession(tempDir);
       try {
         const concurrentA = await Promise.all([
@@ -888,7 +890,7 @@ describe('Blueprint MCP and template governance', () => {
   it('shares one stable project runtime across independent MCP processes', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
       let ownerIndex = -1;
       try {
@@ -914,7 +916,7 @@ describe('Blueprint MCP and template governance', () => {
   it('closes an owned review listener promptly when the stdio connection ends', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const session = await openSession(tempDir);
       const served = await call(session, 'serve', { project: projectCopy, port: 0 });
       const startedAt = Date.now();
@@ -928,7 +930,7 @@ describe('Blueprint MCP and template governance', () => {
   it('replaces a borrowed handle after its owning MCP process disconnects', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
-      await cp(stillRoot, projectCopy, { recursive: true });
+      await cp(miraRoot, projectCopy, { recursive: true });
       const sessions = await Promise.all([openSession(tempDir), openSession(tempDir)]);
       try {
         const served = await Promise.all(sessions.map(session => call(session, 'serve', { project: projectCopy, port: 0 })));
@@ -956,7 +958,7 @@ describe('Blueprint MCP and template governance', () => {
     assert.ok(address && typeof address !== 'string');
     const session = await openSession();
     try {
-      const inUse = await session.client.callTool({ name: 'serve', arguments: { project: stillRoot, port: address.port } });
+      const inUse = await session.client.callTool({ name: 'serve', arguments: { project: miraRoot, port: address.port } });
       assertToolError(inUse, /EADDRINUSE|already in use/i);
       const missing = await session.client.callTool({ name: 'serve', arguments: { project: 'does-not-exist', port: 0 } });
       assertToolError(missing, /path not found|does-not-exist/i);
