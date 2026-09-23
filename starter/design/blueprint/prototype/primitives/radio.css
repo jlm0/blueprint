@@ -39,6 +39,7 @@
   opacity: 1;
 }
 
+[data-blueprint-primitive="radio"][data-blueprint-state="focus"] .radio__box,
 [data-blueprint-primitive="radio"]:focus-visible .radio__box {
   outline: 2px solid var(--app-color-focus-ring);
   outline-offset: 2px;

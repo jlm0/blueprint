@@ -42,6 +42,7 @@
   opacity: 1;
 }
 
+[data-blueprint-primitive="checkbox"][data-blueprint-state="focus"] .checkbox__box,
 [data-blueprint-primitive="checkbox"]:focus-visible .checkbox__box {
   outline: 2px solid var(--app-color-focus-ring);
   outline-offset: 2px;

@@ -114,18 +114,23 @@
   opacity: 0;
 }
 
+[data-blueprint-primitive="button"][data-blueprint-state="hover"]:not([data-blueprint-variant="link"]),
 [data-blueprint-primitive="button"]:not([data-blueprint-state="disabled"]):not([data-blueprint-state="loading"]):not([data-blueprint-variant="link"]):hover {
   background-image: linear-gradient(var(--app-color-hover), var(--app-color-hover));
 }
 
+[data-blueprint-primitive="button"][data-blueprint-state="pressed"]:not([data-blueprint-variant="link"]),
 [data-blueprint-primitive="button"]:not([data-blueprint-state="disabled"]):not([data-blueprint-state="loading"]):not([data-blueprint-variant="link"]):active {
   background-image: linear-gradient(var(--app-color-pressed), var(--app-color-pressed));
 }
 
+[data-blueprint-primitive="button"][data-blueprint-variant="link"][data-blueprint-state="hover"],
+[data-blueprint-primitive="button"][data-blueprint-variant="link"][data-blueprint-state="pressed"],
 [data-blueprint-primitive="button"][data-blueprint-variant="link"]:not([data-blueprint-state="disabled"]):hover {
   text-decoration-thickness: 2px;
 }
 
+[data-blueprint-primitive="button"][data-blueprint-state="focus"],
 [data-blueprint-primitive="button"]:focus-visible {
   outline: 2px solid var(--app-color-focus-ring);
   outline-offset: 2px;

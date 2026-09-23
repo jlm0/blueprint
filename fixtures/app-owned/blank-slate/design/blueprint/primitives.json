@@ -17,7 +17,7 @@
         "slots": ["label", "icon"],
         "variants": ["primary", "secondary", "outline", "ghost", "destructive", "link"],
         "sizes": ["sm", "md", "lg", "icon"],
-        "states": ["normal", "loading", "disabled"],
+        "states": ["normal", "hover", "focus", "pressed", "loading", "disabled"],
         "accessibilityIntent": "A native keyboard-reachable button whose visible label supplies its accessible name; the icon size keeps the label as visually hidden text.",
         "tokenRoles": {
           "color.primary": "background",
@@ -68,7 +68,10 @@
           "description": "Shared button interaction states.",
           "styleRefs": ["primitive.button.interaction"],
           "states": [
-            { "id": "normal", "name": "Normal", "tokens": ["color.hover", "color.pressed"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "normal", "name": "Normal", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "hover", "name": "Hover", "tokens": ["color.hover"], "prototypeOnly": false, "notes": [], "implementationHints": ["Apply on pointer hover only; touch platforms skip it."] },
+            { "id": "focus", "name": "Focus", "tokens": ["color.focus-ring"], "prototypeOnly": false, "notes": [], "implementationHints": ["Show on keyboard focus (focus-visible), not on pointer press."] },
+            { "id": "pressed", "name": "Pressed", "tokens": ["color.pressed"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "loading", "name": "Loading", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": ["Expose busy state to accessibility APIs."] },
             { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": ["Prevent interaction and expose disabled state."] }
           ]
@@ -149,7 +152,7 @@
         "styles": ["prototype/primitives/checkbox.css"],
         "slots": ["label"],
         "variants": ["default"],
-        "states": ["off", "on", "disabled", "disabled-on"],
+        "states": ["off", "on", "focus", "disabled", "disabled-on"],
         "accessibilityIntent": "A keyboard-reachable binary selection control whose checked and disabled states are exposed to assistive technology.",
         "tokenRoles": {
           "color.surface": "box-background",
@@ -171,6 +174,7 @@
           "states": [
             { "id": "off", "name": "Off", "tokens": ["color.surface", "color.border-strong"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "on", "name": "On", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "focus", "name": "Focus", "tokens": ["color.focus-ring"], "prototypeOnly": false, "notes": [], "implementationHints": ["Show on keyboard focus (focus-visible)."] },
             { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "disabled-on", "name": "Disabled On", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
           ]
@@ -191,7 +195,7 @@
         "styles": ["prototype/primitives/switch.css"],
         "slots": ["label"],
         "variants": ["default"],
-        "states": ["off", "on", "disabled", "disabled-on"],
+        "states": ["off", "on", "focus", "disabled", "disabled-on"],
         "accessibilityIntent": "A binary toggle exposing its on/off state with an associated visible label and an explicit disabled presentation.",
         "tokenRoles": {
           "color.border-strong": "off-track",
@@ -212,6 +216,7 @@
           "states": [
             { "id": "off", "name": "Off", "tokens": ["color.border-strong", "color.surface"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "on", "name": "On", "tokens": ["color.primary", "color.on-primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "focus", "name": "Focus", "tokens": ["color.focus-ring"], "prototypeOnly": false, "notes": [], "implementationHints": ["Show on keyboard focus (focus-visible)."] },
             { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "disabled-on", "name": "Disabled On", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
           ]
@@ -997,7 +1002,7 @@
         "styles": ["prototype/primitives/radio.css"],
         "slots": ["label"],
         "variants": ["default"],
-        "states": ["off", "on", "disabled", "disabled-on"],
+        "states": ["off", "on", "focus", "disabled", "disabled-on"],
         "accessibilityIntent": "A keyboard-reachable single-choice control whose selected and disabled states are exposed to assistive technology.",
         "tokenRoles": {
           "color.surface": "ring-background",
@@ -1018,6 +1023,7 @@
           "states": [
             { "id": "off", "name": "Off", "tokens": ["color.surface", "color.border-strong"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "on", "name": "On", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "focus", "name": "Focus", "tokens": ["color.focus-ring"], "prototypeOnly": false, "notes": [], "implementationHints": ["Show on keyboard focus (focus-visible)."] },
             { "id": "disabled", "name": "Disabled", "tokens": ["motion.state"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "disabled-on", "name": "Disabled On", "tokens": ["color.primary"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
           ]
