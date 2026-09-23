@@ -2,6 +2,7 @@ import type {
   BlueprintProjectBundle,
   BoundaryDependency,
   ComponentDefinition,
+  FramePreset,
   PrimitiveDefinition,
   PrototypeSource,
   PrototypeUseDeclaration,
@@ -33,6 +34,8 @@ export interface CompilePrototypeDocumentOptions {
   variant?: string;
   /** Declared primitive size (primitive targets only). */
   size?: string;
+  /** Frame preset the screen renders in; exposes its safe-area insets as `--blueprint-safe-area-*`. */
+  framePreset?: FramePreset;
 }
 
 /**
@@ -175,7 +178,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(PROTOTYPE_CONTENT_SECURITY_POLICY)}">`,
     `<title>${escapeHtml(title)}</title>`,
-    `<style data-blueprint-app-styles>${safeStyleText(baseDocumentCss())}\n${safeStyleText(specimenCanvasCss(options.bundle, boundary))}\n${safeStyleText(appCss)}</style>`,
+    `<style data-blueprint-app-styles>${safeStyleText(baseDocumentCss())}\n${safeStyleText(safeAreaCss(options.framePreset))}\n${safeStyleText(specimenCanvasCss(options.bundle, boundary))}\n${safeStyleText(appCss)}</style>`,
     `<style data-blueprint-token-overrides>${safeStyleText(tokenCss)}</style>`,
     '</head>',
     `<body>${fragment}</body>`,
@@ -942,6 +945,18 @@ function requireSource(bundle: BlueprintProjectBundle, sourceRef: string, label:
 
 function boundaryId(bundle: BlueprintProjectBundle, boundary: Pick<SourceBoundary, 'kind' | 'id'>): string {
   return `${bundle.manifest.project.id}/${boundary.kind}/${boundary.id}`;
+}
+
+function safeAreaCss(preset: FramePreset | undefined): string {
+  const insets = { top: 0, right: 0, bottom: 0, left: 0, ...preset?.safeArea };
+  const declarations = (['top', 'right', 'bottom', 'left'] as const).map(side => {
+    const inset = insets[side];
+    if (!Number.isFinite(inset) || inset < 0) {
+      throw new Error(`Frame preset "${preset?.id}" safe-area ${side} must be a non-negative number.`);
+    }
+    return `--blueprint-safe-area-${side}:${inset}px;`;
+  });
+  return `:root{${declarations.join('')}}`;
 }
 
 function baseDocumentCss(): string {

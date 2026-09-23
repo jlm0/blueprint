@@ -12,6 +12,7 @@ import {
   type BlueprintProjectSnapshot
 } from '../core/activity';
 import { changedBoundaries } from '../core/change';
+import { parseOpaqueColor, relativeLuminance } from '../core/color';
 import { collectDesignFindings, designFindingReference, type DesignFinding } from '../core/findings';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
@@ -2460,7 +2461,7 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const frameLayouts = layoutScreenFrames(bundle, request, flowFilter);
   const fallbackWidth = frameLayouts.length > 0 ? Math.max(393, ...frameLayouts.map(layout => layout.preset.width)) : 1440;
   const fallbackHeight = frameLayouts.length > 0
-    ? Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.screen, layout.preset)))
+    ? Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.preset)))
     : 900;
   const configure = (): CanvasController =>
     boardCanvas.configure({
@@ -2550,7 +2551,7 @@ function mountHistoryScreens(
 
   root.setAttribute('aria-label', `${screen.name} history`);
   explorationTitle.textContent = `${screenFrameLabel(screen)} · History`;
-  const frameHeight = frameExtentHeight(screen, preset);
+  const frameHeight = frameExtentHeight(preset);
   const configure = (): CanvasController => boardCanvas.configure({
     minScale: 0.08,
     readableScale: 0.12,
@@ -2742,7 +2743,7 @@ function mountExplorationScreens(
     framePresetId: exploration.target.framePresetId,
     state: exploration.target.state
   };
-  const fallbackHeight = frameExtentHeight(screen, preset);
+  const fallbackHeight = frameExtentHeight(preset);
   const configure = (): CanvasController =>
     boardCanvas.configure({
       minScale: 0.08,
@@ -2875,8 +2876,6 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
   frame.style.setProperty('--frame-safe-right', `${preset.safeArea.right}px`);
   frame.style.setProperty('--frame-safe-bottom', `${preset.safeArea.bottom}px`);
   frame.style.setProperty('--frame-safe-left', `${preset.safeArea.left}px`);
-  frame.style.setProperty('--frame-body-top', `${bodyTopInset(preset)}px`);
-  frame.style.setProperty('--frame-body-bottom', `${bodyBottomInset(preset)}px`);
   frame.dataset.screenId = screen.id;
   frame.dataset.frameType = preset.type;
   frame.dataset.framePresetId = preset.id;
@@ -2904,13 +2903,7 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
 
   const rendered = createExplorationPrototypeScreen(bundle, screen, preset, selection, label, unavailableNoun);
   frame.dataset.explorationStatus = rendered.available ? 'available' : 'unavailable';
-  if (preset.type === 'mobile') {
-    const display = el('div', 'frame-display');
-    display.append(createStatusBar(), rendered.element, createFrameHomeIndicator());
-    frame.append(display);
-  } else {
-    frame.append(createBrowserBar(screen), rendered.element);
-  }
+  mountDeviceChrome(frame, bundle, screen, preset, rendered.element);
   slot.append(head, frame);
   return slot;
 }
@@ -2930,7 +2923,8 @@ function createExplorationPrototypeScreen(
     const compiled = compilePrototypeDocument({
       bundle,
       target: { kind: 'screen', id: screen.id },
-      state: selection.state
+      state: selection.state,
+      framePreset: preset
     });
     const iframe = document.createElement('iframe');
     iframe.className = 'canonical-prototype-iframe';
@@ -3047,7 +3041,7 @@ function layoutScreenFrames(
           }
           layouts.push(layout);
           x += resolved.preset.width + gapX;
-          rowHeight = Math.max(rowHeight, frameExtentHeight(screen, resolved.preset));
+          rowHeight = Math.max(rowHeight, frameExtentHeight(resolved.preset));
         }
       }
       y += rowHeight + gapY;
@@ -3057,14 +3051,14 @@ function layoutScreenFrames(
   return layouts;
 }
 
-// Canonical frames draw device/browser chrome outside the captured screen host,
-// so the frame's visible extent exceeds the preset's content dimensions.
-function frameExtentHeight(screen: ScreenDefinition, preset: FramePreset): number {
-  if (!screen.prototype) {
-    return preset.height;
-  }
-  return preset.height + (preset.type === 'mobile' ? 59 + 24 : 48);
+// Phones add their bezel around the preset-sized display; browsers add a
+// toolbar above the preset-sized viewport.
+function frameExtentHeight(preset: FramePreset): number {
+  return preset.height + (preset.type === 'mobile' ? 2 * PHONE_BEZEL : BROWSER_BAR_HEIGHT);
 }
+
+const PHONE_BEZEL = 11;
+const BROWSER_BAR_HEIGHT = 48;
 
 function resolveScreenFrameVariants(
   bundle: BlueprintProjectBundle,
@@ -3190,8 +3184,6 @@ function createPrototypeFrame(
   frame.style.setProperty('--frame-safe-right', `${preset.safeArea.right}px`);
   frame.style.setProperty('--frame-safe-bottom', `${preset.safeArea.bottom}px`);
   frame.style.setProperty('--frame-safe-left', `${preset.safeArea.left}px`);
-  frame.style.setProperty('--frame-body-top', `${bodyTopInset(preset)}px`);
-  frame.style.setProperty('--frame-body-bottom', `${bodyBottomInset(preset)}px`);
   setBoundary(frame, 'screen', screen.id, bundle.manifest.project.id, screen.name);
   frame.dataset.screenId = screen.id;
   frame.dataset.frameType = preset.type;
@@ -3286,25 +3278,45 @@ function createPrototypeFrame(
       captureDocument: canonicalScreen.captureDocument
     });
     frame.classList.add('frame-canonical');
-    if (preset.type === 'mobile') {
-      // Display stack (status bar, screen, home indicator) clipped to the
-      // phone's rounded panel inside a full bezel ring.
-      const display = el('div', 'frame-display');
-      display.append(createStatusBar(), screenEl, createFrameHomeIndicator());
-      frame.append(display);
-    } else {
-      frame.append(createBrowserBar(screen), screenEl);
-    }
+    mountDeviceChrome(frame, bundle, screen, preset, screenEl);
     slot.append(head, frame);
     return slot;
   }
 
   const screenEl = createLegacyPrototypeScreen(bundle, tokenIndex, screen, preset);
   wireFrameCapture({ screenEl, shot, save, screenId: screen.id });
-
+  mountDeviceChrome(frame, bundle, screen, preset, screenEl);
   slot.append(head, frame);
-  frame.append(screenEl);
   return slot;
+}
+
+/**
+ * Phones render the full-bleed screen at preset size with the status bar and
+ * home indicator overlaid, as on device; browsers keep their toolbar outside
+ * the viewport because web content never renders beneath it.
+ */
+function mountDeviceChrome(
+  frame: HTMLElement,
+  bundle: BlueprintProjectBundle,
+  screen: ScreenDefinition,
+  preset: FramePreset,
+  screenEl: HTMLElement
+): void {
+  frame.classList.add('frame-device');
+  if (preset.type === 'mobile') {
+    frame.dataset.appearance = backgroundAppearance(bundle);
+    const display = el('div', 'frame-display');
+    display.append(screenEl, createStatusBar(), createHomeIndicator());
+    frame.append(display);
+  } else {
+    frame.append(createBrowserBar(screen), screenEl);
+  }
+}
+
+function backgroundAppearance(bundle: BlueprintProjectBundle): 'light' | 'dark' {
+  const background = findTokenValue(bundle, ['background']);
+  const rgb = background ? parseOpaqueColor(background) : undefined;
+  return rgb && relativeLuminance(rgb) < 0.4 ? 'dark' : 'light';
 }
 
 function liveFrameKey(
@@ -3315,10 +3327,10 @@ function liveFrameKey(
   return [screenId, framePresetId, selection?.state ?? '', selection?.conditionId ?? ''].join('\u0000');
 }
 
-function createFrameHomeIndicator(): HTMLElement {
-  const strip = el('div', 'frame-home-indicator');
-  strip.append(el('span', 'frame-home-indicator-pill'));
-  return strip;
+function createHomeIndicator(): HTMLElement {
+  const indicator = el('div', 'home-indicator');
+  indicator.setAttribute('aria-hidden', 'true');
+  return indicator;
 }
 
 function createCanonicalPrototypeScreen(
@@ -3339,7 +3351,8 @@ function createCanonicalPrototypeScreen(
     const compiled = compilePrototypeDocument({
       bundle,
       target: { kind: 'screen', id: screen.id },
-      state: selection.state
+      state: selection.state,
+      framePreset: preset
     });
     const iframe = document.createElement('iframe');
     iframe.className = 'canonical-prototype-iframe';
@@ -3373,11 +3386,7 @@ function createLegacyPrototypeScreen(
   for (const section of screen.sections) {
     body.append(createScreenSectionPrototype(bundle, tokenIndex, screen, section));
   }
-  if (preset.type === 'mobile') {
-    screenEl.append(createStatusBar(), body, el('div', 'home-indicator'));
-  } else {
-    screenEl.append(createBrowserBar(screen), body);
-  }
+  screenEl.append(body);
   return screenEl;
 }
 
@@ -3393,20 +3402,6 @@ function createPrototypeCompileError(error: unknown): HTMLElement {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function bodyTopInset(preset: FramePreset): number {
-  if (preset.type === 'desktop') {
-    return Math.max(preset.safeArea.top, 48);
-  }
-  return preset.safeArea.top;
-}
-
-function bodyBottomInset(preset: FramePreset): number {
-  if (preset.type === 'desktop') {
-    return preset.safeArea.bottom;
-  }
-  return 24;
 }
 
 function createScreenSectionPrototype(
@@ -3681,22 +3676,23 @@ function resolveScreenDependency(
 
 function createStatusBar(): HTMLElement {
   const status = el('div', 'status-bar');
+  status.setAttribute('aria-hidden', 'true');
   const icons = el('span', 'status-icons');
   icons.innerHTML = `${signalIcon()}${wifiIcon()}${batteryIcon()}`;
-  status.append(el('span', 'time', '9:41'), icons);
+  status.append(el('span', 'status-time', '9:41'), el('span', 'status-island'), icons);
   return status;
 }
 
 function signalIcon(): string {
-  return '<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>';
+  return '<svg width="19" height="12" viewBox="0 0 19 12" fill="currentColor" aria-hidden="true"><rect x="0" y="7.5" width="3.2" height="4.5" rx="1"/><rect x="5.2" y="5.2" width="3.2" height="6.8" rx="1"/><rect x="10.4" y="2.6" width="3.2" height="9.4" rx="1"/><rect x="15.6" y="0" width="3.2" height="12" rx="1"/></svg>';
 }
 
 function wifiIcon(): string {
-  return '<svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1.5 3.6a10.4 10.4 0 0 1 14 0"/><path d="M3.9 6.3a7 7 0 0 1 9.2 0"/><path d="M6.4 9a3.6 3.6 0 0 1 4.2 0"/><circle cx="8.5" cy="11" r="1" fill="currentColor" stroke="none"/></svg>';
+  return '<svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" aria-hidden="true"><path d="M8.5 2.3c2.4 0 4.6.9 6.3 2.5l1.2-1.2A10.6 10.6 0 0 0 8.5.6 10.6 10.6 0 0 0 1 3.6l1.2 1.2a9 9 0 0 1 6.3-2.5Z"/><path d="M8.5 5.8c1.5 0 2.8.5 3.8 1.5l1.2-1.2a7 7 0 0 0-10 0l1.2 1.2c1-1 2.3-1.5 3.8-1.5Z"/><path d="M8.5 9.3c.6 0 1.1.2 1.5.6L8.5 11.4 7 9.9c.4-.4.9-.6 1.5-.6Z"/></svg>';
 }
 
 function batteryIcon(): string {
-  return '<svg width="27" height="13" viewBox="0 0 27 13" fill="none" aria-hidden="true"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="2.5" y="2.5" width="16" height="8" rx="1.8" fill="currentColor"/><path d="M25 4.5v4a2.2 2.2 0 0 0 0-4Z" fill="currentColor" fill-opacity="0.5"/></svg>';
+  return '<svg width="27" height="13" viewBox="0 0 27 13" fill="none" aria-hidden="true"><rect x="0.5" y="0.5" width="24" height="12" rx="3.8" stroke="currentColor" stroke-opacity="0.35"/><rect x="2" y="2" width="21" height="9" rx="2.5" fill="currentColor"/><path d="M26 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2Z" fill="currentColor" fill-opacity="0.4"/></svg>';
 }
 
 function createBrowserBar(screen: ScreenDefinition): HTMLElement {

@@ -94,7 +94,8 @@ export function compilePrototypeReview(
   const compiled = compilePrototypeDocument({
     bundle,
     target: { kind: 'screen', id: selection.screenId },
-    state: selection.state
+    state: selection.state,
+    framePreset: bundle.manifest.framePresets.find(preset => preset.id === selection.framePresetId)
   });
   if (compiled.targetBoundaryId !== selection.boundaryId || compiled.state !== selection.state) {
     throw new Error(`Compiled screen review did not match the validated selection for "${selection.screenId}".`);

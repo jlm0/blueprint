@@ -33,7 +33,7 @@
 
 @media (max-width: 640px) {
   [data-blueprint-screen="waitlist"] {
-    padding: 24px;
+    padding: calc(var(--blueprint-safe-area-top) + 16px) 24px calc(var(--blueprint-safe-area-bottom) + 24px);
   }
 
   [data-blueprint-screen="waitlist"] .hero {

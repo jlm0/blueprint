@@ -2819,9 +2819,7 @@ body {
   pointer-events: none;
 }
 
-/* Canonical frames: device/browser chrome wraps the captured screen host.
-   The shell grows around the preset content box so captures keep exact pixels. */
-.frame.frame-canonical {
+.frame.frame-device {
   display: flex;
   width: auto;
   height: auto;
@@ -2832,17 +2830,16 @@ body {
     0 28px 64px rgba(0, 0, 0, 0.5);
 }
 
-.frame.frame-canonical .screen {
+.frame.frame-device .screen {
   flex: none;
   border-radius: 0;
   background: #fff;
   box-shadow: none;
 }
 
-/* Phone: a full bezel ring around the rounded display stack. */
-.frame.frame-canonical[data-frame-type="mobile"] {
+.frame.frame-device[data-frame-type="mobile"] {
   padding: 11px;
-  border-radius: 58px;
+  border-radius: 66px;
   background: #14171c;
   box-shadow:
     inset 0 0 0 1.5px #2c313a,
@@ -2850,43 +2847,27 @@ body {
     0 30px 70px rgba(0, 0, 0, 0.55);
 }
 
+.frame.frame-device[data-appearance="light"] {
+  --device-glyph: #000;
+}
+
+.frame.frame-device[data-appearance="dark"] {
+  --device-glyph: #fff;
+}
+
 .frame-display {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   overflow: hidden;
-  border-radius: 44px;
+  border-radius: 55px;
   background: #000;
 }
 
-.frame.frame-canonical[data-frame-type="desktop"] {
+.frame.frame-device[data-frame-type="desktop"] {
   border-radius: 10px;
   background: #f3f5f7;
 }
 
-.frame-home-indicator {
-  position: relative;
-  flex: none;
-  height: 21px;
-  background: #000;
-}
-
-.frame-home-indicator-pill {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  width: 134px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  transform: translateX(-50%);
-}
-
-.frame-display > .status-bar {
-  flex: none;
-  background: #000;
-}
-
-.frame.frame-canonical[data-frame-type="desktop"] > .browser-bar {
+.frame.frame-device[data-frame-type="desktop"] > .browser-bar {
   flex: none;
 }
 
@@ -2910,7 +2891,7 @@ body {
 
 .screen-template-body {
   position: absolute;
-  inset: var(--frame-body-top, 59px) 0 var(--frame-body-bottom, 24px);
+  inset: 0;
   display: grid;
   align-content: start;
   gap: var(--proto-section-gap, 14px);
@@ -2918,7 +2899,7 @@ body {
   overscroll-behavior: contain;
   background: var(--proto-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(238, 243, 248, 0.94)));
   color: var(--proto-fg, #19211d);
-  padding: 14px 18px 24px;
+  padding: calc(var(--frame-safe-top, 59px) + 14px) 18px calc(var(--frame-safe-bottom, 34px) + 24px);
   scrollbar-width: none;
 }
 
@@ -3365,38 +3346,64 @@ body {
 }
 
 .status-bar {
-  position: relative;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
   z-index: 2;
+  height: 54px;
+  color: var(--device-glyph, #000);
+  font: 600 17px/1 -apple-system, "SF Pro Text", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  pointer-events: none;
+}
+
+.status-time,
+.status-icons {
+  position: absolute;
+  top: 11px;
   display: flex;
-  height: 47px;
+  width: calc(50% - 63px);
+  height: 37px;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 22px 0 26px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  justify-content: center;
+}
+
+.status-time {
+  left: 0;
 }
 
 .status-icons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  right: 0;
+  gap: 7px;
 }
 
 .status-icons svg {
   display: block;
 }
 
+.status-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 126px;
+  height: 37px;
+  margin-left: -63px;
+  border-radius: 999px;
+  background: #000;
+}
+
 .home-indicator {
   position: absolute;
   bottom: 8px;
   left: 50%;
-  width: 136px;
+  z-index: 2;
+  width: 134px;
   height: 5px;
+  margin-left: -67px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  transform: translateX(-50%);
+  background: var(--device-glyph, #000);
+  pointer-events: none;
 }
 
 @media (max-width: 700px) {

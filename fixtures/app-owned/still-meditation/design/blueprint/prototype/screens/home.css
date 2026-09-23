@@ -31,7 +31,7 @@
 .still-home__content {
   position: relative;
   z-index: 1;
-  padding: 48px 18px 100px;
+  padding: calc(var(--blueprint-safe-area-top) + 12px) 18px 100px;
 }
 
 .topbar,
@@ -548,7 +548,7 @@
   position: absolute;
   z-index: 4;
   right: 18px;
-  bottom: 14px;
+  bottom: var(--blueprint-safe-area-bottom);
   left: 18px;
   height: 66px;
   gap: 4px;

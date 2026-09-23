@@ -238,6 +238,16 @@ describe('canonical prototype compiler', () => {
     assert.match(cluster.html, /<button[^>]*data-blueprint-size="sm"/);
   });
 
+  it('exposes the frame preset safe-area insets to compiled screens', async () => {
+    const bundle = await loadProjectFromFs('fixtures/app-owned/still-meditation/design/blueprint');
+    const phone = bundle.manifest.framePresets.find(preset => preset.id === 'phone');
+    assert.ok(phone);
+    const framed = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'home' }, framePreset: phone });
+    assert.match(framed.html, /--blueprint-safe-area-top:59px;--blueprint-safe-area-right:20px;--blueprint-safe-area-bottom:34px;--blueprint-safe-area-left:20px;/);
+    const unframed = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'home' } });
+    assert.match(unframed.html, /--blueprint-safe-area-top:0px;/);
+  });
+
   it('fails closed for undeclared uses, cycles, unsafe resources, and unsupported state', async () => {
     const original = await loadProjectFromFs(fixtureRoot);
 
