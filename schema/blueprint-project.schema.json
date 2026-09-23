@@ -177,6 +177,7 @@
         "states": { "$ref": "#/$defs/stringArray" },
         "slots": { "$ref": "#/$defs/stringArray" },
         "variants": { "$ref": "#/$defs/stringArray" },
+        "sizes": { "$ref": "#/$defs/stringArray" },
         "accessibilityIntent": { "type": "string" },
         "tokenRoles": { "type": "object", "additionalProperties": { "type": "string" } },
         "renderedUses": { "$ref": "#/$defs/prototypeUses" },

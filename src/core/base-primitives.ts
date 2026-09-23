@@ -5,8 +5,9 @@
  * project (manifest.prototypeHost present) must carry the full base set below.
  * Apps may add primitives, state sets, and states, and base primitives inherit
  * app design through token values, but the base set can never be removed or
- * reduced. The ids, state-set ids, and state ids are transcribed from
- * starter/design/blueprint/primitives.json, the canonical base declaration.
+ * reduced. The starter declaration in starter/design/blueprint/primitives.json
+ * carries this floor and may add unlocked primitives, state sets, and states,
+ * so sidecars created from an older starter stay valid as the starter grows.
  * Legacy baseline projects without manifest.prototypeHost are exempt and keep
  * their documented baseline-compatible classification.
  */

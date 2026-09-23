@@ -174,8 +174,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         );
         assert.equal(
           await card.locator('.canonical-primitive-iframe').count(),
-          primitive.prototype.states.length * Math.max(primitive.prototype.variants.length, 1),
-          `${primitiveId} should render one canonical iframe per declared variant × state combination`
+          primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
+          `${primitiveId} should render one canonical iframe per declared variant or size × state combination`
         );
         const specimen = page
           .frameLocator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', primitiveId))} .canonical-primitive-iframe`)

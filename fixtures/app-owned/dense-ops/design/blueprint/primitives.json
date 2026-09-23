@@ -5,7 +5,7 @@
     {
       "id": "button",
       "name": "Button",
-      "description": "Baseline command primitive with six variants and normal/loading/disabled states.",
+      "description": "Baseline command primitive with six variants, sm/md/lg/icon sizes, and normal/loading/disabled states.",
       "tokenGroupIds": ["color", "space", "size", "shape", "typography", "motion"],
       "styleRefs": ["primitive.button"],
       "notes": ["Apps should replace token values and variant naming only when their design system requires it; do not recreate one-off buttons per screen."],
@@ -14,10 +14,11 @@
       "prototype": {
         "source": "prototype/primitives/button.html",
         "styles": ["prototype/primitives/button.css"],
-        "slots": ["label"],
+        "slots": ["label", "icon"],
         "variants": ["primary", "secondary", "outline", "ghost", "destructive", "link"],
+        "sizes": ["sm", "md", "lg", "icon"],
         "states": ["normal", "loading", "disabled"],
-        "accessibilityIntent": "A native keyboard-reachable button whose visible label supplies its accessible name.",
+        "accessibilityIntent": "A native keyboard-reachable button whose visible label supplies its accessible name; the icon size keeps the label as visually hidden text.",
         "tokenRoles": {
           "color.primary": "background",
           "color.on-primary": "foreground",
@@ -28,7 +29,10 @@
           "size.control-md": "height",
           "shape.radius-md": "radius",
           "typography.body": "label",
-          "motion.state": "state-transition"
+          "motion.state": "state-transition",
+          "size.control-sm": "small-height",
+          "size.control-lg": "large-height",
+          "size.icon-sm": "icon-size"
         }
       },
       "stateSets": [
@@ -51,6 +55,25 @@
             { "id": "ghost", "name": "Ghost", "tokens": ["color.foreground", "color.hover"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "destructive", "name": "Destructive", "tokens": ["color.destructive", "color.on-destructive"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
             { "id": "link", "name": "Link", "tokens": ["color.accent"], "prototypeOnly": false, "notes": [], "implementationHints": [] }
+          ]
+        },
+        {
+          "id": "size",
+          "name": "Size States",
+          "description": "Control heights, including a square icon-only size.",
+          "styleRefs": ["primitive.button.size"],
+          "styleEvidence": [
+            {
+              "styleRef": "primitive.button.size",
+              "status": "source",
+              "sourceAnchor": "prototype/primitives/button.css"
+            }
+          ],
+          "states": [
+            { "id": "sm", "name": "Small", "tokens": ["size.control-sm", "typography.label"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "md", "name": "Medium", "tokens": ["size.control-md", "space.control-x"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "lg", "name": "Large", "tokens": ["size.control-lg", "space.space-6"], "prototypeOnly": false, "notes": [], "implementationHints": [] },
+            { "id": "icon", "name": "Icon", "tokens": ["size.control-md", "size.icon-sm"], "prototypeOnly": false, "notes": [], "implementationHints": ["Keep a text label for the accessible name when rendering icon-only."] }
           ]
         },
         {

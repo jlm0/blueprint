@@ -137,6 +137,8 @@ export interface PrimitivePrototypeSource extends PrototypeSource {
   slots: string[];
   /** Supported variant IDs. */
   variants: string[];
+  /** Supported size IDs, forwarded as `data-blueprint-size`; omit when the primitive has one size. */
+  sizes?: string[];
   /** Human-readable accessibility semantics the source must preserve. */
   accessibilityIntent: string;
   /** Token reference to reusable visual role mapping. */

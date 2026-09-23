@@ -12,7 +12,7 @@ const novaRoot = 'fixtures/app-owned/nova-care/design/blueprint';
 const atlasRoot = 'fixtures/app-owned/atlas-pay/design/blueprint';
 
 describe('Blueprint locked base primitive contract', () => {
-  it('mirrors the canonical starter base declaration exactly', async () => {
+  it('is carried in full by the canonical starter declaration', async () => {
     const starter = await loadProjectFromFs(starterRoot);
     const starterById = new Map(starter.primitives.primitives.map(primitive => [primitive.id, primitive]));
 
@@ -20,11 +20,16 @@ describe('Blueprint locked base primitive contract', () => {
     for (const entry of BASE_PRIMITIVE_CONTRACT) {
       const primitive = starterById.get(entry.id);
       assert.ok(primitive, `starter base declaration is missing ${entry.id}`);
-      assert.deepEqual(
-        primitive.stateSets.map(stateSet => ({ id: stateSet.id, states: stateSet.states.map(state => state.id) })),
-        entry.stateSets,
-        `base contract for "${entry.id}" must mirror the starter state sets and states`
-      );
+      for (const required of entry.stateSets) {
+        const stateSet = primitive.stateSets.find(candidate => candidate.id === required.id);
+        assert.ok(stateSet, `starter ${entry.id} is missing locked state set ${required.id}`);
+        const stateIds = stateSet.states.map(state => state.id);
+        assert.deepEqual(
+          required.states.filter(state => !stateIds.includes(state)),
+          [],
+          `starter ${entry.id}.${required.id} must carry every locked state`
+        );
+      }
     }
   });
 

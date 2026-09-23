@@ -31,6 +31,8 @@ export interface CompilePrototypeDocumentOptions {
   state?: string;
   /** Declared primitive variant (primitive targets only), e.g. for variant × state review matrices. */
   variant?: string;
+  /** Declared primitive size (primitive targets only). */
+  size?: string;
 }
 
 /**
@@ -122,6 +124,7 @@ interface UseElement {
 interface ForwardedInvocationAttributes {
   className?: string;
   variant?: string;
+  size?: string;
   href?: string;
   section?: string;
 }
@@ -159,7 +162,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
     styleRefs: [],
     styleRefSet: new Set()
   };
-  const fragment = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelVariant(boundary, options.variant));
+  const fragment = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelVariant(boundary, options.variant, options.size));
   const appCss = context.styleRefs.map(styleRef => loadAndRewriteStyle(context, styleRef)).join('\n\n');
   const tokenCss = createTokenCss(options.bundle);
   const targetBoundaryId = boundaryId(options.bundle, boundary);
@@ -280,18 +283,21 @@ export function selectPrototypeReviewCondition(
   };
 }
 
-function resolveTopLevelVariant(boundary: SourceBoundary, variant: string | undefined): ForwardedInvocationAttributes {
-  if (!variant) {
+function resolveTopLevelVariant(boundary: SourceBoundary, variant: string | undefined, size: string | undefined): ForwardedInvocationAttributes {
+  if (!variant && !size) {
     return {};
   }
   if (boundary.kind !== 'primitive') {
-    throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a primitive variant.`);
+    throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a primitive ${variant ? 'variant' : 'size'}.`);
   }
   const primitive = boundary.prototype as PrimitiveDefinition['prototype'];
-  if (!primitive?.variants.includes(variant)) {
+  if (variant && !primitive?.variants.includes(variant)) {
     throw new Error(`Primitive "${boundary.id}" does not declare variant "${variant}".`);
   }
-  return { variant };
+  if (size && !primitive?.sizes?.includes(size)) {
+    throw new Error(`Primitive "${boundary.id}" does not declare size "${size}".`);
+  }
+  return { ...(variant ? { variant } : {}), ...(size ? { size } : {}) };
 }
 
 function compileBoundaryFragment(
@@ -750,7 +756,7 @@ function resolveForwardedInvocationAttributes(
   attributes: Map<string, string>,
   target: SourceBoundary
 ): ForwardedInvocationAttributes {
-  const allowed = new Set(['kind', 'ref', 'state', 'class', 'variant', 'href', 'data-blueprint-section']);
+  const allowed = new Set(['kind', 'ref', 'state', 'class', 'variant', 'size', 'href', 'data-blueprint-section']);
   for (const name of attributes.keys()) {
     if (!allowed.has(name) || name.startsWith('on') || name === 'style') {
       throw new Error(`${target.kind} "${target.id}" received unsupported <blueprint-use> attribute "${name}".`);
@@ -770,6 +776,16 @@ function resolveForwardedInvocationAttributes(
       throw new Error(`Primitive "${target.id}" does not declare variant "${variant}".`);
     }
   }
+  const size = attributes.get('size');
+  if (size) {
+    if (target.kind !== 'primitive') {
+      throw new Error(`${target.kind} "${target.id}" cannot receive a primitive size.`);
+    }
+    const primitive = target.prototype as PrimitiveDefinition['prototype'];
+    if (!primitive?.sizes?.includes(size)) {
+      throw new Error(`Primitive "${target.id}" does not declare size "${size}".`);
+    }
+  }
   const href = attributes.get('href');
   if (href && !isSafePrototypeHref(href)) {
     throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}".`);
@@ -778,6 +794,7 @@ function resolveForwardedInvocationAttributes(
   return {
     ...(className ? { className } : {}),
     ...(variant ? { variant } : {}),
+    ...(size ? { size } : {}),
     ...(href ? { href } : {}),
     ...(section ? { section } : {})
   };
@@ -788,7 +805,7 @@ function applyInvocationAttributes(
   attributes: ForwardedInvocationAttributes,
   boundary: SourceBoundary
 ): string {
-  if (!attributes.className && !attributes.variant && !attributes.href && !attributes.section) {
+  if (!attributes.className && !attributes.variant && !attributes.size && !attributes.href && !attributes.section) {
     return fragment;
   }
   const rootPattern = /<([a-zA-Z][\w:-]*)([^>]*)>/;
@@ -809,6 +826,9 @@ function applyInvocationAttributes(
   }
   if (attributes.variant) {
     rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-variant', attributes.variant);
+  }
+  if (attributes.size) {
+    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-size', attributes.size);
   }
   if (attributes.href) {
     if (tagName.toLowerCase() !== 'a') {

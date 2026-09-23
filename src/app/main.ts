@@ -827,6 +827,12 @@ function renderCanonicalPrimitiveSpecimen(context: PrimitiveRenderContext): HTML
       matrix.append(createCanonicalPrimitiveCell(context, state, variants.length > 0 ? variant : undefined));
     }
   }
+  for (const size of context.primitive.prototype?.sizes ?? []) {
+    matrix.append(el('p', 'canonical-primitive-variant-label', `size ${size}`));
+    for (const state of states) {
+      matrix.append(createCanonicalPrimitiveCell(context, state, undefined, size));
+    }
+  }
   stage.append(matrix);
   root.append(stage);
   return root;
@@ -843,19 +849,20 @@ function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): str
   return undefined;
 }
 
-function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: string, variant?: string): HTMLElement {
+function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: string, variant?: string, size?: string): HTMLElement {
   const item = el('section', 'canonical-primitive-state canonical-primitive-cell');
   try {
     const compiled = compilePrototypeDocument({
       bundle: context.bundle,
       target: { kind: 'primitive', id: context.primitive.id },
       state,
-      ...(variant ? { variant } : {})
+      ...(variant ? { variant } : {}),
+      ...(size ? { size } : {})
     });
     const iframe = document.createElement('iframe');
     iframe.className = 'canonical-primitive-iframe';
     applyPrototypeIframeIsolation(iframe);
-    iframe.title = `${context.primitive.name} · ${variant ? `${variant} · ` : ''}${state}`;
+    iframe.title = `${context.primitive.name} · ${variant ? `${variant} · ` : ''}${size ? `size ${size} · ` : ''}${state}`;
     iframe.srcdoc = compiled.html;
     prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
@@ -916,7 +923,7 @@ function measureCanonicalCellSize(
  */
 function familyCellWidth(family: string): number {
   const widths: Record<string, number> = {
-    button: 140,
+    button: 160,
     input: 190,
     select: 190,
     checkbox: 120,

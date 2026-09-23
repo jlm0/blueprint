@@ -218,6 +218,26 @@ describe('canonical prototype compiler', () => {
     );
   });
 
+  it('forwards declared primitive sizes to the rendered root and rejects undeclared ones', async () => {
+    const bundle = await loadProjectFromFs('starter/design/blueprint');
+    const button = { kind: 'primitive' as const, id: 'button' };
+    const icon = compilePrototypeDocument({ bundle, target: button, state: 'normal', size: 'icon' });
+    assert.match(icon.html, /<button[^>]*data-blueprint-size="icon"/);
+    assert.throws(() => compilePrototypeDocument({ bundle, target: button, state: 'normal', size: 'xl' }), /does not declare size "xl"/);
+    assert.throws(
+      () => compilePrototypeDocument({ bundle, target: { kind: 'primitive', id: 'badge' }, state: 'default', size: 'sm' }),
+      /does not declare size "sm"/
+    );
+
+    const source = 'prototype/components/action-cluster.html';
+    bundle.prototypeSourceContents[source] = bundle.prototypeSourceContents[source].replace(
+      /<blueprint-use kind="primitive" ref="button"/,
+      '<blueprint-use kind="primitive" ref="button" size="sm"'
+    );
+    const cluster = compilePrototypeDocument({ bundle, target: { kind: 'component', id: 'action-cluster' } });
+    assert.match(cluster.html, /<button[^>]*data-blueprint-size="sm"/);
+  });
+
   it('fails closed for undeclared uses, cycles, unsafe resources, and unsupported state', async () => {
     const original = await loadProjectFromFs(fixtureRoot);
 

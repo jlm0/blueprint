@@ -1020,6 +1020,9 @@ function validatePrototypeContracts(
     validatePrototypeSource(errors, bundle, `primitive.${primitive.id}.prototype`, primitive.prototype);
     requireArray(errors, `primitive.${primitive.id}.prototype.slots`, primitive.prototype.slots);
     requireArray(errors, `primitive.${primitive.id}.prototype.variants`, primitive.prototype.variants);
+    if (primitive.prototype.sizes !== undefined) {
+      requireArray(errors, `primitive.${primitive.id}.prototype.sizes`, primitive.prototype.sizes);
+    }
     requireString(errors, `primitive.${primitive.id}.prototype.accessibilityIntent`, primitive.prototype.accessibilityIntent);
     requireObject(errors, `primitive.${primitive.id}.prototype.tokenRoles`, primitive.prototype.tokenRoles);
     for (const [tokenRef, role] of Object.entries(primitive.prototype.tokenRoles ?? {})) {

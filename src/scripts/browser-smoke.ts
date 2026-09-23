@@ -387,14 +387,14 @@ async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, b
 
   for (const primitive of bundle.primitives.primitives) {
     if (primitive.prototype) {
-      // Canonical primitives render one compiled specimen iframe per declared variant × state combination.
+      // Canonical primitives render one compiled specimen iframe per declared variant or size × state combination.
       const canonicalFrames = await page
         .locator(`[data-boundary-id="${bundle.manifest.project.id}/primitive/${primitive.id}"] .canonical-primitive-iframe`)
         .count();
-      const expectedFrames = primitive.prototype.states.length * Math.max(primitive.prototype.variants.length, 1);
+      const expectedFrames = primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0));
       if (canonicalFrames !== expectedFrames) {
         throw new Error(
-          `${bundle.manifest.project.id} canonical primitive ${primitive.id} should render one specimen iframe per declared variant × state combination, received ${canonicalFrames}.`
+          `${bundle.manifest.project.id} canonical primitive ${primitive.id} should render one specimen iframe per declared variant or size × state combination, received ${canonicalFrames}.`
         );
       }
       continue;
