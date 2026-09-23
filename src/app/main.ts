@@ -719,7 +719,7 @@ function createTokenRow(tokenIndex: TokenIndex, group: TokenGroup, token: Design
   setTokenHook(row, tokenIndex.byRef.get(tokenRef), `${token.type}-token-row`);
 
   const sample = el('span', 'token-sample');
-  applyTokenPreview(sample, token);
+  applyTokenPreview(sample, token, tokenIndex);
   const meta = el('span', 'token-meta');
   meta.append(el('b', '', token.name), el('span', '', `${tokenRef} · ${token.value}`));
   row.append(sample, meta);
@@ -2379,28 +2379,43 @@ function setTokenHook(element: HTMLElement, record: TokenRecord | undefined, tem
   element.dataset.tokenStyleRef = record.token.styleRef;
 }
 
-function applyTokenPreview(element: HTMLElement, token: DesignToken): void {
+function applyTokenPreview(element: HTMLElement, token: DesignToken, tokenIndex: TokenIndex): void {
+  const value = resolveTokenReferences(tokenIndex, token.value);
   switch (token.type) {
     case 'color':
-      element.style.background = token.value;
+      element.style.background = value;
       break;
     case 'space':
-      element.style.width = token.value;
+    case 'size':
+      element.style.width = value;
       break;
     case 'radius':
-      element.style.borderRadius = token.value;
+      element.style.borderRadius = value;
       break;
     case 'typography':
-      element.style.font = token.value;
+      element.style.font = value;
+      if (!element.style.font) {
+        element.style.fontFamily = value;
+      }
       element.textContent = 'Aa';
       break;
     case 'shadow':
-      element.style.boxShadow = token.value;
+      element.style.boxShadow = value;
       break;
     case 'motion':
       element.textContent = 'ms';
       break;
   }
+}
+
+function resolveTokenReferences(tokenIndex: TokenIndex, value: string, depth = 0): string {
+  if (depth > 4) {
+    return value;
+  }
+  return value.replace(/var\((--[\w-]+)\)/g, (reference, styleRef: string) => {
+    const record = [...tokenIndex.byRef.values()].find(candidate => candidate.token.styleRef === styleRef);
+    return record ? resolveTokenReferences(tokenIndex, record.token.value, depth + 1) : reference;
+  });
 }
 
 function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {

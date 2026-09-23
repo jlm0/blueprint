@@ -125,7 +125,8 @@ describe('canonical prototype propagation', () => {
       'blank-slate-proof/token-group/shape',
       'blank-slate-proof/token-group/space',
       'blank-slate-proof/token-group/typography',
-      'blank-slate-proof/state-set/icon/tone'
+      'blank-slate-proof/state-set/icon/tone',
+      'blank-slate-proof/token-group/size'
     ]);
     assert.ok(first.resolvedTokens.some(token => token.id === 'color.primary'));
     assert.ok(first.resolvedTokens.some(token => token.id === 'typography.body'));

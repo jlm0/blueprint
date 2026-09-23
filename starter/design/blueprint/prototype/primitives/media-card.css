@@ -1,11 +1,10 @@
-/* Cover: media is the card. Layered gradient art (no network assets), a
-   duration flag top-right, and a bottom scrim carrying title + caption. */
 [data-blueprint-primitive="media-card"] {
   position: relative;
   display: block;
+  min-height: 160px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 8%, transparent);
-  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
   color: var(--app-color-foreground);
   background: var(--app-color-surface);
 }
@@ -13,24 +12,19 @@
 .media-card__media {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(52% 40% at 74% 30%, color-mix(in srgb, var(--app-color-accent) 62%, white 8%) 0%, transparent 72%),
-    radial-gradient(90% 75% at 14% 96%, color-mix(in srgb, var(--app-color-warning) 26%, transparent) 0%, transparent 64%),
-    radial-gradient(120% 90% at 86% 4%, color-mix(in srgb, var(--app-color-accent) 34%, transparent) 0%, transparent 58%),
-    linear-gradient(163deg, color-mix(in srgb, var(--app-color-accent) 30%, var(--app-color-surface)) 0%, color-mix(in srgb, var(--app-color-background) 88%, black) 84%);
+  background: linear-gradient(160deg, var(--app-color-accent), var(--app-color-primary));
 }
 
-/* Duration flag floats over the media, dark chip on any art. */
 .media-card__flag {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 6px;
-  border-radius: var(--app-radius-sm);
-  color: color-mix(in srgb, var(--app-color-foreground) 92%, white);
-  background: rgba(6, 9, 13, 0.58);
+  top: var(--app-space-2);
+  right: var(--app-space-2);
+  padding: 2px var(--app-space-2);
+  border-radius: var(--app-radius-full);
+  color: var(--app-color-on-scrim);
+  background: var(--app-color-scrim);
   font: var(--app-type-label);
-  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
 }
 
 .media-card__scrim {
@@ -39,50 +33,41 @@
   bottom: 0;
   left: 0;
   display: grid;
-  gap: 3px;
-  padding: 34px var(--app-space-row) 10px;
-  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--app-color-background) 82%, transparent) 82%);
+  gap: var(--app-space-1);
+  padding: var(--app-space-8) var(--app-space-4) var(--app-space-3);
+  color: var(--app-color-on-scrim);
+  background: linear-gradient(180deg, transparent, var(--app-color-scrim));
 }
 
 .media-card__title {
+  min-width: 0;
   overflow: hidden;
-  font: var(--app-type-body);
-  font-size: 15px;
-  font-weight: 700;
+  font: var(--app-type-heading);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .media-card__caption {
   overflow: hidden;
-  color: color-mix(in srgb, var(--app-color-foreground) 74%, transparent);
-  font: var(--app-type-label);
-  letter-spacing: 0.08em;
+  font: var(--app-type-caption);
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
-/* Nested: media sits on an 8px gutter with concentric corners; the header
-   collapses to one line below it. */
 [data-blueprint-primitive="media-card"][data-blueprint-state="nested"] {
   display: grid;
-  align-content: center;
-  gap: 7px;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--app-space-2);
   box-sizing: border-box;
-  padding: 8px;
+  padding: var(--app-space-2);
 }
 
 [data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__media {
   position: relative;
   inset: auto;
-  height: 44px;
-  border-radius: max(calc(var(--app-radius-lg) - 8px), var(--app-radius-sm));
-}
-
-[data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__flag {
-  top: 6px;
-  right: 6px;
+  height: 96px;
+  border-radius: var(--app-radius-lg);
 }
 
 [data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__scrim {
@@ -90,16 +75,18 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--app-space-row);
-  padding: 0 2px;
+  gap: var(--app-space-3);
+  padding: 0 var(--app-space-1) var(--app-space-1);
+  color: var(--app-color-foreground);
   background: none;
 }
 
 [data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__title {
-  font-size: 13px;
+  flex-shrink: 0;
+  max-width: 100%;
 }
 
 [data-blueprint-primitive="media-card"][data-blueprint-state="nested"] .media-card__caption {
-  flex: none;
+  min-width: 0;
   color: var(--app-color-muted);
 }

@@ -1,16 +1,14 @@
-/* Toast anatomy: a raised transient panel with a semantic tone dot, a body
-   label, and a quiet primary action. Tones ride the semantic color roles. */
 [data-blueprint-primitive="toast"] {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--app-space-3);
   box-sizing: border-box;
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 10%, transparent);
+  padding: var(--app-space-3) var(--app-space-4);
+  border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-lg);
   color: var(--app-color-foreground);
-  background: var(--app-color-surface);
-  box-shadow: var(--app-shadow-panel);
+  background: var(--app-color-surface-raised);
+  box-shadow: var(--app-shadow-md);
   font: var(--app-type-body);
 }
 
@@ -18,8 +16,8 @@
   width: 8px;
   height: 8px;
   flex: none;
-  border-radius: 999px;
-  background: var(--app-color-primary);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-muted);
 }
 
 [data-blueprint-primitive="toast"][data-blueprint-variant="success"] .toast__dot {
@@ -35,12 +33,10 @@
 }
 
 .toast__action {
-  color: var(--app-color-primary);
-  font-weight: 700;
+  color: var(--app-color-foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.toast__action:hover {
-  text-decoration: underline;
 }

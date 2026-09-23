@@ -28,7 +28,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 8px 24px;
+  padding: 0 var(--app-space-2) var(--app-space-6);
   color: var(--ops-color-ink);
   font: 650 14px/1 system-ui;
 }
@@ -46,7 +46,7 @@ body {
 
 .ops-rail nav {
   display: grid;
-  gap: 4px;
+  gap: var(--app-space-1);
 }
 
 .ops-rail nav a {
@@ -83,7 +83,7 @@ body {
   align-items: center;
   gap: 9px;
   margin-top: auto;
-  padding: var(--ops-space-control-x) 8px 0;
+  padding: var(--ops-space-control-x) var(--app-space-2) 0;
   border-top: 1px solid var(--ops-color-line);
 }
 
@@ -105,7 +105,7 @@ body {
 
 .ops-content {
   width: min(100%, 1064px);
-  padding: 32px 34px 48px;
+  padding: var(--app-space-8) 34px var(--app-space-12);
 }
 
 .ops-page-header {
@@ -151,7 +151,7 @@ body {
 }
 
 .ops-summary article {
-  padding: 16px;
+  padding: var(--app-space-4);
   border: 1px solid var(--ops-color-line);
   border-radius: var(--ops-radius-panel);
   background: var(--ops-color-surface);

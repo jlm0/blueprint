@@ -250,9 +250,9 @@ describe('Blueprint data-driven primitives canvas', () => {
         };
       });
       assert.equal(buttonStyles.fontSize, '14px', 'canonical button should use the default typography.body size');
-      assert.equal(buttonStyles.borderRadius, '9px', 'canonical button should use the default shape.radius-md radius');
+      assert.equal(buttonStyles.borderRadius, '6px', 'canonical button should use the default shape.radius-md radius');
       assert.equal(buttonStyles.minHeight, '40px', 'canonical button should keep its control height');
-      assert.equal(buttonStyles.background, 'rgb(232, 237, 245)', 'canonical button should use the default color.primary background');
+      assert.equal(buttonStyles.background, 'rgb(24, 24, 27)', 'canonical button should use the default color.primary background');
 
       const inputSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'input'))} .canonical-primitive-iframe`)
@@ -261,7 +261,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { borderColor: style.borderTopColor, boxShadow: style.boxShadow };
       });
-      assert.equal(focusedInputStyles.borderColor, 'color(srgb 0.541177 0.639216 0.780392 / 0.65)', 'focused input should use the default color.accent focus ring');
+      assert.equal(focusedInputStyles.borderColor, 'rgb(37, 99, 235)', 'focused input should use the default color.focus-ring');
       assert.notEqual(focusedInputStyles.boxShadow, 'none', 'focused input should render a visible focus halo');
 
       const backButtonFrames = page.frameLocator(
@@ -288,8 +288,8 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.ok(backButtons.every(button => Math.abs(button.width - button.height) <= 1), 'back buttons should stay square');
       assert.ok(backButtons.every(button => button.overflowX <= 1 && button.overflowY <= 1), 'back buttons should not overflow');
       assert.ok(backButtons[0] && backButtons[1] && backButtons[1].width < backButtons[0].width, 'small back button should be visibly smaller than medium');
-      assert.equal(backButtons[0]?.borderRadius, '14px', 'medium back button should use the default shape.radius-lg radius');
-      assert.equal(backButtons[1]?.borderRadius, '9px', 'small back button should use the default shape.radius-md radius');
+      assert.equal(backButtons[0]?.borderRadius, '8px', 'medium back button should use the default shape.radius-lg radius');
+      assert.equal(backButtons[1]?.borderRadius, '6px', 'small back button should use the default shape.radius-md radius');
 
       const navBarFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'nav-bar'))} .canonical-primitive-iframe`
@@ -325,7 +325,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       const surfaceFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .canonical-primitive-iframe`
       );
-      const surfaceEvidence: Array<{ background: string; nested: number; label: string }> = [];
+      const surfaceEvidence: Array<{ background: string; shadow: string; nested: number; label: string }> = [];
       for (let index = 0; index < 3; index += 1) {
         surfaceEvidence.push(
           await surfaceFrames.nth(index).locator('[data-blueprint-primitive="surface"]').evaluate(element => {
@@ -334,6 +334,7 @@ describe('Blueprint data-driven primitives canvas', () => {
             );
             return {
               background: window.getComputedStyle(element).backgroundColor,
+              shadow: window.getComputedStyle(element).boxShadow,
               nested: element.querySelectorAll('.surface__nested').length,
               label: visibleName?.textContent?.trim() ?? ''
             };
@@ -359,8 +360,9 @@ describe('Blueprint data-driven primitives canvas', () => {
           surfaceLightness[1] !== undefined &&
           surfaceLightness[2] !== undefined &&
           surfaceLightness[0] < surfaceLightness[1] &&
-          surfaceLightness[1] < surfaceLightness[2],
-        `surface levels should lighten as they stack: ${JSON.stringify(surfaceEvidence.map(level => level.background))}`
+          surfaceLightness[1] <= surfaceLightness[2] &&
+          surfaceEvidence[2]?.shadow !== 'none',
+        `surface levels should step from canvas to surface to raised elevation: ${JSON.stringify(surfaceEvidence)}`
       );
 
       const cardSpecimen = page
@@ -370,8 +372,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { background: style.backgroundColor, borderRadius: style.borderTopLeftRadius };
       });
-      assert.equal(cardStyles.background, 'rgb(17, 24, 33)', 'canonical card should use the default color.surface background');
-      assert.equal(cardStyles.borderRadius, '14px', 'canonical card should use the default shape.radius-lg radius');
+      assert.equal(cardStyles.background, 'rgb(255, 255, 255)', 'canonical card should use the default color.surface background');
+      assert.equal(cardStyles.borderRadius, '8px', 'canonical card should use the default shape.radius-lg radius');
 
       const badgeSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'badge'))} .canonical-primitive-iframe`)
@@ -396,8 +398,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { background: style.backgroundColor, borderColor: style.borderTopColor };
       });
-      assert.equal(checkboxOnStyles.background, 'rgb(232, 237, 245)', 'checked checkbox should use the default color.primary fill');
-      assert.equal(checkboxOnStyles.borderColor, 'rgb(232, 237, 245)', 'checked checkbox should keep its color.primary frame');
+      assert.equal(checkboxOnStyles.background, 'rgb(24, 24, 27)', 'checked checkbox should use the default color.primary fill');
+      assert.equal(checkboxOnStyles.borderColor, 'rgb(24, 24, 27)', 'checked checkbox should keep its color.primary frame');
 
       const switchOnSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'switch'))} .canonical-primitive-iframe`)
@@ -406,7 +408,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { background: style.backgroundColor };
       });
-      assert.equal(switchOnStyles.background, 'rgb(232, 237, 245)', 'on switch should use the default color.primary track');
+      assert.equal(switchOnStyles.background, 'rgb(24, 24, 27)', 'on switch should use the default color.primary track');
 
       const sliderFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'slider'))} .canonical-primitive-iframe`
@@ -415,13 +417,13 @@ describe('Blueprint data-driven primitives canvas', () => {
       for (let index = 0; index < 4; index += 1) {
         sliderFills.push(await sliderFrames.nth(index).locator('.slider__fill').evaluate(element => window.getComputedStyle(element).backgroundColor));
       }
-      assert.equal(sliderFills[0], 'rgb(232, 237, 245)', 'primary slider should use the default color.primary fill');
-      assert.equal(sliderFills[1], 'rgb(158, 172, 186)', 'secondary slider should use the default color.secondary fill');
-      assert.equal(sliderFills[2], 'rgb(238, 243, 248)', 'contrast slider should use the default color.foreground fill');
-      assert.match(
-        sliderFills[3] ?? '',
-        /^(?:rgba\(140, 154, 170, 0\.4\)|color\(srgb 0\.54902 0\.603922 0\.666667 \/ 0\.4\))$/,
-        'disabled slider should mute the default color.muted fill'
+      assert.equal(sliderFills[0], 'rgb(24, 24, 27)', 'primary slider should use the default color.primary fill');
+      assert.equal(sliderFills[1], 'rgb(113, 113, 122)', 'secondary slider should use the default color.muted fill');
+      assert.equal(sliderFills[2], 'rgb(24, 24, 27)', 'contrast slider should use the default color.foreground fill');
+      assert.equal(
+        await sliderFrames.nth(3).locator('[data-blueprint-primitive="slider"]').evaluate(element => window.getComputedStyle(element).opacity),
+        '0.5',
+        'disabled slider should dim the whole control'
       );
 
       const destructiveDialog = page
@@ -431,8 +433,8 @@ describe('Blueprint data-driven primitives canvas', () => {
         const style = window.getComputedStyle(element);
         return { background: style.backgroundColor, color: style.color };
       });
-      assert.equal(confirmStyles.background, 'rgb(230, 107, 107)', 'destructive dialog confirm should use the default color.destructive action');
-      assert.equal(confirmStyles.color, 'rgb(11, 17, 24)', 'destructive dialog confirm should keep readable text on the action');
+      assert.equal(confirmStyles.background, 'rgb(220, 38, 38)', 'destructive dialog confirm should use the default color.destructive action');
+      assert.equal(confirmStyles.color, 'rgb(255, 255, 255)', 'destructive dialog confirm should use color.on-destructive text');
     } finally {
       await page.close();
     }
@@ -522,13 +524,13 @@ describe('Blueprint data-driven primitives canvas', () => {
       {
         root: starterRoot,
         boundary: 'starter-app/primitive/button',
-        tokenRef: 'motion.press',
+        tokenRef: 'motion.state',
         groupId: 'motion',
-        tokenId: 'press',
+        tokenId: 'state',
         mutatedValue: '240ms linear',
         cssProperty: 'transition-duration',
-        baseExpected: '0.12s, 0.12s, 0.16s, 0.16s, 0.16s, 0.12s, 0.16s',
-        mutatedExpected: '0.24s, 0.24s, 0.16s, 0.16s, 0.16s, 0.24s, 0.16s',
+        baseExpected: '0.16s, 0.16s, 0.16s, 0.16s',
+        mutatedExpected: '0.24s, 0.24s, 0.24s, 0.24s',
         iframeSelector: '[data-blueprint-primitive="button"]'
       }
     ];

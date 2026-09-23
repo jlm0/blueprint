@@ -1,13 +1,10 @@
-/* Inline glyph wrapper: currentColor does the work so tones recolor any slotted art. */
 [data-blueprint-primitive="icon"] {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
   flex: none;
   align-items: center;
   justify-content: center;
-  margin: 10px 0 0 10px;
-  border-radius: var(--app-radius-sm);
   color: var(--app-color-foreground);
 }
 

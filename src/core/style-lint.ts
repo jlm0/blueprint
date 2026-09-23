@@ -24,7 +24,7 @@ const colorLiteral = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|
 const lengthLiteral = /(?<![\w.#-])-?(?:\d*\.)?\d+(?:px|rem|em)\b/gi;
 
 /**
- * Screen and component CSS must take colors from token custom properties, and must not
+ * Primitive, component, and screen CSS must take colors from token custom properties, and must not
  * restate a token's length as a literal, unless the literal is declared in `localValueExceptions`.
  * Unique composition lengths stay valid.
  */
@@ -42,6 +42,7 @@ export function lintLocalStyleValues(bundle: BlueprintProjectBundle): LocalStyle
     }
   }
   const boundaries = [
+    ...bundle.primitives.primitives.flatMap(primitive => primitive.prototype ? [{ label: `primitive.${primitive.id}`, prototype: primitive.prototype }] : []),
     ...bundle.components.components.map(component => ({ label: `component.${component.id}`, prototype: component.prototype })),
     ...bundle.screens.screens.flatMap(screen => screen.prototype ? [{ label: `screen.${screen.id}`, prototype: screen.prototype }] : [])
   ];

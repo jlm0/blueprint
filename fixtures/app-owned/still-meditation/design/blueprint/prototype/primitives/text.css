@@ -1,5 +1,3 @@
-/* Type ramp anatomy: one typographic role per variant, one tone per state.
-   The ramp is the primitive every screen reads from; tones stay semantic. */
 [data-blueprint-primitive="text"] {
   margin: 0;
   color: var(--app-color-foreground);
@@ -9,15 +7,14 @@
   display: none;
 }
 
-[data-blueprint-primitive="text"][data-blueprint-variant="display"] {
-  font: var(--app-type-display);
-  letter-spacing: -0.01em;
-}
-
 [data-blueprint-primitive="text"][data-blueprint-variant="display"] .text__sample--display,
 [data-blueprint-primitive="text"][data-blueprint-variant="body"] .text__sample--body,
 [data-blueprint-primitive="text"][data-blueprint-variant="label"] .text__sample--label {
   display: inline;
+}
+
+[data-blueprint-primitive="text"][data-blueprint-variant="display"] {
+  font: var(--app-type-display);
 }
 
 [data-blueprint-primitive="text"][data-blueprint-variant="body"] {
@@ -26,8 +23,6 @@
 
 [data-blueprint-primitive="text"][data-blueprint-variant="label"] {
   font: var(--app-type-label);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 [data-blueprint-primitive="text"][data-blueprint-state="muted"] {

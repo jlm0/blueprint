@@ -1,16 +1,15 @@
 [data-blueprint-primitive="loading-mark"] {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   color: var(--app-color-primary);
 }
 
-/* Arc spinner: a faint full track with a round-capped sweep on a steady beat. */
 .loading-mark__arc {
   display: block;
-  width: 26px;
-  height: 26px;
+  width: var(--app-size-icon-lg);
+  height: var(--app-size-icon-lg);
   animation: bp-loading-mark-spin 880ms linear infinite;
 }
 
@@ -21,7 +20,7 @@
 }
 
 .loading-mark__track {
-  stroke: color-mix(in srgb, currentColor 16%, transparent);
+  stroke: var(--app-color-border);
 }
 
 .loading-mark__sweep {
@@ -30,18 +29,15 @@
   stroke-linecap: round;
 }
 
-/* Surface tone: the dark mark for filled contexts, kept reviewable on the
-   dark canvas by a light track and a faint silhouette halo. */
 [data-blueprint-primitive="loading-mark"][data-blueprint-state="surface"] {
-  color: var(--app-color-surface);
+  padding: var(--app-space-2);
+  border-radius: var(--app-radius-full);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-primary);
 }
 
 [data-blueprint-primitive="loading-mark"][data-blueprint-state="surface"] .loading-mark__track {
-  stroke: color-mix(in srgb, var(--app-color-foreground) 12%, transparent);
-}
-
-[data-blueprint-primitive="loading-mark"][data-blueprint-state="surface"] .loading-mark__arc {
-  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--app-color-foreground) 30%, transparent));
+  stroke: transparent;
 }
 
 @keyframes bp-loading-mark-spin {
@@ -50,7 +46,6 @@
   }
 }
 
-/* Reduced motion: the sweep rests as a static arc instead of spinning. */
 @media (prefers-reduced-motion: reduce) {
   .loading-mark__arc {
     animation: none;

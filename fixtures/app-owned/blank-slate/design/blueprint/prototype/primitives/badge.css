@@ -1,71 +1,61 @@
-/* Compact status pill: tinted well, hue-matched hairline, glowing status
-   dot, and a micro label — the text always carries the meaning. */
 [data-blueprint-primitive="badge"] {
   display: inline-flex;
-  min-height: 21px;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: var(--app-space-1);
   box-sizing: border-box;
-  margin: 10px 0 0 10px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 12%, transparent);
-  border-radius: var(--app-radius-sm);
-  color: var(--app-color-foreground);
-  background: color-mix(in srgb, var(--app-color-foreground) 9%, transparent);
+  padding: 2px var(--app-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-full);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-primary);
   font: var(--app-type-label);
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .badge__dot {
-  width: 5px;
-  height: 5px;
+  display: none;
+  width: 6px;
+  height: 6px;
   flex: none;
-  border-radius: 999px;
-  background: currentColor;
-  box-shadow: 0 0 5px color-mix(in srgb, currentColor 55%, transparent);
+  border-radius: var(--app-radius-full);
 }
 
-/* Semantic tones: each hue owns well, hairline, and text. */
 [data-blueprint-primitive="badge"][data-blueprint-variant="secondary"] {
-  border-color: color-mix(in srgb, var(--app-color-secondary) 24%, transparent);
-  color: color-mix(in srgb, var(--app-color-secondary) 90%, var(--app-color-foreground));
-  background: color-mix(in srgb, var(--app-color-secondary) 10%, transparent);
+  color: var(--app-color-on-secondary);
+  background: var(--app-color-secondary);
 }
 
-[data-blueprint-primitive="badge"][data-blueprint-variant="tonal"] {
-  border-color: color-mix(in srgb, var(--app-color-accent) 22%, transparent);
-  color: color-mix(in srgb, var(--app-color-accent) 88%, var(--app-color-foreground));
-  background: color-mix(in srgb, var(--app-color-accent) 12%, transparent);
+[data-blueprint-primitive="badge"][data-blueprint-variant="tonal"],
+[data-blueprint-primitive="badge"][data-blueprint-variant="accent"],
+[data-blueprint-primitive="badge"][data-blueprint-variant="success"] {
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface-muted);
 }
 
-[data-blueprint-primitive="badge"][data-blueprint-variant="accent"] {
-  border-color: color-mix(in srgb, var(--app-color-accent) 34%, transparent);
-  color: color-mix(in srgb, var(--app-color-accent) 82%, var(--app-color-foreground));
-  background: color-mix(in srgb, var(--app-color-accent) 16%, transparent);
+[data-blueprint-primitive="badge"][data-blueprint-variant="accent"],
+[data-blueprint-primitive="badge"][data-blueprint-variant="success"] {
+  border-color: var(--app-color-border);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-primitive="badge"][data-blueprint-variant="tonal"] .badge__dot,
+[data-blueprint-primitive="badge"][data-blueprint-variant="accent"] .badge__dot {
+  display: block;
+  background: var(--app-color-accent);
+}
+
+[data-blueprint-primitive="badge"][data-blueprint-variant="success"] .badge__dot {
+  display: block;
+  background: var(--app-color-success);
 }
 
 [data-blueprint-primitive="badge"][data-blueprint-variant="destructive"] {
-  border-color: color-mix(in srgb, var(--app-color-destructive) 26%, transparent);
-  color: color-mix(in srgb, var(--app-color-destructive) 88%, var(--app-color-foreground));
-  background: color-mix(in srgb, var(--app-color-destructive) 12%, transparent);
-}
-
-[data-blueprint-primitive="badge"][data-blueprint-variant="success"] {
-  border-color: color-mix(in srgb, var(--app-color-success) 26%, transparent);
-  color: color-mix(in srgb, var(--app-color-success) 88%, var(--app-color-foreground));
-  background: color-mix(in srgb, var(--app-color-success) 12%, transparent);
+  color: var(--app-color-on-destructive);
+  background: var(--app-color-destructive);
 }
 
 [data-blueprint-primitive="badge"][data-blueprint-variant="outline"] {
-  border-color: color-mix(in srgb, var(--app-color-foreground) 24%, transparent);
-  color: color-mix(in srgb, var(--app-color-foreground) 84%, transparent);
+  border-color: var(--app-color-border-strong);
+  color: var(--app-color-foreground);
   background: transparent;
-}
-
-[data-blueprint-primitive="badge"][data-blueprint-variant="outline"] .badge__dot {
-  box-shadow: none;
 }

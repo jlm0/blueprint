@@ -70,7 +70,7 @@ export interface TokenGroup {
 export interface DesignToken {
   id: string;
   name: string;
-  type: 'color' | 'space' | 'radius' | 'typography' | 'shadow' | 'motion';
+  type: 'color' | 'space' | 'size' | 'radius' | 'typography' | 'shadow' | 'motion';
   value: string;
   description: string;
   styleRef: string;

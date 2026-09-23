@@ -1202,7 +1202,8 @@ body {
   overflow: hidden;
 }
 
-.token-row-space .token-sample {
+.token-row-space .token-sample,
+.token-row-size .token-sample {
   max-width: 28px;
   height: 8px;
   justify-self: center;

@@ -24,7 +24,7 @@ export const BASE_PRIMITIVE_CONTRACT: BasePrimitiveContractEntry[] = [
   {
     id: 'button',
     stateSets: [
-      { id: 'variant', states: ['primary', 'secondary', 'tonal', 'outline', 'ghost', 'destructive', 'accent', 'success', 'gradient', 'link'] },
+      { id: 'variant', states: ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'] },
       { id: 'interaction', states: ['normal', 'loading', 'disabled'] }
     ]
   },

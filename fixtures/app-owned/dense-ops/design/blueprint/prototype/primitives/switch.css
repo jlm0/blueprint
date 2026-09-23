@@ -1,91 +1,56 @@
 [data-blueprint-primitive="switch"] {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  box-sizing: border-box;
-  padding: 0 var(--app-space-control-x);
+  gap: var(--app-space-2);
   color: var(--app-color-foreground);
   font: var(--app-type-body);
 }
 
-/* 42x24 track with a bordered well and an elevated 18px thumb. */
 .switch__track {
   position: relative;
   display: inline-block;
-  width: 42px;
-  height: 24px;
+  width: 36px;
+  height: 20px;
   flex: none;
-  box-sizing: border-box;
-  border: 1px solid color-mix(in srgb, var(--app-color-muted) 34%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--app-color-muted) 26%, transparent);
-  transition:
-    background-color var(--app-motion-state),
-    border-color var(--app-motion-state);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-border-strong);
+  transition: background-color var(--app-motion-state);
 }
 
 .switch__thumb {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--app-color-foreground);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  width: var(--app-size-icon-sm);
+  height: var(--app-size-icon-sm);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface);
+  box-shadow: var(--app-shadow-sm);
   transition:
     transform var(--app-motion-state),
-    background-color var(--app-motion-state),
-    box-shadow var(--app-motion-state);
+    background-color var(--app-motion-state);
 }
 
-/* On: primary track; thumb flips to the dark on-primary role. */
-[data-blueprint-primitive="switch"][data-blueprint-state="on"] .switch__track {
-  border-color: var(--app-color-primary);
+[data-blueprint-primitive="switch"][data-blueprint-state="on"] .switch__track,
+[data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] .switch__track {
   background: var(--app-color-primary);
 }
 
 [data-blueprint-primitive="switch"][data-blueprint-state="on"] .switch__thumb,
 [data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] .switch__thumb {
-  transform: translateX(18px);
+  background: var(--app-color-on-primary);
+  transform: translateX(16px);
 }
 
-[data-blueprint-primitive="switch"][data-blueprint-state="on"] .switch__thumb {
-  background: var(--app-color-background);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+[data-blueprint-primitive="switch"]:focus-visible .switch__track {
+  outline: 2px solid var(--app-color-focus-ring);
+  outline-offset: 2px;
 }
 
 [data-blueprint-primitive="switch"][data-blueprint-state="disabled"],
 [data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] {
   cursor: not-allowed;
-}
-
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled"] .switch__track {
-  border-color: color-mix(in srgb, var(--app-color-muted) 18%, transparent);
-  background: color-mix(in srgb, var(--app-color-muted) 12%, transparent);
-}
-
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled"] .switch__thumb {
-  background: color-mix(in srgb, var(--app-color-muted) 55%, transparent);
-  box-shadow: none;
-}
-
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled"] .switch__label,
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] .switch__label {
-  color: color-mix(in srgb, var(--app-color-muted) 70%, transparent);
-}
-
-/* Disabled-on: engaged position in a muted track. */
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] .switch__track {
-  border-color: color-mix(in srgb, var(--app-color-muted) 30%, transparent);
-  background: color-mix(in srgb, var(--app-color-muted) 38%, transparent);
-}
-
-[data-blueprint-primitive="switch"][data-blueprint-state="disabled-on"] .switch__thumb {
-  background: color-mix(in srgb, var(--app-color-background) 80%, transparent);
-  box-shadow: none;
+  opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: reduce) {

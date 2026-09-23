@@ -1,75 +1,49 @@
-/* Chevron squircle: edge-lit quiet well in the secondary tone. */
 [data-blueprint-primitive="back-button"] {
   display: inline-flex;
-  width: 40px;
-  height: 40px;
+  width: var(--app-size-control-md);
+  height: var(--app-size-control-md);
   align-items: center;
   justify-content: center;
-  margin: 10px 0 0 10px;
+  box-sizing: border-box;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--app-color-secondary) 18%, transparent);
+  border: 1px solid var(--app-color-border-strong);
   border-radius: var(--app-radius-lg);
   color: var(--app-color-foreground);
-  background: color-mix(in srgb, var(--app-color-secondary) 14%, transparent);
+  background: var(--app-color-surface);
   cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
-    0 1px 2px rgba(0, 0, 0, 0.24);
-  transition:
-    transform var(--app-motion-press),
-    color var(--app-motion-state),
-    border-color var(--app-motion-state),
-    background-color var(--app-motion-state),
-    box-shadow var(--app-motion-press);
 }
 
 [data-blueprint-primitive="back-button"] svg {
   display: block;
-  width: 19px;
-  height: 19px;
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
 }
 
 [data-blueprint-primitive="back-button"]:not([data-blueprint-state="disabled"]):hover {
-  border-color: color-mix(in srgb, var(--app-color-secondary) 28%, transparent);
-  background: color-mix(in srgb, var(--app-color-secondary) 20%, transparent);
-}
-
-[data-blueprint-primitive="back-button"]:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--app-color-background),
-    0 0 0 4px color-mix(in srgb, var(--app-color-accent) 70%, transparent),
-    0 0 0 8px color-mix(in srgb, var(--app-color-accent) 16%, transparent);
+  background-image: linear-gradient(var(--app-color-hover), var(--app-color-hover));
 }
 
 [data-blueprint-primitive="back-button"]:not([data-blueprint-state="disabled"]):active {
-  transform: scale(0.94);
+  background-image: linear-gradient(var(--app-color-pressed), var(--app-color-pressed));
 }
 
-/* Small size steps the radius down one ladder stop with the glyph. */
+[data-blueprint-primitive="back-button"]:focus-visible {
+  outline: 2px solid var(--app-color-focus-ring);
+  outline-offset: 2px;
+}
+
 [data-blueprint-primitive="back-button"][data-blueprint-state="sm"] {
-  width: 32px;
-  height: 32px;
+  width: var(--app-size-control-sm);
+  height: var(--app-size-control-sm);
   border-radius: var(--app-radius-md);
 }
 
 [data-blueprint-primitive="back-button"][data-blueprint-state="sm"] svg {
-  width: 16px;
-  height: 16px;
+  width: var(--app-size-icon-sm);
+  height: var(--app-size-icon-sm);
 }
 
-/* Disabled: hollow muted well, no lighting, no interaction. */
 [data-blueprint-primitive="back-button"][data-blueprint-state="disabled"] {
-  border-color: color-mix(in srgb, var(--app-color-muted) 14%, transparent);
-  color: color-mix(in srgb, var(--app-color-muted) 72%, transparent);
-  background: color-mix(in srgb, var(--app-color-muted) 6%, transparent);
   cursor: not-allowed;
-  box-shadow: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-blueprint-primitive="back-button"] {
-    transition: none;
-  }
+  opacity: 0.5;
 }

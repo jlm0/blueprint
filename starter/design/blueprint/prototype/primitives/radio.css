@@ -1,90 +1,53 @@
-/* Single-choice anatomy: 20px ring with an inset dot, mirroring the checkbox
-   edge language so selection controls read as one family. */
 [data-blueprint-primitive="radio"] {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  box-sizing: border-box;
-  padding: 0 var(--app-space-control-x);
+  gap: var(--app-space-2);
   color: var(--app-color-foreground);
   font: var(--app-type-body);
 }
 
 .radio__box {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: var(--app-size-icon-sm);
+  height: var(--app-size-icon-sm);
   flex: none;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  border: 1px solid color-mix(in srgb, var(--app-color-foreground) 24%, transparent);
-  border-radius: 999px;
+  border: 1px solid var(--app-color-border-strong);
+  border-radius: var(--app-radius-full);
   background: var(--app-color-surface);
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.22);
-  transition:
-    border-color var(--app-motion-state),
-    box-shadow var(--app-motion-state);
+  transition: border-color var(--app-motion-state);
 }
 
 .radio__dot {
-  width: 10px;
-  height: 10px;
-  flex: none;
-  border-radius: 999px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--app-radius-full);
   background: var(--app-color-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
   opacity: 0;
-  transform: scale(0.55);
-  transition:
-    opacity var(--app-motion-state),
-    transform var(--app-motion-state);
+  transition: opacity var(--app-motion-state);
 }
 
-[data-blueprint-primitive="radio"]:not([data-blueprint-state="disabled"]):not([data-blueprint-state="disabled-on"]):hover .radio__box {
-  border-color: color-mix(in srgb, var(--app-color-foreground) 44%, transparent);
-}
-
-/* On: primary ring with a committed dot; the fill stays in the mark. */
-[data-blueprint-primitive="radio"][data-blueprint-state="on"] .radio__box {
+[data-blueprint-primitive="radio"][data-blueprint-state="on"] .radio__box,
+[data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] .radio__box {
   border-color: var(--app-color-primary);
-  box-shadow:
-    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
-    0 0 0 3px color-mix(in srgb, var(--app-color-primary) 16%, transparent);
 }
 
 [data-blueprint-primitive="radio"][data-blueprint-state="on"] .radio__dot,
 [data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] .radio__dot {
   opacity: 1;
-  transform: scale(1);
+}
+
+[data-blueprint-primitive="radio"]:focus-visible .radio__box {
+  outline: 2px solid var(--app-color-focus-ring);
+  outline-offset: 2px;
 }
 
 [data-blueprint-primitive="radio"][data-blueprint-state="disabled"],
 [data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] {
   cursor: not-allowed;
-}
-
-[data-blueprint-primitive="radio"][data-blueprint-state="disabled"] .radio__box {
-  border-color: color-mix(in srgb, var(--app-color-muted) 24%, transparent);
-  background: color-mix(in srgb, var(--app-color-muted) 5%, transparent);
-  box-shadow: none;
-}
-
-[data-blueprint-primitive="radio"][data-blueprint-state="disabled"] .radio__label,
-[data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] .radio__label {
-  color: color-mix(in srgb, var(--app-color-muted) 70%, transparent);
-}
-
-/* Disabled-on keeps a legible committed mark in a muted well. */
-[data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] .radio__box {
-  border-color: color-mix(in srgb, var(--app-color-muted) 18%, transparent);
-  background: color-mix(in srgb, var(--app-color-muted) 30%, transparent);
-  box-shadow: none;
-}
-
-[data-blueprint-primitive="radio"][data-blueprint-state="disabled-on"] .radio__dot {
-  background: color-mix(in srgb, var(--app-color-background) 82%, transparent);
-  box-shadow: none;
+  opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: reduce) {

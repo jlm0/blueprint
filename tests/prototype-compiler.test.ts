@@ -210,8 +210,8 @@ describe('canonical prototype compiler', () => {
     assert.match(compiled.html, /data-blueprint-component="site-nav"/);
     assert.match(compiled.html, /data-blueprint-component="cta-band"/);
     assert.match(compiled.html, /Start building/);
-    const badgeCount = (compiled.html.match(/data-blueprint-primitive="badge"/g) ?? []).length;
-    assert.equal(badgeCount, 13, `home should render 13 badge specimens, saw ${badgeCount}`);
+    const badgeCount = (compiled.html.match(/<\w[^>]*\sdata-blueprint-primitive="badge"/g) ?? []).length;
+    assert.equal(badgeCount, 5, `home should render 5 badge specimens, saw ${badgeCount}`);
     assert.match(
       compiled.html,
       /data-blueprint-component="site-footer"[\s\S]*data-blueprint-primitive="badge"/

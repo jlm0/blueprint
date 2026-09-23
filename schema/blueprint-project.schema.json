@@ -119,7 +119,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "type": { "enum": ["color", "space", "radius", "typography", "shadow", "motion"] },
+        "type": { "enum": ["color", "space", "size", "radius", "typography", "shadow", "motion"] },
         "value": { "type": "string" },
         "description": { "type": "string" },
         "styleRef": { "type": "string" }

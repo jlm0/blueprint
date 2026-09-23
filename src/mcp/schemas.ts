@@ -331,7 +331,7 @@ const resolvedTokenSchema = z
     groupId: z.string(),
     tokenId: z.string(),
     name: z.string(),
-    type: z.enum(['color', 'space', 'radius', 'typography', 'shadow', 'motion']),
+    type: z.enum(['color', 'space', 'size', 'radius', 'typography', 'shadow', 'motion']),
     value: z.string(),
     description: z.string(),
     styleRef: z.string()

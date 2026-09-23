@@ -5,6 +5,7 @@ import { lintLocalStyleValues } from '../src/core/style-lint';
 import { createReadinessReport, validateProject } from '../src/core/validate';
 
 const denseRoot = 'fixtures/app-owned/dense-ops/design/blueprint';
+const starterRoot = 'starter/design/blueprint';
 const screenCss = 'prototype/screens/service-health.css';
 
 describe('local style value lint', () => {
@@ -36,6 +37,16 @@ describe('local style value lint', () => {
     const readiness = createReadinessReport(bundle);
     assert.equal(readiness.tier, 'blocked');
     assert.ok(readiness.blockers.some(item => item.path === `screen.service-health.localValues.${screenCss}.color`));
+  });
+
+  it('holds canonical primitive CSS to the same token-only rule', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    assert.deepEqual(lintLocalStyleValues(bundle), []);
+    bundle.prototypeSourceContents['prototype/primitives/button.css'] += '\n.drift { color: #ffffff; gap: 8px; }';
+    assert.deepEqual(
+      lintLocalStyleValues(bundle).map(issue => [issue.boundary, issue.property, issue.tokenStyleRef]),
+      [['primitive.button', 'color', undefined], ['primitive.button', 'gap', '--app-space-2']]
+    );
   });
 
   it('accepts literals declared in prototype.localValueExceptions', async () => {
