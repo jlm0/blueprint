@@ -24,6 +24,7 @@
 
 [data-blueprint-primitive="card"] {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--app-space-2);
   box-sizing: border-box;
   padding: var(--app-space-4);

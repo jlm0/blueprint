@@ -909,14 +909,17 @@ function measureCanonicalCellSize(
   done: (size: { width: number; height: number }) => void
 ): void {
   const probe = document.createElement('iframe');
-  probe.style.cssText = `position:absolute;left:-10000px;top:0;width:${fallbackWidth}px;height:88px;border:0;visibility:hidden;`;
+  // A 1px-tall probe lets the document's scroll size report the real content
+  // extent, including overlays and line boxes that spill past the root.
+  probe.style.cssText = `position:absolute;left:-10000px;top:0;width:${fallbackWidth}px;height:1px;border:0;visibility:hidden;`;
   probe.setAttribute('aria-hidden', 'true');
   probe.addEventListener('load', () => {
     try {
+      const documentRoot = probe.contentDocument?.documentElement;
       const control = probe.contentDocument?.querySelector<HTMLElement>('[data-blueprint-primitive]') ?? probe.contentDocument?.body;
       const rect = control?.getBoundingClientRect();
-      const measuredWidth = rect ? Math.ceil(rect.width) + 24 : fallbackWidth;
-      const measuredHeight = rect ? Math.ceil(rect.height) + 24 : 88;
+      const measuredWidth = rect ? Math.max(Math.ceil(rect.width) + 24, documentRoot?.scrollWidth ?? 0) : fallbackWidth;
+      const measuredHeight = rect ? Math.max(Math.ceil(rect.height) + 24, documentRoot?.scrollHeight ?? 0) : 88;
       done({
         width: Math.max(fallbackWidth, Math.min(520, measuredWidth)),
         height: Math.min(280, Math.max(40, measuredHeight))

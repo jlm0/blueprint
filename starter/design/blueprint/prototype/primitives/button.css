@@ -52,6 +52,11 @@
   text-underline-offset: 4px;
 }
 
+[data-blueprint-primitive="button"][data-blueprint-variant="link"] .button__spinner {
+  width: 1em;
+  height: 1em;
+}
+
 .button__label {
   display: inline-flex;
   align-items: center;

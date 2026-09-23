@@ -1,5 +1,6 @@
 [data-blueprint-primitive="input"] {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   gap: var(--app-space-2);
   color: var(--app-color-foreground);

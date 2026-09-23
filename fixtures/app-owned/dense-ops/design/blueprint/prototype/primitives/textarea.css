@@ -1,5 +1,6 @@
 [data-blueprint-primitive="textarea"] {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   gap: var(--app-space-2);
   color: var(--app-color-foreground);
@@ -11,8 +12,7 @@
 }
 
 .textarea__control {
-  position: relative;
-  display: block;
+  display: grid;
   box-sizing: border-box;
   border: 1px solid var(--app-color-border-strong);
   border-radius: var(--app-radius-md);
@@ -22,13 +22,21 @@
     box-shadow var(--app-motion-state);
 }
 
-.textarea__field {
-  display: block;
+.textarea__field,
+.textarea__placeholder,
+.textarea__value {
+  grid-area: 1 / 1;
   box-sizing: border-box;
+  min-width: 0;
+  padding: var(--app-space-2) var(--app-space-3);
+  overflow-wrap: anywhere;
+}
+
+.textarea__field {
+  align-self: stretch;
   width: 100%;
   min-height: 88px;
   margin: 0;
-  padding: var(--app-space-2) var(--app-space-3);
   border: 0;
   outline: none;
   color: transparent;
@@ -40,10 +48,7 @@
 
 .textarea__placeholder,
 .textarea__value {
-  position: absolute;
-  top: var(--app-space-2);
-  right: var(--app-space-3);
-  left: var(--app-space-3);
+  align-self: start;
   color: var(--app-color-muted);
   pointer-events: none;
 }

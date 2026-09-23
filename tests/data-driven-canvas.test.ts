@@ -621,6 +621,55 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('fits every canonical primitive specimen inside its review cell and root', async () => {
+    for (const root of [starterRoot, blankSlateRoot]) {
+      const bundle = await loadProjectFromFs(root);
+      const page = await openPrimitiveBoard(bundle);
+
+      try {
+        await page.waitForFunction(() =>
+          [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-primitive-iframe')].every(frame => frame.style.height !== '')
+        );
+        const problems: string[] = [];
+        for (const handle of await page.locator('iframe.canonical-primitive-iframe').elementHandles()) {
+          const title = await handle.getAttribute('title');
+          const frame = await handle.contentFrame();
+          assert.ok(frame, `${title} should expose its document`);
+          await frame.waitForLoadState();
+          const issues = await frame.evaluate(() => {
+            const found: string[] = [];
+            const doc = document.documentElement;
+            if (doc.scrollWidth > innerWidth + 1 || doc.scrollHeight > innerHeight + 1) {
+              found.push(`document ${doc.scrollWidth}x${doc.scrollHeight} exceeds cell ${innerWidth}x${innerHeight}`);
+            }
+            const primitive = document.querySelector('[data-blueprint-primitive]');
+            if (!primitive) {
+              return found;
+            }
+            const bounds = primitive.getBoundingClientRect();
+            for (const element of primitive.querySelectorAll('*')) {
+              let clipped = false;
+              for (let ancestor = element.parentElement; ancestor && ancestor !== primitive.parentElement; ancestor = ancestor.parentElement) {
+                if (getComputedStyle(ancestor).overflowX !== 'visible') {
+                  clipped = true;
+                }
+              }
+              const rect = element.getBoundingClientRect();
+              if (!clipped && rect.width > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)) {
+                found.push(`${element.tagName.toLowerCase()}.${element.className} spills ${Math.round(Math.max(bounds.left - rect.left, rect.right - bounds.right))}px past the root`);
+              }
+            }
+            return found;
+          });
+          problems.push(...issues.map(issue => `${title}: ${issue}`));
+        }
+        assert.deepEqual(problems, [], `${bundle.manifest.project.id} primitive specimens should not overflow`);
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it('groups platform-tagged primitives into shared, mobile, and web zones', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
     const page = await openPrimitiveBoard(bundle);
