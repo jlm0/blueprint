@@ -132,6 +132,9 @@ interface ForwardedInvocationAttributes {
   section?: string;
 }
 
+const SLOT_AUTHOR_ATTRIBUTE = 'data-blueprint-slot-author';
+const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+
 export const PROTOTYPE_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'none'",
@@ -319,8 +322,12 @@ function compileBoundaryFragment(
   addStyleRefs(context, boundary.prototype.styles);
   const source = requireSource(context.bundle, boundary.prototype.source, `${currentBoundaryId} prototype source`);
   assertNoExecutableMarkup(source, boundary.prototype.source);
+  if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
+    throw new Error(`Prototype source "${boundary.prototype.source}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute.`);
+  }
   let fragment = rewriteHtmlAssetRefs(context, source, boundary.prototype.source);
   fragment = rewriteNavigationAttributes(fragment, boundary.prototype.source);
+  fragment = markSlotAuthor(fragment, `${boundary.kind}:${boundary.id}`);
   fragment = applySlots(fragment, invocationChildren, boundary.prototype.slots ?? [], currentBoundaryId);
   fragment = selectFragmentState(fragment, state);
   fragment = applyInvocationAttributes(fragment, invocationAttributes, boundary);
@@ -332,18 +339,20 @@ function compileBoundaryFragment(
       break;
     }
     const useAttributes = parseUseAttributes(use.attributes, currentBoundaryId);
+    const slotAuthor = useAttributes.get(SLOT_AUTHOR_ATTRIBUTE);
+    useAttributes.delete(SLOT_AUTHOR_ATTRIBUTE);
     const kind = requiredParsedUseAttribute(useAttributes, 'kind', currentBoundaryId);
     if (kind !== 'primitive' && kind !== 'component') {
       throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
     }
     const id = requiredParsedUseAttribute(useAttributes, 'ref', currentBoundaryId);
-    assertDeclaredUse(boundary, { kind, id });
+    const owner = creditedBoundary(context.bundle, boundary, slotAuthor, { kind, id });
     const target = resolveBoundary(context.bundle, { kind, id });
     const targetState = resolveState(target, useAttributes.get('state'));
     const forwardedAttributes = resolveForwardedInvocationAttributes(useAttributes, target);
     const targetBoundaryId = boundaryId(context.bundle, target);
     context.observedUses.push({
-      sourceBoundaryId: currentBoundaryId,
+      sourceBoundaryId: boundaryId(context.bundle, owner),
       targetBoundaryId,
       kind,
       id,
@@ -358,6 +367,53 @@ function compileBoundaryFragment(
     fragment = applySectionMetadata(context.bundle, boundary, fragment);
   }
   return applyBoundaryMetadata(fragment, boundary, currentBoundaryId, state);
+}
+
+/**
+ * Tags every `<blueprint-use>` nested inside another use with the boundary whose
+ * source wrote it, so slot content keeps its author after it moves into a container.
+ */
+function markSlotAuthor(markup: string, author: string, nested = false): string {
+  let output = '';
+  let rest = markup;
+  for (let use = findFirstUseElement(rest); use; use = findFirstUseElement(rest)) {
+    const children = /<blueprint-use\b/i.test(use.children) ? markSlotAuthor(use.children, author, true) : use.children;
+    const attributes = nested ? ` ${SLOT_AUTHOR_ATTRIBUTE}="${escapeAttribute(author)}"${use.attributes}` : use.attributes;
+    const marked = nested || children !== use.children
+      ? `<blueprint-use${attributes}>${children}</blueprint-use>`
+      : rest.slice(use.start, use.end);
+    output += `${rest.slice(0, use.start)}${marked}`;
+    rest = rest.slice(use.end);
+  }
+  return `${output}${rest}`;
+}
+
+/**
+ * A container that declares a slotted reusable always renders it, so it keeps the
+ * credit; otherwise the reusable belongs to the boundary that wrote the slot content.
+ */
+function creditedBoundary(
+  bundle: BlueprintProjectBundle,
+  container: SourceBoundary,
+  slotAuthor: string | undefined,
+  use: PrototypeUseDeclaration
+): SourceBoundary {
+  if (!slotAuthor || declaresUse(container, use)) {
+    assertDeclaredUse(container, use);
+    return container;
+  }
+  const separator = slotAuthor.indexOf(':');
+  const author = resolveBoundary(bundle, {
+    kind: slotAuthor.slice(0, separator) as PrototypeCompileTarget['kind'],
+    id: slotAuthor.slice(separator + 1)
+  });
+  if (!declaresUse(author, use)) {
+    throw new Error(
+      `${author.kind} "${author.id}" renders undeclared ${use.kind} "${use.id}" inside ${container.kind} "${container.id}". ` +
+      `Declare it on ${author.kind} "${author.id}", or on ${container.kind} "${container.id}" if every instance contains it.`
+    );
+  }
+  return author;
 }
 
 /**
@@ -607,23 +663,57 @@ function applySlots(template: string, invocationChildren: string, declaredSlots:
   return result;
 }
 
+/** Slot attributes inside a nested `<blueprint-use>` belong to that use, so the scan skips over it. */
 function collectInvocationSlots(children: string): Map<string, string> {
   const slots = new Map<string, string>();
-  let remaining = children;
-  const elementPattern = /<([a-zA-Z][\w:-]*)([^>]*\bslot\s*=\s*(['"])([^'"]+)\3[^>]*)>([\s\S]*?)<\/\1\s*>/gi;
-  remaining = remaining.replace(elementPattern, (full, _tag: string, _attributes: string, _quote: string, name: string) => {
-    appendSlot(slots, name, stripSlotAttribute(full));
-    return '';
-  });
-  const selfClosingPattern = /<([a-zA-Z][\w:-]*)([^>]*\bslot\s*=\s*(['"])([^'"]+)\3[^>]*)\s*\/?>/gi;
-  remaining = remaining.replace(selfClosingPattern, (full, _tag: string, attributes: string, _quote: string, name: string) => {
-    appendSlot(slots, name, full.replace(/\s+slot\s*=\s*(['"])[^'"]+\1/i, ''));
-    return '';
-  });
+  const openPattern = /<([a-zA-Z][\w:-]*)/g;
+  let remaining = '';
+  let cursor = 0;
+  for (let open = openPattern.exec(children); open; open = openPattern.exec(children)) {
+    const tagName = open[1];
+    if (tagName.toLowerCase() === 'blueprint-use') {
+      openPattern.lastIndex = open.index + (findFirstUseElement(children.slice(open.index))?.end ?? 1);
+      continue;
+    }
+    const openEnd = findTagEnd(children, open.index);
+    const name = /\sslot\s*=\s*(['"])([^'"]+)\1/i.exec(children.slice(open.index, openEnd + 1))?.[2];
+    if (!name) {
+      openPattern.lastIndex = openEnd + 1;
+      continue;
+    }
+    const end = findElementEnd(children, tagName, open.index, openEnd);
+    appendSlot(slots, name, stripSlotAttribute(children.slice(open.index, end)));
+    remaining += children.slice(cursor, open.index);
+    cursor = end;
+    openPattern.lastIndex = end;
+  }
+  remaining += children.slice(cursor);
   if (remaining.trim()) {
     appendSlot(slots, 'default', remaining.trim());
   }
   return slots;
+}
+
+function findElementEnd(html: string, tagName: string, openStart: number, openEnd: number): number {
+  if (VOID_ELEMENTS.has(tagName.toLowerCase()) || /\/\s*>$/.test(html.slice(openStart, openEnd + 1))) {
+    return openEnd + 1;
+  }
+  const tagPattern = new RegExp(`<(/?)${escapeRegExp(tagName)}(?=[\\s/>])`, 'gi');
+  tagPattern.lastIndex = openEnd + 1;
+  let depth = 1;
+  for (let match = tagPattern.exec(html); match; match = tagPattern.exec(html)) {
+    const tagEnd = findTagEnd(html, match.index);
+    if (match[1]) {
+      depth -= 1;
+      if (depth === 0) {
+        return tagEnd + 1;
+      }
+    } else if (!/\/\s*>$/.test(html.slice(match.index, tagEnd + 1))) {
+      depth += 1;
+    }
+    tagPattern.lastIndex = tagEnd + 1;
+  }
+  return openEnd + 1;
 }
 
 function appendSlot(slots: Map<string, string>, name: string, content: string): void {
@@ -649,12 +739,22 @@ function replaceDataSlotContents(template: string, name: string, content: string
     return template;
   }
   const escapedName = escapeRegExp(name);
-  const paired = new RegExp(`(<([a-zA-Z][\\w:-]*)\\b[^>]*\\bdata-blueprint-slot\\s*=\\s*(['"])${escapedName}\\3[^>]*>)[\\s\\S]*?(<\\/\\2\\s*>)`, 'gi');
-  const selfClosing = new RegExp(`<([a-zA-Z][\\w:-]*)\\b[^>]*\\bdata-blueprint-slot\\s*=\\s*(['"])${escapedName}\\2[^>]*\\/>`, 'gi');
-  // Replacement functions (not strings) so `$`-sequences in app content (e.g. "$4.28M") stay literal.
-  return template
-    .replace(paired, (_match, open: string, _tag: string, _quote: string, close: string) => `${open}${content}${close}`)
-    .replace(selfClosing, () => content);
+  const openPattern = new RegExp(`<([a-zA-Z][\\w:-]*)\\b[^>]*\\bdata-blueprint-slot\\s*=\\s*(['"])${escapedName}\\2[^>]*>`, 'gi');
+  let result = '';
+  let cursor = 0;
+  for (let open = openPattern.exec(template); open; open = openPattern.exec(template)) {
+    const openEnd = open.index + open[0].length - 1;
+    const end = findElementEnd(template, open[1], open.index, openEnd);
+    if (end === openEnd + 1) {
+      result += `${template.slice(cursor, open.index)}${/\/\s*>$/.test(open[0]) ? content : open[0]}`;
+    } else {
+      const close = template.slice(template.lastIndexOf('<', end - 1), end);
+      result += `${template.slice(cursor, openEnd + 1)}${content}${close}`;
+    }
+    cursor = end;
+    openPattern.lastIndex = end;
+  }
+  return `${result}${template.slice(cursor)}`;
 }
 
 function replaceDefaultSlotElements(template: string, content: string | undefined): string {
@@ -862,8 +962,12 @@ function isSafePrototypeHref(href: string): boolean {
   );
 }
 
+function declaresUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): boolean {
+  return boundary.uses.some(dependency => dependency.kind === use.kind && dependency.id === use.id);
+}
+
 function assertDeclaredUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): void {
-  if (!boundary.uses.some(dependency => dependency.kind === use.kind && dependency.id === use.id)) {
+  if (!declaresUse(boundary, use)) {
     throw new Error(`${boundary.kind} "${boundary.id}" renders undeclared ${use.kind} "${use.id}".`);
   }
 }

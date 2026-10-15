@@ -203,6 +203,94 @@ describe('canonical prototype compiler', () => {
     );
   });
 
+  it('credits slot content to the boundary that wrote it unless the container declares it', async () => {
+    const original = await loadProjectFromFs(fixtureRoot);
+    const dialogWithBadge =
+      '<main><blueprint-use kind="primitive" ref="alert-dialog" state="neutral"><div slot="message"><blueprint-use kind="primitive" ref="badge" state="default"><span slot="label">Beta</span></blueprint-use></div></blueprint-use></main>';
+
+    const authored = structuredClone(original);
+    focusChat(authored, dialogWithBadge, [
+      { kind: 'primitive', id: 'alert-dialog', reason: 'confirmation' },
+      { kind: 'primitive', id: 'badge', reason: 'status inside the dialog message' }
+    ]);
+    const compiled = compilePrototypeDocument({ bundle: authored, target: { kind: 'screen', id: 'chat' } });
+    assert.deepEqual(
+      compiled.observedUses.map(use => `${use.sourceBoundaryId} -> ${use.targetBoundaryId}`),
+      ['mira-ai/screen/chat -> mira-ai/primitive/alert-dialog', 'mira-ai/screen/chat -> mira-ai/primitive/badge']
+    );
+    assert.match(compiled.html, /data-blueprint-slot="message"><div><span data-blueprint-primitive="badge"[\s\S]*?Beta/);
+    assert.doesNotMatch(compiled.html, /data-blueprint-slot-author/);
+
+    const undeclared = structuredClone(original);
+    focusChat(undeclared, dialogWithBadge, [{ kind: 'primitive', id: 'alert-dialog', reason: 'confirmation' }]);
+    assert.throws(
+      () => compilePrototypeDocument({ bundle: undeclared, target: { kind: 'screen', id: 'chat' } }),
+      /screen "chat" renders undeclared primitive "badge" inside primitive "alert-dialog"\. Declare it on screen "chat"/
+    );
+
+    const containerOwned = structuredClone(undeclared);
+    const dialog = containerOwned.primitives.primitives.find(primitive => primitive.id === 'alert-dialog');
+    assert.ok(dialog);
+    dialog.uses = [...(dialog.uses ?? []), { kind: 'primitive', id: 'badge', reason: 'every dialog carries a badge' }];
+    const owned = compilePrototypeDocument({ bundle: containerOwned, target: { kind: 'screen', id: 'chat' } });
+    assert.ok(owned.observedUses.some(use => use.sourceBoundaryId === 'mira-ai/primitive/alert-dialog' && use.id === 'badge'));
+  });
+
+  it('keeps the author credit when a component forwards slot content into its own reusable', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const promptCard = bundle.components.components.find(component => component.id === 'prompt-card');
+    assert.ok(promptCard);
+    promptCard.uses = [{ kind: 'primitive', id: 'surface', reason: 'card body' }];
+    delete promptCard.prototype.renderedUses;
+    bundle.prototypeSourceContents[promptCard.prototype.source] =
+      '<article data-blueprint-component="prompt-card"><blueprint-use kind="primitive" ref="surface" state="1"><span slot="label"><slot name="title"></slot></span></blueprint-use></article>';
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="component" ref="prompt-card" state="default"><b slot="title"><blueprint-use kind="primitive" ref="badge" state="default"><span slot="label">New</span></blueprint-use></b></blueprint-use></main>',
+      [
+        { kind: 'component', id: 'prompt-card', reason: 'prompt' },
+        { kind: 'primitive', id: 'badge', reason: 'title status' }
+      ]
+    );
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.ok(compiled.observedUses.some(use => use.sourceBoundaryId === 'mira-ai/screen/chat' && use.id === 'badge'));
+    assert.match(compiled.html, /data-blueprint-primitive="surface"[\s\S]*data-blueprint-primitive="badge"[\s\S]*New/);
+  });
+
+  it('matches slot elements and slot placeholders by balanced tags', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const tableRow = bundle.primitives.primitives.find(primitive => primitive.id === 'table-row');
+    assert.ok(tableRow);
+    bundle.prototypeSourceContents[tableRow.prototype.source] =
+      '<div data-blueprint-primitive="table-row" role="row"><div class="cells" data-blueprint-slot="cells"><div>Fallback</div><div>Row</div></div><span class="tail">Tail</span></div>';
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="primitive" ref="table-row" state="default"><div slot="cells"><div class="cell">Name</div><div class="cell">Status</div></div></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'table-row', reason: 'custom cells' }]
+    );
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.match(
+      compiled.html,
+      /<div class="cells" data-blueprint-slot="cells"><div><div class="cell">Name<\/div><div class="cell">Status<\/div><\/div><\/div><span class="tail">Tail<\/span><\/div>/
+    );
+    assert.doesNotMatch(compiled.html, /Fallback|Row<\/div>/);
+  });
+
+  it('rejects sources that forge the reserved slot author attribute', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="primitive" ref="badge" state="default" data-blueprint-slot-author="primitive:alert-dialog"></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'badge', reason: 'forgery' }]
+    );
+    assert.throws(
+      () => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }),
+      /cannot contain the reserved "data-blueprint-slot-author" attribute/
+    );
+  });
+
   it('blocks validation and readiness when governed source cannot compile', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     bundle.prototypeSourceContents[chatSource] = bundle.prototypeSourceContents[chatSource].replace(
