@@ -17,6 +17,7 @@ import type {
   ScreenHistoryEntry,
   ScreenSection,
   StyleEvidence,
+  ValidationMode,
   ValidationOptions,
   TokenGroup,
   ValidationResult
@@ -24,7 +25,7 @@ import type {
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
-import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON } from './base-primitives';
+import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
@@ -147,7 +148,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   validatePrototypeHost(errors, bundle.manifest.prototypeHost);
-  validateBasePrimitiveContract(errors, bundle);
+  validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
   recordPrototypeSourceGraphValidation(errors, bundle);
 
@@ -984,12 +985,19 @@ function validateDependency(
   }
 }
 
-function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjectBundle): void {
+function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode): void {
   const primitivesById = new Map(bundle.primitives.primitives.map(primitive => [primitive.id, primitive]));
+  if (mode === 'strict') {
+    for (const id of primitivesOutsideSet([...primitivesById.keys()])) {
+      errors.push(`${primitiveOutsideSetMessage(id)} ${BASE_PRIMITIVE_LOCK_REASON}`);
+    }
+  }
   for (const base of BASE_PRIMITIVE_CONTRACT) {
     const primitive = primitivesById.get(base.id);
     if (!primitive) {
-      errors.push(`primitives is missing locked base primitive "${base.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
+      if (base.enforcement !== 'strict' || mode === 'strict') {
+        errors.push(`primitives is missing locked base primitive "${base.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
+      }
       continue;
     }
 

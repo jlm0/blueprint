@@ -563,6 +563,52 @@
           }
         ]
       }
+    },
+    {
+      "id": "rank-emblem",
+      "name": "Rank Emblem",
+      "description": "Competitive rank insignia: a hex plate tinted by rank tier with a division numeral.",
+      "uses": [],
+      "tokenGroupIds": [
+        "color",
+        "size",
+        "typography"
+      ],
+      "styleRefs": [
+        "prototype/components/rank-emblem.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/rank-emblem.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/rank-emblem.css"
+        }
+      ],
+      "notes": [
+        "Rank tone comes from existing color roles, so a retheme recolors every tier.",
+        "Reserve the glow for the apex tier only."
+      ],
+      "prototypeOnly": false,
+      "implementationHints": [
+        "Render from the player rank model; the tier slot carries the division numeral and the accessible name carries the full rank."
+      ],
+      "prototype": {
+        "source": "prototype/components/rank-emblem.html",
+        "styles": [
+          "prototype/components/rank-emblem.css"
+        ],
+        "slots": [
+          "tier"
+        ],
+        "states": [
+          "bronze",
+          "silver",
+          "gold",
+          "diamond",
+          "apex"
+        ],
+        "renderedUses": []
+      }
     }
   ]
 }

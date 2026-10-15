@@ -986,7 +986,7 @@
             "id": "nav-bar"
           },
           {
-            "kind": "primitive",
+            "kind": "component",
             "id": "rank-emblem"
           },
           {
@@ -1069,7 +1069,7 @@
           ],
           "uses": [
             {
-              "kind": "primitive",
+              "kind": "component",
               "id": "rank-emblem",
               "reason": "Rank after the match.",
               "binding": {

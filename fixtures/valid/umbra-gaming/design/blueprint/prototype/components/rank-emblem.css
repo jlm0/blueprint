@@ -1,4 +1,4 @@
-[data-blueprint-primitive="rank-emblem"] {
+[data-blueprint-component="rank-emblem"] {
   --rank-tone: var(--app-color-accent);
   position: relative;
   display: inline-grid;
@@ -47,37 +47,19 @@
   letter-spacing: 0.04em;
 }
 
-[data-blueprint-primitive="rank-emblem"][data-blueprint-state="bronze"] {
+[data-blueprint-component="rank-emblem"][data-blueprint-state="bronze"] {
   --rank-tone: color-mix(in srgb, var(--app-color-warning) 62%, var(--app-color-destructive));
 }
 
-[data-blueprint-primitive="rank-emblem"][data-blueprint-state="silver"] {
+[data-blueprint-component="rank-emblem"][data-blueprint-state="silver"] {
   --rank-tone: var(--app-color-muted);
 }
 
-[data-blueprint-primitive="rank-emblem"][data-blueprint-state="gold"] {
+[data-blueprint-component="rank-emblem"][data-blueprint-state="gold"] {
   --rank-tone: var(--app-color-warning);
 }
 
-[data-blueprint-primitive="rank-emblem"][data-blueprint-state="apex"] {
+[data-blueprint-component="rank-emblem"][data-blueprint-state="apex"] {
   --rank-tone: var(--app-color-primary);
   filter: drop-shadow(0 0 10px var(--app-color-glow));
-}
-
-[data-blueprint-primitive="rank-emblem"][data-blueprint-size="sm"] {
-  width: var(--app-size-control-sm);
-  height: calc(var(--app-size-control-sm) * 1.1);
-}
-
-[data-blueprint-primitive="rank-emblem"][data-blueprint-size="sm"] .rank-emblem__tier {
-  font-size: 9px;
-}
-
-[data-blueprint-primitive="rank-emblem"][data-blueprint-size="lg"] {
-  width: calc(var(--app-size-control-lg) * 1.5);
-  height: calc(var(--app-size-control-lg) * 1.65);
-}
-
-[data-blueprint-primitive="rank-emblem"][data-blueprint-size="lg"] .rank-emblem__tier {
-  font-size: 15px;
 }

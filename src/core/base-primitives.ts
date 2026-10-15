@@ -1,18 +1,17 @@
 /**
- * Locked universal base primitive floor.
+ * The closed Blueprint primitive set.
  *
- * Blueprint's 26 base primitives are universal and locked: every project must
- * carry the full base set below.
- * Apps may add primitives, state sets, and states, and base primitives inherit
- * app design through token values, but the base set can never be removed or
- * reduced. The starter declaration in starter/design/blueprint/primitives.json
- * carries this floor and may add unlocked primitives, state sets, and states,
- * so sidecars created from an older starter stay valid as the starter grows.
+ * Primitives are the building blocks every app shares, so every project carries
+ * exactly this set: none removed and none added. They take the app's design
+ * from its token values and may add state sets and states, but an app-specific
+ * piece is a component built from primitives, never a new primitive.
  */
 
 /** Required floor for one locked base primitive: required state ids per required state-set id. */
 export interface BasePrimitiveContractEntry {
   id: string;
+  /** Primitives added to the set after sidecars already existed block only strict validation until those sidecars catch up. */
+  enforcement?: 'strict';
   stateSets: Array<{
     id: string;
     states: string[];
@@ -132,9 +131,62 @@ export const BASE_PRIMITIVE_CONTRACT: BasePrimitiveContractEntry[] = [
   {
     id: 'toast',
     stateSets: [{ id: 'variant', states: ['default', 'success', 'destructive'] }]
+  },
+  {
+    id: 'textarea',
+    enforcement: 'strict',
+    stateSets: [{ id: 'interaction', states: ['empty', 'value', 'focused', 'invalid', 'disabled'] }]
+  },
+  {
+    id: 'avatar',
+    enforcement: 'strict',
+    stateSets: [
+      { id: 'size', states: ['sm', 'md', 'lg'] },
+      { id: 'content', states: ['initials', 'fallback', 'status'] }
+    ]
+  },
+  {
+    id: 'progress',
+    enforcement: 'strict',
+    stateSets: [{ id: 'progress', states: ['value', 'complete', 'indeterminate'] }]
+  },
+  {
+    id: 'tooltip',
+    enforcement: 'strict',
+    stateSets: [{ id: 'placement', states: ['top', 'bottom'] }]
+  },
+  {
+    id: 'inline-alert',
+    enforcement: 'strict',
+    stateSets: [{ id: 'tone', states: ['info', 'success', 'warning', 'destructive'] }]
+  },
+  {
+    id: 'segmented-control',
+    enforcement: 'strict',
+    stateSets: [{ id: 'state', states: ['first-selected', 'second-selected', 'disabled'] }]
+  },
+  {
+    id: 'table-row',
+    enforcement: 'strict',
+    stateSets: [{ id: 'state', states: ['default', 'hover', 'selected'] }]
   }
 ];
 
+const BASE_PRIMITIVE_IDS = new Set(BASE_PRIMITIVE_CONTRACT.map(entry => entry.id));
+
+export function isBasePrimitive(id: string): boolean {
+  return BASE_PRIMITIVE_IDS.has(id);
+}
+
+/** Primitives a project declares outside the closed set; each belongs in components instead. */
+export function primitivesOutsideSet(primitiveIds: string[]): string[] {
+  return primitiveIds.filter(id => !BASE_PRIMITIVE_IDS.has(id));
+}
+
+export function primitiveOutsideSetMessage(id: string): string {
+  return `primitive "${id}" is not in the Blueprint primitive set; rebuild it as a component from primitives.`;
+}
+
 /** Shared wording for locked-base-set validation errors. */
 export const BASE_PRIMITIVE_LOCK_REASON =
-  'The Blueprint base primitive set is locked and cannot be reduced; it can be themed via tokens and extended with app-added primitives.';
+  'The Blueprint primitive set is closed: it is themed through tokens, and app-specific pieces are components built from primitives.';

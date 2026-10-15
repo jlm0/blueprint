@@ -1,5 +1,6 @@
 import { findSectionMarkers } from '../prototype/compiler';
 import { boundaryId } from './address';
+import { primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { contrastMessage, lintColorContrast } from './contrast-lint';
 import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
 import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
@@ -9,7 +10,7 @@ export interface DesignFinding {
   boundaryId: string;
   kind: BoundaryKind;
   localId: string;
-  rule: 'local-value' | 'native-control' | 'section-marker' | 'contrast';
+  rule: 'local-value' | 'native-control' | 'section-marker' | 'contrast' | 'primitive-set';
   location: string;
   message: string;
 }
@@ -34,7 +35,9 @@ export function collectDesignFindings(bundle: BlueprintProjectBundle): DesignFin
       screen.prototype.source,
       `section "${sectionId}" has no data-blueprint-section="${sectionId}" marker, so it cannot be addressed on the canvas.`
     ))),
-    ...lintColorContrast(bundle).map(issue => finding(`token-group.${issue.groupId}`, 'contrast', 'tokens.json', contrastMessage(issue)))
+    ...lintColorContrast(bundle).map(issue => finding(`token-group.${issue.groupId}`, 'contrast', 'tokens.json', contrastMessage(issue))),
+    ...primitivesOutsideSet(bundle.primitives.primitives.map(primitive => primitive.id))
+      .map(id => finding(`primitive.${id}`, 'primitive-set', 'primitives.json', primitiveOutsideSetMessage(id)))
   ];
 }
 
