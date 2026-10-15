@@ -39,24 +39,25 @@ async function main(): Promise<void> {
     browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
     await page.goto(url);
-    await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
+    await page.waitForSelector('.board-primitives .bp-chrome-doc-page[data-boundary-kind]', { timeout: 10000 });
     await assertDashboardChromeRemoved(page);
-    await assertNeutralCanvas(page);
+    await assertProjectThemedChrome(page);
     await assertProductScopeStructure(page);
     const starterBundle = await loadProjectFromFs('starter/design/blueprint');
-    await assertDataDrivenPrimitiveBoard(page, starterBundle);
-    await assertPrimitiveCanvasPlacement(page);
+    await assertDocumentSections(page, starterBundle);
     await assertVisibleBoundarySynchronization(page, 'primitives');
     await assertNoViewportTextOverlap(page, 'starter-primitives-desktop');
     await assertAppSampleStyleStability(page, 'starter-primitives', async () => {
       await page.locator('[data-board="screens"]').click();
       await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
       await page.locator('[data-board="primitives"]').click();
-      await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
-    });
+      await page.waitForSelector('.board-primitives .canonical-primitive-specimen', { timeout: 10000 });
+    }, 1);
     await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-primitives-desktop.png'), fullPage: true });
-    await assertProofFixturePrimitiveBoards(browser, url);
+    await assertProofFixtureDocumentPages(browser, url);
 
+    await page.locator('[data-board="screens"]').click();
+    await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
     const beforeWheel = await readWorldTransform(page);
     await dispatchWheel(page, { deltaX: 0, deltaY: 160, ctrlKey: false, metaKey: false });
     await waitForTransformChange(page, 'y', beforeWheel.y);
@@ -72,8 +73,7 @@ async function main(): Promise<void> {
       throw new Error('Control wheel input should zoom the canvas.');
     }
 
-    await page.locator('[data-board="screens"]').click();
-    await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
+    await page.locator('.bp-chrome-fit').click();
     await assertReferenceScreenBoard(page, starterBundle);
     await assertPhoneFrame(page);
     await assertDesktopFrame(page, starterBundle);
@@ -93,6 +93,7 @@ async function main(): Promise<void> {
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await mobile.goto(`${url}?board=screens`);
     await mobile.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 10000 });
+    await assertSubnav(mobile, true);
     await assertScreenCompositionRendered(mobile, starterBundle);
     await assertNoViewportTextOverlap(mobile, 'starter-screens-mobile');
     await mobile.screenshot({ path: path.join(screenshotRoot, 'blueprint-screens-mobile.png'), fullPage: true });
@@ -118,11 +119,12 @@ async function main(): Promise<void> {
     });
     await assertCanonicalFrameExports(browser, url);
 
-    await assertBoardSwitcherChrome(page);
+    await assertSubnav(page, false);
+    await assertSectionRailChrome(page);
     await assertScreenChromeFocus(page);
-    await assertBoardSwitcherChrome(mobile);
+    await assertSectionRailChrome(mobile);
     await assertScreenChromeFocus(mobile);
-    await assertBoardSwitcherChrome(configured);
+    await assertSectionRailChrome(configured);
     await assertScreenChromeFocus(configured);
 
     console.log(`Browser smoke passed at ${url}. Screenshots written to ${screenshotRoot}.`);
@@ -145,9 +147,9 @@ async function assertDashboardChromeRemoved(page: import('playwright').Page): Pr
     }
   }
 
-  const buttons = await page.locator('.board-switcher [data-board]').evaluateAll(elements => elements.map(element => element.textContent?.trim()));
-  if (buttons.join(',') !== 'Primitives,Screens') {
-    throw new Error(`Expected only Primitives and Screens board buttons, received: ${buttons.join(',')}`);
+  const buttons = await page.locator('.board-switcher [data-section]').evaluateAll(elements => elements.map(element => element.textContent?.trim()));
+  if (buttons.join(',') !== 'Foundations,Primitives,Components,Screens') {
+    throw new Error(`Expected the Foundations, Primitives, Components and Screens sections, received: ${buttons.join(',')}`);
   }
 
   const activeButtonStyles = await page.locator('.board-switcher [aria-pressed="true"]').evaluate(element => {
@@ -158,23 +160,69 @@ async function assertDashboardChromeRemoved(page: import('playwright').Page): Pr
     };
   });
   if (activeButtonStyles.backgroundColor === 'rgb(200, 255, 58)' || activeButtonStyles.backgroundImage !== 'none') {
-    throw new Error('Board switcher should use a neutral token color and no gradient treatment.');
+    throw new Error('Section rail should use a token color and no gradient treatment.');
   }
 }
 
-async function assertNeutralCanvas(page: import('playwright').Page): Promise<void> {
-  const styles = await page.locator('#viewport').evaluate(element => {
-    const computed = window.getComputedStyle(element);
+async function assertProjectThemedChrome(page: import('playwright').Page): Promise<void> {
+  const styles = await page.evaluate(() => {
+    const document_ = window.getComputedStyle(document.querySelector('#document')!);
+    const viewport = window.getComputedStyle(document.querySelector('#viewport')!);
     return {
       surround: document.documentElement.dataset.surround,
-      backgroundImage: computed.backgroundImage,
-      backgroundColor: computed.backgroundColor
+      theme: document.documentElement.dataset.chromeTheme,
+      pageBackground: document_.backgroundColor,
+      pageText: document_.color,
+      canvasBackground: viewport.backgroundColor,
+      gridLines: viewport.backgroundImage.match(/linear-gradient/g)?.length ?? 0,
+      shadows: [...document.querySelectorAll<HTMLElement>('[class*="bp-chrome-"]')]
+        .filter(element => window.getComputedStyle(element).boxShadow !== 'none' && !element.matches(':focus-visible'))
+        .map(element => element.className)
     };
   });
 
-  const lineCount = styles.backgroundImage.match(/linear-gradient/g)?.length ?? 0;
-  if (lineCount !== 4 || styles.surround !== 'light' || styles.backgroundColor !== 'rgb(229, 229, 229)') {
-    throw new Error(`Canvas should render the neutral light grid surround for the light starter, received ${JSON.stringify(styles)}.`);
+  const expected = { surround: 'light', theme: 'app', pageBackground: 'rgb(250, 250, 250)', pageText: 'rgb(24, 24, 27)', canvasBackground: 'rgb(250, 250, 250)', gridLines: 4 };
+  for (const [key, value] of Object.entries(expected)) {
+    if (styles[key as keyof typeof expected] !== value) {
+      throw new Error(`Chrome should follow the starter tokens on a light grid surround, received ${JSON.stringify(styles)}.`);
+    }
+  }
+  if (styles.shadows.length > 0) {
+    throw new Error(`Blueprint chrome should stay flat without elevation, received shadows on: ${styles.shadows.join(', ')}`);
+  }
+}
+
+async function assertSubnav(page: import('playwright').Page, narrow: boolean): Promise<void> {
+  const shell = page.locator('#app-shell');
+  const toggle = page.locator('.bp-chrome-subnav-toggle');
+  const expectedInitial = narrow ? 'collapsed' : 'open';
+  if (await shell.getAttribute('data-subnav') !== expectedInitial) {
+    throw new Error(`The sidebar should start ${expectedInitial} at this width.`);
+  }
+  if (!(await toggle.getAttribute('aria-label'))) {
+    throw new Error('The sidebar toggle should expose an accessible label.');
+  }
+
+  await toggle.click();
+  const toggled = narrow ? 'open' : 'collapsed';
+  if (await shell.getAttribute('data-subnav') !== toggled || await toggle.getAttribute('aria-expanded') !== String(toggled === 'open')) {
+    throw new Error(`The sidebar toggle should switch the sidebar ${toggled}.`);
+  }
+  if (narrow) {
+    const stageLeft = await page.locator('.bp-chrome-stage').evaluate(element => element.getBoundingClientRect().left);
+    const railWidth = await page.locator('.bp-chrome-rail').evaluate(element => element.getBoundingClientRect().width);
+    if (Math.abs(stageLeft - railWidth) > 1) {
+      throw new Error('On narrow screens the open sidebar should overlay the stage instead of squeezing it.');
+    }
+    await page.locator('.bp-chrome-item-nav .bp-chrome-item').first().click();
+    if (await shell.getAttribute('data-subnav') !== 'collapsed') {
+      throw new Error('Picking an item on a narrow screen should close the overlaid sidebar.');
+    }
+    return;
+  }
+  await toggle.click();
+  if (await shell.getAttribute('data-subnav') !== 'open') {
+    throw new Error('The sidebar toggle should reopen the sidebar.');
   }
 }
 
@@ -214,14 +262,14 @@ async function assertProductScopeStructure(page: import('playwright').Page): Pro
   }
 }
 
-async function assertBoardSwitcherChrome(page: import('playwright').Page): Promise<void> {
+async function assertSectionRailChrome(page: import('playwright').Page): Promise<void> {
   const switcher = page.locator('.board-switcher');
   await switcher.waitFor({ timeout: 5000 });
   const chrome = await switcher.evaluate(element => {
     const node = element as HTMLElement;
     const rect = node.getBoundingClientRect();
     const computed = window.getComputedStyle(node);
-    const buttons = [...node.querySelectorAll<HTMLButtonElement>('[data-board]')].map(button => {
+    const buttons = [...node.querySelectorAll<HTMLButtonElement>('[data-section]')].map(button => {
       const buttonRect = button.getBoundingClientRect();
       return {
         text: button.textContent?.trim() ?? '',
@@ -229,6 +277,7 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
         type: button.type,
         width: buttonRect.width,
         height: buttonRect.height,
+        right: buttonRect.right,
         overflowX: button.scrollWidth - button.clientWidth,
         overflowY: button.scrollHeight - button.clientHeight
       };
@@ -236,7 +285,7 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
     return {
       className: node.className,
       ariaLabel: node.getAttribute('aria-label'),
-      width: rect.width,
+      railRight: node.closest('.bp-chrome-rail')?.getBoundingClientRect().right ?? 0,
       left: rect.left,
       right: rect.right,
       backgroundImage: computed.backgroundImage,
@@ -244,25 +293,25 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
     };
   });
 
-  if (chrome.ariaLabel !== 'Blueprint boards') {
-    throw new Error(`Board switcher should keep an accessible label, received ${chrome.ariaLabel}.`);
+  if (chrome.ariaLabel !== 'Blueprint sections') {
+    throw new Error(`Section rail should keep an accessible label, received ${chrome.ariaLabel}.`);
   }
   if (chrome.left < 0 || chrome.right > page.viewportSize()!.width) {
-    throw new Error(`Board switcher should stay inside the viewport, received ${JSON.stringify(chrome)}`);
+    throw new Error(`Section rail should stay inside the viewport, received ${JSON.stringify(chrome)}`);
   }
   if (chrome.backgroundImage !== 'none') {
-    throw new Error('Board switcher should stay quiet and avoid gradient treatment.');
+    throw new Error('Section rail should stay quiet and avoid gradient treatment.');
   }
   const activeCount = chrome.buttons.filter(button => button.ariaPressed === 'true').length;
-  if (chrome.buttons.length !== 2 || activeCount !== 1) {
-    throw new Error(`Board switcher should expose two stable board buttons and one active board, received ${JSON.stringify(chrome.buttons)}`);
+  if (chrome.buttons.length !== 4 || activeCount !== 1) {
+    throw new Error(`Section rail should expose four section buttons and one active section, received ${JSON.stringify(chrome.buttons)}`);
   }
-  const overflowed = chrome.buttons.filter(button => button.overflowX > 1 || button.overflowY > 1 || button.width < 88 || button.height < 32);
-  if (overflowed.length > 0) {
-    throw new Error(`Board switcher buttons should have stable, non-overflowing dimensions: ${JSON.stringify(overflowed)}`);
+  const unstable = chrome.buttons.filter(button => button.overflowX > 1 || button.overflowY > 1 || button.width < 44 || button.height < 44 || button.right > chrome.railRight + 1);
+  if (unstable.length > 0) {
+    throw new Error(`Section buttons should be stable, non-overflowing touch targets inside the rail: ${JSON.stringify(unstable)}`);
   }
 
-  const focusStyle = await page.locator('.board-switcher [data-board]').first().evaluate(element => {
+  const focusStyle = await page.locator('.board-switcher [data-section="components"]').evaluate(element => {
     // Keyboard users get :focus-visible; request that state explicitly here.
     (element as HTMLElement).focus({ focusVisible: true } as FocusOptions);
     const computed = window.getComputedStyle(element);
@@ -273,27 +322,27 @@ async function assertBoardSwitcherChrome(page: import('playwright').Page): Promi
     };
   });
   if (focusStyle.outlineStyle === 'none' && focusStyle.boxShadow === 'none') {
-    throw new Error(`Board switcher should expose a visible focus state, received ${JSON.stringify(focusStyle)}.`);
+    throw new Error(`Section rail should expose a visible focus state, received ${JSON.stringify(focusStyle)}.`);
   }
 
   await page.keyboard.press('Tab');
-  const tabTarget = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.board ?? '');
+  const tabTarget = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.section ?? '');
   if (tabTarget !== 'screens') {
-    throw new Error(`Keyboard Tab should move between board buttons, received active board target ${tabTarget || 'none'}.`);
+    throw new Error(`Keyboard Tab should move between section buttons, received active section target ${tabTarget || 'none'}.`);
   }
   await page.keyboard.press('Enter');
   await page.waitForSelector('[data-board-root="screens"]:not([hidden])', { timeout: 5000 });
-  const keyboardActivated = await page.locator('.board-switcher [data-board="screens"]').getAttribute('aria-pressed');
+  const keyboardActivated = await page.locator('.board-switcher [data-section="screens"]').getAttribute('aria-pressed');
   if (keyboardActivated !== 'true') {
-    throw new Error('Keyboard Enter should activate the focused Screens board button.');
+    throw new Error('Keyboard Enter should activate the focused Screens section button.');
   }
 
   if (!chrome.className.split(/\s+/).includes('bp-chrome-board-switcher')) {
-    throw new Error(`Board switcher should expose a namespaced chrome class, received ${chrome.className}.`);
+    throw new Error(`Section rail should expose a namespaced chrome class, received ${chrome.className}.`);
   }
 }
 
-async function assertProofFixturePrimitiveBoards(browser: import('playwright').Browser, url: string): Promise<void> {
+async function assertProofFixtureDocumentPages(browser: import('playwright').Browser, url: string): Promise<void> {
   const proofRoots = [
     'starter/design/blueprint',
     'fixtures/valid/mira-ai/design/blueprint',
@@ -311,8 +360,8 @@ async function assertProofFixturePrimitiveBoards(browser: import('playwright').B
       });
     }, bundle);
     await page.goto(`${url}?board=primitives`);
-    await page.waitForSelector('.board-primitives [data-boundary-id][data-boundary-kind]', { timeout: 10000 });
-    await assertDataDrivenPrimitiveBoard(page, bundle);
+    await page.waitForSelector('.board-primitives .bp-chrome-doc-page[data-boundary-kind]', { timeout: 10000 });
+    await assertDocumentSections(page, bundle);
     const screenshotPath = path.join(screenshotRoot, `${bundle.manifest.project.id}-primitives.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     await writePrimitiveReviewArtifacts(page, bundle.manifest.project.id, screenshotPath);
@@ -320,90 +369,59 @@ async function assertProofFixturePrimitiveBoards(browser: import('playwright').B
   }
 }
 
-async function assertDataDrivenPrimitiveBoard(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
-  const records = await collectPrimitiveBoundaryRecords(page);
+async function assertDocumentSections(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
+  const projectId = bundle.manifest.project.id;
+  const records: VisibleBoundaryRecord[] = [];
+  const families = new Set<string>();
+  const sections = [
+    { section: 'foundations', ids: bundle.tokens.tokenGroups.map(group => group.id) },
+    { section: 'components', ids: bundle.components.components.map(component => component.id) },
+    { section: 'primitives', ids: bundle.primitives.primitives.map(primitive => primitive.id) }
+  ];
+
+  for (const { section, ids } of sections) {
+    await page.locator(`.board-switcher [data-section="${section}"]`).click();
+    await page.waitForSelector(`.board-primitives[data-section="${section}"] .bp-chrome-doc-page`, { timeout: 10000 });
+    const listed = await page.locator('.bp-chrome-item-nav [data-item]').evaluateAll(buttons => buttons.map(button => (button as HTMLElement).dataset.item ?? ''));
+    if ([...listed].sort().join(',') !== [...ids].sort().join(',')) {
+      throw new Error(`${projectId} ${section} sub-navigation should list ${ids.join(', ')}, received ${listed.join(', ')}`);
+    }
+
+    for (const id of ids) {
+      await page.locator(`.bp-chrome-item-nav [data-item="${id}"]`).click();
+      const item = page.locator(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${id}"]`);
+      await item.waitFor({ state: 'visible', timeout: 10000 });
+      records.push(...await collectPrimitiveBoundaryRecords(page));
+      const evidence = await item.evaluate(element => ({
+        family: (element as HTMLElement).dataset.primitiveFamily ?? '',
+        iframes: element.querySelectorAll('.canonical-primitive-iframe').length,
+        compileErrors: element.querySelectorAll('.prototype-compile-error').length,
+        probes: element.querySelectorAll('.token-probe').length,
+        overflow: document.querySelector('#document')!.scrollWidth - document.querySelector('#document')!.clientWidth
+      }));
+      if (evidence.compileErrors > 0 || evidence.probes > 0 || evidence.overflow > 1) {
+        throw new Error(`${projectId} ${section}/${id} page should compile, hide token probes and fit its column: ${JSON.stringify(evidence)}`);
+      }
+      if (section === 'primitives') {
+        const primitive = bundle.primitives.primitives.find(candidate => candidate.id === id)!;
+        if (!primitive.prototype) {
+          throw new Error(`${projectId} primitive ${id} should declare a canonical prototype.`);
+        }
+        const expectedFrames = primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0));
+        if (evidence.iframes !== expectedFrames) {
+          throw new Error(`${projectId} primitive ${id} should render one specimen per declared variant or size × state combination, received ${evidence.iframes}.`);
+        }
+        families.add(evidence.family);
+      }
+    }
+  }
+
   const sync = validateVisibleBoundaryRecords(bundle, records);
   if (!sync.ok) {
-    throw new Error(`Primitive board visible boundaries do not match ${bundle.manifest.project.id} structured data:\n${sync.errors.join('\n')}`);
+    throw new Error(`Document page boundaries do not match ${projectId} structured data:\n${sync.errors.join('\n')}`);
   }
-
-  const expectedBoundaryIds = [
-    ...bundle.tokens.tokenGroups.map(group => `${bundle.manifest.project.id}/token-group/${group.id}`),
-    ...bundle.primitives.primitives.map(primitive => `${bundle.manifest.project.id}/primitive/${primitive.id}`)
-  ];
-  const visibleBoundaryIds = records.map(record => record.id);
-  const missingBoundaries = expectedBoundaryIds.filter(id => !visibleBoundaryIds.includes(id));
-  if (missingBoundaries.length > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive board is missing app-owned boundaries: ${missingBoundaries.join(', ')}`);
-  }
-
-  const duplicateBoundaries = visibleBoundaryIds.filter((id, index) => visibleBoundaryIds.indexOf(id) !== index);
-  if (duplicateBoundaries.length > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive board rendered duplicate boundaries: ${[...new Set(duplicateBoundaries)].join(', ')}`);
-  }
-
-  const primitiveIds = new Set(bundle.primitives.primitives.map(primitive => primitive.id));
-  const visiblePrimitiveIds = records
-    .filter(record => record.kind === 'primitive')
-    .map(record => record.id.split('/').slice(2).join('/'));
-  const stale = visiblePrimitiveIds.filter(id => !primitiveIds.has(id));
-  if (stale.length > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive board rendered stale demo-only primitives: ${stale.join(', ')}`);
-  }
-
-  const primitiveCards = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
-    elements.map(element => ({
-      id: (element as HTMLElement).dataset.boundaryId ?? '',
-      family: (element as HTMLElement).dataset.primitiveFamily ?? '',
-      text: element.textContent?.trim() ?? ''
-    }))
-  );
-  const missingFamily = primitiveCards.filter(card => card.family.length === 0);
-  if (missingFamily.length > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive cards should name their board family: ${JSON.stringify(missingFamily)}`);
-  }
-  const families = new Set(primitiveCards.map(card => card.family));
-  if (families.size < Math.min(2, bundle.primitives.primitives.length) || ![...families].some(family => family !== 'generic')) {
-    throw new Error(`${bundle.manifest.project.id} primitive board should group primitives into named families, received: ${[...families].join(', ')}`);
-  }
-  const visibleProbeCount = await page.locator('.board-primitives [data-boundary-kind="primitive"] .token-probe').count();
-  if (visibleProbeCount > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive board should not render visible token probe chips on human-facing primitive cards.`);
-  }
-  const visibleMetadataCount = await page.locator('.board-primitives [data-boundary-kind="primitive"] .generated-card-head, .board-primitives [data-boundary-kind="primitive"] .primitive-meta-row').count();
-  if (visibleMetadataCount > 0) {
-    throw new Error(`${bundle.manifest.project.id} primitive board should not render metadata headers as human-facing primitive card content.`);
-  }
-  const genericFixtureCount = await page.locator('.board-primitives [data-boundary-kind="primitive"][data-primitive-family="generic"]').count();
-  if (genericFixtureCount > 0) {
-    throw new Error(`${bundle.manifest.project.id} shipped primitives should classify into a named family, not generic.`);
-  }
-
-  for (const primitive of bundle.primitives.primitives) {
-    if (primitive.prototype) {
-      // Canonical primitives render one compiled specimen iframe per declared variant or size × state combination.
-      const canonicalFrames = await page
-        .locator(`[data-boundary-id="${bundle.manifest.project.id}/primitive/${primitive.id}"] .canonical-primitive-iframe`)
-        .count();
-      const expectedFrames = primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0));
-      if (canonicalFrames !== expectedFrames) {
-        throw new Error(
-          `${bundle.manifest.project.id} canonical primitive ${primitive.id} should render one specimen iframe per declared variant or size × state combination, received ${canonicalFrames}.`
-        );
-      }
-      continue;
-    }
-    for (const stateSet of primitive.stateSets) {
-      const stateSetBoundary = `${bundle.manifest.project.id}/state-set/${primitive.id}/${stateSet.id}`;
-      for (const state of stateSet.states) {
-        const count = await page
-          .locator(`[data-boundary-id="${stateSetBoundary}"] [data-primitive-state-id="${state.id}"]`)
-          .count();
-        if (count !== 1) {
-          throw new Error(`${bundle.manifest.project.id} primitive board missing state sample ${primitive.id}/${stateSet.id}/${state.id}`);
-        }
-      }
-    }
+  if (families.has('') || families.has('generic') || families.size < Math.min(2, bundle.primitives.primitives.length)) {
+    throw new Error(`${projectId} primitives should classify into named families, received: ${[...families].join(', ')}`);
   }
 }
 
@@ -483,64 +501,6 @@ async function writePrimitiveReviewArtifacts(
 
   await writeFile(path.join(reviewManifestRoot, `${projectId}-primitives-review-manifest.json`), `${JSON.stringify(capturedManifest, null, 2)}\n`, 'utf8');
   await writeFile(path.join(styleEvidenceRoot, `${projectId}-primitives-style-evidence.json`), `${JSON.stringify(capturedStyleEvidence, null, 2)}\n`, 'utf8');
-}
-
-async function assertPrimitiveCanvasPlacement(page: import('playwright').Page): Promise<void> {
-  const overlaps = await page.locator('.board-primitives').evaluate(root => {
-    const elements = [...root.querySelectorAll<HTMLElement>('.group-head, .spec')];
-    const boxes = elements.map(element => {
-      const left = parseFloat(element.style.left || '0');
-      const top = parseFloat(element.style.top || '0');
-      const chip = element.querySelector<HTMLElement>('.spec-chip');
-      const chipTop = chip ? top + chip.offsetTop : top;
-      const chipLeft = chip ? left + chip.offsetLeft : left;
-      return {
-        label: element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || element.className,
-        left: Math.min(left, chipLeft),
-        right: Math.max(left + element.offsetWidth, chipLeft + (chip?.offsetWidth ?? 0)),
-        top: Math.min(top, chipTop),
-        bottom: Math.max(top + element.offsetHeight, chipTop + (chip?.offsetHeight ?? 0))
-      };
-    });
-
-    const collisions: string[] = [];
-    for (let a = 0; a < boxes.length; a += 1) {
-      for (let b = a + 1; b < boxes.length; b += 1) {
-        const one = boxes[a];
-        const two = boxes[b];
-        if (one.left < two.right && one.right > two.left && one.top < two.bottom && one.bottom > two.top) {
-          collisions.push(`${one.label} overlaps ${two.label}`);
-        }
-      }
-    }
-    return collisions;
-  });
-
-  if (overlaps.length > 0) {
-    throw new Error(`Primitive canvas items should not overlap:\n${overlaps.join('\n')}`);
-  }
-
-  const overflow = await page.locator('.board-primitives .spec-body').evaluateAll(elements =>
-    elements
-      .filter(element => element.scrollWidth > element.clientWidth + 1)
-      .map(element => element.closest('.spec')?.querySelector('.spec-chip')?.textContent?.trim() ?? 'unknown spec')
-  );
-  if (overflow.length > 0) {
-    throw new Error(`Primitive sample content should fit within its card: ${overflow.join(', ')}`);
-  }
-
-  const stateOverflow = await page.locator('.board-primitives [data-primitive-state-id]').evaluateAll(elements =>
-    elements
-      .filter(element => element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1)
-      .map(element => {
-        const state = (element as HTMLElement).dataset.primitiveStateId ?? 'unknown-state';
-        const primitive = element.closest<HTMLElement>('[data-boundary-kind="primitive"]')?.dataset.boundaryId ?? 'unknown-primitive';
-        return `${primitive}/${state}`;
-      })
-  );
-  if (stateOverflow.length > 0) {
-    throw new Error(`Primitive state samples should not overflow their visible boxes: ${stateOverflow.join(', ')}`);
-  }
 }
 
 async function assertReferenceScreenBoard(page: import('playwright').Page, bundle: BlueprintProjectBundle): Promise<void> {
@@ -922,7 +882,7 @@ async function assertScreenChromeFocus(page: import('playwright').Page): Promise
 async function assertNoViewportTextOverlap(page: import('playwright').Page, slug: string): Promise<void> {
   const issues = await page.locator([
     '.board-switcher',
-    '.board-switcher [data-board]',
+    '.board-switcher [data-section]',
     '.frame-head',
     '.frame-chip',
     '.frame-shot',
@@ -1055,7 +1015,7 @@ async function collectAppSampleStyleSnapshot(page: import('playwright').Page): P
     ];
     const probes = [
       { selector: '.board-primitives .canonical-primitive-specimen', limit: 3 },
-      { selector: '.board-primitives .token-row', limit: 2 },
+      { selector: '.board-primitives .token-specimen', limit: 2 },
       { selector: '.board-screens .canonical-prototype-screen', limit: 3 }
     ];
     const samples: Array<{ key: string; selector: string; boundaryId: string; text: string; styles: Record<string, string> }> = [];

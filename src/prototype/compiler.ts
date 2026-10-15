@@ -1072,17 +1072,22 @@ function baseDocumentCss(): string {
  * and the compiled document paint one seamless surface; screens paint their own.
  */
 function specimenCanvasCss(bundle: BlueprintProjectBundle, boundary: SourceBoundary): string {
-  if (boundary.kind !== 'primitive') {
+  if (boundary.kind !== 'primitive' && boundary.kind !== 'component') {
     return '';
   }
   const canvas = bundle.tokens.tokenGroups
     .find(group => group.id === 'color')
     ?.tokens.find(token => token.id === 'background');
+  if (!canvas) return '';
+  const styleRefs = new Set(bundle.tokens.tokenGroups.flatMap(group => group.tokens.map(token => token.styleRef)));
+  // Specimens render outside any screen, so they take the text color and face a screen body would give them.
+  const inherited = [
+    styleRefs.has('--app-color-foreground') ? 'color:var(--app-color-foreground);' : '',
+    styleRefs.has('--app-font-sans') ? 'font-family:var(--app-font-sans);' : ''
+  ].join('');
   // Padding keeps overflowing decorations (slider thumbs, focus halos, glows)
   // from clipping against the measured cell edge.
-  return canvas
-    ? `html,body{background:var(${canvas.styleRef});}body{box-sizing:border-box;padding:12px;}`
-    : '';
+  return `html,body{background:var(${canvas.styleRef});}body{box-sizing:border-box;padding:12px;${inherited}}`;
 }
 
 function safeStyleText(css: string): string {

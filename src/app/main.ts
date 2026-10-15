@@ -31,6 +31,7 @@ import type {
   BlueprintProjectBundle,
   BoardDefinition,
   BoundaryKind,
+  ComponentDefinition,
   DesignToken,
   ExplorationDefinition,
   ExplorationPrototypeSource,
@@ -41,7 +42,6 @@ import type {
 } from '../core/types';
 import type { VisibleBoundaryRecord } from '../core/review';
 import { createCanvasController, type CanvasController, type CanvasView } from './canvas-controller';
-import { createCanvasItemLayout } from './canvas-layout';
 import {
   boundaryHitsAtPoint,
   measureBoundaryExtents,
@@ -49,6 +49,7 @@ import {
   type BoundaryExtent
 } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
+import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive } from '../core/base-primitives';
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
@@ -64,16 +65,18 @@ interface MountedBoard {
   root: HTMLElement;
   mounted: BoardMount;
   view: CanvasView | null;
+  scrollTop?: number;
 }
 
 interface BoardMount {
-  configure: () => CanvasController;
+  configure: () => void;
   fit: () => void;
 }
 
 interface BoardConfig {
   label: string;
   className: string;
+  surface: 'canvas' | 'document';
   mount: (context: BoardContext) => BoardMount;
 }
 
@@ -88,18 +91,91 @@ if (!app) {
   throw new Error('Blueprint app root is missing.');
 }
 
+const SUBNAV_STORAGE_KEY = 'blueprint.subnav';
+const CHROME_THEME_PROPERTIES = [
+  '--bp-chrome-canvas-bg',
+  '--bp-chrome-surface',
+  '--bp-chrome-fg',
+  '--bp-chrome-muted-fg',
+  '--bp-chrome-border',
+  '--bp-chrome-border-strong',
+  '--bp-chrome-surface-hover',
+  '--bp-chrome-surface-active',
+  '--bp-chrome-accent',
+  '--bp-chrome-accent-soft',
+  '--bp-chrome-primary',
+  '--bp-chrome-primary-fg',
+  '--bp-chrome-focus',
+  '--bp-chrome-grid-line',
+  '--bp-chrome-grid-line-major',
+  '--bp-chrome-radius',
+  '--bp-chrome-radius-sm',
+  '--bp-chrome-font',
+  '--bp-chrome-font-display',
+  '--bp-chrome-font-mono'
+];
+
+let changeBaseline: { bundle: BlueprintProjectBundle; activityKey: string | undefined } | undefined;
+let latestChanges: BlueprintAgentActivityFocus[] = [];
+
 let project = loadConfiguredProject();
 const shell = el('div');
 shell.id = 'app-shell';
 shell.className = 'bp-chrome-shell';
 refreshSurround();
 
+const rail = el('aside', 'bp-chrome-rail');
+const projectMark = el('span', 'bp-chrome-project-mark');
+projectMark.setAttribute('aria-hidden', 'true');
 const switcher = el('nav', 'board-switcher bp-chrome-board-switcher');
-switcher.setAttribute('aria-label', 'Blueprint boards');
+switcher.setAttribute('aria-label', 'Blueprint sections');
+const subnavToggle = el('button', 'bp-chrome-subnav-toggle') as HTMLButtonElement;
+subnavToggle.type = 'button';
+subnavToggle.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>';
+subnavToggle.addEventListener('click', () => setSubnavCollapsed(shell.dataset.subnav !== 'collapsed'));
+rail.append(projectMark, switcher, subnavToggle);
+
+const subnav = el('aside', 'bp-chrome-subnav');
+const subnavHead = el('header', 'bp-chrome-subnav-head');
+const projectName = el('span', 'bp-chrome-project-name');
+const sectionTitle = el('h2', 'bp-chrome-section-title');
+subnavHead.append(projectName, sectionTitle);
+const itemNav = el('nav', 'bp-chrome-item-nav');
+itemNav.setAttribute('aria-label', 'Section items');
 
 const flowSwitcher = el('nav', 'flow-switcher bp-chrome-flow-switcher');
 flowSwitcher.setAttribute('aria-label', 'Screen flows');
 flowSwitcher.hidden = true;
+subnav.append(subnavHead, flowSwitcher, itemNav);
+const narrowViewport = window.matchMedia('(max-width: 700px)');
+setSubnavCollapsed(narrowViewport.matches || readStoredSubnavCollapsed(), false);
+
+function setSubnavCollapsed(collapsed: boolean, remember = !narrowViewport.matches): void {
+  shell.dataset.subnav = collapsed ? 'collapsed' : 'open';
+  subnav.inert = collapsed;
+  const label = collapsed ? 'Show sidebar' : 'Hide sidebar';
+  subnavToggle.title = label;
+  subnavToggle.setAttribute('aria-label', label);
+  subnavToggle.setAttribute('aria-expanded', String(!collapsed));
+  if (!remember) return;
+  try {
+    localStorage.setItem(SUBNAV_STORAGE_KEY, collapsed ? 'collapsed' : 'open');
+  } catch {
+    // Storage can be unavailable in private or sandboxed contexts; the toggle still works for this page.
+  }
+}
+
+function closeOverlaySubnav(): void {
+  if (narrowViewport.matches) setSubnavCollapsed(true);
+}
+
+function readStoredSubnavCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SUBNAV_STORAGE_KEY) === 'collapsed';
+  } catch {
+    return false;
+  }
+}
 
 const explorationNavigator = el('nav', 'bp-chrome-exploration-nav');
 explorationNavigator.setAttribute('aria-label', 'Exploration navigation');
@@ -118,7 +194,15 @@ viewport.setAttribute('aria-label', 'Blueprint canvas');
 const world = el('div');
 world.id = 'world';
 viewport.append(world);
-shell.append(switcher, flowSwitcher, explorationNavigator, viewport);
+
+const documentView = el('main', 'bp-chrome-document');
+documentView.id = 'document';
+documentView.setAttribute('aria-label', 'Blueprint pages');
+documentView.hidden = true;
+
+const stage = el('div', 'bp-chrome-stage');
+stage.append(explorationNavigator, viewport, documentView);
+shell.append(rail, subnav, stage);
 app.append(shell);
 
 const canvas = createCanvasController({
@@ -141,7 +225,7 @@ fitButton.addEventListener('click', () => {
     boardState.get(activeBoardId)?.mounted.fit();
   }
 });
-shell.append(fitButton);
+stage.append(fitButton);
 
 const agentStatus = el('div', 'bp-chrome-agent-status');
 agentStatus.hidden = true;
@@ -157,7 +241,7 @@ for (let index = 0; index < 9; index += 1) {
 }
 const agentStatusLabel = el('span', 'bp-chrome-agent-status-label');
 agentStatus.append(agentStatusMark, agentStatusLabel);
-shell.append(agentStatus);
+stage.append(agentStatus);
 
 const selectionBar = el('div', 'bp-chrome-selection');
 selectionBar.hidden = true;
@@ -172,7 +256,7 @@ selectionClear.title = 'Clear selection';
 selectionClear.setAttribute('aria-label', 'Clear selection');
 selectionClear.addEventListener('click', () => setCanvasSelection(undefined));
 selectionBar.append(selectionPath, selectionHint, selectionClear);
-shell.append(selectionBar);
+stage.append(selectionBar);
 
 const changeBar = el('div', 'bp-chrome-changes');
 changeBar.hidden = true;
@@ -190,22 +274,24 @@ changeDismiss.title = 'Dismiss change markers';
 changeDismiss.setAttribute('aria-label', 'Dismiss change markers');
 changeDismiss.addEventListener('click', dismissChanges);
 changeBar.append(el('span', 'bp-chrome-changes-mark'), changeLabel, changeToggle, changeDismiss);
-shell.append(changeBar);
+stage.append(changeBar);
 
 const findingsPanel = el('aside', 'bp-chrome-findings');
 findingsPanel.hidden = true;
 findingsPanel.setAttribute('aria-label', 'Design findings');
-shell.append(findingsPanel);
+stage.append(findingsPanel);
 
 const boardConfigs: Record<BoardId, BoardConfig> = {
   primitives: {
     label: 'Primitives',
-    className: 'board-root board-primitives',
-    mount: mountPrimitives
+    className: 'board-root board-primitives board-document',
+    surface: 'document',
+    mount: mountDocumentBoard
   },
   screens: {
     label: 'Screens',
     className: 'board-root board-screens',
+    surface: 'canvas',
     mount: mountScreens
   }
 };
@@ -219,6 +305,31 @@ let activeBoardId: BoardId | null = null;
 let screenFlows = projectScreenFlows(project);
 let activeScreenFlow: string | null = null;
 
+type DocumentSectionId = 'foundations' | 'primitives' | 'components';
+type SectionId = DocumentSectionId | 'screens';
+
+interface SectionItem {
+  id: string;
+  label: string;
+  group?: string;
+  boundaryKind: BoundaryKind;
+  notice?: string;
+}
+
+const DOCUMENT_SECTIONS: DocumentSectionId[] = ['foundations', 'primitives', 'components'];
+
+const SECTION_LABELS: Record<SectionId, string> = {
+  foundations: 'Foundations',
+  primitives: 'Primitives',
+  components: 'Components',
+  screens: 'Screens'
+};
+
+let activeSection: DocumentSectionId = requestedDocumentSection() ?? 'foundations';
+const activeItemBySection = new Map<DocumentSectionId, string>();
+const requestedItem = new URLSearchParams(location.search).get('item');
+if (requestedItem) activeItemBySection.set(activeSection, requestedItem);
+
 function projectScreenFlows(bundle: BlueprintProjectBundle): string[] {
   return [...new Set(
     bundle.screens.screens
@@ -227,29 +338,144 @@ function projectScreenFlows(bundle: BlueprintProjectBundle): string[] {
   )];
 }
 
+function requestedDocumentSection(): DocumentSectionId | undefined {
+  const section = new URLSearchParams(location.search).get('section');
+  return DOCUMENT_SECTIONS.find(candidate => candidate === section);
+}
+
+function sectionItems(bundle: BlueprintProjectBundle, section: DocumentSectionId): SectionItem[] {
+  if (section === 'foundations') {
+    return bundle.tokens.tokenGroups.map(group => ({ id: group.id, label: group.name, boundaryKind: 'token-group' }));
+  }
+  if (section === 'primitives') {
+    return groupPrimitivesForNavigation(bundle.primitives.primitives).flatMap(({ label, primitives }) =>
+      primitives.map(primitive => ({
+        id: primitive.id,
+        label: primitive.name,
+        group: label,
+        boundaryKind: 'primitive' as const,
+        ...(isBasePrimitive(primitive.id) ? {} : { notice: 'Not in the primitive set' })
+      }))
+    );
+  }
+  return bundle.components.components.map(component => ({ id: component.id, label: component.name, boundaryKind: 'component' }));
+}
+
+function activeItem(bundle: BlueprintProjectBundle, section: DocumentSectionId): SectionItem | undefined {
+  const items = sectionItems(bundle, section);
+  const remembered = activeItemBySection.get(section);
+  return items.find(item => item.id === remembered) ?? items[0];
+}
+
+function currentSection(): SectionId {
+  return activeBoardId === 'screens' ? 'screens' : activeSection;
+}
+
+function visibleSections(): SectionId[] {
+  const boards = new Set(project.manifest.boards.filter(isVisibleBoard).map(board => board.id));
+  return [
+    ...(boards.has('primitives') ? DOCUMENT_SECTIONS : []),
+    ...(boards.has('screens') ? ['screens' as const] : [])
+  ];
+}
+
+function sectionLabel(section: SectionId): string {
+  const boardId = section === 'screens' ? 'screens' : section === 'primitives' ? 'primitives' : undefined;
+  return project.manifest.boards.find(board => board.id === boardId)?.name ?? SECTION_LABELS[section];
+}
+
 function refreshBoardSwitcher(): void {
+  projectName.textContent = project.manifest.project.name;
+  projectMark.textContent = project.manifest.project.name.trim().charAt(0).toUpperCase();
   switcher.replaceChildren();
-  for (const board of project.manifest.boards.filter(isVisibleBoard)) {
-    const button = el('button', '', board.name) as HTMLButtonElement;
+  for (const section of visibleSections()) {
+    const button = el('button', 'bp-chrome-section-button') as HTMLButtonElement;
     button.type = 'button';
-    button.dataset.board = board.id;
-    button.setAttribute('aria-pressed', String(board.id === activeBoardId));
-    button.addEventListener('click', () => showBoard(board.id));
+    button.dataset.section = section;
+    if (section === 'primitives' || section === 'screens') button.dataset.board = section;
+    button.innerHTML = sectionIcon(section);
+    button.append(el('span', 'bp-chrome-section-label', sectionLabel(section)));
+    button.addEventListener('click', () => showSection(section));
     switcher.append(button);
   }
+  refreshNavigationState();
 }
 
 function refreshFlowSwitcher(): void {
   flowSwitcher.replaceChildren();
   if (screenFlows.length === 0) return;
-  flowSwitcher.append(el('span', 'bp-chrome-flow-label', 'Pages'));
+  flowSwitcher.append(el('p', 'bp-chrome-item-group', 'Pages'));
   for (const flow of screenFlows) {
-    const button = el('button', '', flow) as HTMLButtonElement;
+    const button = el('button', 'bp-chrome-item', flow) as HTMLButtonElement;
     button.type = 'button';
     button.dataset.flow = flow;
     button.addEventListener('click', () => setScreenFlow(flow));
     flowSwitcher.append(button);
   }
+  refreshFlowPills();
+}
+
+function refreshItemNav(): void {
+  itemNav.replaceChildren();
+  const section = currentSection();
+  sectionTitle.textContent = sectionLabel(section);
+  if (section === 'screens') {
+    itemNav.hidden = focusedReviewIsRequested();
+    if (!itemNav.hidden) {
+      const screens = project.screens.screens.filter(screen => screenFlows.length === 0 || screen.flow === activeScreenFlow);
+      if (screenFlows.length > 0 && screens.length > 0) itemNav.append(el('p', 'bp-chrome-item-group', 'Screens'));
+      for (const screen of screens) {
+        const button = el('button', 'bp-chrome-item', screenFrameLabel(screen)) as HTMLButtonElement;
+        button.type = 'button';
+        button.dataset.screen = screen.id;
+        button.addEventListener('click', () => {
+          closeOverlaySubnav();
+          focusScreenFrames(screen.id);
+        });
+        itemNav.append(button);
+      }
+    }
+    return;
+  }
+  itemNav.hidden = false;
+  const items = sectionItems(project, section);
+  const selected = activeItem(project, section);
+  const changed = new Set(latestChanges.map(change => `${change.kind}:${change.localId}`));
+  let group: string | undefined;
+  for (const item of items) {
+    if (item.group && item.group !== group) {
+      group = item.group;
+      itemNav.append(el('p', 'bp-chrome-item-group', group));
+    }
+    const button = el('button', 'bp-chrome-item') as HTMLButtonElement;
+    button.type = 'button';
+    button.dataset.item = item.id;
+    button.setAttribute('aria-pressed', String(item.id === selected?.id));
+    button.append(el('span', 'bp-chrome-item-label', item.label));
+    if (item.notice) {
+      button.dataset.notice = 'true';
+      button.title = item.notice;
+      button.append(el('span', 'bp-chrome-item-notice', '!'));
+    }
+    if (changed.has(`${item.boundaryKind}:${item.id}`)) button.dataset.changed = 'true';
+    button.addEventListener('click', () => {
+      closeOverlaySubnav();
+      openDocumentItem(section, item.id);
+    });
+    itemNav.append(button);
+  }
+  if (items.length === 0) {
+    itemNav.append(el('p', 'bp-chrome-item-empty', section === 'components' ? 'No components yet' : 'Nothing here yet'));
+  }
+}
+
+function refreshNavigationState(): void {
+  const section = currentSection();
+  switcher.querySelectorAll<HTMLButtonElement>('[data-section]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.section === section));
+  });
+  flowSwitcher.hidden = section !== 'screens' || screenFlows.length === 0 || focusedReviewIsRequested();
+  refreshItemNav();
   refreshFlowPills();
 }
 
@@ -270,7 +496,57 @@ function setScreenFlow(flow: string): void {
   url.searchParams.set('flow', flow);
   history.replaceState(null, '', url);
   refreshFlowPills();
-  remountBoard('screens');
+  refreshItemNav();
+  if (activeBoardId === 'screens') {
+    remountBoard('screens');
+  } else {
+    discardBoard('screens');
+    showBoard('screens');
+  }
+}
+
+function showSection(section: SectionId): void {
+  if (section === 'screens') {
+    showBoard('screens');
+    return;
+  }
+  openDocumentItem(section, activeItemBySection.get(section));
+}
+
+function openDocumentItem(section: DocumentSectionId, itemId: string | undefined): void {
+  activeSection = section;
+  if (itemId) activeItemBySection.set(section, itemId);
+  if (activeBoardId === 'primitives') {
+    remountBoard('primitives');
+  } else {
+    discardBoard('primitives');
+    showBoard('primitives');
+  }
+}
+
+function stepDocumentItem(offset: number): void {
+  const items = sectionItems(project, activeSection);
+  const index = items.findIndex(item => item.id === activeItem(project, activeSection)?.id);
+  const next = items[index + offset];
+  if (next) openDocumentItem(activeSection, next.id);
+}
+
+function focusScreenFrames(screenId: string): void {
+  const root = boardState.get('screens')?.root;
+  const frames = root ? [...root.querySelectorAll<HTMLElement>('.frame-slot')].filter(slot => (
+    slot.querySelector<HTMLElement>('.frame')?.dataset.screenId === screenId
+  )) : [];
+  if (frames.length > 0) canvas.fitTo(frames);
+}
+
+function sectionIcon(section: SectionId): string {
+  const paths: Record<SectionId, string> = {
+    foundations: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16"/>',
+    primitives: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    components: '<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    screens: '<rect x="3" y="5" width="12" height="14" rx="1.5"/><rect x="17" y="7" width="4" height="10" rx="1"/>'
+  };
+  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[section]}</svg>`;
 }
 
 function explorationIsRequested(): boolean {
@@ -334,12 +610,6 @@ function openHistory(screenId: string, state: string, framePresetId: string): vo
   remountBoard('screens');
 }
 
-activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
-refreshBoardSwitcher();
-refreshFlowSwitcher();
-
-const requestedBoard = new URLSearchParams(location.search).get('board');
-const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
 
 function showBoard(id: BoardId): void {
   const config = boardConfigs[id];
@@ -350,28 +620,40 @@ function showBoard(id: BoardId): void {
   if (activeBoardId) {
     const current = boardState.get(activeBoardId);
     if (current) {
-      current.view = canvas.snapshot();
+      rememberBoardView(activeBoardId, current);
       current.root.hidden = true;
     }
   }
 
   const state = ensureBoard(id, config);
   state.root.hidden = false;
+  const onCanvas = config.surface === 'canvas';
+  viewport.hidden = !onCanvas;
+  documentView.hidden = onCanvas;
+  fitButton.hidden = !onCanvas;
   state.mounted.configure();
   activeBoardId = id;
 
-  switcher.querySelectorAll<HTMLButtonElement>('[data-board]').forEach(button => {
-    button.setAttribute('aria-pressed', String(button.dataset.board === id));
-  });
   const showingFocusedReview = id === 'screens' && focusedReviewIsRequested();
-  flowSwitcher.hidden = id !== 'screens' || screenFlows.length === 0 || showingFocusedReview;
   explorationNavigator.hidden = !showingFocusedReview;
+  refreshNavigationState();
 
   const url = new URL(window.location.href);
   url.searchParams.set('board', id);
+  if (onCanvas) {
+    url.searchParams.delete('section');
+    url.searchParams.delete('item');
+  } else {
+    url.searchParams.set('section', activeSection);
+    const item = activeItem(project, activeSection);
+    if (item) url.searchParams.set('item', item.id);
+    else url.searchParams.delete('item');
+  }
   history.replaceState(null, '', url);
 
-  if (state.view) {
+  if (!onCanvas) {
+    documentView.scrollTop = state.scrollTop ?? 0;
+  } else if (state.view) {
     canvas.setView(state.view);
   } else {
     requestAnimationFrame(() => state.mounted.fit());
@@ -379,6 +661,18 @@ function showBoard(id: BoardId): void {
 
   refreshCanvasReviewState(id);
   renderCanvasAnnotations();
+}
+
+function rememberBoardView(id: BoardId, state: MountedBoard): void {
+  if (boardConfigs[id].surface === 'canvas') {
+    state.view = canvas.snapshot();
+  } else {
+    state.scrollTop = documentView.scrollTop;
+  }
+}
+
+function boardContainer(id: BoardId): HTMLElement {
+  return boardConfigs[id].surface === 'canvas' ? world : documentView;
 }
 
 function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
@@ -391,7 +685,7 @@ function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
   root.dataset.boardRoot = id;
   root.hidden = true;
   root.setAttribute('aria-label', config.label);
-  world.append(root);
+  boardContainer(id).append(root);
 
   const mounted = config.mount({ root, canvas, project });
   const state: MountedBoard = { root, mounted, view: null };
@@ -399,14 +693,15 @@ function ensureBoard(id: BoardId, config: BoardConfig): MountedBoard {
   return state;
 }
 
-// Rebuilds a board from scratch (used when the screens flow subpage changes);
-// the fresh mount refits instead of restoring a stale canvas view.
+function discardBoard(id: BoardId): void {
+  boardState.get(id)?.root.remove();
+  boardState.delete(id);
+}
+
+// Rebuilds a board from scratch (used when the screens flow subpage or the
+// document item changes); the fresh mount refits instead of restoring a stale view.
 function remountBoard(id: BoardId): void {
-  const existing = boardState.get(id);
-  if (existing) {
-    existing.root.remove();
-    boardState.delete(id);
-  }
+  discardBoard(id);
   if (activeBoardId === id) {
     activeBoardId = null;
     showBoard(id);
@@ -418,34 +713,40 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
   if (!current) return;
   const config = boardConfigs[id];
   const isActive = activeBoardId === id;
-  const view = isActive ? canvas.snapshot() : current.view;
+  const onCanvas = config.surface === 'canvas';
+  const view = isActive && onCanvas ? canvas.snapshot() : current.view;
+  const scrollTop = isActive && !onCanvas ? documentView.scrollTop : current.scrollTop;
   const nextRoot = el('section', `${config.className} bp-chrome-live-board-next`);
   nextRoot.dataset.boardRoot = id;
   nextRoot.hidden = !isActive;
   nextRoot.setAttribute('aria-label', config.label);
   nextRoot.setAttribute('aria-busy', 'true');
   nextRoot.style.visibility = 'hidden';
-  world.append(nextRoot);
+  if (!onCanvas) nextRoot.style.position = 'absolute';
+  boardContainer(id).append(nextRoot);
   const mounted = config.mount({ root: nextRoot, canvas, project });
   if (isActive) await waitForPrototypeFrames(nextRoot);
 
   current.root.remove();
   nextRoot.style.removeProperty('visibility');
+  nextRoot.style.removeProperty('position');
   nextRoot.removeAttribute('aria-busy');
   nextRoot.classList.remove('bp-chrome-live-board-next');
   nextRoot.classList.add('bp-chrome-live-board-enter');
-  const nextState: MountedBoard = { root: nextRoot, mounted, view };
+  const nextState: MountedBoard = { root: nextRoot, mounted, view, ...(scrollTop === undefined ? {} : { scrollTop }) };
   boardState.set(id, nextState);
   if (isActive) {
     mounted.configure();
-    if (view) canvas.setView(view);
+    if (onCanvas && view) canvas.setView(view);
+    if (!onCanvas) documentView.scrollTop = scrollTop ?? 0;
+    refreshNavigationState();
     refreshCanvasReviewState(id);
     renderCanvasAnnotations();
   }
 }
 
 async function waitForPrototypeFrames(root: HTMLElement): Promise<void> {
-  const frames = [...root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')];
+  const frames = [...root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe, iframe.canonical-primitive-iframe')];
   if (frames.length === 0) return;
   await Promise.race([
     Promise.all(frames.map(frame => new Promise<void>(resolve => {
@@ -455,127 +756,365 @@ async function waitForPrototypeFrames(root: HTMLElement): Promise<void> {
   ]);
 }
 
-function mountPrimitives({ root, canvas: boardCanvas, project: bundle }: BoardContext): BoardMount {
-  const configure = (): CanvasController =>
-    boardCanvas.configure({
-      minScale: 0.08,
-      readableScale: 0.55,
-      fallbackWidth: 400,
-      fallbackHeight: 240
-    });
-  const controller = configure();
-  const layout = createCanvasItemLayout(root, {
-    selector: '.group-head, .spec',
-    chipClearance: 38,
-    stackGap: 34,
-    horizontalGap: 24,
-    fallbackWidth: 400,
-    fallbackHeight: 220
-  });
+function mountDocumentBoard({ root, project: bundle }: BoardContext): BoardMount {
   const tokenIndex = createTokenIndex(bundle);
-
-  addGroupHeading(root, controller, {
-    title: 'Tokens',
-    subtitle: `${bundle.tokens.tokenGroups.length} app-owned groups`,
-    x: 70,
-    y: 300,
-    accent: 'var(--bp-sample-accent-token)'
-  });
-  bundle.tokens.tokenGroups.forEach((group, index) => {
-    addTokenGroupCard(root, controller, bundle, tokenIndex, group, {
-      x: 70,
-      y: 380 + index * 250,
-      width: 460
-    });
-  });
-
-  // Shared primitives come first, then mobile-only and desktop-only zones under
-  // their own headings; within a zone, related families share one column and
-  // stack vertically. Per-primitive chips carry the identity.
-  const zones = primitivePlatformZones(bundle.primitives.primitives);
-  const showZones = zones.some(zone => zone.id !== 'shared');
-  const columns: Array<{ cards: HTMLElement[]; heading?: HTMLElement; startsZone: boolean }> = [];
-  // Height autofits arrive per iframe; reflow synchronously with each one so
-  // positions are never stale between a resize and its repack. Column x
-  // positions are recomputed from measured card widths so cards that grew to
-  // fit their content never clip or overlap a neighboring group.
-  const refit = (): void => {
-    if (root.hidden) {
-      return;
-    }
-    let columnX = PRIMITIVE_BOARD_START_X;
-    for (const column of columns) {
-      if (column.startsZone) {
-        columnX += PRIMITIVE_ZONE_GAP - PRIMITIVE_COLUMN_GAP;
-      }
-      const width = Math.max(...column.cards.map(card => card.offsetWidth || 400));
-      if (column.heading) {
-        column.heading.style.left = `${columnX}px`;
-      }
-      for (const card of column.cards) {
-        card.dataset.layoutX = String(columnX);
-        card.style.left = `${columnX}px`;
-      }
-      columnX += width + PRIMITIVE_COLUMN_GAP;
-    }
-    controller.fitTo(layout.reflow());
-  };
-  let columnX = PRIMITIVE_BOARD_START_X;
-  for (const zone of zones) {
-    const { byFamily, familyColumns } = planFamilyColumns(zone.primitives);
-    const startsZone = showZones && columns.length > 0;
-    if (startsZone) {
-      columnX += PRIMITIVE_ZONE_GAP - PRIMITIVE_COLUMN_GAP;
-    }
-    const heading = showZones
-      ? addGroupHeading(root, controller, {
-          title: zone.title,
-          subtitle: zone.primitives.length === 1 ? '1 primitive' : `${zone.primitives.length} primitives`,
-          x: columnX,
-          y: 300,
-          accent: 'var(--bp-sample-fg)'
-        })
-      : undefined;
-    if (heading) {
-      heading.dataset.primitivePlatform = zone.id;
-    }
-    familyColumns.forEach((columnFamilies, index) => {
-      const width = Math.max(
-        ...columnFamilies.flatMap(family =>
-          (byFamily.get(family) ?? []).map(primitive => canonicalSpecimenCardWidth(family, primitive))
-        )
-      );
-      const x = columnX;
-      columnX += width + PRIMITIVE_COLUMN_GAP;
-      let stackY = 380;
-      const cards: HTMLElement[] = [];
-      columns.push({ cards, heading: index === 0 ? heading : undefined, startsZone: index === 0 && startsZone });
-      for (const family of columnFamilies) {
-        for (const primitive of byFamily.get(family) ?? []) {
-          const cardWidth = canonicalSpecimenCardWidth(family, primitive);
-          const card = addPrimitiveDefinitionCard(root, controller, bundle, tokenIndex, primitive, family, {
-            x,
-            y: stackY,
-            width: cardWidth
-          }, refit);
-          card.dataset.primitivePlatform = zone.id;
-          cards.push(card);
-          stackY += 280;
-        }
-      }
-    });
-  }
-
-  if (document.fonts?.ready) {
-    void document.fonts.ready.then(() => {
-      refit();
-    });
-  }
-
+  const item = activeItem(bundle, activeSection);
+  root.dataset.section = activeSection;
+  const page = item ? createDocumentItemPage(bundle, tokenIndex, activeSection, item.id) : undefined;
+  root.append(page ?? createEmptySectionPage(activeSection));
   return {
-    configure,
-    fit: () => controller.fitTo(layout.reflow())
+    configure: () => undefined,
+    fit: () => {
+      documentView.scrollTop = 0;
+    }
   };
+}
+
+function createDocumentItemPage(
+  bundle: BlueprintProjectBundle,
+  tokenIndex: TokenIndex,
+  section: DocumentSectionId,
+  itemId: string
+): HTMLElement | undefined {
+  if (section === 'foundations') {
+    const group = tokenIndex.byGroup.get(itemId);
+    return group ? createFoundationPage(bundle, tokenIndex, group) : undefined;
+  }
+  if (section === 'primitives') {
+    const primitive = bundle.primitives.primitives.find(candidate => candidate.id === itemId);
+    return primitive ? createPrimitivePage(bundle, tokenIndex, primitive) : undefined;
+  }
+  const component = bundle.components.components.find(candidate => candidate.id === itemId);
+  return component ? createComponentPage(bundle, component) : undefined;
+}
+
+function createDocumentPage(kicker: string, title: string, description: string): { page: HTMLElement; body: HTMLElement } {
+  const page = el('article', 'bp-chrome-doc-page');
+  const head = el('header', 'bp-chrome-doc-head');
+  head.append(el('p', 'bp-chrome-doc-kicker', kicker), el('h1', 'bp-chrome-doc-title', title));
+  if (description) head.append(el('p', 'bp-chrome-doc-lede', description));
+  const body = el('div', 'bp-chrome-doc-body');
+  page.append(head, body);
+  return { page, body };
+}
+
+function createDocumentSection(title: string, ...children: HTMLElement[]): HTMLElement {
+  const section = el('section', 'bp-chrome-doc-section');
+  section.append(el('h2', 'bp-chrome-doc-section-title', title), ...children);
+  return section;
+}
+
+function createEmptySectionPage(section: DocumentSectionId): HTMLElement {
+  const copy: Record<DocumentSectionId, [string, string]> = {
+    foundations: ['No tokens yet', 'Foundations show the color, type, space, shape and motion tokens every primitive reads from.'],
+    primitives: ['No primitives yet', 'Primitives are the fixed building blocks every app shares, such as the button and the input.'],
+    components: ['No components yet', 'Components are this app\'s own compositions built from primitives, such as a bento grid on a landing page. Primitives stay fixed; components are where an app adds its own pieces.']
+  };
+  const [title, description] = copy[section];
+  const { page } = createDocumentPage(SECTION_LABELS[section], title, description);
+  page.classList.add('bp-chrome-doc-empty');
+  return page;
+}
+
+function createFoundationPage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, group: TokenGroup): HTMLElement {
+  const { page, body } = createDocumentPage('Foundations', group.name, group.description);
+  setBoundary(page, 'token-group', group.id, bundle.manifest.project.id, group.name);
+  page.dataset.boundarySummary = group.description;
+  page.dataset.tokenGroup = group.id;
+  body.classList.add('token-card-body');
+  applyProjectCanvas(body, tokenIndex);
+
+  if (group.notes.length > 0) {
+    const rules = el('ul', 'bp-chrome-doc-rules');
+    for (const note of group.notes) rules.append(el('li', '', note));
+    body.append(createDocumentSection('Rules', rules));
+  }
+  if (group.tokens.some(token => token.styleRef === SURFACE_LADDER_ROLES[0])) {
+    const ladder = createSurfaceLadder(tokenIndex);
+    const pairs = createContrastPairs(tokenIndex);
+    if (ladder || pairs) {
+      const context = el('div', 'token-context');
+      for (const part of [ladder, pairs]) if (part) context.append(part);
+      body.append(createDocumentSection('In context', context));
+    }
+  }
+
+  const byType = new Map<DesignToken['type'], DesignToken[]>();
+  for (const token of group.tokens) byType.set(token.type, [...byType.get(token.type) ?? [], token]);
+  for (const [type, tokens] of byType) {
+    body.append(createDocumentSection(TOKEN_TYPE_LABELS[type], createTokenSpecimens(tokenIndex, group, type, tokens)));
+  }
+  return page;
+}
+
+const TOKEN_TYPE_LABELS: Record<DesignToken['type'], string> = {
+  color: 'Colors',
+  typography: 'Type',
+  space: 'Space',
+  size: 'Sizes',
+  radius: 'Radii',
+  shadow: 'Shadows',
+  motion: 'Motion'
+};
+
+function createTokenSpecimens(tokenIndex: TokenIndex, group: TokenGroup, type: DesignToken['type'], tokens: DesignToken[]): HTMLElement {
+  const list = el('div', `token-specimens token-specimens-${type}`);
+  for (const token of tokens) {
+    const record = tokenIndex.byRef.get(`${group.id}.${token.id}`);
+    const value = resolveTokenReferences(tokenIndex, token.value);
+    const specimen = el('div', 'token-specimen');
+    setTokenHook(specimen, record, `${type}-token-specimen`);
+    specimen.dataset.tokenType = token.type;
+    specimen.append(createTokenVisual(token, value), createTokenCaption(group, token));
+    list.append(specimen);
+  }
+  return list;
+}
+
+function createTokenVisual(token: DesignToken, value: string): HTMLElement {
+  const visual = el('div', 'token-visual');
+  switch (token.type) {
+    case 'color':
+      visual.style.background = value;
+      break;
+    case 'typography':
+      if (isFontStack(value)) {
+        visual.classList.add('token-visual-family');
+        visual.style.fontFamily = value;
+        visual.append(el('span', 'token-visual-glyph', 'Aa'), el('span', 'token-visual-alphabet', 'ABCDEFGHIJKLM nopqrstuvwxyz 0123456789'));
+      } else if (/^-?[\d.]+em$/.test(value.trim())) {
+        visual.classList.add('token-visual-tracking');
+        visual.style.letterSpacing = value;
+        visual.textContent = 'Tracking';
+      } else {
+        visual.classList.add('token-visual-type');
+        visual.style.font = value;
+        if (!visual.style.font) visual.style.fontFamily = value;
+        visual.textContent = token.description || token.name;
+      }
+      break;
+    case 'space':
+    case 'size': {
+      const length = singleLength(value);
+      if (length !== undefined) {
+        const bar = el('span', 'token-visual-bar');
+        bar.style.width = `${Math.min(length, 640)}px`;
+        visual.append(bar);
+      } else {
+        visual.classList.add('token-visual-text');
+        visual.textContent = value;
+      }
+      break;
+    }
+    case 'radius': {
+      const tile = el('span', 'token-visual-radius');
+      tile.style.borderRadius = value;
+      visual.append(tile);
+      break;
+    }
+    case 'shadow': {
+      const tile = el('span', 'token-visual-shadow');
+      tile.style.boxShadow = value;
+      visual.append(tile);
+      break;
+    }
+    case 'motion': {
+      const dot = el('span', 'token-visual-motion-dot');
+      dot.style.transition = `transform ${value}`;
+      visual.classList.add('token-visual-motion');
+      visual.append(dot);
+      break;
+    }
+  }
+  return visual;
+}
+
+function createTokenCaption(group: TokenGroup, token: DesignToken): HTMLElement {
+  const caption = el('div', 'token-caption');
+  const name = el('div', 'token-caption-name');
+  name.append(el('b', '', token.name), el('code', '', token.value));
+  caption.append(name);
+  if (token.description && token.type !== 'typography') caption.append(el('p', 'token-caption-description', token.description));
+  caption.append(el('code', 'token-caption-ref', `${group.id}.${token.id} · ${token.styleRef}`));
+  return caption;
+}
+
+function isFontStack(value: string): boolean {
+  return !/\d+(?:\.\d+)?px/.test(value) && /[,"']/.test(value);
+}
+
+function singleLength(value: string): number | undefined {
+  const match = /^\s*(-?\d+(?:\.\d+)?)px\s*$/.exec(value);
+  return match ? Number(match[1]) : undefined;
+}
+
+function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, primitive: PrimitiveDefinition): HTMLElement {
+  const family = inferPrimitiveFamily(primitive);
+  const { page, body } = createDocumentPage(`Primitive · ${primitiveGroupLabel(family)}`, primitive.name, primitive.description);
+  setBoundary(page, 'primitive', primitive.id, bundle.manifest.project.id, primitive.name);
+  page.dataset.boundarySummary = primitive.description;
+  page.dataset.primitiveFamily = family;
+
+  if (!isBasePrimitive(primitive.id)) {
+    body.append(el('p', 'bp-chrome-doc-notice', `This is not one of the ${BASE_PRIMITIVE_CONTRACT.length} Blueprint primitives. App-specific pieces belong in components, built from primitives.`));
+  }
+  const facts = el('div', 'bp-chrome-doc-facts');
+  const platforms = primitive.platforms?.length === 1 ? (primitive.platforms[0] === 'mobile' ? 'Mobile' : 'Web') : 'Mobile and web';
+  const prototype = primitive.prototype;
+  for (const fact of [
+    platforms,
+    plural(prototype?.states.length ?? 0, 'state'),
+    ...(prototype?.variants.length ? [plural(prototype.variants.length, 'variant')] : []),
+    ...(prototype?.sizes?.length ? [plural(prototype.sizes.length, 'size')] : [])
+  ]) facts.append(el('span', 'bp-chrome-doc-fact', fact));
+  body.append(facts);
+
+  const specimen = el('div', 'bp-chrome-doc-specimen');
+  specimen.append(renderCanonicalPrimitiveSpecimen({ bundle, tokenIndex, primitive, family }));
+  body.append(specimen);
+
+  const details = el('dl', 'bp-chrome-doc-details');
+  if (prototype?.accessibilityIntent) appendDetail(details, 'Accessibility', el('span', '', prototype.accessibilityIntent));
+  if (prototype?.slots.length) appendDetail(details, 'Slots', createChipList(prototype.slots));
+  const roles = Object.entries(prototype?.tokenRoles ?? {});
+  if (roles.length > 0) {
+    const list = el('div', 'bp-chrome-doc-roles');
+    for (const [role, tokenRef] of roles) {
+      const row = el('div', 'bp-chrome-doc-role');
+      const record = tokenIndex.byRef.get(tokenRef);
+      const swatch = el('span', 'token-role-swatch');
+      if (record) applyTokenPreview(swatch, record.token, tokenIndex);
+      row.append(swatch, el('span', 'bp-chrome-doc-role-name', role), el('code', '', tokenRef));
+      list.append(row);
+    }
+    appendDetail(details, 'Token roles', list);
+  }
+  if (primitive.notes.length > 0) {
+    const notes = el('ul', 'bp-chrome-doc-rules');
+    for (const note of primitive.notes) notes.append(el('li', '', note));
+    appendDetail(details, 'Notes', notes);
+  }
+  if (details.childElementCount > 0) body.append(details);
+  return page;
+}
+
+function createComponentPage(bundle: BlueprintProjectBundle, component: ComponentDefinition): HTMLElement {
+  const { page, body } = createDocumentPage('Component', component.name, component.description);
+  setBoundary(page, 'component', component.id, bundle.manifest.project.id, component.name);
+  page.dataset.boundarySummary = component.description;
+
+  const pieces = component.uses.filter(use => use.kind === 'primitive' || use.kind === 'component');
+  if (pieces.length > 0) {
+    const list = el('div', 'bp-chrome-doc-chips');
+    for (const use of pieces) {
+      const target = use.kind === 'primitive'
+        ? bundle.primitives.primitives.find(candidate => candidate.id === use.id)
+        : bundle.components.components.find(candidate => candidate.id === use.id);
+      const chip = el('button', 'bp-chrome-doc-chip bp-chrome-doc-link', target?.name ?? use.id) as HTMLButtonElement;
+      chip.type = 'button';
+      chip.title = `${use.kind}:${use.id}`;
+      chip.addEventListener('click', () => openDocumentItem(use.kind === 'primitive' ? 'primitives' : 'components', use.id));
+      list.append(chip);
+    }
+    body.append(createDocumentSection('Built from', list));
+  }
+
+  const width = componentPreviewWidth(bundle, component.id);
+  const states = el('div', 'bp-chrome-doc-states');
+  for (const state of component.prototype?.states ?? []) {
+    const figure = el('figure', 'bp-chrome-doc-state');
+    figure.append(el('figcaption', 'bp-chrome-doc-state-label', state), createComponentPreview(bundle, component, state, width));
+    states.append(figure);
+  }
+  body.append(createDocumentSection(plural(component.prototype?.states.length ?? 0, 'state'), states));
+
+  if (component.notes?.length) {
+    const notes = el('ul', 'bp-chrome-doc-rules');
+    for (const note of component.notes) notes.append(el('li', '', note));
+    body.append(createDocumentSection('Notes', notes));
+  }
+  return page;
+}
+
+function createComponentPreview(bundle: BlueprintProjectBundle, component: ComponentDefinition, state: string, width: number): HTMLElement {
+  const host = el('div', 'bp-chrome-doc-preview');
+  try {
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'component', id: component.id }, state });
+    const iframe = document.createElement('iframe');
+    iframe.className = 'canonical-primitive-iframe component-preview-iframe';
+    applyPrototypeIframeIsolation(iframe);
+    iframe.title = `${component.name} · ${state}`;
+    iframe.style.width = `${width}px`;
+    iframe.style.height = '160px';
+    iframe.srcdoc = compiled.html;
+    prototypeDocumentByFrame.set(iframe, compiled.html);
+    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
+    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
+    host.append(iframe);
+    measureComponentPreview(compiled.html, width, size => {
+      iframe.style.width = `${size.width}px`;
+      iframe.style.height = `${size.height}px`;
+    });
+  } catch (error) {
+    host.append(createPrototypeCompileError(error));
+  }
+  return host;
+}
+
+function measureComponentPreview(html: string, width: number, done: (size: { width: number; height: number }) => void): void {
+  const probe = document.createElement('iframe');
+  probe.style.cssText = `position:absolute;left:-10000px;top:0;width:${width}px;height:1px;border:0;visibility:hidden;`;
+  probe.setAttribute('aria-hidden', 'true');
+  probe.addEventListener('load', () => {
+    const measure = (): void => {
+      try {
+        const body = probe.contentDocument?.body;
+        const root = body?.firstElementChild as HTMLElement | null | undefined;
+        const rect = root?.getBoundingClientRect();
+        const intrinsic = rect && rect.width < width - 48 ? Math.ceil(rect.width) + 24 : width;
+        const height = Math.max(rect ? Math.ceil(rect.bottom) + 12 : 0, probe.contentDocument?.documentElement.scrollHeight ?? 0);
+        done({ width: Math.max(160, intrinsic), height: Math.min(1600, Math.max(48, height)) });
+      } catch {
+        // Keep the default preview size when the document cannot be measured.
+      } finally {
+        probe.remove();
+      }
+    };
+    void (probe.contentDocument?.fonts.ready ?? Promise.resolve()).then(measure, measure);
+  });
+  probe.srcdoc = html;
+  document.body.append(probe);
+}
+
+function componentPreviewWidth(bundle: BlueprintProjectBundle, componentId: string): number {
+  const users = new Set([componentId]);
+  for (const component of bundle.components.components) {
+    if (component.uses.some(use => use.kind === 'component' && use.id === componentId)) users.add(component.id);
+  }
+  const presets = new Map(bundle.manifest.framePresets.map(preset => [preset.id, preset]));
+  const widths = bundle.screens.screens
+    .filter(screen => screen.sections.some(section => section.uses.some(use => use.kind === 'component' && users.has(use.id))))
+    .flatMap(screen => {
+      const preset = presets.get(screen.framePresetId);
+      return preset ? [Math.min(preset.width, 1120)] : [];
+    });
+  return widths.length > 0 ? Math.min(...widths) : 640;
+}
+
+function appendDetail(list: HTMLElement, term: string, description: HTMLElement): void {
+  const definition = el('dd');
+  definition.append(description);
+  list.append(el('dt', '', term), definition);
+}
+
+function createChipList(values: string[]): HTMLElement {
+  const list = el('div', 'bp-chrome-doc-chips');
+  for (const value of values) list.append(el('span', 'bp-chrome-doc-chip', value));
+  return list;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 interface TokenRecord {
@@ -588,12 +1127,6 @@ interface TokenIndex {
   byRef: Map<string, TokenRecord>;
   byStyleRef: Map<string, TokenRecord>;
   byGroup: Map<string, TokenGroup>;
-}
-
-interface PositionedCard {
-  x: number;
-  y: number;
-  width: number;
 }
 
 interface FamilyGroup {
@@ -640,22 +1173,30 @@ const FAMILY_ORDER = [
   'generic'
 ];
 
-/**
- * Board column grouping: related families stack vertically in one shared
- * column so the primitives board reads as a handful of organized groups
- * instead of one long horizontal strip. Families not listed here (app-added)
- * fall through to their own trailing columns in FAMILY_ORDER order.
- */
-const FAMILY_COLUMN_GROUPS: string[][] = [
-  ['button'],
-  ['input', 'select', 'checkbox', 'radio', 'switch', 'slider'],
-  ['text'],
-  ['surface', 'card', 'media'],
-  ['navigation', 'tabs'],
-  ['separator', 'list', 'row'],
-  ['loading', 'badge', 'icon', 'avatar', 'skeleton', 'toast', 'tooltip', 'alert'],
-  ['dialog', 'menu', 'sheet']
+const PRIMITIVE_GROUPS: Array<{ label: string; families: string[] }> = [
+  { label: 'Actions', families: ['button'] },
+  { label: 'Inputs', families: ['input', 'select', 'checkbox', 'radio', 'switch', 'slider'] },
+  { label: 'Text', families: ['text'] },
+  { label: 'Surfaces', families: ['surface', 'card', 'media'] },
+  { label: 'Navigation', families: ['navigation', 'tabs'] },
+  { label: 'Structure', families: ['separator', 'list', 'row'] },
+  { label: 'Feedback', families: ['loading', 'badge', 'icon', 'avatar', 'skeleton', 'toast', 'tooltip', 'alert'] },
+  { label: 'Overlays', families: ['dialog', 'menu', 'sheet'] }
 ];
+
+function primitiveGroupLabel(family: string): string {
+  return PRIMITIVE_GROUPS.find(group => group.families.includes(family))?.label ?? 'Other';
+}
+
+function groupPrimitivesForNavigation(primitives: PrimitiveDefinition[]): Array<{ label: string; primitives: PrimitiveDefinition[] }> {
+  const byLabel = new Map<string, PrimitiveDefinition[]>();
+  for (const { family, primitives: members } of groupPrimitivesByFamily(primitives)) {
+    const label = primitiveGroupLabel(family);
+    byLabel.set(label, [...byLabel.get(label) ?? [], ...members]);
+  }
+  return [...PRIMITIVE_GROUPS.map(group => group.label), 'Other']
+    .flatMap(label => byLabel.has(label) ? [{ label, primitives: byLabel.get(label) ?? [] }] : []);
+}
 
 function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
   const byRef = new Map<string, TokenRecord>();
@@ -692,7 +1233,9 @@ function applyProjectCanvas(element: HTMLElement, tokenIndex: TokenIndex): void 
   const foreground = resolvedColor(tokenIndex, '--app-color-foreground');
   const muted = resolvedColor(tokenIndex, '--app-color-muted');
   const surface = resolvedColor(tokenIndex, '--app-color-surface');
+  const border = resolvedColor(tokenIndex, '--app-color-border');
   if (background) element.style.background = background;
+  if (border) element.style.setProperty('--bp-sample-border', border);
   if (foreground) element.style.setProperty('--bp-sample-fg', foreground);
   if (muted) element.style.setProperty('--bp-sample-muted-fg', muted);
   if (surface) element.style.setProperty('--bp-sample-swatch-bg', surface);
@@ -757,103 +1300,6 @@ function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
   const section = el('section', 'token-pairs');
   section.append(el('p', 'token-section-label', 'Contrast pairs'), list);
   return section;
-}
-
-function addTokenGroupCard(
-  root: HTMLElement,
-  controller: CanvasController,
-  bundle: BlueprintProjectBundle,
-  tokenIndex: TokenIndex,
-  group: TokenGroup,
-  position: PositionedCard
-): HTMLElement {
-  const card = createSpecCard({
-    label: `TOKEN · ${group.name}`,
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    accent: familyAccent('token'),
-    boundary: ['token-group', group.id, bundle.manifest.project.id]
-  });
-  card.dataset.boundarySummary = group.description;
-  card.dataset.tokenGroup = group.id;
-
-  const body = appendSpecBody(card);
-  body.classList.add('token-card-body');
-  applyProjectCanvas(body, tokenIndex);
-  const header = el('div', 'generated-card-head');
-  header.append(el('strong', '', group.name), el('span', '', group.description));
-  body.append(header);
-
-  if (group.tokens.some(token => token.styleRef === SURFACE_LADDER_ROLES[0])) {
-    for (const section of [createSurfaceLadder(tokenIndex), createContrastPairs(tokenIndex)]) {
-      if (section) body.append(section);
-    }
-  }
-
-  const grid = el('div', 'token-grid');
-  for (const token of group.tokens) {
-    grid.append(createTokenRow(tokenIndex, group, token));
-  }
-  body.append(grid);
-
-  if (group.notes.length > 0) {
-    body.append(el('p', 'spec-note', group.notes[0] ?? ''));
-  }
-
-  root.append(card);
-  controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
-  return card;
-}
-
-function createTokenRow(tokenIndex: TokenIndex, group: TokenGroup, token: DesignToken): HTMLElement {
-  const row = el('div', `token-row token-row-${token.type}`);
-  row.dataset.tokenType = token.type;
-  const tokenRef = `${group.id}.${token.id}`;
-  setTokenHook(row, tokenIndex.byRef.get(tokenRef), `${token.type}-token-row`);
-
-  const sample = el('span', 'token-sample');
-  applyTokenPreview(sample, token, tokenIndex);
-  const meta = el('span', 'token-meta');
-  meta.append(el('b', '', token.name), el('span', '', `${tokenRef} · ${token.value}`));
-  row.append(sample, meta);
-  return row;
-}
-
-function addPrimitiveDefinitionCard(
-  root: HTMLElement,
-  controller: CanvasController,
-  bundle: BlueprintProjectBundle,
-  tokenIndex: TokenIndex,
-  primitive: PrimitiveDefinition,
-  family: string,
-  position: PositionedCard,
-  onSpecimenResize?: () => void
-): HTMLElement {
-  const card = createSpecCard({
-    label: primitive.name,
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    accent: familyAccent(family),
-    boundary: ['primitive', primitive.id, bundle.manifest.project.id]
-  });
-  card.dataset.boundarySummary = primitive.description;
-  card.dataset.primitiveFamily = family;
-
-  const body = appendSpecBody(card);
-  body.classList.add('primitive-specimen-body');
-  if (primitive.prototype) {
-    body.classList.add('primitive-specimen-body-canonical');
-    // Canonical cards hug their measured grid; column positions are recomputed
-    // from real widths on every refit.
-    card.style.width = 'max-content';
-  }
-  body.append(renderCanonicalPrimitiveSpecimen({ bundle, tokenIndex, primitive, family, ...(onSpecimenResize ? { onSpecimenResize } : {}) }));
-
-  root.append(card);
-  controller.makeDraggable(card, card.querySelector<HTMLElement>('.spec-chip') ?? card);
-  return card;
 }
 
 function renderCanonicalPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
@@ -1030,50 +1476,6 @@ function primitiveCellWidth(family: string, primitiveId: string): number {
   return PRIMITIVE_CELL_WIDTH_OVERRIDES[primitiveId] ?? familyCellWidth(family);
 }
 
-/** Width a canonical specimen card needs to hug its review grid. */
-function canonicalSpecimenCardWidth(family: string, primitive: PrimitiveDefinition): number {
-  const cols = Math.max(1, primitive.prototype?.states.length ?? 1);
-  return 28 + 104 + 8 + cols * (primitiveCellWidth(family, primitive.id) + 8) + 4;
-}
-
-const PRIMITIVE_BOARD_START_X = 650;
-const PRIMITIVE_COLUMN_GAP = 64;
-const PRIMITIVE_ZONE_GAP = 160;
-
-function primitivePlatformZones(primitives: PrimitiveDefinition[]): Array<{ id: 'shared' | 'mobile' | 'desktop'; title: string; primitives: PrimitiveDefinition[] }> {
-  const zoneOf = (primitive: PrimitiveDefinition): 'shared' | 'mobile' | 'desktop' => (
-    primitive.platforms?.length === 1 ? primitive.platforms[0] : 'shared'
-  );
-  const zones = [
-    { id: 'shared' as const, title: 'Shared' },
-    { id: 'mobile' as const, title: 'Mobile' },
-    { id: 'desktop' as const, title: 'Web' }
-  ];
-  return zones
-    .map(zone => ({ ...zone, primitives: primitives.filter(primitive => zoneOf(primitive) === zone.id) }))
-    .filter(zone => zone.primitives.length > 0);
-}
-
-function planFamilyColumns(primitives: PrimitiveDefinition[]): { byFamily: Map<string, PrimitiveDefinition[]>; familyColumns: string[][] } {
-  const groupedPrimitives = groupPrimitivesByFamily(primitives);
-  const byFamily = new Map(groupedPrimitives.map(group => [group.family, group.primitives]));
-  const claimedFamilies = new Set<string>();
-  const familyColumns: string[][] = [];
-  for (const planned of FAMILY_COLUMN_GROUPS) {
-    const present = planned.filter(family => byFamily.has(family));
-    if (present.length > 0) {
-      familyColumns.push(present);
-      present.forEach(family => claimedFamilies.add(family));
-    }
-  }
-  for (const group of groupedPrimitives) {
-    if (!claimedFamilies.has(group.family)) {
-      familyColumns.push([group.family]);
-    }
-  }
-  return { byFamily, familyColumns };
-}
-
 function groupPrimitivesByFamily(primitives: PrimitiveDefinition[]): FamilyGroup[] {
   const groups = new Map<string, PrimitiveDefinition[]>();
   for (const primitive of primitives) {
@@ -1135,41 +1537,6 @@ function hasFamilyTerm(terms: Set<string>, ...candidates: string[]): boolean {
 function familySortIndex(family: string): number {
   const index = FAMILY_ORDER.indexOf(family);
   return index === -1 ? FAMILY_ORDER.length : index;
-}
-
-function familyAccent(family: string): string {
-  const accents: Record<string, string> = {
-    token: 'var(--bp-sample-accent-token)',
-    button: 'var(--bp-sample-accent-action)',
-    input: 'var(--bp-sample-accent-input)',
-    select: 'var(--bp-sample-accent-input)',
-    checkbox: 'var(--bp-sample-accent-input)',
-    radio: 'var(--bp-sample-accent-input)',
-    switch: 'var(--bp-sample-accent-input)',
-    slider: 'var(--bp-sample-accent-input)',
-    text: 'var(--bp-sample-accent-input)',
-    surface: 'var(--bp-sample-accent-surface)',
-    card: 'var(--bp-sample-accent-surface)',
-    media: 'var(--bp-sample-accent-surface)',
-    navigation: 'var(--bp-sample-accent-surface)',
-    tabs: 'var(--bp-sample-accent-surface)',
-    separator: 'var(--bp-sample-accent-surface)',
-    list: 'var(--bp-sample-accent-row)',
-    row: 'var(--bp-sample-accent-row)',
-    loading: 'var(--bp-sample-accent-feedback)',
-    badge: 'var(--bp-sample-accent-feedback)',
-    icon: 'var(--bp-sample-accent-feedback)',
-    skeleton: 'var(--bp-sample-accent-feedback)',
-    toast: 'var(--bp-sample-accent-feedback)',
-    avatar: 'var(--bp-sample-accent-feedback)',
-    tooltip: 'var(--bp-sample-accent-feedback)',
-    alert: 'var(--bp-sample-accent-feedback)',
-    dialog: 'var(--bp-sample-accent-overlay)',
-    menu: 'var(--bp-sample-accent-overlay)',
-    sheet: 'var(--bp-sample-accent-overlay)',
-    generic: 'var(--bp-sample-fg)'
-  };
-  return accents[family] ?? 'var(--bp-sample-fg)';
 }
 
 function setTokenHook(element: HTMLElement, record: TokenRecord | undefined, templateHook: string): void {
@@ -1274,7 +1641,7 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
 
   return {
     configure,
-    fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame')])
+    fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame-slot')])
   };
 }
 
@@ -1923,21 +2290,6 @@ function defaultMobileFramePreset(): FramePreset {
   };
 }
 
-function addGroupHeading(
-  root: HTMLElement,
-  controller: CanvasController,
-  options: { title: string; subtitle: string; x: number; y: number; accent: string }
-): HTMLElement {
-  const heading = el('div', 'group-head bp-chrome-group-head');
-  heading.style.left = `${options.x}px`;
-  heading.style.top = `${options.y}px`;
-  heading.style.setProperty('--head-accent', options.accent);
-  heading.append(el('h1', '', options.title), el('div', 'sub', options.subtitle));
-  root.append(heading);
-  controller.makeDraggable(heading, heading);
-  return heading;
-}
-
 function createPrototypeFrame(
   bundle: BlueprintProjectBundle,
   tokenIndex: TokenIndex,
@@ -2084,7 +2436,104 @@ function mountDeviceChrome(
 }
 
 function refreshSurround(): void {
-  document.documentElement.dataset.surround = backgroundAppearance(project);
+  const root = document.documentElement;
+  root.dataset.surround = backgroundAppearance(project);
+  for (const property of CHROME_THEME_PROPERTIES) root.style.removeProperty(property);
+  const { colors, shape } = chromeThemeFromTokens(project);
+  root.dataset.chromeTheme = colors ? 'app' : 'neutral';
+  for (const [property, value] of Object.entries({ ...colors, ...shape })) root.style.setProperty(property, value);
+  installProjectFonts(project);
+}
+
+function chromeThemeFromTokens(bundle: BlueprintProjectBundle): { colors?: Record<string, string>; shape: Record<string, string> } {
+  const tokenIndex = createTokenIndex(bundle);
+  const color = (role: string): { value: string; rgb: [number, number, number] } | undefined => {
+    const value = resolvedColor(tokenIndex, `--app-color-${role}`);
+    const rgb = value ? parseOpaqueColor(value) : undefined;
+    return value && rgb ? { value, rgb } : undefined;
+  };
+  const tokenValue = (styleRef: string): string | undefined => {
+    const record = tokenIndex.byStyleRef.get(styleRef);
+    return record ? resolveTokenReferences(tokenIndex, record.token.value) : undefined;
+  };
+
+  const shape: Record<string, string> = {};
+  const radius = singleLength(tokenValue('--app-radius-md') ?? '');
+  const radiusSmall = singleLength(tokenValue('--app-radius-sm') ?? '');
+  if (radius !== undefined) shape['--bp-chrome-radius'] = `${Math.min(12, Math.max(0, radius))}px`;
+  if (radiusSmall !== undefined) shape['--bp-chrome-radius-sm'] = `${Math.min(8, Math.max(0, radiusSmall))}px`;
+  const sans = tokenValue('--app-font-sans');
+  const display = tokenValue('--app-font-display');
+  const mono = tokenValue('--app-font-mono');
+  if (sans) shape['--bp-chrome-font'] = sans;
+  if (display ?? sans) shape['--bp-chrome-font-display'] = display ?? sans ?? '';
+  if (mono) shape['--bp-chrome-font-mono'] = mono;
+
+  const background = color('background');
+  const surface = color('surface') ?? background;
+  const foreground = color('foreground');
+  if (!background || !surface || !foreground) return { shape };
+  if (contrastRatio(foreground.rgb, background.rgb) < 4.5 || contrastRatio(foreground.rgb, surface.rgb) < 4.5) return { shape };
+
+  const fg = foreground.value;
+  const mix = (amount: number, base = 'transparent'): string => `color-mix(in srgb, ${fg} ${amount}%, ${base})`;
+  const muted = color('muted');
+  const border = color('border');
+  const borderStrong = color('border-strong');
+  const primary = color('primary');
+  const focus = color('focus-ring');
+  return {
+    shape,
+    colors: {
+      '--bp-chrome-canvas-bg': background.value,
+      '--bp-chrome-surface': surface.value,
+      '--bp-chrome-fg': fg,
+      '--bp-chrome-muted-fg': muted && contrastRatio(muted.rgb, surface.rgb) >= 3 ? muted.value : mix(62, surface.value),
+      '--bp-chrome-border': border?.value ?? mix(12),
+      '--bp-chrome-border-strong': borderStrong?.value ?? mix(24),
+      '--bp-chrome-surface-hover': mix(5),
+      '--bp-chrome-surface-active': mix(9),
+      '--bp-chrome-accent': primary?.value ?? fg,
+      '--bp-chrome-accent-soft': primary ? `color-mix(in srgb, ${primary.value} 14%, ${surface.value})` : mix(9),
+      '--bp-chrome-primary': fg,
+      '--bp-chrome-primary-fg': surface.value,
+      '--bp-chrome-focus': focus && contrastRatio(focus.rgb, background.rgb) >= 3 ? focus.value : fg,
+      '--bp-chrome-grid-line': mix(2.5),
+      '--bp-chrome-grid-line-major': mix(4.5)
+    }
+  };
+}
+
+function installProjectFonts(bundle: BlueprintProjectBundle): void {
+  let style = document.getElementById('bp-project-fonts');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'bp-project-fonts';
+    document.head.append(style);
+  }
+  const rules = new Set<string>();
+  for (const [sourceRef, css] of Object.entries(bundle.prototypeSourceContents)) {
+    if (!sourceRef.endsWith('.css')) continue;
+    for (const match of css.matchAll(/@font-face\s*\{[^{}]*\}/g)) {
+      const rule = inlineFontFaceUrls(bundle, sourceRef, match[0]);
+      if (rule) rules.add(rule);
+    }
+  }
+  style.textContent = [...rules].join('\n');
+}
+
+function inlineFontFaceUrls(bundle: BlueprintProjectBundle, sourceRef: string, rule: string): string | undefined {
+  let resolved = true;
+  const inlined = rule.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (_match, _quote: string, value: string) => {
+    const assetRef = decodeURIComponent(new URL(value.trim(), `https://sidecar.invalid/${sourceRef}`).pathname.slice(1));
+    const asset = bundle.prototypeAssetContents[assetRef];
+    if (!asset) {
+      resolved = false;
+      return 'none';
+    }
+    return `url("data:${asset.mediaType};base64,${asset.base64}")`;
+  });
+  return resolved ? inlined : undefined;
 }
 
 function backgroundAppearance(bundle: BlueprintProjectBundle): 'light' | 'dark' {
@@ -2193,35 +2642,6 @@ function createBrowserBar(screen: ScreenDefinition): HTMLElement {
 
 function lockIcon(): string {
   return '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
-}
-
-function createSpecCard(options: {
-  label: string;
-  x: number;
-  y: number;
-  width: number;
-  accent: string;
-  boundary: [BoundaryKind, string, string];
-}): HTMLElement {
-  const card = el('article', 'spec');
-  card.style.left = `${options.x}px`;
-  card.style.top = `${options.y}px`;
-  card.style.width = `${options.width}px`;
-  card.style.setProperty('--accent', options.accent);
-  setBoundary(card, options.boundary[0], options.boundary[1], options.boundary[2], options.label);
-
-  const chip = el('button', 'spec-chip bp-chrome-world-label') as HTMLButtonElement;
-  chip.type = 'button';
-  chip.title = 'Drag canvas item';
-  chip.append(el('span', 'dot'), el('span', '', options.label));
-  card.append(chip);
-  return card;
-}
-
-function appendSpecBody(card: HTMLElement): HTMLElement {
-  const body = el('div', 'spec-body');
-  card.append(body);
-  return body;
 }
 
 function createIconButton(className: string, title: string, iconMarkup: string): HTMLButtonElement {
@@ -2530,7 +2950,7 @@ function connectBlueprintLiveRuntime(): void {
 
 async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotPath: string): Promise<void> {
   if (event.revision === lastAppliedRevision) return;
-  const preservedView = activeBoardId ? canvas.snapshot() : undefined;
+  const preservedView = activeBoardId && boardConfigs[activeBoardId].surface === 'canvas' ? canvas.snapshot() : undefined;
   setAgentStatus('applying', 'Blueprint is applying the latest changes');
   markFocusedBoundaryBusy(true);
   const requestUrl = new URL(snapshotPath, window.location.href);
@@ -2775,8 +3195,14 @@ function renderAgentFocus(): void {
 function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], label: string, framesFocused: boolean): void {
   if (!framesFocused && lastAgentActivity) {
     const primary = canvasFocuses[0];
+    const section = documentSectionForKind(primary.kind);
     const requestedBoard = primary.kind === 'board' && isBoardId(primary.localId) ? primary.localId : primary.board;
-    if (requestedBoard && activeBoardId !== requestedBoard) {
+    if (section) {
+      const itemId = primary.kind === 'state-set' ? primary.localId.split('/')[0] : primary.localId;
+      if (activeBoardId !== 'primitives' || activeSection !== section || activeItem(project, section)?.id !== itemId) {
+        openDocumentItem(section, itemId);
+      }
+    } else if (requestedBoard && activeBoardId !== requestedBoard) {
       showBoard(requestedBoard);
     }
   }
@@ -2795,6 +3221,13 @@ function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], la
   if (focusedActivityElements.length === 0) {
     viewport.classList.add('bp-agent-project-focus');
   }
+}
+
+function documentSectionForKind(kind: BoundaryKind): DocumentSectionId | undefined {
+  if (kind === 'token-group') return 'foundations';
+  if (kind === 'primitive' || kind === 'state-set') return 'primitives';
+  if (kind === 'component') return 'components';
+  return undefined;
 }
 
 function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undefined {
@@ -3077,8 +3510,6 @@ function flashCopied(button: HTMLButtonElement): void {
   }, 1_000);
 }
 
-let changeBaseline: { bundle: BlueprintProjectBundle; activityKey: string | undefined } | undefined;
-let latestChanges: BlueprintAgentActivityFocus[] = [];
 let viewingChangeBaseline = false;
 let liveProjectDuringBaselineView: BlueprintProjectBundle | undefined;
 let changeAnnotationGeneration = 0;
@@ -3116,6 +3547,7 @@ function sectionMarkup(source: string | undefined): { outside: string; sections:
 
 function renderChangeAnnotations(): void {
   const generation = ++changeAnnotationGeneration;
+  refreshItemNav();
   for (const layer of document.querySelectorAll('.bp-chrome-change-layer')) layer.remove();
   for (const element of document.querySelectorAll('.bp-chrome-changed')) element.classList.remove('bp-chrome-changed');
   renderChangeBar();
@@ -3221,18 +3653,27 @@ let selectionRenderGeneration = 0;
 let selectionHintTimer: number | undefined;
 let selectionPublishQueue = Promise.resolve();
 
-viewport.addEventListener('pointerdown', event => {
-  selectionPointerStart = { x: event.clientX, y: event.clientY };
-}, { capture: true });
-viewport.addEventListener('click', event => {
-  void selectAtPointer(event);
-});
+for (const surface of [viewport, documentView]) {
+  surface.addEventListener('pointerdown', event => {
+    selectionPointerStart = { x: event.clientX, y: event.clientY };
+  }, { capture: true });
+  surface.addEventListener('click', event => {
+    void selectAtPointer(event);
+  });
+}
 window.addEventListener('keydown', event => {
-  if (event.key !== 'Escape') return;
-  if (findingsPanelState) {
-    closeFindingsPanel();
-  } else if (canvasSelectionState) {
-    setCanvasSelection(undefined);
+  if (event.key === 'Escape') {
+    if (findingsPanelState) {
+      closeFindingsPanel();
+    } else if (canvasSelectionState) {
+      setCanvasSelection(undefined);
+    }
+    return;
+  }
+  if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && activeBoardId === 'primitives' && !event.altKey && !event.metaKey && !event.ctrlKey) {
+    if (event.target instanceof Element && event.target.closest('input, select, textarea, [contenteditable]')) return;
+    event.preventDefault();
+    stepDocumentItem(event.key === 'ArrowRight' ? 1 : -1);
   }
 });
 
@@ -3514,5 +3955,11 @@ function el(tag: string, className = '', text = ''): HTMLElement {
   return node;
 }
 
+activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
+refreshBoardSwitcher();
+refreshFlowSwitcher();
+
+const requestedBoard = new URLSearchParams(location.search).get('board');
+const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
 showBoard(isBoardId(requestedBoard) ? requestedBoard : defaultBoard);
 connectBlueprintLiveRuntime();

@@ -73,7 +73,8 @@ export function createCanvasController({
 
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) {
-        zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.01));
+        const bounds = viewport.getBoundingClientRect();
+        zoomAt(event.clientX - bounds.left, event.clientY - bounds.top, Math.exp(-event.deltaY * 0.01));
       } else {
         view.x -= event.deltaX;
         view.y -= event.deltaY;
@@ -113,7 +114,7 @@ export function createCanvasController({
   });
 
   window.addEventListener('keydown', event => {
-    if (event.code !== 'Space') {
+    if (event.code !== 'Space' || viewport.hidden) {
       return;
     }
 
@@ -154,19 +155,21 @@ export function createCanvasController({
 
     const width = maxX - minX;
     const height = maxY - minY;
-    const nextScale = Math.min((window.innerWidth - 80) / width, (window.innerHeight - 140) / height, 1.18);
+    const viewportWidth = viewport.clientWidth || window.innerWidth;
+    const viewportHeight = viewport.clientHeight || window.innerHeight;
+    const nextScale = Math.min((viewportWidth - 80) / width, (viewportHeight - 140) / height, 1.18);
     // Wide boards never fit below a readable floor: land on the first groups
     // at review size and let pan reveal the rest instead of a distant strip.
     if (nextScale < options.readableScale) {
       view.s = options.readableScale;
       view.x = 60 - minX * view.s;
-      view.y = Math.max(24, (window.innerHeight - height * view.s) / 2 - minY * view.s + 24);
+      view.y = Math.max(24, (viewportHeight - height * view.s) / 2 - minY * view.s + 24);
       apply();
       return;
     }
     view.s = Math.min(options.maxScale, Math.max(options.minScale, nextScale));
-    view.x = (window.innerWidth - width * view.s) / 2 - minX * view.s;
-    view.y = (window.innerHeight - height * view.s) / 2 - minY * view.s + 24;
+    view.x = (viewportWidth - width * view.s) / 2 - minX * view.s;
+    view.y = (viewportHeight - height * view.s) / 2 - minY * view.s + 24;
     apply();
   }
 

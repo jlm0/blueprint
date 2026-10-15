@@ -16,7 +16,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let baseUrl: string;
 
-describe('Blueprint data-driven primitives canvas', () => {
+describe('Blueprint data-driven pages and screens canvas', () => {
   before(async () => {
     server = await createServer({
       logLevel: 'error',
@@ -39,83 +39,149 @@ describe('Blueprint data-driven primitives canvas', () => {
     await server?.close();
   });
 
-  it('renders distinct primitive canvases for starter, Umbra, and Meridian without source edits', async () => {
-    const fixtures = [
-      { name: 'starter', bundle: await loadProjectFromFs(starterRoot) },
-      { name: 'umbra-gaming', bundle: await loadProjectFromFs(umbraRoot) },
-      { name: 'meridian-finance', bundle: await loadProjectFromFs(meridianRoot) }
-    ];
-    const allPrimitiveIds = new Set(fixtures.flatMap(fixture => fixture.bundle.primitives.primitives.map(primitive => primitive.id)));
+  it('opens every foundation, primitive, and component as its own page from the sub-navigation', async () => {
+    const bundles = await Promise.all([starterRoot, miraRoot, umbraRoot, meridianRoot].map(root => loadProjectFromFs(root)));
+    const allPrimitiveIds = new Set(bundles.flatMap(bundle => bundle.primitives.primitives.map(primitive => primitive.id)));
 
-    for (const fixture of fixtures) {
-      const page = await openPrimitiveBoard(fixture.bundle);
+    for (const bundle of bundles) {
+      const projectId = bundle.manifest.project.id;
+      const page = await openDocumentSection(bundle, 'foundations');
       try {
-        const records = await collectPrimitiveRecords(page);
-        const sync = validateVisibleBoundaryRecords(fixture.bundle, records);
-        assert.equal(sync.ok, true, sync.errors.join('\n'));
-        assertTokenGroupsVisible(fixture.bundle, records);
-        const primitiveLocalIds = localIdsForKind(records, 'primitive');
-        const expectedPrimitiveIds = fixture.bundle.primitives.primitives.map(primitive => primitive.id).sort();
-        assert.deepEqual(primitiveLocalIds, expectedPrimitiveIds, `${fixture.name} primitive records should match its structured file`);
-
-        const staleIds = [...allPrimitiveIds].filter(
-          id => !expectedPrimitiveIds.includes(id) && primitiveLocalIds.includes(id)
-        );
-        assert.deepEqual(staleIds, [], `${fixture.name} should not inherit primitive boundaries from another project`);
-
-        const chipLabels = await page.locator('.board-primitives .spec-chip').evaluateAll(elements =>
-          elements.map(element => element.textContent?.trim()).filter(Boolean)
-        );
-        for (const primitive of fixture.bundle.primitives.primitives) {
-          assert.ok(
-            chipLabels.some(label => label?.includes(primitive.name)),
-            `${fixture.name} should visibly label ${primitive.name}`
-          );
+        const records: VisibleBoundaryRecord[] = [];
+        assert.deepEqual(await navItemIds(page), bundle.tokens.tokenGroups.map(group => group.id), `${projectId} foundations should list every token group`);
+        for (const group of bundle.tokens.tokenGroups) {
+          const item = await showItem(page, group.id);
+          records.push(...await collectPrimitiveRecords(page));
+          assert.equal(new URL(page.url()).searchParams.get('item'), group.id, `${projectId}/${group.id} should be deep-linkable`);
+          assert.equal(await item.locator('.token-specimen').count(), group.tokens.length, `${projectId}/${group.id} should show one specimen per token`);
         }
-        await assertFamilyCoverage(page, fixture.bundle);
+
+        await page.locator('.bp-chrome-board-switcher [data-section="primitives"]').click();
+        await page.waitForSelector('.board-primitives .bp-chrome-doc-page[data-boundary-kind="primitive"]', { timeout: 5000 });
+        const primitiveIds = await navItemIds(page);
+        const expectedPrimitiveIds = bundle.primitives.primitives.map(primitive => primitive.id).sort();
+        assert.deepEqual([...primitiveIds].sort(), expectedPrimitiveIds, `${projectId} primitives should list every structured primitive`);
+        assert.deepEqual(
+          [...allPrimitiveIds].filter(id => !expectedPrimitiveIds.includes(id) && primitiveIds.includes(id)),
+          [],
+          `${projectId} should not inherit primitives from another project`
+        );
+
+        const families = new Set<string>();
+        for (const primitive of bundle.primitives.primitives) {
+          const item = await showItem(page, primitive.id);
+          records.push(...await collectPrimitiveRecords(page));
+          const label = `${projectId}/${primitive.id}`;
+          const evidence = await item.evaluate(element => ({
+            title: element.querySelector('.bp-chrome-doc-title')?.textContent ?? '',
+            family: (element as HTMLElement).dataset.primitiveFamily ?? '',
+            renderModes: [...element.querySelectorAll<HTMLElement>('[data-prototype-render-mode]')].map(node => node.dataset.prototypeRenderMode),
+            specimens: element.querySelectorAll('.canonical-primitive-specimen').length,
+            iframes: element.querySelectorAll('.canonical-primitive-iframe').length,
+            compileErrors: element.querySelectorAll('.prototype-compile-error').length,
+            overflow: document.querySelector('#document')!.scrollWidth - document.querySelector('#document')!.clientWidth
+          }));
+          assert.equal(evidence.title, primitive.name, `${label} page should be titled by the primitive name`);
+          assert.notEqual(evidence.family, '', `${label} should name its family`);
+          families.add(evidence.family);
+          assert.deepEqual(evidence.renderModes, ['canonical-app-owned'], `${label} should render only its canonical app-owned specimen`);
+          assert.equal(evidence.specimens, 1, `${label} should render one canonical specimen`);
+          assert.equal(evidence.compileErrors, 0, `${label} canonical specimen should compile`);
+          assert.equal(
+            evidence.iframes,
+            primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
+            `${label} should render one canonical iframe per declared variant or size × state combination`
+          );
+          assert.ok(evidence.overflow <= 1, `${label} page should not scroll sideways (${evidence.overflow}px)`);
+        }
+        assert.ok(families.size >= Math.min(2, bundle.primitives.primitives.length), `${projectId} should spread primitives across families`);
+        assert.ok([...families].some(family => family !== 'generic'), `${projectId} should recognise known primitive families`);
+
+        await page.locator('.bp-chrome-board-switcher [data-section="components"]').click();
+        await page.waitForSelector('.board-primitives[data-section="components"] .bp-chrome-doc-page', { timeout: 5000 });
+        assert.deepEqual(await navItemIds(page), bundle.components.components.map(component => component.id), `${projectId} components should list every component`);
+        if (bundle.components.components.length === 0) {
+          assert.equal(await page.locator('.board-primitives .bp-chrome-doc-empty').count(), 1, `${projectId} should explain an empty components section`);
+        }
+        for (const component of bundle.components.components) {
+          const item = await showItem(page, component.id);
+          records.push(...await collectPrimitiveRecords(page));
+          assert.equal(
+            await item.locator('.component-preview-iframe').count(),
+            component.prototype?.states.length ?? 0,
+            `${projectId}/${component.id} should preview every declared state`
+          );
+          assert.equal(await item.locator('.prototype-compile-error').count(), 0, `${projectId}/${component.id} previews should compile`);
+        }
+
+        const sync = validateVisibleBoundaryRecords(bundle, records);
+        assert.equal(sync.ok, true, sync.errors.join('\n'));
+        assertTokenGroupsVisible(bundle, records);
+        assert.deepEqual(localIdsForKind(records, 'primitive'), expectedPrimitiveIds, `${projectId} primitive pages should match its structured file`);
+        assert.deepEqual(
+          localIdsForKind(records, 'component'),
+          bundle.components.components.map(component => component.id).sort(),
+          `${projectId} component pages should match its structured file`
+        );
       } finally {
         await page.close();
       }
     }
   });
 
-  it('keeps the canvas surround neutral and reviews tokens on the project background', async () => {
+  it('themes the Blueprint chrome from project tokens and falls back to neutral when contrast fails', async () => {
+    const starter = await loadProjectFromFs(starterRoot);
     const fixtures = [
-      { bundle: await loadProjectFromFs(starterRoot), surround: 'light', canvas: 'rgb(229, 229, 229)', background: 'rgb(250, 250, 250)' },
-      { bundle: await loadProjectFromFs(umbraRoot), surround: 'dark', canvas: 'rgb(30, 30, 30)', background: 'rgb(7, 7, 11)' }
+      { name: 'starter', bundle: starter, surround: 'light', theme: 'app', canvas: 'rgb(250, 250, 250)', foreground: 'rgb(24, 24, 27)' },
+      { name: 'umbra-gaming', bundle: await loadProjectFromFs(umbraRoot), surround: 'dark', theme: 'app', canvas: 'rgb(7, 7, 11)', foreground: 'rgb(243, 240, 232)' },
+      { name: 'low-contrast starter', bundle: mutateToken(starter, 'color', 'foreground', '#d4d4d8'), surround: 'light', theme: 'neutral', canvas: 'rgb(229, 229, 229)' }
     ];
 
     for (const fixture of fixtures) {
-      const page = await openPrimitiveBoard(fixture.bundle);
+      const page = await openDocumentSection(fixture.bundle, 'foundations', 'color');
       try {
-        const projectId = fixture.bundle.manifest.project.id;
-        const canvas = await page.locator('#viewport').evaluate(element => ({
+        const chrome = await page.locator('#document').evaluate(element => ({
           surround: document.documentElement.dataset.surround,
-          background: window.getComputedStyle(element).backgroundColor
+          theme: document.documentElement.dataset.chromeTheme,
+          canvas: window.getComputedStyle(element).backgroundColor,
+          foreground: window.getComputedStyle(element).color,
+          radius: document.documentElement.style.getPropertyValue('--bp-chrome-radius')
         }));
-        assert.deepEqual(canvas, { surround: fixture.surround, background: fixture.canvas }, `${projectId} surround`);
-
-        const colorCard = page.locator(`[data-boundary-id="${projectId}/token-group/color"] .token-card-body`);
-        assert.equal(await colorCard.evaluate(element => window.getComputedStyle(element).backgroundColor), fixture.background);
-        assert.equal(await colorCard.locator('.token-ladder-step').count(), 7, `${projectId} should nest the full surface ladder`);
-
-        const pairs = await colorCard.locator('.token-pair').evaluateAll(rows =>
-          rows.map(row => ({
-            pair: (row as HTMLElement).dataset.tokenPair,
-            passes: row.querySelector<HTMLElement>('.token-pair-ratio')?.dataset.passes
-          }))
-        );
-        assert.equal(pairs.length, 7, `${projectId} should show every linted color role pair`);
-        assert.ok(pairs.every(pair => pair.passes === 'true'), `${projectId} pairs should all pass: ${JSON.stringify(pairs)}`);
+        assert.equal(chrome.surround, fixture.surround, `${fixture.name} surround`);
+        assert.equal(chrome.theme, fixture.theme, `${fixture.name} chrome theme`);
+        assert.equal(chrome.canvas, fixture.canvas, `${fixture.name} page background`);
+        assert.equal(chrome.radius, '6px', `${fixture.name} chrome should take its radius from shape.radius-md`);
+        if (fixture.foreground) {
+          assert.equal(chrome.foreground, fixture.foreground, `${fixture.name} chrome text should use color.foreground`);
+          const colorPage = page.locator(`[data-boundary-id="${fixture.bundle.manifest.project.id}/token-group/color"] .token-card-body`);
+          assert.equal(await colorPage.evaluate(element => window.getComputedStyle(element).backgroundColor), fixture.canvas);
+          assert.equal(await colorPage.locator('.token-ladder-step').count(), 7, `${fixture.name} should nest the full surface ladder`);
+          const pairs = await colorPage.locator('.token-pair').evaluateAll(rows =>
+            rows.map(row => ({
+              pair: (row as HTMLElement).dataset.tokenPair,
+              passes: row.querySelector<HTMLElement>('.token-pair-ratio')?.dataset.passes
+            }))
+          );
+          assert.equal(pairs.length, 7, `${fixture.name} should show every linted color role pair`);
+          assert.ok(pairs.every(pair => pair.passes === 'true'), `${fixture.name} pairs should all pass: ${JSON.stringify(pairs)}`);
+        }
       } finally {
         await page.close();
       }
     }
+
+    const umbraPage = await openDocumentSection(fixtures[1].bundle, 'primitives', 'button');
+    try {
+      const title = await umbraPage.locator('.bp-chrome-doc-title').evaluate(element => window.getComputedStyle(element).fontFamily);
+      assert.match(title, /Unbounded/, 'page titles should use the project display font');
+    } finally {
+      await umbraPage.close();
+    }
   });
 
-  it('renders known primitive families as human-facing visual specimens rather than token probe cards', async () => {
+  it('renders every starter primitive page as a human-facing canonical specimen rather than token probe cards', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
-    const page = await openPrimitiveBoard(bundle);
+    const page = await openDocumentSection(bundle, 'primitives');
 
     try {
       const canonicalExpectations = [
@@ -157,89 +223,39 @@ describe('Blueprint data-driven primitives canvas', () => {
       for (const primitiveId of canonicalExpectations) {
         const primitive = bundle.primitives.primitives.find(candidate => candidate.id === primitiveId);
         assert.ok(primitive?.prototype, `${primitiveId} should declare a canonical starter prototype source`);
-        const card = page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', primitiveId)));
-        assert.equal(await card.count(), 1, `${primitiveId} primitive card should render once`);
+        const item = await showItem(page, primitiveId);
+        const specimen = item.locator('.bp-chrome-doc-specimen');
+        assert.equal(await item.locator('.token-probe').count(), 0, `${primitiveId} should not show token probe chips`);
         assert.equal(
-          await card.locator('.generated-card-head, .primitive-meta-row, .token-probe').count(),
-          0,
-          `${primitiveId} should not show metadata headers or token probe chips in the human canvas`
-        );
-        assert.equal(
-          await card.locator('[data-prototype-render-mode="canonical-app-owned"]').count(),
+          await specimen.locator('[data-prototype-render-mode="canonical-app-owned"]').count(),
           1,
           `${primitiveId} should render its canonical app-owned specimen`
         );
-        assert.equal(
-          await card.locator('.canonical-primitive-iframe').count(),
-          primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
-          `${primitiveId} should render one canonical iframe per declared variant or size × state combination`
-        );
-        const specimen = page
+        const frame = page
           .frameLocator(`${boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', primitiveId))} .canonical-primitive-iframe`)
           .first();
         assert.equal(
-          await specimen.locator(`[data-blueprint-primitive="${primitiveId}"]`).count(),
+          await frame.locator(`[data-blueprint-primitive="${primitiveId}"]`).count(),
           1,
           `${primitiveId} canonical specimen should render its governed primitive root`
         );
-        const text = await card.innerText();
-        assert.doesNotMatch(text, /\b(?:RADIUS|SHADOW|state set)\b/i, `${primitiveId} should not foreground token/debug labels`);
+        assert.doesNotMatch(await specimen.innerText(), /\b(?:RADIUS|SHADOW|state set)\b/i, `${primitiveId} specimen should not foreground token/debug labels`);
       }
 
-      const backText = await page.locator(boundarySelector(boundaryId(bundle.manifest.project.id, 'primitive', 'back-button'))).innerText();
+      const backSpecimen = (await showItem(page, 'back-button')).locator('.bp-chrome-doc-specimen');
       assert.doesNotMatch(
-        backText,
+        await backSpecimen.innerText(),
         /Navigation back command primitive/i,
-        'Back button card should show back-button states, not the primitive schema description'
+        'Back button specimen should show back-button states, not the primitive schema description'
       );
     } finally {
       await page.close();
     }
   });
 
-  it('renders every shipped primitive card as a compiled canonical specimen', async () => {
-    const fixtures = [
-      await loadProjectFromFs(starterRoot),
-      await loadProjectFromFs(miraRoot),
-      await loadProjectFromFs(umbraRoot),
-      await loadProjectFromFs(meridianRoot)
-    ];
-
-    for (const bundle of fixtures) {
-      const page = await openPrimitiveBoard(bundle);
-      try {
-        const cards = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
-          elements.map(element => ({
-            id: (element as HTMLElement).dataset.boundaryLocalId ?? '',
-            renderModes: [...element.querySelectorAll<HTMLElement>('[data-prototype-render-mode]')].map(node => node.dataset.prototypeRenderMode),
-            specimens: element.querySelectorAll('.canonical-primitive-specimen').length,
-            iframes: element.querySelectorAll('.canonical-primitive-iframe').length,
-            compileErrors: element.querySelectorAll('.prototype-compile-error').length
-          }))
-        );
-        assert.equal(cards.length, bundle.primitives.primitives.length);
-        for (const primitive of bundle.primitives.primitives) {
-          const card = cards.find(candidate => candidate.id === primitive.id);
-          const label = `${bundle.manifest.project.id}/${primitive.id}`;
-          assert.ok(card, `${label} should render a primitive card`);
-          assert.deepEqual(card.renderModes, ['canonical-app-owned'], `${label} should render only its canonical app-owned specimen`);
-          assert.equal(card.specimens, 1, `${label} should render one canonical specimen`);
-          assert.equal(card.compileErrors, 0, `${label} canonical specimen should compile`);
-          assert.equal(
-            card.iframes,
-            primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
-            `${label} should render one canonical iframe per declared variant or size × state combination`
-          );
-        }
-      } finally {
-        await page.close();
-      }
-    }
-  });
-
   it('preserves human-facing primitive semantics for matrices, slots, surfaces, cards, and compact controls', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
-    const page = await openPrimitiveBoard(bundle);
+    const page = await openDocumentSection(bundle, 'primitives', 'button');
     const projectId = bundle.manifest.project.id;
 
     try {
@@ -260,6 +276,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(buttonStyles.minHeight, '40px', 'canonical button should keep its control height');
       assert.equal(buttonStyles.background, 'rgb(24, 24, 27)', 'canonical button should use the default color.primary background');
 
+      await showItem(page, 'input');
       const inputSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'input'))} .canonical-primitive-iframe`)
         .nth(2);
@@ -270,6 +287,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(focusedInputStyles.borderColor, 'rgb(37, 99, 235)', 'focused input should use the default color.focus-ring');
       assert.notEqual(focusedInputStyles.boxShadow, 'none', 'focused input should render a visible focus halo');
 
+      await showItem(page, 'back-button');
       const backButtonFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .canonical-primitive-iframe`
       );
@@ -297,6 +315,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(backButtons[0]?.borderRadius, '8px', 'medium back button should use the default shape.radius-lg radius');
       assert.equal(backButtons[1]?.borderRadius, '6px', 'small back button should use the default shape.radius-md radius');
 
+      await showItem(page, 'nav-bar');
       const navBarFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'nav-bar'))} .canonical-primitive-iframe`
       );
@@ -328,6 +347,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         'navigation slot compositions should toggle the back and right actions'
       );
 
+      await showItem(page, 'surface');
       const surfaceFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'surface'))} .canonical-primitive-iframe`
       );
@@ -353,6 +373,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         );
       }
 
+      await showItem(page, 'card');
       const cardSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'card'))} .canonical-primitive-iframe`)
         .first();
@@ -363,6 +384,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(cardStyles.background, 'rgb(255, 255, 255)', 'a top-level card should sit on surface level 1');
       assert.equal(cardStyles.borderRadius, '8px', 'canonical card should use the default shape.radius-lg radius');
 
+      await showItem(page, 'badge');
       const badgeSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'badge'))} .canonical-primitive-iframe`)
         .first();
@@ -379,6 +401,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.notEqual(badgeEvidence.borderRadius, '0px', 'canonical badge should keep its default shape.radius-sm radius');
       assert.ok(badgeEvidence.overflowX <= 1 && badgeEvidence.overflowY <= 1, 'canonical badge should remain a non-overflowing pill label');
 
+      await showItem(page, 'checkbox');
       const checkboxOnSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'checkbox'))} .canonical-primitive-iframe`)
         .nth(1);
@@ -389,6 +412,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       assert.equal(checkboxOnStyles.background, 'rgb(24, 24, 27)', 'checked checkbox should use the default color.primary fill');
       assert.equal(checkboxOnStyles.borderColor, 'rgb(24, 24, 27)', 'checked checkbox should keep its color.primary frame');
 
+      await showItem(page, 'switch');
       const switchOnSpecimen = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'switch'))} .canonical-primitive-iframe`)
         .nth(1);
@@ -398,6 +422,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       });
       assert.equal(switchOnStyles.background, 'rgb(24, 24, 27)', 'on switch should use the default color.primary track');
 
+      await showItem(page, 'slider');
       const sliderFrames = page.frameLocator(
         `${boundarySelector(boundaryId(projectId, 'primitive', 'slider'))} .canonical-primitive-iframe`
       );
@@ -414,6 +439,7 @@ describe('Blueprint data-driven primitives canvas', () => {
         'disabled slider should dim the whole control'
       );
 
+      await showItem(page, 'alert-dialog');
       const destructiveDialog = page
         .frameLocator(`${boundarySelector(boundaryId(projectId, 'primitive', 'alert-dialog'))} .canonical-primitive-iframe`)
         .nth(1);
@@ -504,12 +530,13 @@ describe('Blueprint data-driven primitives canvas', () => {
     ];
 
     const baseBundle = await loadProjectFromFs(starterRoot);
-    const basePage = await openPrimitiveBoard(baseBundle);
+    const basePage = await openDocumentSection(baseBundle, 'primitives', 'button');
     try {
       for (const item of cases) {
-        const mutatedPage = await openPrimitiveBoard(mutateToken(baseBundle, item.groupId, item.tokenId, item.mutatedValue));
+        const mutatedPage = await openDocumentSection(mutateToken(baseBundle, item.groupId, item.tokenId, item.mutatedValue), 'primitives', item.primitiveId);
         try {
           const readCanonicalStyle = async (page: Page): Promise<string> => {
+            await showItem(page, item.primitiveId);
             const frameSelector = `${boundarySelector(boundaryId(baseBundle.manifest.project.id, 'primitive', item.primitiveId))} .canonical-primitive-iframe${
               item.frameTitle ? `[title="${escapeAttribute(item.frameTitle)}"]` : ''
             }`;
@@ -535,95 +562,52 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
-  it('keeps generated primitive cards collision-free for all proof fixtures', async () => {
-    for (const root of [starterRoot, umbraRoot, meridianRoot]) {
-      const bundle = await loadProjectFromFs(root);
-      const page = await openPrimitiveBoard(bundle);
-
-      try {
-        const records = await collectPrimitiveRecords(page);
-        const primitiveLocalIds = localIdsForKind(records, 'primitive');
-        const expectedPrimitiveIds = bundle.primitives.primitives.map(primitive => primitive.id).sort();
-        assert.deepEqual(primitiveLocalIds, expectedPrimitiveIds, `${bundle.manifest.project.id} must render every primitive before layout can be trusted`);
-
-        const collisions = await page.locator('.board-primitives').evaluate(rootElement => {
-          const elements = [...rootElement.querySelectorAll<HTMLElement>('.group-head, .spec')];
-          const boxes = elements.map(element => {
-            const left = parseFloat(element.style.left || '0');
-            const top = parseFloat(element.style.top || '0');
-            const chip = element.querySelector<HTMLElement>('.spec-chip');
-            const chipTop = chip ? top + chip.offsetTop : top;
-            const chipLeft = chip ? left + chip.offsetLeft : left;
-            return {
-              label: element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || element.className,
-              left: Math.min(left, chipLeft),
-              right: Math.max(left + element.offsetWidth, chipLeft + (chip?.offsetWidth ?? 0)),
-              top: Math.min(top, chipTop),
-              bottom: Math.max(top + element.offsetHeight, chipTop + (chip?.offsetHeight ?? 0))
-            };
-          });
-
-          const overlaps: string[] = [];
-          for (let a = 0; a < boxes.length; a += 1) {
-            for (let b = a + 1; b < boxes.length; b += 1) {
-              const one = boxes[a];
-              const two = boxes[b];
-              if (one.left < two.right && one.right > two.left && one.top < two.bottom && one.bottom > two.top) {
-                overlaps.push(`${one.label} overlaps ${two.label}`);
-              }
-            }
-          }
-          return overlaps;
-        });
-
-        assert.deepEqual(collisions, [], `${bundle.manifest.project.id} primitive cards should not overlap`);
-      } finally {
-        await page.close();
-      }
-    }
-  });
 
   it('fits every canonical primitive specimen inside its review cell and root', async () => {
     for (const root of [starterRoot, umbraRoot, meridianRoot]) {
       const bundle = await loadProjectFromFs(root);
-      const page = await openPrimitiveBoard(bundle);
+      const page = await openDocumentSection(bundle, 'primitives');
+      await page.emulateMedia({ reducedMotion: 'reduce' });
 
       try {
-        await page.waitForFunction(() =>
-          [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-primitive-iframe')].every(frame => frame.style.height !== '')
-        );
         const problems: string[] = [];
-        for (const handle of await page.locator('iframe.canonical-primitive-iframe').elementHandles()) {
-          const title = await handle.getAttribute('title');
-          const frame = await handle.contentFrame();
-          assert.ok(frame, `${title} should expose its document`);
-          await frame.waitForLoadState();
-          const issues = await frame.evaluate(() => {
-            const found: string[] = [];
-            const doc = document.documentElement;
-            if (doc.scrollWidth > innerWidth + 1 || doc.scrollHeight > innerHeight + 1) {
-              found.push(`document ${doc.scrollWidth}x${doc.scrollHeight} exceeds cell ${innerWidth}x${innerHeight}`);
-            }
-            const primitive = document.querySelector('[data-blueprint-primitive]');
-            if (!primitive) {
-              return found;
-            }
-            const bounds = primitive.getBoundingClientRect();
-            for (const element of primitive.querySelectorAll('*')) {
-              let clipped = false;
-              for (let ancestor = element.parentElement; ancestor && ancestor !== primitive.parentElement; ancestor = ancestor.parentElement) {
-                if (getComputedStyle(ancestor).overflowX !== 'visible') {
-                  clipped = true;
+        for (const primitive of bundle.primitives.primitives) {
+          const item = await showItem(page, primitive.id);
+          await page.waitForFunction(() =>
+            [...document.querySelectorAll<HTMLIFrameElement>('.board-primitives iframe.canonical-primitive-iframe')].every(frame => frame.style.height !== '')
+          );
+          for (const handle of await item.locator('iframe.canonical-primitive-iframe').elementHandles()) {
+            const title = await handle.getAttribute('title');
+            const frame = await handle.contentFrame();
+            assert.ok(frame, `${title} should expose its document`);
+            await frame.waitForLoadState();
+            const issues = await frame.evaluate(() => {
+              const found: string[] = [];
+              const doc = document.documentElement;
+              if (doc.scrollWidth > innerWidth + 1 || doc.scrollHeight > innerHeight + 1) {
+                found.push(`document ${doc.scrollWidth}x${doc.scrollHeight} exceeds cell ${innerWidth}x${innerHeight}`);
+              }
+              const primitiveRoot = document.querySelector('[data-blueprint-primitive]');
+              if (!primitiveRoot) {
+                return found;
+              }
+              const bounds = primitiveRoot.getBoundingClientRect();
+              for (const element of primitiveRoot.querySelectorAll('*')) {
+                let clipped = false;
+                for (let ancestor = element.parentElement; ancestor && ancestor !== primitiveRoot.parentElement; ancestor = ancestor.parentElement) {
+                  if (getComputedStyle(ancestor).overflowX !== 'visible') {
+                    clipped = true;
+                  }
+                }
+                const rect = element.getBoundingClientRect();
+                if (!clipped && rect.width > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)) {
+                  found.push(`${element.tagName.toLowerCase()}.${element.className} spills ${Math.round(Math.max(bounds.left - rect.left, rect.right - bounds.right))}px past the root`);
                 }
               }
-              const rect = element.getBoundingClientRect();
-              if (!clipped && rect.width > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)) {
-                found.push(`${element.tagName.toLowerCase()}.${element.className} spills ${Math.round(Math.max(bounds.left - rect.left, rect.right - bounds.right))}px past the root`);
-              }
-            }
-            return found;
-          });
-          problems.push(...issues.map(issue => `${title}: ${issue}`));
+              return found;
+            });
+            problems.push(...issues.map(issue => `${title}: ${issue}`));
+          }
         }
         assert.deepEqual(problems, [], `${bundle.manifest.project.id} primitive specimens should not overflow`);
       } finally {
@@ -632,46 +616,65 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
-  it('groups platform-tagged primitives into shared, mobile, and web zones', async () => {
-    const bundle = await loadProjectFromFs(starterRoot);
-    const page = await openPrimitiveBoard(bundle);
+  it('groups primitives by purpose and flags any primitive outside the closed set', async () => {
+    const starter = await loadProjectFromFs(starterRoot);
+    const page = await openDocumentSection(starter, 'primitives');
 
     try {
-      const zones = await page.locator('.board-primitives').evaluate(rootElement => {
-        const headings = [...rootElement.querySelectorAll<HTMLElement>('.group-head[data-primitive-platform]')].map(heading => ({
-          zone: heading.dataset.primitivePlatform ?? '',
-          title: heading.querySelector('h1')?.textContent ?? '',
-          subtitle: heading.querySelector('.sub')?.textContent ?? '',
-          left: parseFloat(heading.style.left)
-        }));
-        const cards = [...rootElement.querySelectorAll<HTMLElement>('.spec[data-primitive-platform]')].map(card => ({
-          zone: card.dataset.primitivePlatform ?? '',
-          left: parseFloat(card.style.left),
-          right: parseFloat(card.style.left) + card.offsetWidth
-        }));
-        return { headings, cards };
-      });
+      const groups = await page.locator('.bp-chrome-item-nav .bp-chrome-item-group').allTextContents();
+      assert.deepEqual(groups, ['Actions', 'Inputs', 'Text', 'Surfaces', 'Navigation', 'Structure', 'Feedback', 'Overlays']);
+      assert.equal(await page.locator('.bp-chrome-item-nav [data-notice]').count(), 0, 'starter primitives should all be in the set');
 
-      const tagged = (platform: 'mobile' | 'desktop') =>
-        bundle.primitives.primitives.filter(primitive => primitive.platforms?.length === 1 && primitive.platforms[0] === platform).length;
-      const shared = bundle.primitives.primitives.length - tagged('mobile') - tagged('desktop');
-      assert.deepEqual(
-        zones.headings.map(heading => [heading.zone, heading.title, heading.subtitle]),
-        [
-          ['shared', 'Shared', `${shared} primitives`],
-          ['mobile', 'Mobile', `${tagged('mobile')} primitives`],
-          ['desktop', 'Web', `${tagged('desktop')} primitives`]
-        ]
-      );
-      for (const [index, heading] of zones.headings.entries()) {
-        const next = zones.headings[index + 1];
-        const cards = zones.cards.filter(card => card.zone === heading.zone);
-        assert.ok(cards.length > 0, `${heading.zone} zone should render cards`);
-        assert.ok(cards.every(card => card.left >= heading.left), `${heading.zone} cards should start at their heading`);
-        if (next) {
-          assert.ok(cards.every(card => card.right < next.left), `${heading.zone} cards should end before the ${next.zone} zone`);
-        }
+      for (const [primitiveId, platform] of [['nav-bar', 'Mobile'], ['table-row', 'Web'], ['button', 'Mobile and web']]) {
+        const item = await showItem(page, primitiveId);
+        assert.equal(await item.locator('.bp-chrome-doc-fact').first().innerText(), platform, `${primitiveId} should state its platform as a page fact`);
       }
+    } finally {
+      await page.close();
+    }
+
+    const meridian = cloneBundle(await loadProjectFromFs(meridianRoot));
+    const statChip = structuredClone(meridian.primitives.primitives.find(primitive => primitive.id === 'badge')!);
+    statChip.id = 'stat-chip';
+    statChip.name = 'Stat Chip';
+    meridian.primitives.primitives.push(statChip);
+    const meridianPage = await openDocumentSection(meridian, 'primitives');
+    try {
+      const flagged = await meridianPage.locator('.bp-chrome-item-nav [data-notice]').evaluateAll(buttons =>
+        buttons.map(button => (button as HTMLElement).dataset.item)
+      );
+      assert.deepEqual(flagged, ['stat-chip'], 'primitives outside the closed set should be flagged in the sub-navigation');
+      const statChipPage = await showItem(meridianPage, 'stat-chip');
+      assert.match(await statChipPage.locator('.bp-chrome-doc-notice').innerText(), /belong in components/);
+    } finally {
+      await meridianPage.close();
+    }
+  });
+
+  it('steps through section items with the arrow keys and remembers a collapsed sidebar', async () => {
+    const bundle = await loadProjectFromFs(starterRoot);
+    const page = await openDocumentSection(bundle, 'primitives', 'button');
+
+    try {
+      const ids = await navItemIds(page);
+      await page.keyboard.press('ArrowRight');
+      await page.waitForSelector(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${ids[1]}"]`, { timeout: 5000 });
+      assert.equal(await page.locator(`.bp-chrome-item-nav [data-item="${ids[1]}"]`).getAttribute('aria-pressed'), 'true');
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForSelector(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${ids[0]}"]`, { timeout: 5000 });
+
+      const shell = page.locator('#app-shell');
+      const toggle = page.locator('.bp-chrome-subnav-toggle');
+      assert.equal(await shell.getAttribute('data-subnav'), 'open');
+      const openLeft = await page.locator('.bp-chrome-stage').evaluate(element => element.getBoundingClientRect().left);
+      await toggle.click();
+      assert.equal(await shell.getAttribute('data-subnav'), 'collapsed');
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+      await page.waitForFunction(left => document.querySelector('.bp-chrome-stage')!.getBoundingClientRect().left < left, openLeft, { timeout: 5000 });
+
+      await page.reload();
+      await page.waitForSelector('[data-board-root="primitives"]:not([hidden]) .bp-chrome-doc-page', { timeout: 5000 });
+      assert.equal(await page.locator('#app-shell').getAttribute('data-subnav'), 'collapsed', 'collapsed sidebar should survive a reload');
     } finally {
       await page.close();
     }
@@ -809,6 +812,11 @@ describe('Blueprint data-driven primitives canvas', () => {
       );
       assert.equal(await switcher.locator('button[data-flow="Ledger"]').getAttribute('aria-pressed'), 'true');
       assert.match(page.url(), /flow=Ledger/);
+      assert.deepEqual(
+        await page.locator('.bp-chrome-item-nav [data-screen]').evaluateAll(buttons => buttons.map(button => (button as HTMLElement).dataset.screen)),
+        ['transactions'],
+        'The sub-navigation should list the screens of the selected page'
+      );
 
       await switcher.locator('button[data-flow="Overview"]').click();
       await page.waitForFunction(
@@ -929,10 +937,10 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
-  it('composes screen frames from the same visual primitive vocabulary used on the primitives canvas', async () => {
+  it('composes screen frames from the same visual primitive vocabulary shown on the primitive pages', async () => {
     const bundle = mutatePrototypeSource(await loadProjectFromFs(miraRoot), 'prototype/screens/workspace.html', ' class="artifact__open"', '');
     const screensPage = await openScreensBoard(bundle);
-    const primitivesPage = await openPrimitiveBoard(bundle);
+    const primitivesPage = await openDocumentSection(bundle, 'primitives');
     const projectId = bundle.manifest.project.id;
 
     try {
@@ -944,6 +952,7 @@ describe('Blueprint data-driven primitives canvas', () => {
       ]) {
         const primitive = bundle.primitives.primitives.find(candidate => candidate.id === use.primitiveId);
         assert.ok(primitive, `${use.primitiveId} should be declared`);
+        await showItem(primitivesPage, use.primitiveId);
         const screenSignature = await primitiveSignature(featured.locator(`[data-blueprint-primitive="${use.primitiveId}"]`));
         const boardSignature = await primitiveSignature(
           primitivesPage
@@ -958,7 +967,7 @@ describe('Blueprint data-driven primitives canvas', () => {
           { variant: use.variant, state: use.state },
           `screen ${use.primitiveId} should render the invoked variant and state`
         );
-        assert.deepEqual(screenSignature, boardSignature, `screen ${use.primitiveId} should render the same compiled specimen shown on the primitives canvas`);
+        assert.deepEqual(screenSignature, boardSignature, `screen ${use.primitiveId} should render the same compiled specimen shown on its primitive page`);
       }
     } finally {
       await screensPage.close();
@@ -1020,7 +1029,7 @@ describe('Blueprint data-driven primitives canvas', () => {
   });
 });
 
-async function openPrimitiveBoard(bundle: BlueprintProjectBundle): Promise<Page> {
+async function openDocumentSection(bundle: BlueprintProjectBundle, section: 'foundations' | 'primitives' | 'components', item?: string): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.addInitScript(projectBundle => {
     Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', {
@@ -1028,10 +1037,30 @@ async function openPrimitiveBoard(bundle: BlueprintProjectBundle): Promise<Page>
       value: projectBundle
     });
   }, bundle);
-  await page.goto(`${baseUrl}?board=primitives`);
-  await page.waitForSelector('[data-board-root="primitives"]:not([hidden])', { timeout: 5000 });
-  await page.waitForSelector('.board-primitives [data-boundary-id][data-boundary-kind]', { timeout: 5000 });
+  const query = new URLSearchParams({ board: 'primitives', section, ...(item ? { item } : {}) });
+  await page.goto(`${baseUrl}?${query}`);
+  await page.waitForSelector('[data-board-root="primitives"]:not([hidden]) .bp-chrome-doc-page', { timeout: 5000 });
+  await waitForPreviews(page.locator('.board-primitives .bp-chrome-doc-page'));
   return page;
+}
+
+async function showItem(page: Page, id: string): Promise<Locator> {
+  await page.locator(`.bp-chrome-item-nav [data-item="${escapeAttribute(id)}"]`).click();
+  const item = page.locator(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${escapeAttribute(id)}"]`);
+  await item.waitFor({ state: 'visible', timeout: 5000 });
+  await waitForPreviews(item);
+  return item;
+}
+
+async function waitForPreviews(item: Locator): Promise<void> {
+  for (const handle of await item.locator('iframe.canonical-primitive-iframe').elementHandles()) {
+    const frame = await handle.contentFrame();
+    await frame?.waitForSelector('[data-blueprint-primitive], [data-blueprint-component]', { state: 'attached', timeout: 5000 });
+  }
+}
+
+async function navItemIds(page: Page): Promise<string[]> {
+  return page.locator('.bp-chrome-item-nav [data-item]').evaluateAll(buttons => buttons.map(button => (button as HTMLElement).dataset.item ?? ''));
 }
 
 async function openScreensBoard(bundle: BlueprintProjectBundle): Promise<Page> {
@@ -1089,28 +1118,6 @@ function assertTokenGroupsVisible(bundle: BlueprintProjectBundle, records: Visib
       `missing visible token-group boundary for ${bundle.manifest.project.id}/${group.id}`
     );
   }
-}
-
-async function assertFamilyCoverage(page: Page, bundle: BlueprintProjectBundle): Promise<void> {
-  const families = await page.locator('.board-primitives [data-boundary-kind="primitive"]').evaluateAll(elements =>
-    elements.map(element => ({
-      id: (element as HTMLElement).dataset.boundaryId ?? '',
-      family: (element as HTMLElement).dataset.primitiveFamily ?? ''
-    }))
-  );
-  const missingFamily = families.filter(item => item.family.length === 0);
-  assert.deepEqual(missingFamily, [], `${bundle.manifest.project.id} primitive cards should name their layout family`);
-
-  const distinctFamilies = new Set(families.map(item => item.family));
-  const minimumFamilies = Math.min(2, bundle.primitives.primitives.length);
-  assert.ok(
-    distinctFamilies.size >= minimumFamilies,
-    `${bundle.manifest.project.id} should group primitives into bounded families instead of one generic column`
-  );
-  assert.ok(
-    [...distinctFamilies].some(family => family !== 'generic'),
-    `${bundle.manifest.project.id} should group known primitives under non-generic families`
-  );
 }
 
 function mutateToken(bundle: BlueprintProjectBundle, groupId: string, tokenId: string, value: string): BlueprintProjectBundle {

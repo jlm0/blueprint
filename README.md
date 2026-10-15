@@ -4,7 +4,7 @@
 
 Blueprint is a local design canvas and MCP server for modeling an app's interface system as app-owned, agent-readable files. It sits beside an agent session: the agent edits tokens, primitives, components, and screens as plain JSON, HTML, and CSS inside the app repository, and Blueprint checks, renders, and hands them off.
 
-Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: an infinite canvas with Primitives and Screens boards, mobile and desktop frames, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
+Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: pages for each token group, primitive, and component, a canvas of mobile and desktop screen frames, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
 
 ## Example: Mira
 
@@ -29,7 +29,7 @@ Every boundary is addressable as `kind:id`, for example `primitive:button`, `com
 
 ### One sidecar format
 
-Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar also keeps the 26 locked base primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle the base set through tokens and may add to it, but never remove from it.
+Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar carries the closed set of 33 primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle primitives through tokens and may add states, but never add or remove primitives: app-specific pieces are components built from primitives.
 
 Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, and color contrast.
 
@@ -94,7 +94,7 @@ Example calls:
 
 ## The review canvas
 
-`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current board, zoom, and pan. While an edit is invalid, the last good state stays visible.
+`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current page, zoom, and pan. While an edit is invalid, the last good state stays visible.
 
 - **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.
 - **Turn changes.** Boundaries that changed during the latest agent turn get a dashed marker. Before and After toggle between the turn's starting state and the live project.
