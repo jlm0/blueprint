@@ -79,6 +79,40 @@ describe('Blueprint data-driven primitives canvas', () => {
     }
   });
 
+  it('keeps the canvas surround neutral and reviews tokens on the project background', async () => {
+    const fixtures = [
+      { bundle: await loadProjectFromFs(starterRoot), surround: 'light', canvas: 'rgb(229, 229, 229)', background: 'rgb(250, 250, 250)' },
+      { bundle: await loadProjectFromFs(umbraRoot), surround: 'dark', canvas: 'rgb(30, 30, 30)', background: 'rgb(7, 7, 11)' }
+    ];
+
+    for (const fixture of fixtures) {
+      const page = await openPrimitiveBoard(fixture.bundle);
+      try {
+        const projectId = fixture.bundle.manifest.project.id;
+        const canvas = await page.locator('#viewport').evaluate(element => ({
+          surround: document.documentElement.dataset.surround,
+          background: window.getComputedStyle(element).backgroundColor
+        }));
+        assert.deepEqual(canvas, { surround: fixture.surround, background: fixture.canvas }, `${projectId} surround`);
+
+        const colorCard = page.locator(`[data-boundary-id="${projectId}/token-group/color"] .token-card-body`);
+        assert.equal(await colorCard.evaluate(element => window.getComputedStyle(element).backgroundColor), fixture.background);
+        assert.equal(await colorCard.locator('.token-ladder-step').count(), 7, `${projectId} should nest the full surface ladder`);
+
+        const pairs = await colorCard.locator('.token-pair').evaluateAll(rows =>
+          rows.map(row => ({
+            pair: (row as HTMLElement).dataset.tokenPair,
+            passes: row.querySelector<HTMLElement>('.token-pair-ratio')?.dataset.passes
+          }))
+        );
+        assert.equal(pairs.length, 7, `${projectId} should show every linted color role pair`);
+        assert.ok(pairs.every(pair => pair.passes === 'true'), `${projectId} pairs should all pass: ${JSON.stringify(pairs)}`);
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it('renders known primitive families as human-facing visual specimens rather than token probe cards', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
     const page = await openPrimitiveBoard(bundle);

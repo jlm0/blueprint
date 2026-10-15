@@ -9,7 +9,7 @@ export interface ContrastIssue {
   minimum: number;
 }
 
-const rolePairs: Array<{ foreground: string; background: string; minimum: number }> = [
+export const colorRolePairs: ReadonlyArray<{ foreground: string; background: string; minimum: number }> = [
   { foreground: '--app-color-foreground', background: '--app-color-background', minimum: 4.5 },
   { foreground: '--app-color-foreground', background: '--app-color-surface', minimum: 4.5 },
   { foreground: '--app-color-muted', background: '--app-color-surface', minimum: 4.5 },
@@ -32,7 +32,7 @@ export function lintColorContrast(bundle: BlueprintProjectBundle): ContrastIssue
     }
   }
   const issues: ContrastIssue[] = [];
-  for (const pair of rolePairs) {
+  for (const pair of colorRolePairs) {
     const foreground = colors.get(pair.foreground);
     const background = colors.get(pair.background);
     if (!foreground || !background) continue;
@@ -55,7 +55,7 @@ export function contrastMessage(issue: ContrastIssue): string {
   return `${issue.foreground.styleRef} (${issue.foreground.value}) on ${issue.background.styleRef} (${issue.background.value}) has contrast ${issue.ratio}:1; ${use} needs at least ${issue.minimum}:1.`;
 }
 
-function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+export function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
   const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
   return (lighter + 0.05) / (darker + 0.05);
 }

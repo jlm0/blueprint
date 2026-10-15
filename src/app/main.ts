@@ -13,6 +13,7 @@ import {
 } from '../core/activity';
 import { changedBoundaries } from '../core/change';
 import { parseOpaqueColor, relativeLuminance } from '../core/color';
+import { colorRolePairs, contrastRatio } from '../core/contrast-lint';
 import { collectDesignFindings, designFindingReference, type DesignFinding } from '../core/findings';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
@@ -91,6 +92,7 @@ let project = loadConfiguredProject();
 const shell = el('div');
 shell.id = 'app-shell';
 shell.className = 'bp-chrome-shell';
+refreshSurround();
 
 const switcher = el('nav', 'board-switcher bp-chrome-board-switcher');
 switcher.setAttribute('aria-label', 'Blueprint boards');
@@ -584,6 +586,7 @@ interface TokenRecord {
 
 interface TokenIndex {
   byRef: Map<string, TokenRecord>;
+  byStyleRef: Map<string, TokenRecord>;
   byGroup: Map<string, TokenGroup>;
 }
 
@@ -656,18 +659,104 @@ const FAMILY_COLUMN_GROUPS: string[][] = [
 
 function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
   const byRef = new Map<string, TokenRecord>();
+  const byStyleRef = new Map<string, TokenRecord>();
   const byGroup = new Map<string, TokenGroup>();
   for (const group of bundle.tokens.tokenGroups) {
     byGroup.set(group.id, group);
     for (const token of group.tokens) {
-      byRef.set(`${group.id}.${token.id}`, {
-        ref: `${group.id}.${token.id}`,
-        group,
-        token
-      });
+      const record = { ref: `${group.id}.${token.id}`, group, token };
+      byRef.set(record.ref, record);
+      byStyleRef.set(token.styleRef, record);
     }
   }
-  return { byRef, byGroup };
+  return { byRef, byStyleRef, byGroup };
+}
+
+const SURFACE_LADDER_ROLES = [
+  '--app-color-background',
+  '--app-color-surface',
+  '--app-color-surface-2',
+  '--app-color-surface-3',
+  '--app-color-surface-4',
+  '--app-color-surface-5',
+  '--app-color-surface-6'
+];
+
+function resolvedColor(tokenIndex: TokenIndex, styleRef: string): string | undefined {
+  const record = tokenIndex.byStyleRef.get(styleRef);
+  return record?.token.type === 'color' ? resolveTokenReferences(tokenIndex, record.token.value) : undefined;
+}
+
+function applyProjectCanvas(element: HTMLElement, tokenIndex: TokenIndex): void {
+  const background = resolvedColor(tokenIndex, '--app-color-background');
+  const foreground = resolvedColor(tokenIndex, '--app-color-foreground');
+  const muted = resolvedColor(tokenIndex, '--app-color-muted');
+  const surface = resolvedColor(tokenIndex, '--app-color-surface');
+  if (background) element.style.background = background;
+  if (foreground) element.style.setProperty('--bp-sample-fg', foreground);
+  if (muted) element.style.setProperty('--bp-sample-muted-fg', muted);
+  if (surface) element.style.setProperty('--bp-sample-swatch-bg', surface);
+}
+
+function createSurfaceLadder(tokenIndex: TokenIndex): HTMLElement | undefined {
+  const steps = SURFACE_LADDER_ROLES.flatMap(styleRef => {
+    const record = tokenIndex.byStyleRef.get(styleRef);
+    const value = resolvedColor(tokenIndex, styleRef);
+    return record && value ? [{ record, value }] : [];
+  });
+  if (steps.length < 2) {
+    return undefined;
+  }
+  const ladder = el('section', 'token-ladder');
+  ladder.append(el('p', 'token-section-label', 'Surface ladder'));
+  let parent: HTMLElement = ladder;
+  for (const { record, value } of steps) {
+    const step = el('div', 'token-ladder-step');
+    step.style.background = value;
+    step.append(el('span', 'token-ladder-label', `${record.token.name} · ${record.token.value}`));
+    setTokenHook(step, record, 'color-ladder-step');
+    parent.append(step);
+    parent = step;
+  }
+  return ladder;
+}
+
+function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
+  const list = el('div', 'token-pairs-list');
+  for (const pair of colorRolePairs) {
+    const foreground = tokenIndex.byStyleRef.get(pair.foreground);
+    const background = tokenIndex.byStyleRef.get(pair.background);
+    const foregroundValue = resolvedColor(tokenIndex, pair.foreground);
+    const backgroundValue = resolvedColor(tokenIndex, pair.background);
+    if (!foreground || !background || !foregroundValue || !backgroundValue) {
+      continue;
+    }
+    const row = el('div', 'token-pair');
+    row.dataset.tokenPair = `${pair.foreground} on ${pair.background}`;
+    const sample = el('span', 'token-pair-sample', pair.minimum === 3 ? '' : 'Aa');
+    sample.dataset.pairKind = pair.minimum === 3 ? 'indicator' : 'text';
+    sample.style.background = backgroundValue;
+    sample.style.color = foregroundValue;
+    const foregroundRgb = parseOpaqueColor(foregroundValue);
+    const backgroundRgb = parseOpaqueColor(backgroundValue);
+    const ratio = foregroundRgb && backgroundRgb ? contrastRatio(foregroundRgb, backgroundRgb) : undefined;
+    const verdict = el('span', 'token-pair-ratio');
+    if (ratio === undefined) {
+      verdict.textContent = 'not measured';
+    } else {
+      const passes = ratio >= pair.minimum;
+      verdict.dataset.passes = String(passes);
+      verdict.textContent = `${(Math.floor(ratio * 10) / 10).toFixed(1)}:1 ${passes ? '✓' : `✕ needs ${pair.minimum}`}`;
+    }
+    row.append(sample, el('span', 'token-pair-label', `${foreground.token.name} on ${background.token.name}`), verdict);
+    list.append(row);
+  }
+  if (list.childElementCount === 0) {
+    return undefined;
+  }
+  const section = el('section', 'token-pairs');
+  section.append(el('p', 'token-section-label', 'Contrast pairs'), list);
+  return section;
 }
 
 function addTokenGroupCard(
@@ -690,9 +779,17 @@ function addTokenGroupCard(
   card.dataset.tokenGroup = group.id;
 
   const body = appendSpecBody(card);
+  body.classList.add('token-card-body');
+  applyProjectCanvas(body, tokenIndex);
   const header = el('div', 'generated-card-head');
   header.append(el('strong', '', group.name), el('span', '', group.description));
   body.append(header);
+
+  if (group.tokens.some(token => token.styleRef === SURFACE_LADDER_ROLES[0])) {
+    for (const section of [createSurfaceLadder(tokenIndex), createContrastPairs(tokenIndex)]) {
+      if (section) body.append(section);
+    }
+  }
 
   const grid = el('div', 'token-grid');
   for (const token of group.tokens) {
@@ -1119,7 +1216,7 @@ function resolveTokenReferences(tokenIndex: TokenIndex, value: string, depth = 0
     return value;
   }
   return value.replace(/var\((--[\w-]+)\)/g, (reference, styleRef: string) => {
-    const record = [...tokenIndex.byRef.values()].find(candidate => candidate.token.styleRef === styleRef);
+    const record = tokenIndex.byStyleRef.get(styleRef);
     return record ? resolveTokenReferences(tokenIndex, record.token.value, depth + 1) : reference;
   });
 }
@@ -1986,6 +2083,10 @@ function mountDeviceChrome(
   }
 }
 
+function refreshSurround(): void {
+  document.documentElement.dataset.surround = backgroundAppearance(project);
+}
+
 function backgroundAppearance(bundle: BlueprintProjectBundle): 'light' | 'dark' {
   const background = findTokenValue(bundle, ['background']);
   const rgb = background ? parseOpaqueColor(background) : undefined;
@@ -2450,6 +2551,7 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   }
   project = createConfiguredProjectBundle(snapshot.bundle);
   window.__BLUEPRINT_PROJECT_BUNDLE__ = snapshot.bundle;
+  refreshSurround();
   screenFlows = projectScreenFlows(project);
   if (!activeScreenFlow || !screenFlows.includes(activeScreenFlow)) {
     activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
@@ -3075,6 +3177,7 @@ function queueChangeBaselineView(show: boolean): void {
     } else {
       project = exitChangeBaselineView();
     }
+    refreshSurround();
     await Promise.all([...boardState.keys()].map(id => replaceMountedBoard(id)));
     renderChangeBar();
   }).catch(error => {

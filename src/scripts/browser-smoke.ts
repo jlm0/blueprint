@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     await page.goto(url);
     await page.waitForSelector('.board-primitives .spec[data-boundary-kind="primitive"]', { timeout: 10000 });
     await assertDashboardChromeRemoved(page);
-    await assertDarkBlueprintCanvas(page);
+    await assertNeutralCanvas(page);
     await assertProductScopeStructure(page);
     const starterBundle = await loadProjectFromFs('starter/design/blueprint');
     await assertDataDrivenPrimitiveBoard(page, starterBundle);
@@ -162,18 +162,19 @@ async function assertDashboardChromeRemoved(page: import('playwright').Page): Pr
   }
 }
 
-async function assertDarkBlueprintCanvas(page: import('playwright').Page): Promise<void> {
+async function assertNeutralCanvas(page: import('playwright').Page): Promise<void> {
   const styles = await page.locator('#viewport').evaluate(element => {
     const computed = window.getComputedStyle(element);
     return {
+      surround: document.documentElement.dataset.surround,
       backgroundImage: computed.backgroundImage,
       backgroundColor: computed.backgroundColor
     };
   });
 
   const lineCount = styles.backgroundImage.match(/linear-gradient/g)?.length ?? 0;
-  if (lineCount !== 4 || styles.backgroundColor !== 'rgb(11, 21, 38)') {
-    throw new Error('Canvas should render the navy blueprint grid-line background.');
+  if (lineCount !== 4 || styles.surround !== 'light' || styles.backgroundColor !== 'rgb(229, 229, 229)') {
+    throw new Error(`Canvas should render the neutral light grid surround for the light starter, received ${JSON.stringify(styles)}.`);
   }
 }
 
