@@ -2,6 +2,7 @@ import { boundaryId, parseBoundarySelector, reference } from './address';
 import { placedBrandMarkIds } from './brand-lint';
 import type {
   BlueprintProjectBundle,
+  DeclaredGroup,
   BoundaryDependency,
   BoundaryKind,
   BoundaryPacket,
@@ -44,6 +45,25 @@ export function listBoundaryReferences(bundle: BlueprintProjectBundle): Boundary
       ...screen.sections.map(section => reference(projectId, 'section', `${screen.id}/${section.id}`, section.name))
     ])
   ];
+}
+
+export interface DeclaredGroupIndex {
+  pages: Array<DeclaredGroup & { screens: string[] }>;
+  componentSections: Array<DeclaredGroup & { components: string[] }>;
+}
+
+/** Declared screen pages and component sections with their members, so an agent can place new work without reading the JSON. */
+export function listDeclaredGroups(bundle: BlueprintProjectBundle): DeclaredGroupIndex {
+  return {
+    pages: (bundle.screens.pages ?? []).map(page => ({
+      ...page,
+      screens: bundle.screens.screens.filter(screen => screen.page === page.id).map(screen => screen.id)
+    })),
+    componentSections: (bundle.components.sections ?? []).map(section => ({
+      ...section,
+      components: bundle.components.components.filter(component => component.section === section.id).map(component => component.id)
+    }))
+  };
 }
 
 export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: BoundarySelector | string): BoundaryPacket {

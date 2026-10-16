@@ -167,6 +167,14 @@ describe('Blueprint MCP and template governance', () => {
 
         const index = await call(session, 'index', { project: miraRoot });
         assert.ok((index.results as Array<{ id: string }>).some(item => item.id === 'mira-ai/screen/workspace'));
+        assert.deepEqual(
+          (index.pages as Array<{ id: string; screens: string[] }>).map(page => [page.id, page.screens]),
+          [['web', ['workspace']], ['mobile', ['chat']]]
+        );
+        assert.deepEqual(
+          (index.componentSections as Array<{ id: string; components: string[] }>).map(section => [section.id, section.components]),
+          [['conversation', ['composer', 'prompt-card']], ['answers', ['insight-chart', 'source-item']]]
+        );
 
         const show = await call(session, 'query', { project: miraRoot, query: { type: 'show', boundary: 'screen:workspace' } });
         assert.equal(show.id, 'mira-ai/screen/workspace');

@@ -49,6 +49,7 @@ import {
 import {
   createExtractionPacket,
   listBoundaryReferences,
+  listDeclaredGroups,
   queryPrototypeOnly,
   querySections,
   queryUsedBy,
@@ -240,7 +241,8 @@ export async function indexBlueprint(input: IndexInput, signal?: AbortSignal): P
     command: 'index',
     project: normalize(path.resolve(project)),
     projectId: bundle.manifest.project.id,
-    results: listBoundaryReferences(bundle)
+    results: listBoundaryReferences(bundle),
+    ...listDeclaredGroups(bundle)
   });
   await writeOptionalJsonArtifact(output, input.out);
   return output;

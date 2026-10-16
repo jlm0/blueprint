@@ -71,7 +71,7 @@ The server exposes eleven project-scoped tools:
 | --- | --- |
 | `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser screens. |
 | `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks. |
-| `index` | List every stable boundary ID. |
+| `index` | List every stable boundary ID, plus the declared screen pages and component sections with their members. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
 | `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
 | `capture` | Render one screen, state, and viewport to PNG, or one component or primitive cropped to its own box. |

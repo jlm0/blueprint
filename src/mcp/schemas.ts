@@ -334,12 +334,22 @@ export const queryResultSchema = z
 
 export const queryOutputSchema = z.union([boundaryPacketSchema, queryResultSchema]);
 
+const declaredGroupFields = {
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional()
+};
+
 export const indexOutputSchema = z
   .object({
     command: z.literal('index'),
     project: z.string(),
     projectId: z.string(),
-    results: z.array(boundaryReferenceSchema)
+    results: z.array(boundaryReferenceSchema),
+    pages: z.array(z.object({ ...declaredGroupFields, screens: z.array(z.string()) }).strict())
+      .describe('Declared screen pages with their screens. Declare a new page in screens.json before placing a screen on it.'),
+    componentSections: z.array(z.object({ ...declaredGroupFields, components: z.array(z.string()) }).strict())
+      .describe('Declared component sections with their components. Declare a new section in components.json before using it.')
   })
   .strict();
 
