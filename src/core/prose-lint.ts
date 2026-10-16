@@ -94,7 +94,7 @@ export function lintProse(text: string): ProseIssue[] {
   }
   const trimmed = text.trim();
   if (trimmed && (!/^[A-Z0-9`"“]/.test(trimmed) || !/[.!?]["'”’)\]]*$/.test(trimmed))) {
-    issues.push(error('sentence-form', trimmed.slice(0, 40), 'is not written as sentences. Fix: start with a capital letter and end with a period.'));
+    issues.push(error('sentence-form', trimmed.slice(0, 40), sentenceFormMessage(trimmed)));
   }
   const prose = maskInlineCode(text);
   for (const { rule, pattern, message } of PATTERN_RULES) {
@@ -145,6 +145,17 @@ export function lintSynonymRotation(texts: readonly string[]): Array<ProseIssue 
     }
   }
   return issues;
+}
+
+function sentenceFormMessage(text: string): string {
+  if (/^[\w.@-]+(?:\/[\w.@-]+)+$|^[\w-]+\.[a-z]{1,5}$/i.test(text)) {
+    return `names a file but does not say what it holds. Fix: write a sentence, such as "\`${text}\` renders it.", or record the path in implementationTargets.`;
+  }
+  const label = /^([a-z][\w-]*):\s/.exec(text);
+  if (label) {
+    return `starts with the id "${label[1]}" outside backticks. Fix: write it as "\`${label[1]}\`: …", start the rest with a capital letter, and end with a period.`;
+  }
+  return 'is not written as sentences. Fix: start with a capital letter and end with a period.';
 }
 
 function error(rule: ProseErrorRule, match: string, message: string): ProseIssue {
