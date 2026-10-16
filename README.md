@@ -4,7 +4,7 @@
 
 Blueprint is a local design canvas and MCP server for modeling an app's interface system as app-owned, agent-readable files. It sits beside an agent session: the agent edits tokens, primitives, components, and screens as plain JSON, HTML, and CSS inside the app repository, and Blueprint checks, renders, and hands them off.
 
-Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: pages for each token group, primitive, and component, a canvas of mobile and desktop screen frames, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
+Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: a brand page, pages for each token group, primitive, and component, a canvas of mobile and desktop screen frames for each screen page, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
 
 ## Example: Mira
 
@@ -23,7 +23,7 @@ Blueprint splits authority between two layers:
 
 Screenshots and visual diffs are review evidence only, never source.
 
-Screens compose reusable parts with `<blueprint-use kind="primitive|component" ref="…" state="…">`. Blueprint replaces each use with the referenced root, without wrapper elements, so ordinary sibling, flex, grid, and breakpoint rules keep working. Tokens become `--app-*` CSS custom properties. Every screen renders in a sandboxed frame with a no-network, no-script content security policy.
+Screens compose reusable parts with `<blueprint-use kind="primitive|component" ref="…" state="…">`. Blueprint replaces each use with the referenced root, without wrapper elements, so ordinary sibling, flex, grid, and breakpoint rules keep working. A reusable placed inside another reusable's slot is declared by the source that wrote it, so optional pieces compose without changing their container. Tokens become `--app-*` CSS custom properties. Every screen renders in a sandboxed frame with a no-network, no-script content security policy.
 
 Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary; `project:root` carries the brand guideline. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, the brand guideline, and source paths so an implementation agent can build without reading the canvas DOM.
 
@@ -35,7 +35,7 @@ Every primitive, component, and screen declares its HTML/CSS source, and the man
 
 Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares sections, and every component names its section. An agent starting a new page or section must declare it first, and validation rejects undeclared references.
 
-Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, and color contrast.
+Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, color contrast, and primitives outside the closed set.
 
 ## Getting started
 
@@ -69,7 +69,7 @@ The server exposes eleven project-scoped tools:
 
 | Tool | Purpose |
 | --- | --- |
-| `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser screens. |
+| `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. |
 | `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks. |
 | `index` | List every stable boundary ID, plus the declared screen pages and component sections with their members. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
@@ -90,7 +90,7 @@ Example calls:
   "query": { "project": "design/blueprint", "query": { "type": "used-by", "boundary": "primitive:button" } },
   "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "deep" },
   "capture": { "project": "design/blueprint", "boundary": "screen:home", "state": "default", "viewport": "phone", "out": ".blueprint-artifacts/home.png" },
-  "serve": { "project": "design/blueprint" }
+  "serve": { "project": "design/blueprint", "focus": "component:action-cluster" }
 }
 ```
 
@@ -100,9 +100,10 @@ Example calls:
 
 `serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current page, zoom, and pan. While an edit is invalid, the last good state stays visible.
 
+- **Navigation.** A rail switches between Foundations, Primitives, Components, and Screens. The sub-navigation groups items by declared section or page, and each group collapses. With `focus`, `serve` returns a link that opens one boundary's page; a screen link opens its page and centers the screen.
 - **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.
-- **Turn changes.** Boundaries that changed during the latest agent turn get a dashed marker. Before and After toggle between the turn's starting state and the live project.
-- **Findings.** Strict-lint findings appear as counts on screen frames and markers on component instances, each with a copyable remedy.
+- **Turn changes.** Boundaries that changed during the latest agent turn get a dashed marker, and a brand edit flags the Brand page. Before and After toggle between the turn's starting state and the live project.
+- **Findings.** Strict-lint findings appear as counts on screen frames and markers on component instances, each with a copyable remedy. `validate` returns the same list to the agent.
 - **Explorations.** Saved alternatives open in an isolated baseline-and-candidates view instead of crowding the canonical screens.
 
 ### Live agent activity
