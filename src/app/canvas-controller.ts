@@ -163,7 +163,7 @@ export function createCanvasController({
     if (nextScale < options.readableScale) {
       view.s = options.readableScale;
       view.x = 60 - minX * view.s;
-      view.y = Math.max(24, (viewportHeight - height * view.s) / 2 - minY * view.s + 24);
+      view.y = Math.max(24, (viewportHeight - height * view.s) / 2 + 24) - minY * view.s;
       apply();
       return;
     }
