@@ -702,7 +702,8 @@ function validateScreen(
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
   componentIds: Set<string>,
-  stateSetIds: Set<string>
+  stateSetIds: Set<string>,
+  historySnapshot = false
 ): void {
   requireString(errors, 'screen.id', screen.id);
   requireString(errors, `screen.${screen.id}.name`, screen.name);
@@ -710,9 +711,11 @@ function validateScreen(
     errors.push(`screen.${screen.id}.version must be a positive integer.`);
   }
   requireString(errors, `screen.${screen.id}.framePresetId`, screen.framePresetId);
-  requireString(errors, `screen.${screen.id}.page`, screen.page);
-  if ('flow' in screen) {
-    errors.push(`screen.${screen.id}.flow was replaced by page; declare the page in screens.pages and reference its id.`);
+  if (!historySnapshot) {
+    requireString(errors, `screen.${screen.id}.page`, screen.page);
+    if ('flow' in screen) {
+      errors.push(`screen.${screen.id}.flow was replaced by page; declare the page in screens.pages and reference its id.`);
+    }
   }
   requireArray(errors, `screen.${screen.id}.sections`, screen.sections);
 
@@ -854,7 +857,7 @@ function validateScreenHistoryEntry(
     errors.push(`${label}.screen.id must match canonical screen "${entry.screenId}".`);
   }
   if (entry.screen) {
-    validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
+    validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, stateSetIds, true);
   }
   const prototype = entry.screen?.prototype;
   if (!prototype) {

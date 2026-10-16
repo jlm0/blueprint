@@ -470,6 +470,8 @@ export function restoreScreenHistory(
   };
   const restoredScreen = withPrototypeRefs(structuredClone(selectedVersion.screen), canonicalPrototype);
   restoredScreen.id = current.id;
+  restoredScreen.page = current.page;
+  delete (restoredScreen as ScreenDefinition & { flow?: unknown }).flow;
   if (current.version === undefined) {
     delete restoredScreen.version;
   } else {

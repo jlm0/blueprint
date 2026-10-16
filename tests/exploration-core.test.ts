@@ -223,6 +223,29 @@ describe('persistent screen exploration core', () => {
       assert.equal(nextPromoted.historicalVersion.version, 3);
     });
   });
+
+  it('restores a version saved on another page, or before pages existed, onto the screen\'s current page', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const entry = bundle.history.entries[0]!;
+    const legacy = entry.screen as Omit<typeof entry.screen, 'page'> & { page?: string; flow?: string };
+    delete legacy.page;
+    legacy.flow = 'Phone';
+    assert.equal(validateProject(bundle).ok, true, validateProject(bundle).errors.join('\n'));
+
+    bundle.screens.pages.push({ id: 'app', name: 'App' });
+    bundle.screens.screens.find(screen => screen.id === entry.screenId)!.page = 'app';
+    const inspected = inspectScreenHistory(bundle, entry.screenId, entry.version);
+    const restored = restoreScreenHistory(bundle, {
+      screenId: entry.screenId,
+      version: entry.version,
+      expectedCurrentDigest: inspected.currentDigest,
+      expectedVersionDigest: inspected.versionDigest
+    });
+    assert.equal(restored.restoredScreen.page, 'app');
+    assert.equal('flow' in restored.restoredScreen, false);
+    const next = { ...bundle, screens: restored.screens, history: restored.history, prototypeSourceContents: restored.prototypeSourceContents };
+    assert.equal(validateProject(next).ok, true, validateProject(next).errors.join('\n'));
+  });
 });
 
 function explorationInput(title: string, target = workspaceTarget) {
