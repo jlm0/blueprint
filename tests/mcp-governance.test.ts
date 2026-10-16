@@ -876,6 +876,41 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('marks a brand edit on the Brand page and in the change bar', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(meridianRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0, focus: 'project:root' });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(served.url as string);
+          await page.locator('.bp-chrome-doc-page[data-brand]').waitFor();
+          const brandPath = path.join(projectCopy, 'brand.json');
+          const patch = `await tools.apply_patch("*** Update File: design/blueprint/brand.json")`;
+          const hook = { session_id: 'thread-brand', turn_id: 'turn-brand', cwd: tempDir, tool_name: 'functions.exec', tool_use_id: 'tool-brand', tool_input: patch };
+          await runCodexHook(tempDir, { ...hook, hook_event_name: 'PreToolUse' });
+          await writeFile(brandPath, (await readFile(brandPath, 'utf8')).replace('Treasury for companies', 'Treasury for teams'), 'utf8');
+          await runCodexHook(tempDir, { ...hook, hook_event_name: 'PostToolUse', tool_response: { isError: false } });
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Brand');
+          await page.locator('.bp-chrome-item[data-item="brand"][data-changed="true"]').waitFor();
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-doc-page[data-brand] .bp-chrome-doc-lede')?.textContent?.startsWith('Treasury for teams'));
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
   it('marks design findings on screens and their components and refreshes them as the agent fixes them', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');

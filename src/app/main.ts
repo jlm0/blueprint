@@ -4,6 +4,7 @@ import { boundaryId } from '../core/address';
 import {
   activityFocusForBoundary,
   activityFocusesForChangedPaths,
+  BRAND_FOCUS_ID,
   boundaryDisplayName,
   type BlueprintAgentActivityEvent,
   type BlueprintAgentActivityFocus,
@@ -322,7 +323,7 @@ interface SectionItem {
 
 const DOCUMENT_SECTIONS: DocumentSectionId[] = ['foundations', 'primitives', 'components'];
 
-const BRAND_ITEM_ID = 'brand';
+const BRAND_ITEM_ID = BRAND_FOCUS_ID;
 
 const SECTION_LABELS: Record<SectionId, string> = {
   foundations: 'Foundations',

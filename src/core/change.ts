@@ -1,4 +1,4 @@
-import { activityFocusForBoundary, type BlueprintAgentActivityFocus } from './activity';
+import { activityFocusForBoundary, BRAND_FOCUS_ID, type BlueprintAgentActivityFocus } from './activity';
 import type { BlueprintProjectBundle, BoundaryKind } from './types';
 
 /** Boundaries whose declaration or owned prototype files differ between two snapshots; removed boundaries are omitted. */
@@ -14,6 +14,9 @@ export function changedBoundaries(previous: BlueprintProjectBundle, next: Bluepr
     }
   };
   compare('token-group', previous.tokens.tokenGroups, next.tokens.tokenGroups, () => []);
+  if (next.brand && brandFingerprint(previous) !== brandFingerprint(next)) {
+    changed.push(activityFocusForBoundary(next, 'project', BRAND_FOCUS_ID));
+  }
   compare('primitive', previous.primitives.primitives, next.primitives.primitives, primitive => (
     [primitive.prototype.source, ...primitive.prototype.styles]
   ));
@@ -24,6 +27,11 @@ export function changedBoundaries(previous: BlueprintProjectBundle, next: Bluepr
     [screen.prototype.source, ...screen.prototype.styles, ...screen.prototype.assetRefs]
   ));
   return changed;
+}
+
+function brandFingerprint(bundle: BlueprintProjectBundle): string {
+  const marks = bundle.brand?.marks ?? [];
+  return JSON.stringify([bundle.brand ?? null, marks.map(mark => bundle.prototypeSourceContents[mark.source] ?? null)]);
 }
 
 function boundaryFingerprint(bundle: BlueprintProjectBundle, declaration: unknown, files: string[]): string {

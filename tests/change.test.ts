@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { activityFocusesForChangedPaths, boundaryDisplayName } from '../src/core/activity';
 import { changedBoundaries } from '../src/core/change';
 import { loadProjectFromFs } from '../src/core/load';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
+const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 describe('changed boundary detection', () => {
   it('reports nothing for identical snapshots', async () => {
@@ -24,6 +26,26 @@ describe('changed boundary detection', () => {
         `mira-ai/screen/workspace`,
         `mira-ai/token-group/${previous.tokens.tokenGroups[0].id}`
       ].sort()
+    );
+  });
+
+  it('reports a brand.json or mark source edit as a change to the Brand page', async () => {
+    const previous = await loadProjectFromFs(meridianRoot);
+    const voice = structuredClone(previous);
+    voice.brand!.voice!.summary = 'Plainer still.';
+    const mark = structuredClone(previous);
+    mark.prototypeSourceContents['brand/mark.svg'] = mark.prototypeSourceContents['brand/mark.svg'].replace('r="12.25"', 'r="12"');
+    for (const next of [voice, mark]) {
+      const changes = changedBoundaries(previous, next);
+      assert.deepEqual(changes.map(change => `${change.kind}:${change.localId}`), ['project:brand']);
+      assert.equal(boundaryDisplayName(next, 'project', changes[0]!.localId), 'Brand');
+    }
+    const removed = structuredClone(previous);
+    delete removed.brand;
+    assert.deepEqual(changedBoundaries(previous, removed), []);
+    assert.deepEqual(
+      activityFocusesForChangedPaths(previous, ['brand/wordmark.svg', 'brand.json']).map(focus => focus.boundaryId),
+      ['meridian-finance/project/brand']
     );
   });
 
