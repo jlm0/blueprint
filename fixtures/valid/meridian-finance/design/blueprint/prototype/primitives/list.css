@@ -108,12 +108,12 @@
   font: var(--app-type-label);
 }
 
-[data-blueprint-primitive="list"][data-blueprint-state="plain"][data-blueprint-surface] {
+[data-blueprint-primitive="list"][data-blueprint-variant="plain"][data-blueprint-surface] {
   border-color: transparent;
   border-radius: 0;
   background-color: transparent;
 }
 
-[data-blueprint-primitive="list"][data-blueprint-state="plain"] .list__row {
+[data-blueprint-primitive="list"][data-blueprint-variant="plain"] .list__row {
   padding-inline: 0;
 }

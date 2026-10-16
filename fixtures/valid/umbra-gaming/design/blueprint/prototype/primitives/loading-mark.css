@@ -29,14 +29,14 @@
   stroke-linecap: round;
 }
 
-[data-blueprint-primitive="loading-mark"][data-blueprint-state="surface"] {
+[data-blueprint-primitive="loading-mark"][data-blueprint-variant="surface"] {
   padding: var(--app-space-2);
   border-radius: var(--app-radius-full);
   color: var(--app-color-on-primary);
   background: var(--app-color-primary);
 }
 
-[data-blueprint-primitive="loading-mark"][data-blueprint-state="surface"] .loading-mark__track {
+[data-blueprint-primitive="loading-mark"][data-blueprint-variant="surface"] .loading-mark__track {
   stroke: transparent;
 }
 

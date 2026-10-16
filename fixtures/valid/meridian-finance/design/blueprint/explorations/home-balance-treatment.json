@@ -10,7 +10,7 @@
       "screenId": "home",
       "state": "default",
       "framePresetId": "phone",
-      "baseDigest": "a38b279cd851090e2ee2cc8ec0aee39f4f76cabebea9e4937f441f7c2bb0a3c5",
+      "baseDigest": "2bdd4becd0080e30c8f45486e1d42137d1b5179310775d0ec7de7765286d78b4",
       "baseline": {
         "screen": {
           "id": "home",
@@ -172,7 +172,7 @@
                   "reason": "Total cash.",
                   "binding": {
                     "slot": "total",
-                    "state": "compact"
+                    "size": "compact"
                   }
                 },
                 {
@@ -228,7 +228,7 @@
                   "reason": "Account balances.",
                   "binding": {
                     "slot": "accounts",
-                    "state": "compact"
+                    "size": "compact"
                   }
                 }
               ],

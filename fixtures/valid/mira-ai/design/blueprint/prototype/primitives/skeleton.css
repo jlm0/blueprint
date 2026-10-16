@@ -24,8 +24,8 @@
   border-radius: var(--app-radius-lg);
 }
 
-[data-blueprint-primitive="skeleton"][data-blueprint-state="line"] .skeleton__block,
-[data-blueprint-primitive="skeleton"][data-blueprint-state="block"] .skeleton__line {
+[data-blueprint-primitive="skeleton"][data-blueprint-variant="line"] .skeleton__block,
+[data-blueprint-primitive="skeleton"][data-blueprint-variant="block"] .skeleton__line {
   display: none;
 }
 

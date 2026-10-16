@@ -48,7 +48,7 @@
   background-color: var(--app-color-primary);
 }
 
-[data-blueprint-primitive="alert-dialog"][data-blueprint-state="destructive"] .alert-dialog__action--confirm {
+[data-blueprint-primitive="alert-dialog"][data-blueprint-variant="destructive"] .alert-dialog__action--confirm {
   color: var(--app-color-on-destructive);
   background-color: var(--app-color-destructive);
 }

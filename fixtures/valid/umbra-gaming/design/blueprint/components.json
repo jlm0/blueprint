@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "umbra-gaming",
-  "sections": [
+  "groups": [
     {
       "id": "season",
       "name": "Season",
@@ -16,51 +16,112 @@
   "components": [
     {
       "id": "pass-track",
-      "name": "Pass Track",
+      "name": "Pass track",
       "description": "Season pass progress: current tier, XP to the next tier, the reward rail around it, and the next reward.",
-      "section": "season",
+      "group": "season",
+      "platforms": [
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Pass ownership.",
-          "binding": {
-            "slot": "ownership",
-            "variant": "accent",
-            "copy": "Premium"
-          }
+          "reason": "Pass ownership."
         },
         {
           "kind": "primitive",
           "id": "progress",
-          "reason": "XP toward the next tier.",
-          "binding": {
-            "slot": "meter",
-            "state": "value",
-            "data": "pass.xp / pass.xpForNextTier"
-          }
+          "reason": "XP toward the next tier."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Hides the rail, next reward, and badge, shrinks the tier tile, and shows XP gained this match in the bar."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Full card: tier tile, title and XP, premium badge, reward rail, progress bar, and the next reward."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "tier",
+          "name": "Tier",
+          "description": "The current tier number in the lime tile.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "The pass name beside the tier.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "xp",
+          "name": "XP",
+          "description": "XP earned toward the next tier, as current over target.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "reward",
+          "name": "Reward",
+          "description": "The next reward and the tier that unlocks it.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/pass-track.html",
+        "styles": [
+          "prototype/components/pass-track.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/pass-track.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/pass-track.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/pass-track.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A region labeled \"Season pass progress\", read as tier, title, XP, a progress bar, and the next reward; the reward rail is hidden.",
       "notes": [
         "Compact drops the reward rail and shows XP gained this match in bone over the lime base."
       ],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -81,78 +142,117 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/pass-track.html",
-        "styles": [
-          "prototype/components/pass-track.css"
-        ],
-        "slots": [
-          "tier",
-          "title",
-          "xp",
-          "reward"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          },
-          {
-            "kind": "primitive",
-            "id": "progress"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/pass-track.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/pass-track.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/pass-track.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "event-card",
-      "name": "Event Card",
+      "name": "Event card",
       "description": "Live limited-time event over cropped key art, with a countdown and queue command.",
-      "section": "season",
+      "group": "season",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Live status.",
-          "binding": {
-            "slot": "status",
-            "variant": "success",
-            "copy": "Live event"
-          }
+          "reason": "Live status."
         },
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Queue into the event.",
-          "binding": {
-            "slot": "cta",
-            "variant": "primary",
-            "copy": "Queue now"
-          }
+          "reason": "Queue into the event."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Shorter card shaded from the left, with a smaller title and copy and the queue button at the end."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Tall card over the key art, with badge and timer on top and title, copy, and queue button below."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "timer",
+          "name": "Timer",
+          "description": "Time left before the event ends.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "The event name, uppercase in the display face.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "description": "One line on what the event offers.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/event-card.html",
+        "styles": [
+          "prototype/components/event-card.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/event-card.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/event-card.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/event-card.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "An article read as the live badge, timer, title, and description, then the \"Queue now\" button; the key art is decorative.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -171,67 +271,129 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/event-card.html",
-        "styles": [
-          "prototype/components/event-card.css"
-        ],
-        "slots": [
-          "timer",
-          "title",
-          "description"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          },
-          {
-            "kind": "primitive",
-            "id": "button"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/event-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/event-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/event-card.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "challenge-row",
-      "name": "Challenge Row",
+      "name": "Challenge row",
       "description": "Daily challenge with objective, progress, and XP reward. State encodes progress band.",
-      "section": "season",
+      "group": "season",
+      "platforms": [
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "progress",
-          "reason": "Objective progress.",
-          "binding": {
-            "slot": "meter",
-            "state": "value",
-            "data": "challenge.progress"
-          }
+          "reason": "Objective progress."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "halfway",
+        "values": [
+          {
+            "id": "started",
+            "name": "Started",
+            "description": "The progress bar fills a fifth of the track."
+          },
+          {
+            "id": "halfway",
+            "name": "Halfway",
+            "description": "The progress bar fills half the track."
+          },
+          {
+            "id": "close",
+            "name": "Close",
+            "description": "The progress bar fills four fifths of the track."
+          },
+          {
+            "id": "complete",
+            "name": "Complete",
+            "description": "A full bar, with a lime border and tint, a lime glyph tile, and the reward in lime."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "glyph",
+          "name": "Glyph",
+          "description": "Line icon for the challenge type, in the square tile.",
+          "accepts": [
+            "graphic"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "The objective, cut to one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "count",
+          "name": "Count",
+          "description": "Progress as done of total, beside the bar.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "reward",
+          "name": "Reward",
+          "description": "XP awarded on completion.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/challenge-row.html",
+        "styles": [
+          "prototype/components/challenge-row.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/challenge-row.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/challenge-row.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/challenge-row.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "Read in order as the objective, a progress bar with its count, and the XP reward; the glyph is hidden.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -250,65 +412,129 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/challenge-row.html",
-        "styles": [
-          "prototype/components/challenge-row.css"
-        ],
-        "slots": [
-          "glyph",
-          "title",
-          "count",
-          "reward"
-        ],
-        "states": [
-          "started",
-          "halfway",
-          "close",
-          "complete"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "progress"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/challenge-row.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/challenge-row.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/challenge-row.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "squad-member",
-      "name": "Squad Member",
+      "name": "Squad member",
       "description": "Squadmate identity with presence, and match stats in scoreboard and MVP rows.",
-      "section": "competitive",
+      "group": "competitive",
+      "platforms": [
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "avatar",
-          "reason": "Player mark with presence.",
-          "binding": {
-            "slot": "avatar",
-            "state": "status"
-          }
+          "reason": "Player mark with presence."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "online",
+        "values": [
+          {
+            "id": "online",
+            "name": "Online",
+            "description": "Avatar with a presence dot, the handle, and a muted status line."
+          },
+          {
+            "id": "in-match",
+            "name": "In match",
+            "description": "The status line and presence dot turn amber while the player is in a match."
+          },
+          {
+            "id": "scoreboard",
+            "name": "Scoreboard",
+            "description": "A surface row with match stats on the right; the presence dot is hidden."
+          },
+          {
+            "id": "mvp",
+            "name": "MVP",
+            "description": "A scoreboard row with a lime edge and tint, a lime status line, and bold stats."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "tag",
+          "name": "Tag",
+          "description": "Player initials shown in the avatar.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "name",
+          "name": "Name",
+          "description": "The player's handle, cut to one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "status",
+          "name": "Status",
+          "description": "Presence or match role, such as In lobby or 6 assists.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "stats",
+          "name": "Stats",
+          "description": "Match figures, such as eliminations and damage, shown only in scoreboard and MVP rows.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/squad-member.html",
+        "styles": [
+          "prototype/components/squad-member.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/squad-member.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/squad-member.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/squad-member.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "Read as the initials, handle, and status line, then the match stats when shown; presence is carried by the status text.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -328,55 +554,132 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/squad-member.html",
-        "styles": [
-          "prototype/components/squad-member.css"
-        ],
-        "slots": [
-          "tag",
-          "name",
-          "status",
-          "stats"
-        ],
-        "states": [
-          "online",
-          "in-match",
-          "scoreboard",
-          "mvp"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "avatar"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/squad-member.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/squad-member.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/squad-member.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "stat-meter",
-      "name": "Stat Meter",
+      "name": "Stat meter",
       "description": "One performance stat with a bar against the player average. Plain drops the frame and bar for headline figures.",
-      "section": "competitive",
-      "uses": [],
+      "group": "competitive",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "text",
+          "reason": "Label, figure, and comparison copy."
+        },
+        {
+          "kind": "primitive",
+          "id": "progress",
+          "reason": "The bar against the player average."
+        }
+      ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "above",
+        "values": [
+          {
+            "id": "above",
+            "name": "Above",
+            "description": "The bar fills about three quarters in lime, and the comparison turns lime."
+          },
+          {
+            "id": "average",
+            "name": "Average",
+            "description": "The bar fills about half in the foreground color, with a muted comparison."
+          },
+          {
+            "id": "below",
+            "name": "Below",
+            "description": "The bar fills about a quarter in muted gray, with a muted comparison."
+          },
+          {
+            "id": "record",
+            "name": "Record",
+            "description": "A full lime bar, a lime comparison, and a lime border with a soft glow."
+          },
+          {
+            "id": "plain",
+            "name": "Plain",
+            "description": "No frame, bar, or comparison; a larger figure sits above its label, for headline numbers."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "label",
+          "name": "Label",
+          "description": "What the stat measures, uppercase in mono.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "value",
+          "name": "Value",
+          "description": "The stat figure.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "delta",
+          "name": "Delta",
+          "description": "How the figure compares with the player's average.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/stat-meter.html",
+        "styles": [
+          "prototype/components/stat-meter.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/stat-meter.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/stat-meter.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/stat-meter.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "Plain text read as label, figure, and comparison; the bar is hidden from assistive technology because the comparison says the same.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -395,71 +698,140 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/stat-meter.html",
-        "styles": [
-          "prototype/components/stat-meter.css"
-        ],
-        "slots": [
-          "label",
-          "value",
-          "delta"
-        ],
-        "states": [
-          "above",
-          "average",
-          "below",
-          "record",
-          "plain"
-        ],
-        "renderedUses": []
-      }
+      "styleRefs": [
+        "prototype/components/stat-meter.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/stat-meter.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/stat-meter.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "edition-card",
-      "name": "Edition Card",
+      "name": "Edition card",
       "description": "Purchasable edition with price, perks, and a purchase command. Featured raises the card and swaps to the primary command.",
-      "section": "season",
+      "group": "season",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Featured flag.",
-          "binding": {
-            "slot": "flag",
-            "variant": "default",
-            "copy": "Most chosen"
-          }
+          "reason": "Featured flag."
         },
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Purchase commands; featured shows the primary one.",
-          "binding": {
-            "slot": "cta",
-            "variant": "outline, primary",
-            "layout": "full width"
-          }
+          "reason": "Purchase commands; featured shows the primary one."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "A bordered card with a muted kicker, gray perk markers, and the outline purchase button."
+          },
+          {
+            "id": "featured",
+            "name": "Featured",
+            "description": "Lime border and glow, the Most chosen badge, a lime kicker and markers, and the primary button."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "kicker",
+          "name": "Kicker",
+          "description": "The edition name above the price.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "price",
+          "name": "Price",
+          "description": "The price, large in the display face.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "note",
+          "name": "Note",
+          "description": "Billing terms beside the price, such as Forever.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "perks",
+          "name": "Perks",
+          "description": "A list of what the edition includes.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "cta",
+          "name": "CTA",
+          "description": "Label of the outline purchase button, shown in the default state.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "featured-cta",
+          "name": "Featured CTA",
+          "description": "Label of the primary purchase button, shown in the featured state.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/edition-card.html",
+        "styles": [
+          "prototype/components/edition-card.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/edition-card.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/edition-card.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/edition-card.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "An article read as the edition name, price and terms, a list of perks, then one purchase button; the Most chosen badge is read only when featured.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -478,70 +850,119 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/edition-card.html",
-        "styles": [
-          "prototype/components/edition-card.css"
-        ],
-        "slots": [
-          "kicker",
-          "price",
-          "note",
-          "perks",
-          "cta",
-          "featured-cta"
-        ],
-        "states": [
-          "default",
-          "featured"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          },
-          {
-            "kind": "primitive",
-            "id": "button"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/edition-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/edition-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/edition-card.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "mode-tile",
-      "name": "Mode Tile",
+      "name": "Mode tile",
       "description": "Game mode entry with index, line glyph, name, and rules summary.",
-      "section": "competitive",
+      "group": "competitive",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "New mode flag.",
-          "binding": {
-            "slot": "flag",
-            "variant": "accent",
-            "copy": "New mode"
-          }
+          "reason": "New mode flag."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Muted index and glyph above the mode name and rules; hover lifts the border and surface."
+          },
+          {
+            "id": "new",
+            "name": "New",
+            "description": "Shows the New mode badge and tints the glyph in the accent color."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "index",
+          "name": "Index",
+          "description": "The mode's position in the list, as two digits.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "glyph",
+          "name": "Glyph",
+          "description": "Line drawing for the mode, stretched across the tile.",
+          "accepts": [
+            "graphic"
+          ]
+        },
+        {
+          "id": "name",
+          "name": "Name",
+          "description": "The mode name, uppercase in the display face.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "description": "A one-line rules summary.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/mode-tile.html",
+        "styles": [
+          "prototype/components/mode-tile.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/mode-tile.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/mode-tile.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/mode-tile.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link read as the index, mode name, and rules, plus the New mode badge when shown; the glyph is hidden.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -560,40 +981,116 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/mode-tile.html",
-        "styles": [
-          "prototype/components/mode-tile.css"
-        ],
-        "slots": [
-          "index",
-          "glyph",
-          "name",
-          "meta"
-        ],
-        "states": [
-          "default",
-          "new"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/mode-tile.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/mode-tile.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/mode-tile.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "rank-emblem",
-      "name": "Rank Emblem",
+      "name": "Rank emblem",
       "description": "Competitive rank insignia: a hex plate tinted by rank tier with a division numeral.",
-      "section": "competitive",
-      "uses": [],
+      "group": "competitive",
+      "platforms": [
+        "mobile"
+      ],
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "text",
+          "reason": "The division numeral."
+        }
+      ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "diamond",
+        "values": [
+          {
+            "id": "bronze",
+            "name": "Bronze",
+            "description": "The plate is tinted bronze, mixed from the warning and destructive colors."
+          },
+          {
+            "id": "silver",
+            "name": "Silver",
+            "description": "The plate is tinted in the muted gray."
+          },
+          {
+            "id": "gold",
+            "name": "Gold",
+            "description": "The plate is tinted in the warning color."
+          },
+          {
+            "id": "diamond",
+            "name": "Diamond",
+            "description": "The plate is tinted in the accent color."
+          },
+          {
+            "id": "apex",
+            "name": "Apex",
+            "description": "The plate is tinted lime and glows, the only tier that does."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "tier",
+          "name": "Tier",
+          "description": "The division numeral on the plate, such as II.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/rank-emblem.html",
+        "styles": [
+          "prototype/components/rank-emblem.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "size",
         "typography"
       ],
+      "tokenRoles": {},
+      "accessibility": "An image labeled with the full rank, such as \"Diamond rank\"; the plate and numeral are not read separately.",
+      "notes": [
+        "Rank tone comes from existing color roles, so a retheme recolors every tier.",
+        "Reserve the glow for the apex tier only."
+      ],
+      "implementationHints": [
+        "Render from the player rank model; the tier slot carries the division numeral and the accessible name carries the full rank."
+      ],
+      "implementationTargets": [],
       "styleRefs": [
         "prototype/components/rank-emblem.css"
       ],
@@ -604,31 +1101,7 @@
           "sourceAnchor": "prototype/components/rank-emblem.css"
         }
       ],
-      "notes": [
-        "Rank tone comes from existing color roles, so a retheme recolors every tier.",
-        "Reserve the glow for the apex tier only."
-      ],
-      "prototypeOnly": false,
-      "implementationHints": [
-        "Render from the player rank model; the tier slot carries the division numeral and the accessible name carries the full rank."
-      ],
-      "prototype": {
-        "source": "prototype/components/rank-emblem.html",
-        "styles": [
-          "prototype/components/rank-emblem.css"
-        ],
-        "slots": [
-          "tier"
-        ],
-        "states": [
-          "bronze",
-          "silver",
-          "gold",
-          "diamond",
-          "apex"
-        ],
-        "renderedUses": []
-      }
+      "prototypeOnly": false
     }
   ]
 }

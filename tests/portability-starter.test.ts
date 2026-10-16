@@ -87,20 +87,8 @@ describe('starter and high-fidelity portability contract', () => {
       'meridian-finance/token-group/shape',
       'meridian-finance/token-group/space',
       'meridian-finance/token-group/typography',
-      'meridian-finance/state-set/segmented-control/state',
       'meridian-finance/token-group/motion',
-      'meridian-finance/token-group/size',
-      'meridian-finance/state-set/input/interaction',
-      'meridian-finance/state-set/input/variant',
-      'meridian-finance/state-set/select/state',
-      'meridian-finance/state-set/badge/variant',
-      'meridian-finance/state-set/button/interaction',
-      'meridian-finance/state-set/button/size',
-      'meridian-finance/state-set/button/variant',
-      'meridian-finance/state-set/table-row/state',
-      'meridian-finance/state-set/avatar/content',
-      'meridian-finance/state-set/avatar/size',
-      'meridian-finance/state-set/tabs/state'
+      'meridian-finance/token-group/size'
     ]);
     assert.doesNotMatch(compiled.html, /<blueprint-use\b/i);
     assert.match(compiled.html, /data-blueprint-boundary-id="meridian-finance\/component\/web-header"/);

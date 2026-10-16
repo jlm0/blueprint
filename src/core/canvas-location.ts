@@ -21,8 +21,6 @@ export function canvasLocationParams(bundle: BlueprintProjectBundle, selectorInp
       return document('foundations', selector.id);
     case 'primitive':
       return document('primitives', selector.id);
-    case 'state-set':
-      return document('primitives', selector.id.split('/')[0]);
     case 'component':
       return document('components', selector.id);
     case 'screen':

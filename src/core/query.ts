@@ -16,10 +16,11 @@ import type {
   PrimitiveDefinition,
   PrototypeRenderDecision,
   PrototypeSource,
-  PrimitiveState,
-  PrimitiveStateSet,
   QueryResult,
   ResolvedToken,
+  ReusableDefinition,
+  ReusableDependency,
+  ReusableKind,
   ScreenDefinition,
   ScreenSection,
   StyleEvidence,
@@ -35,10 +36,7 @@ export function listBoundaryReferences(bundle: BlueprintProjectBundle): Boundary
     reference(projectId, 'project', 'root', bundle.manifest.project.name),
     ...bundle.manifest.boards.map(board => reference(projectId, 'board', board.id, board.name)),
     ...bundle.tokens.tokenGroups.map(group => reference(projectId, 'token-group', group.id, group.name)),
-    ...bundle.primitives.primitives.flatMap(primitive => [
-      reference(projectId, 'primitive', primitive.id, primitive.name),
-      ...primitive.stateSets.map(stateSet => reference(projectId, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet.name))
-    ]),
+    ...bundle.primitives.primitives.map(primitive => reference(projectId, 'primitive', primitive.id, primitive.name)),
     ...bundle.components.components.map(component => reference(projectId, 'component', component.id, component.name)),
     ...bundle.screens.screens.flatMap(screen => [
       reference(projectId, 'screen', screen.id, screen.name),
@@ -49,19 +47,19 @@ export function listBoundaryReferences(bundle: BlueprintProjectBundle): Boundary
 
 export interface DeclaredGroupIndex {
   pages: Array<DeclaredGroup & { screens: string[] }>;
-  componentSections: Array<DeclaredGroup & { components: string[] }>;
+  componentGroups: Array<DeclaredGroup & { components: string[] }>;
 }
 
-/** Declared screen pages and component sections with their members, so an agent can place new work without reading the JSON. */
+/** Declared screen pages and component groups with their members, so an agent can place new work without reading the JSON. */
 export function listDeclaredGroups(bundle: BlueprintProjectBundle): DeclaredGroupIndex {
   return {
     pages: (bundle.screens.pages ?? []).map(page => ({
       ...page,
       screens: bundle.screens.screens.filter(screen => screen.page === page.id).map(screen => screen.id)
     })),
-    componentSections: (bundle.components.sections ?? []).map(section => ({
-      ...section,
-      components: bundle.components.components.filter(component => component.section === section.id).map(component => component.id)
+    componentGroups: (bundle.components.groups ?? []).map(group => ({
+      ...group,
+      components: bundle.components.components.filter(component => component.group === group.id).map(component => component.id)
     }))
   };
 }
@@ -101,18 +99,10 @@ export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: Bo
       const group = findTokenGroup(bundle, selector.id);
       return tokenGroupPacket(bundle, group);
     }
-    case 'primitive': {
-      const primitive = findPrimitive(bundle, selector.id);
-      return primitivePacket(bundle, primitive);
-    }
-    case 'state-set': {
-      const { primitive, stateSet } = findStateSet(bundle, selector.id);
-      return stateSetPacket(bundle, primitive, stateSet);
-    }
-    case 'component': {
-      const component = findComponent(bundle, selector.id);
-      return componentPacket(bundle, component);
-    }
+    case 'primitive':
+      return reusablePacket(bundle, 'primitive', findPrimitive(bundle, selector.id));
+    case 'component':
+      return reusablePacket(bundle, 'component', findComponent(bundle, selector.id));
     case 'screen': {
       const screen = findScreen(bundle, selector.id);
       return screenPacket(bundle, screen);
@@ -167,33 +157,20 @@ export function querySections(bundle: BlueprintProjectBundle, screenId: string):
 
 export function queryPrototypeOnly(bundle: BlueprintProjectBundle): QueryResult {
   const projectId = bundle.manifest.project.id;
-  const primitiveStates = bundle.primitives.primitives.flatMap(primitive =>
-    primitive.stateSets.flatMap(stateSet =>
-      stateSet.states
-        .filter(state => state.prototypeOnly)
-        .map(state => ({
-          id: boundaryId(projectId, 'state-set', `${primitive.id}/${stateSet.id}`),
-          kind: 'state-set',
-          projectId,
-          stateId: state.id,
-          primitiveId: primitive.id,
-          name: state.name,
-          notes: state.notes
-        }))
-    )
-  );
-
+  const primitives = bundle.primitives.primitives
+    .filter(primitive => primitive.prototypeOnly)
+    .map(primitive => reusablePacket(bundle, 'primitive', primitive));
   const sections = bundle.screens.screens.flatMap(screen =>
     screen.sections.filter(section => section.prototypeOnly).map(section => sectionPacket(bundle, screen, section))
   );
   const components = bundle.components.components
     .filter(component => component.prototypeOnly)
-    .map(component => componentPacket(bundle, component));
+    .map(component => reusablePacket(bundle, 'component', component));
 
   return {
     query: 'prototype-only',
     projectId,
-    results: [...primitiveStates, ...components, ...sections]
+    results: [...primitives, ...components, ...sections]
   };
 }
 
@@ -305,41 +282,23 @@ function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: Bounda
     ]);
   }
 
-  if (packet.kind === 'primitive') {
-    const primitive = findPrimitive(bundle, localId);
-    refs.push(
-      ...primitive.stateSets.map(stateSet => reference(projectId, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet.name))
-    );
-  }
-
-  if (packet.kind === 'state-set') {
-    const { primitive, stateSet } = findStateSet(bundle, localId);
-    refs.push(reference(projectId, 'primitive', primitive.id, primitive.name));
-    const groupIds = new Set(stateSet.states.flatMap(state => state.tokens.map(tokenRef => tokenRef.split('.')[0]).filter(Boolean)));
-    for (const groupId of groupIds) {
-      const group = findTokenGroup(bundle, groupId);
-      refs.push(reference(projectId, 'token-group', group.id, group.name));
-    }
-  }
-
   return dedupeReferences(refs).sort(compareReferences);
 }
 
 function resolveTokensForPackets(bundle: BlueprintProjectBundle, packets: BoundaryPacket[]): ResolvedToken[] {
   const tokenRefs = new Set<string>();
   for (const packet of packets) {
-    for (const state of statesForPacket(bundle, packet)) {
-      for (const tokenRef of state.tokens) {
-        tokenRefs.add(tokenRef);
-      }
+    const reusable = reusableForPacket(bundle, packet);
+    if (!reusable) {
+      continue;
     }
-    if (packet.kind === 'component') {
-      const component = findComponent(bundle, localIdFromPacket(packet));
-      for (const tokenGroupId of component.tokenGroupIds) {
-        const group = findTokenGroup(bundle, tokenGroupId);
-        for (const token of group.tokens) {
-          tokenRefs.add(`${group.id}.${token.id}`);
-        }
+    for (const tokenRef of Object.keys(reusable.tokenRoles)) {
+      tokenRefs.add(tokenRef);
+    }
+    for (const tokenGroupId of reusable.tokenGroupIds) {
+      const group = findTokenGroup(bundle, tokenGroupId);
+      for (const token of group.tokens) {
+        tokenRefs.add(`${group.id}.${token.id}`);
       }
     }
   }
@@ -358,47 +317,23 @@ function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: Bo
   const usage: TokenUsage[] = [];
   const usageKeys = new Set<string>();
 
-  for (const primitive of bundle.primitives.primitives) {
-    const primitiveBoundaryId = boundaryId(projectId, 'primitive', primitive.id);
-    const primitiveIncluded =
-      includedBoundaryIds.has(primitiveBoundaryId) ||
-      primitive.stateSets.some(stateSet => includedBoundaryIds.has(boundaryId(projectId, 'state-set', `${primitive.id}/${stateSet.id}`)));
-    if (!primitiveIncluded) {
+  const reusables = [
+    ...bundle.primitives.primitives.map(reusable => ({ kind: 'primitive' as const, reusable })),
+    ...bundle.components.components.map(reusable => ({ kind: 'component' as const, reusable }))
+  ];
+  for (const { kind, reusable } of reusables) {
+    const reusableBoundaryId = boundaryId(projectId, kind, reusable.id);
+    if (!includedBoundaryIds.has(reusableBoundaryId)) {
       continue;
     }
-
-    const recordUsage = (tokenId: string, role: string): void => {
+    for (const [tokenId, role] of Object.entries(reusable.tokenRoles)) {
       const token = tokenIndex.get(tokenId);
-      if (!token) {
-        return;
-      }
-      const key = `${primitiveBoundaryId}\u0000${tokenId}\u0000${role}\u0000${token.styleRef}`;
-      if (usageKeys.has(key)) {
-        return;
+      const key = `${reusableBoundaryId}\u0000${tokenId}\u0000${role}`;
+      if (!token || usageKeys.has(key)) {
+        continue;
       }
       usageKeys.add(key);
-      usage.push({
-        tokenId,
-        role,
-        boundaryId: primitiveBoundaryId,
-        boundaryKind: 'primitive',
-        styleRef: token.styleRef
-      });
-    };
-
-    for (const [tokenId, role] of Object.entries(primitive.prototype.tokenRoles)) {
-      recordUsage(tokenId, role);
-    }
-
-    for (const stateSet of primitive.stateSets) {
-      for (const state of stateSet.states) {
-        for (const [tokenId, role] of Object.entries(state.tokenRoles ?? {})) {
-          if (!state.tokens.includes(tokenId)) {
-            continue;
-          }
-          recordUsage(tokenId, role);
-        }
-      }
+      usage.push({ tokenId, role, boundaryId: reusableBoundaryId, boundaryKind: kind, styleRef: token.styleRef });
     }
   }
 
@@ -412,15 +347,15 @@ function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: Bo
   });
 }
 
-function statesForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): PrimitiveState[] {
+function reusableForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): ReusableDefinition | undefined {
   const localId = localIdFromPacket(packet);
   if (packet.kind === 'primitive') {
-    return findPrimitive(bundle, localId).stateSets.flatMap(stateSet => stateSet.states);
+    return findPrimitive(bundle, localId);
   }
-  if (packet.kind === 'state-set') {
-    return findStateSet(bundle, localId).stateSet.states;
+  if (packet.kind === 'component') {
+    return findComponent(bundle, localId);
   }
-  return [];
+  return undefined;
 }
 
 function createTokenIndex(bundle: BlueprintProjectBundle): Map<string, ResolvedToken> {
@@ -459,69 +394,29 @@ function tokenGroupPacket(bundle: BlueprintProjectBundle, group: TokenGroup): Bo
   });
 }
 
-function primitivePacket(bundle: BlueprintProjectBundle, primitive: PrimitiveDefinition): BoundaryPacket<PrimitiveDefinition> {
-  return packet(bundle, 'primitive', primitive.id, primitive, {
-    sourceFiles: [bundle.sourceFiles.primitives, ...prototypeSourceFiles(bundle, primitive.prototype)],
-    styleRefs: primitive.styleRefs,
-    styleEvidence: styleEvidenceFor(primitive.styleRefs, primitive.styleEvidence),
-    uses: [
-      ...primitive.tokenGroupIds.map(tokenGroupId => {
-        const group = findTokenGroup(bundle, tokenGroupId);
-        return reference(bundle.manifest.project.id, 'token-group', group.id, group.name);
-      }),
-      ...dependenciesToReferences(bundle, primitive.uses ?? [])
-    ],
-    usedBy: usedBy(bundle, 'primitive', primitive.id),
-    notes: primitive.notes,
-    prototypeOnly: primitive.prototypeOnly,
-    implementationHints: primitive.implementationHints,
-    rendering: {
-      mode: 'canonical-app-owned',
-      source: primitive.prototype.source
-    }
-  });
-}
-
-function componentPacket(bundle: BlueprintProjectBundle, component: ComponentDefinition): BoundaryPacket<ComponentDefinition> {
-  return packet(bundle, 'component', component.id, component, {
+function reusablePacket(bundle: BlueprintProjectBundle, kind: ReusableKind, reusable: ReusableDefinition): BoundaryPacket<ReusableDefinition> {
+  return packet(bundle, kind, reusable.id, reusable, {
     sourceFiles: [
-      bundle.sourceFiles.components,
-      ...prototypeSourceFiles(bundle, component.prototype)
+      kind === 'primitive' ? bundle.sourceFiles.primitives : bundle.sourceFiles.components,
+      ...prototypeSourceFiles(bundle, reusable.prototype)
     ],
-    styleRefs: component.styleRefs ?? component.prototype.styles,
-    styleEvidence: styleEvidenceFor(component.styleRefs ?? component.prototype.styles, component.styleEvidence),
+    styleRefs: reusable.styleRefs,
+    styleEvidence: styleEvidenceFor(reusable.styleRefs, reusable.styleEvidence),
     uses: dedupeReferences([
-      ...component.tokenGroupIds.map(tokenGroupId => {
+      ...reusable.tokenGroupIds.map(tokenGroupId => {
         const group = findTokenGroup(bundle, tokenGroupId);
         return reference(bundle.manifest.project.id, 'token-group', group.id, group.name);
       }),
-      ...dependenciesToReferences(bundle, component.uses)
+      ...dependenciesToReferences(bundle, reusable.uses)
     ]),
-    usedBy: usedBy(bundle, 'component', component.id),
-    notes: component.notes ?? [],
-    prototypeOnly: component.prototypeOnly ?? false,
-    implementationHints: component.implementationHints ?? [],
+    usedBy: usedBy(bundle, kind, reusable.id),
+    notes: reusable.notes,
+    prototypeOnly: reusable.prototypeOnly,
+    implementationHints: reusable.implementationHints,
     rendering: {
       mode: 'canonical-app-owned',
-      source: component.prototype.source
+      source: reusable.prototype.source
     }
-  });
-}
-
-function stateSetPacket(
-  bundle: BlueprintProjectBundle,
-  primitive: PrimitiveDefinition,
-  stateSet: PrimitiveStateSet
-): BoundaryPacket<PrimitiveStateSet> {
-  return packet(bundle, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet, {
-    sourceFiles: [bundle.sourceFiles.primitives],
-    styleRefs: stateSet.styleRefs,
-    styleEvidence: styleEvidenceFor(stateSet.styleRefs, stateSet.styleEvidence),
-    uses: [],
-    usedBy: usedBy(bundle, 'state-set', `${primitive.id}/${stateSet.id}`),
-    notes: stateSet.states.flatMap(state => state.notes ?? []),
-    prototypeOnly: stateSet.states.every(state => state.prototypeOnly),
-    implementationHints: stateSet.states.flatMap(state => state.implementationHints ?? [])
   });
 }
 
@@ -607,7 +502,7 @@ function packet<TData>(
 
 function prototypeSourceFiles(
   bundle: BlueprintProjectBundle,
-  prototype: PrototypeSource,
+  prototype: Pick<PrototypeSource, 'source' | 'styles'>,
   extraRefs: string[] = []
 ): string[] {
   const markSources = placedBrandMarkIds(bundle.prototypeSourceContents[prototype.source] ?? '')
@@ -649,7 +544,7 @@ function compareReferences(left: BoundaryReference, right: BoundaryReference): n
   return left.id.localeCompare(right.id);
 }
 
-function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: BoundaryDependency[]): BoundaryReference[] {
+function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: Array<BoundaryDependency | ReusableDependency>): BoundaryReference[] {
   return dependencies.map(dependency => {
     if (dependency.kind === 'token-group') {
       const group = findTokenGroup(bundle, dependency.id);
@@ -659,11 +554,6 @@ function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: 
     if (dependency.kind === 'primitive') {
       const primitive = findPrimitive(bundle, dependency.id);
       return reference(bundle.manifest.project.id, 'primitive', primitive.id, primitive.name);
-    }
-
-    if (dependency.kind === 'state-set') {
-      const { primitive, stateSet } = findStateSet(bundle, dependency.id);
-      return reference(bundle.manifest.project.id, 'state-set', `${primitive.id}/${stateSet.id}`, stateSet.name);
     }
 
     if (dependency.kind === 'component') {
@@ -681,7 +571,7 @@ function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: 
       return reference(bundle.manifest.project.id, 'section', `${screen.id}/${section.id}`, section.name);
     }
 
-    throw new Error(`Unsupported dependency kind "${dependency.kind}".`);
+    throw new Error(`Unsupported dependency kind "${String((dependency as { kind: unknown }).kind)}".`);
   });
 }
 
@@ -703,7 +593,7 @@ function usedBy(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: str
   }
 
   for (const primitive of bundle.primitives.primitives) {
-    const hasDependency = (primitive.uses ?? []).some(dependency => dependency.kind === kind && dependency.id === localId);
+    const hasDependency = primitive.uses.some(dependency => dependency.kind === kind && dependency.id === localId);
     if (hasDependency) {
       refs.push(reference(projectId, 'primitive', primitive.id, primitive.name));
     }
@@ -750,17 +640,6 @@ function findPrimitive(bundle: BlueprintProjectBundle, id: string): PrimitiveDef
 
 function findComponent(bundle: BlueprintProjectBundle, id: string): ComponentDefinition {
   return requireItem(bundle.components.components.find(component => component.id === id), `component:${id}`);
-}
-
-function findStateSet(bundle: BlueprintProjectBundle, id: string): { primitive: PrimitiveDefinition; stateSet: PrimitiveStateSet } {
-  const [primitiveId, stateSetId] = id.split('/');
-  if (!primitiveId || !stateSetId) {
-    throw new Error(`State-set selector "${id}" must use primitiveId/stateSetId.`);
-  }
-
-  const primitive = findPrimitive(bundle, primitiveId);
-  const stateSet = requireItem(primitive.stateSets.find(item => item.id === stateSetId), `state-set:${id}`);
-  return { primitive, stateSet };
 }
 
 function findScreen(bundle: BlueprintProjectBundle, id: string): ScreenDefinition {

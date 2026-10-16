@@ -42,7 +42,11 @@ import type {
   ExplorationDefinition,
   ExplorationPrototypeSource,
   FramePreset,
+  Platform,
   PrimitiveDefinition,
+  ReusableAxisValue,
+  ReusableDefinition,
+  ReusableKind,
   ScreenDefinition,
   TokenGroup
 } from '../core/types';
@@ -55,7 +59,8 @@ import {
   type BoundaryExtent
 } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
-import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive } from '../core/base-primitives';
+import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive, PRIMITIVE_GROUPS, primitiveGroupName } from '../core/base-primitives';
+import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '../core/reusable-contract';
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
@@ -368,15 +373,15 @@ function sectionItems(bundle: BlueprintProjectBundle, section: DocumentSectionId
       }))
     );
   }
-  const sections = bundle.components.sections ?? [];
+  const groups = bundle.components.groups;
   const rank = (component: ComponentDefinition): number => {
-    const index = sections.findIndex(section => section.id === component.section);
-    return index === -1 ? sections.length : index;
+    const index = groups.findIndex(group => group.id === component.group);
+    return index === -1 ? groups.length : index;
   };
   return [...bundle.components.components].sort((a, b) => rank(a) - rank(b)).map(component => ({
     id: component.id,
     label: component.name,
-    group: sections.find(section => section.id === component.section)?.name,
+    group: groups.find(group => group.id === component.group)?.name,
     boundaryKind: 'component' as const
   }));
 }
@@ -876,10 +881,10 @@ function createDocumentItemPage(
   }
   if (section === 'primitives') {
     const primitive = bundle.primitives.primitives.find(candidate => candidate.id === itemId);
-    return primitive ? createPrimitivePage(bundle, tokenIndex, primitive) : undefined;
+    return primitive ? createReusablePage(bundle, tokenIndex, 'primitive', primitive) : undefined;
   }
   const component = bundle.components.components.find(candidate => candidate.id === itemId);
-  return component ? createComponentPage(bundle, component) : undefined;
+  return component ? createReusablePage(bundle, tokenIndex, 'component', component) : undefined;
 }
 
 function createDocumentPage(kicker: string, title: string, description: string, badges: HTMLElement[] = []): { page: HTMLElement; body: HTMLElement } {
@@ -1198,135 +1203,198 @@ function singleLength(value: string): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, primitive: PrimitiveDefinition): HTMLElement {
-  const family = inferPrimitiveFamily(primitive);
-  const prototype = primitive.prototype;
+function createReusablePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, kind: ReusableKind, reusable: ReusableDefinition): HTMLElement {
+  const groupName = kind === 'primitive'
+    ? primitiveGroupName(reusable.group) ?? 'Other'
+    : bundle.components.groups.find(group => group.id === reusable.group)?.name ?? reusable.group;
   const badges = [
-    createPlatformBadge(primitive.platforms),
-    el('span', 'bp-chrome-doc-fact', plural(prototype?.states.length ?? 0, 'state')),
-    ...(prototype?.variants.length ? [el('span', 'bp-chrome-doc-fact', plural(prototype.variants.length, 'variant'))] : []),
-    ...(prototype?.sizes?.length ? [el('span', 'bp-chrome-doc-fact', plural(prototype.sizes.length, 'size'))] : [])
+    createPlatformBadge(reusable.platforms),
+    ...REUSABLE_AXES.map(axis => el('span', 'bp-chrome-doc-fact', plural(reusable[axis.key].values.length, axis.label))),
+    el('span', 'bp-chrome-doc-fact', plural(reusable.slots.length, 'slot'))
   ];
-  const { page, body } = createDocumentPage(`Primitive · ${primitiveGroupLabel(family)}`, primitive.name, primitive.description, badges);
-  setBoundary(page, 'primitive', primitive.id, bundle.manifest.project.id, primitive.name);
-  page.dataset.boundarySummary = primitive.description;
-  page.dataset.primitiveFamily = family;
+  const { page, body } = createDocumentPage(`${kind === 'primitive' ? 'Primitive' : 'Component'} · ${groupName}`, reusable.name, reusable.description, badges);
+  setBoundary(page, kind, reusable.id, bundle.manifest.project.id, reusable.name);
+  page.dataset.boundarySummary = reusable.description;
 
-  if (!isBasePrimitive(primitive.id)) {
+  const family = kind === 'primitive' ? inferPrimitiveFamily(reusable) : undefined;
+  if (family) page.dataset.primitiveFamily = family;
+  if (kind === 'primitive' && !isBasePrimitive(reusable.id)) {
     body.append(el('p', 'bp-chrome-doc-notice', `This is not one of the ${BASE_PRIMITIVE_CONTRACT.length} Blueprint primitives. App-specific pieces belong in components, built from primitives.`));
   }
-  const specimen = el('div', 'bp-chrome-doc-specimen');
-  specimen.append(renderCanonicalPrimitiveSpecimen({ bundle, tokenIndex, primitive, family }));
-  body.append(specimen);
 
-  if (prototype?.accessibilityIntent) body.append(createDocumentSection('Accessibility', el('p', 'bp-chrome-doc-text', prototype.accessibilityIntent)));
-  if (prototype?.slots.length) body.append(createDocumentSection('Slots', createChipList(prototype.slots)));
-  const roles = Object.entries(prototype?.tokenRoles ?? {});
-  if (roles.length > 0) {
-    const list = el('div', 'bp-chrome-doc-roles');
-    for (const [tokenRef, role] of roles) {
-      const row = el('div', 'bp-chrome-doc-role');
-      const record = tokenIndex.byRef.get(tokenRef);
-      const swatch = el('span', 'token-role-swatch');
-      if (record) applyTokenPreview(swatch, record.token, tokenIndex);
-      row.append(swatch, el('span', 'bp-chrome-doc-role-name', role), el('code', '', tokenRef));
-      list.append(row);
-    }
-    body.append(createDocumentSection('Token roles', list));
-  }
-  if (primitive.notes.length > 0) {
-    const notes = el('ul', 'bp-chrome-doc-rules');
-    for (const note of primitive.notes) notes.append(el('li', '', note));
-    body.append(createDocumentSection('Notes', notes));
-  }
+  const context: SpecimenContext = {
+    bundle,
+    kind,
+    reusable,
+    width: family ? primitiveCellWidth(family, reusable.id) : componentPreviewWidth(bundle, reusable.id)
+  };
+  const specimens = el('div', 'bp-chrome-doc-specimen canonical-primitive-specimen');
+  specimens.dataset.prototypeRenderMode = 'canonical-app-owned';
+  specimens.style.setProperty('--cell-w', `${context.width}px`);
+  specimens.append(
+    createDocumentSection('Variants', ...reusable.variants.values.map(variant => createAxisGroup(
+      variant,
+      variant.id === reusable.variants.default,
+      reusable.states.values.map(state => createReusableCell(context, variant.id, reusable.sizes.default, state))
+    ))),
+    reusable.sizes.values.length > 1
+      ? createDocumentSection('Sizes', ...reusable.sizes.values.map(size => createAxisGroup(
+          size,
+          size.id === reusable.sizes.default,
+          reusable.states.values.map(state => createReusableCell(context, reusable.variants.default, size.id, state))
+        )))
+      : createDocumentSection('Sizes', el('p', 'bp-chrome-doc-text', 'One size.'))
+  );
+
+  body.append(
+    createBuiltFromSection(bundle, tokenIndex, reusable),
+    specimens,
+    createDocumentSection('States', createDefinitionList(reusable.states.values.map(state => ({
+      name: state.name,
+      description: state.description,
+      isDefault: state.id === reusable.states.default
+    })))),
+    createDocumentSection('Slots', reusable.slots.length > 0
+      ? createDefinitionList(reusable.slots.map(slot => ({
+          name: slot.name,
+          description: slot.description,
+          detail: createSlotAccepts(bundle, slot.accepts)
+        })))
+      : el('p', 'bp-chrome-doc-text', 'No slots: a placement cannot customize its content.'))
+  );
   return page;
 }
 
-function createPlatformBadge(platforms: PrimitiveDefinition['platforms']): HTMLElement {
-  const only = platforms?.length === 1 ? platforms[0] : undefined;
-  const label = only === 'mobile' ? 'Mobile' : only === 'desktop' ? 'Web' : 'Mobile and web';
+function createPlatformBadge(platforms: readonly Platform[]): HTMLElement {
+  const label = platformsLabel(platforms);
   const badge = el('span', 'bp-chrome-doc-fact bp-chrome-doc-platform');
   badge.setAttribute('role', 'img');
   badge.setAttribute('aria-label', label);
   badge.title = label;
-  const icon = (paths: string) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-  badge.innerHTML = [
-    only === 'desktop' ? '' : icon('<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'),
-    only === 'mobile' ? '' : icon('<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>')
-  ].join('');
+  const icons: Record<Platform, string> = {
+    web: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/>',
+    mobile: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+    desktop: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>'
+  };
+  badge.innerHTML = PLATFORMS.filter(platform => platforms.includes(platform)).map(platform => (
+    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-platform="${platform}">${icons[platform]}</svg>`
+  )).join('');
   return badge;
 }
 
-function createComponentPage(bundle: BlueprintProjectBundle, component: ComponentDefinition): HTMLElement {
-  const section = bundle.components.sections?.find(candidate => candidate.id === component.section);
-  const { page, body } = createDocumentPage(section ? `Component · ${section.name}` : 'Component', component.name, component.description);
-  setBoundary(page, 'component', component.id, bundle.manifest.project.id, component.name);
-  page.dataset.boundarySummary = component.description;
-
-  const pieces = component.uses.filter(use => use.kind === 'primitive' || use.kind === 'component');
-  if (pieces.length > 0) {
-    const list = el('div', 'bp-chrome-doc-chips');
-    for (const use of pieces) {
-      const target = use.kind === 'primitive'
-        ? bundle.primitives.primitives.find(candidate => candidate.id === use.id)
-        : bundle.components.components.find(candidate => candidate.id === use.id);
-      const chip = el('button', 'bp-chrome-doc-chip bp-chrome-doc-link', target?.name ?? use.id) as HTMLButtonElement;
-      chip.type = 'button';
-      chip.title = `${use.kind}:${use.id}`;
-      chip.addEventListener('click', () => openDocumentItem(use.kind === 'primitive' ? 'primitives' : 'components', use.id));
-      list.append(chip);
-    }
-    body.append(createDocumentSection('Built from', list));
+function createBuiltFromSection(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, reusable: ReusableDefinition): HTMLElement {
+  const rows: Array<[string, HTMLElement[]]> = [
+    ['Primitives', reusable.uses.filter(use => use.kind === 'primitive').map(use => createDocumentLink(
+      bundle.primitives.primitives.find(candidate => candidate.id === use.id)?.name ?? use.id, use.reason, 'primitives', use.id
+    ))],
+    ['Components', reusable.uses.filter(use => use.kind === 'component').map(use => createDocumentLink(
+      bundle.components.components.find(candidate => candidate.id === use.id)?.name ?? use.id, use.reason, 'components', use.id
+    ))],
+    ['Foundations', reusable.tokenGroupIds.map(groupId => createDocumentLink(
+      tokenIndex.byGroup.get(groupId)?.name ?? groupId, `${groupId} tokens`, 'foundations', groupId
+    ))]
+  ];
+  const list = el('dl', 'bp-chrome-doc-defs');
+  for (const [label, chips] of rows.filter(([, chips]) => chips.length > 0)) {
+    const value = el('dd', 'bp-chrome-doc-chips');
+    value.append(...chips);
+    list.append(el('dt', 'bp-chrome-doc-def-name', label), value);
   }
-
-  const width = componentPreviewWidth(bundle, component.id);
-  const states = component.prototype?.states ?? [];
-  if (states.length > 0) {
-    body.append(createDocumentSection('States', createSpecimenGroup(undefined, states.map(state => createComponentPreview(bundle, component, state, width)))));
-  }
-
-  if (component.notes?.length) {
-    const notes = el('ul', 'bp-chrome-doc-rules');
-    for (const note of component.notes) notes.append(el('li', '', note));
-    body.append(createDocumentSection('Notes', notes));
-  }
-  return page;
+  return createDocumentSection('Built from', list);
 }
 
-function createComponentPreview(bundle: BlueprintProjectBundle, component: ComponentDefinition, state: string, width: number): HTMLElement {
+function createDocumentLink(label: string, title: string, section: DocumentSectionId, itemId: string): HTMLElement {
+  const chip = el('button', 'bp-chrome-doc-chip bp-chrome-doc-link', label) as HTMLButtonElement;
+  chip.type = 'button';
+  chip.title = title;
+  chip.addEventListener('click', () => openDocumentItem(section, itemId));
+  return chip;
+}
+
+const SLOT_ACCEPT_LABELS: Record<(typeof SLOT_CONTENT_ACCEPTS)[number], string> = {
+  text: 'Text',
+  graphic: 'Graphic',
+  'brand-mark': 'Brand mark'
+};
+
+function createSlotAccepts(bundle: BlueprintProjectBundle, accepts: string[]): HTMLElement {
+  const list = el('div', 'bp-chrome-doc-chips');
+  for (const accept of accepts) {
+    const [kind, id] = accept.split(':');
+    if (kind === 'primitive' || kind === 'component') {
+      const target = kind === 'primitive'
+        ? bundle.primitives.primitives.find(candidate => candidate.id === id)
+        : bundle.components.components.find(candidate => candidate.id === id);
+      list.append(createDocumentLink(target?.name ?? id, accept, kind === 'primitive' ? 'primitives' : 'components', id));
+    } else {
+      list.append(el('span', 'bp-chrome-doc-chip', SLOT_ACCEPT_LABELS[accept as keyof typeof SLOT_ACCEPT_LABELS] ?? accept));
+    }
+  }
+  return list;
+}
+
+function createDefinitionList(entries: Array<{ name: string; description: string; isDefault?: boolean; detail?: HTMLElement }>): HTMLElement {
+  const list = el('dl', 'bp-chrome-doc-defs');
+  for (const entry of entries) {
+    const name = el('dt', 'bp-chrome-doc-def-name', entry.name);
+    if (entry.isDefault) name.append(el('span', 'bp-chrome-doc-default', 'Default'));
+    const value = el('dd', 'bp-chrome-doc-def-value');
+    value.append(el('p', 'bp-chrome-doc-text', entry.description));
+    if (entry.detail) value.append(entry.detail);
+    list.append(name, value);
+  }
+  return list;
+}
+
+function createAxisGroup(value: ReusableAxisValue, isDefault: boolean, cells: HTMLElement[]): HTMLElement {
+  const group = el('div', 'bp-chrome-specimen-group');
+  const title = el('h3', 'bp-chrome-specimen-title', value.name);
+  if (isDefault) title.append(el('span', 'bp-chrome-doc-default', 'Default'));
+  const row = el('div', 'bp-chrome-specimen-row');
+  row.append(...cells);
+  group.append(title, el('p', 'bp-chrome-specimen-description', value.description), row);
+  return group;
+}
+
+function createReusableCell(context: SpecimenContext, variant: string, size: string, state: ReusableAxisValue): HTMLElement {
+  const { bundle, kind, reusable, width } = context;
   const item = el('figure', 'bp-chrome-specimen-cell');
+  const unsupported = reusable.unsupported.find(combination => (
+    combination.state === state.id && combination.value === (combination.axis === 'variant' ? variant : size)
+  ));
+  if (unsupported) {
+    item.classList.add('bp-chrome-specimen-unsupported');
+    const empty = el('div', 'bp-chrome-specimen-empty', 'Not offered');
+    empty.title = unsupported.reason;
+    empty.style.width = `${width}px`;
+    item.append(empty, el('figcaption', 'bp-chrome-specimen-caption', state.name));
+    return item;
+  }
   try {
-    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'component', id: component.id }, state });
+    const compiled = compilePrototypeDocument({ bundle, target: { kind, id: reusable.id }, state: state.id, variant, size });
     const iframe = document.createElement('iframe');
-    iframe.className = 'canonical-primitive-iframe component-preview-iframe';
+    iframe.className = kind === 'primitive' ? 'canonical-primitive-iframe' : 'canonical-primitive-iframe component-preview-iframe';
     applyPrototypeIframeIsolation(iframe);
-    iframe.title = `${component.name} · ${state}`;
+    iframe.title = `${reusable.name} · ${variant} · ${size} · ${state.id}`;
     iframe.srcdoc = compiled.html;
     prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     item.append(createPreviewFit(iframe));
-    fitPreviewFrame(iframe, { width, height: 160 });
-    measureComponentPreview(compiled.html, width, size => fitPreviewFrame(iframe, size));
+    if (kind === 'primitive') {
+      // The visible frame keeps its empty-permission sandbox, so its content is
+      // measured through an ephemeral offscreen twin instead; the twin renders
+      // the same CSP-locked no-script document and is removed immediately.
+      measureCanonicalCellSize(compiled.html, width, fitted => fitPreviewFrame(iframe, fitted));
+    } else {
+      fitPreviewFrame(iframe, { width, height: 160 });
+      measureComponentPreview(compiled.html, width, fitted => fitPreviewFrame(iframe, fitted));
+    }
   } catch (error) {
     item.append(createPrototypeCompileError(error));
   }
-  item.append(el('figcaption', 'bp-chrome-specimen-caption', humanizeId(state)));
+  item.append(el('figcaption', 'bp-chrome-specimen-caption', state.name));
   return item;
-}
-
-function createSpecimenGroup(title: string | undefined, cells: HTMLElement[]): HTMLElement {
-  const group = el('div', 'bp-chrome-specimen-group');
-  if (title) group.append(el('h3', 'bp-chrome-specimen-title', humanizeId(title)));
-  const row = el('div', 'bp-chrome-specimen-row');
-  row.append(...cells);
-  group.append(row);
-  return group;
-}
-
-function humanizeId(id: string): string {
-  const words = id.replace(/[-_]+/g, ' ').trim();
-  return words.length <= 2 ? words.toUpperCase() : words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 // Previews keep their natural size and scale down only when the column is narrower, so pages never scroll sideways.
@@ -1403,12 +1471,6 @@ function componentPreviewWidth(bundle: BlueprintProjectBundle, componentId: stri
 }
 
 
-function createChipList(values: string[]): HTMLElement {
-  const list = el('div', 'bp-chrome-doc-chips');
-  for (const value of values) list.append(el('span', 'bp-chrome-doc-chip', value));
-  return list;
-}
-
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
@@ -1430,11 +1492,11 @@ interface FamilyGroup {
   primitives: PrimitiveDefinition[];
 }
 
-interface PrimitiveRenderContext {
+interface SpecimenContext {
   bundle: BlueprintProjectBundle;
-  tokenIndex: TokenIndex;
-  primitive: PrimitiveDefinition;
-  family: string;
+  kind: ReusableKind;
+  reusable: ReusableDefinition;
+  width: number;
 }
 
 const FAMILY_ORDER = [
@@ -1468,29 +1530,13 @@ const FAMILY_ORDER = [
   'generic'
 ];
 
-const PRIMITIVE_GROUPS: Array<{ label: string; families: string[] }> = [
-  { label: 'Actions', families: ['button'] },
-  { label: 'Inputs', families: ['input', 'select', 'checkbox', 'radio', 'switch', 'slider'] },
-  { label: 'Text', families: ['text'] },
-  { label: 'Surfaces', families: ['surface', 'card', 'media'] },
-  { label: 'Navigation', families: ['navigation', 'tabs'] },
-  { label: 'Structure', families: ['separator', 'list', 'row'] },
-  { label: 'Feedback', families: ['loading', 'badge', 'icon', 'avatar', 'skeleton', 'toast', 'tooltip', 'alert'] },
-  { label: 'Overlays', families: ['dialog', 'menu', 'sheet'] }
-];
-
-function primitiveGroupLabel(family: string): string {
-  return PRIMITIVE_GROUPS.find(group => group.families.includes(family))?.label ?? 'Other';
-}
-
 function groupPrimitivesForNavigation(primitives: PrimitiveDefinition[]): Array<{ label: string; primitives: PrimitiveDefinition[] }> {
-  const byLabel = new Map<string, PrimitiveDefinition[]>();
-  for (const { family, primitives: members } of groupPrimitivesByFamily(primitives)) {
-    const label = primitiveGroupLabel(family);
-    byLabel.set(label, [...byLabel.get(label) ?? [], ...members]);
-  }
-  return [...PRIMITIVE_GROUPS.map(group => group.label), 'Other']
-    .flatMap(label => byLabel.has(label) ? [{ label, primitives: byLabel.get(label) ?? [] }] : []);
+  const ordered = groupPrimitivesByFamily(primitives).flatMap(group => group.primitives);
+  const groupIds = [...PRIMITIVE_GROUPS.map(group => group.id as string), ...new Set(ordered.map(primitive => primitive.group))];
+  return [...new Set(groupIds)].flatMap(groupId => {
+    const members = ordered.filter(primitive => primitive.group === groupId);
+    return members.length > 0 ? [{ label: primitiveGroupName(groupId) ?? 'Other', primitives: members }] : [];
+  });
 }
 
 function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
@@ -1598,29 +1644,6 @@ function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
   return section;
 }
 
-function renderCanonicalPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
-  const root = el('div', 'canonical-primitive-specimen');
-  root.dataset.prototypeRenderMode = 'canonical-app-owned';
-  root.style.setProperty('--cell-w', `${primitiveCellWidth(context.family, context.primitive.id)}px`);
-  const states = context.primitive.prototype?.states ?? [];
-  const variants = context.primitive.prototype?.variants ?? [];
-  const sizes = context.primitive.prototype?.sizes ?? [];
-  root.append(createDocumentSection(
-    variants.length > 1 ? 'Variants' : 'States',
-    ...(variants.length > 0 ? variants : [undefined]).map(variant => createSpecimenGroup(
-      variants.length > 1 ? variant : undefined,
-      states.map(state => createCanonicalPrimitiveCell(context, state, variant))
-    ))
-  ));
-  if (sizes.length > 0) {
-    root.append(createDocumentSection(
-      'Sizes',
-      ...sizes.map(size => createSpecimenGroup(size, states.map(state => createCanonicalPrimitiveCell(context, state, undefined, size))))
-    ));
-  }
-  return root;
-}
-
 function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): string | undefined {
   const colorGroup = bundle.tokens.tokenGroups.find(group => group.id === 'color');
   for (const id of tokenIds) {
@@ -1630,36 +1653,6 @@ function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): str
     }
   }
   return undefined;
-}
-
-function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: string, variant?: string, size?: string): HTMLElement {
-  const item = el('figure', 'bp-chrome-specimen-cell');
-  try {
-    const compiled = compilePrototypeDocument({
-      bundle: context.bundle,
-      target: { kind: 'primitive', id: context.primitive.id },
-      state,
-      ...(variant ? { variant } : {}),
-      ...(size ? { size } : {})
-    });
-    const iframe = document.createElement('iframe');
-    iframe.className = 'canonical-primitive-iframe';
-    applyPrototypeIframeIsolation(iframe);
-    iframe.title = `${context.primitive.name} · ${variant ? `${variant} · ` : ''}${size ? `size ${size} · ` : ''}${state}`;
-    iframe.srcdoc = compiled.html;
-    prototypeDocumentByFrame.set(iframe, compiled.html);
-    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
-    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
-    item.append(createPreviewFit(iframe));
-    // The visible frame keeps its empty-permission sandbox, so its content is
-    // measured through an ephemeral offscreen twin instead; the twin renders
-    // the same CSP-locked no-script document and is removed immediately.
-    measureCanonicalCellSize(compiled.html, primitiveCellWidth(context.family, context.primitive.id), size => fitPreviewFrame(iframe, size));
-  } catch (error) {
-    item.append(createPrototypeCompileError(error));
-  }
-  item.append(el('figcaption', 'bp-chrome-specimen-caption', humanizeId(state)));
-  return item;
 }
 
 /**
@@ -1824,38 +1817,6 @@ function setTokenHook(element: HTMLElement, record: TokenRecord | undefined, tem
   element.dataset.templateHook = templateHook;
   element.dataset.tokenType = record.token.type;
   element.dataset.tokenStyleRef = record.token.styleRef;
-}
-
-function applyTokenPreview(element: HTMLElement, token: DesignToken, tokenIndex: TokenIndex): void {
-  const value = resolveTokenReferences(tokenIndex, token.value);
-  switch (token.type) {
-    case 'color':
-      element.style.background = value;
-      break;
-    case 'space':
-    case 'size': {
-      const bar = el('span', 'token-role-bar');
-      bar.style.width = value;
-      element.append(bar);
-      break;
-    }
-    case 'radius':
-      element.style.borderRadius = value;
-      break;
-    case 'typography':
-      element.style.font = value;
-      if (!element.style.font) {
-        element.style.fontFamily = value;
-      }
-      element.textContent = 'Aa';
-      break;
-    case 'shadow':
-      element.style.boxShadow = value;
-      break;
-    case 'motion':
-      element.textContent = 'ms';
-      break;
-  }
 }
 
 function resolveTokenReferences(tokenIndex: TokenIndex, value: string, depth = 0): string {
@@ -3481,7 +3442,7 @@ function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], la
     const section = documentSectionForKind(primary.kind);
     const requestedBoard = primary.kind === 'board' && isBoardId(primary.localId) ? primary.localId : primary.board;
     if (section) {
-      const itemId = primary.kind === 'state-set' ? primary.localId.split('/')[0] : primary.localId;
+      const itemId = primary.localId;
       if (activeBoardId !== 'primitives' || activeSection !== section || activeItem(project, section)?.id !== itemId) {
         openDocumentItem(section, itemId);
       }
@@ -3508,7 +3469,7 @@ function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], la
 
 function documentSectionForKind(kind: BoundaryKind): DocumentSectionId | undefined {
   if (kind === 'token-group') return 'foundations';
-  if (kind === 'primitive' || kind === 'state-set') return 'primitives';
+  if (kind === 'primitive') return 'primitives';
   if (kind === 'component') return 'components';
   return undefined;
 }

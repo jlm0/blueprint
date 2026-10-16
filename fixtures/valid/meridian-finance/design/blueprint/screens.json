@@ -1698,7 +1698,7 @@
               "reason": "Total cash.",
               "binding": {
                 "slot": "total",
-                "state": "compact"
+                "size": "compact"
               }
             },
             {
@@ -1754,7 +1754,7 @@
               "reason": "Account balances.",
               "binding": {
                 "slot": "accounts",
-                "state": "compact"
+                "size": "compact"
               }
             }
           ],
@@ -2008,8 +2008,8 @@
               "reason": "Step navigation bar.",
               "binding": {
                 "slot": "title",
-                "state": "back-only",
-                "copy": "Send payment / Approve wire"
+                "copy": "Send payment / Approve wire",
+                "variant": "back-only"
               }
             }
           ],
@@ -2064,7 +2064,7 @@
               "reason": "Amount.",
               "binding": {
                 "slot": "amount",
-                "state": "compact"
+                "size": "compact"
               }
             },
             {
@@ -2140,7 +2140,7 @@
               "reason": "Transfer summary.",
               "binding": {
                 "slot": "summary",
-                "state": "compact"
+                "size": "compact"
               }
             },
             {

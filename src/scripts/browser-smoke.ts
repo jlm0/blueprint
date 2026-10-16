@@ -4,6 +4,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { loadProjectFromFs } from '../core/load';
+import { reusableSpecimens } from '../core/reusable-contract';
 import { screenFrameLabel } from '../core/screen-naming';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../core/review';
 import type { BlueprintProjectBundle, ScreenDefinition } from '../core/types';
@@ -452,15 +453,16 @@ async function assertDocumentSections(page: import('playwright').Page, bundle: B
       if (evidence.compileErrors > 0 || evidence.probes > 0 || evidence.overflow > 1) {
         throw new Error(`${projectId} ${section}/${id} page should compile, hide token probes and fit its column: ${JSON.stringify(evidence)}`);
       }
-      if (section === 'primitives') {
-        const primitive = bundle.primitives.primitives.find(candidate => candidate.id === id)!;
-        if (!primitive.prototype) {
-          throw new Error(`${projectId} primitive ${id} should declare a canonical prototype.`);
-        }
-        const expectedFrames = primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0));
+      const reusable = section === 'primitives'
+        ? bundle.primitives.primitives.find(candidate => candidate.id === id)
+        : section === 'components' ? bundle.components.components.find(candidate => candidate.id === id) : undefined;
+      if (reusable) {
+        const expectedFrames = reusableSpecimens(reusable).length;
         if (evidence.iframes !== expectedFrames) {
-          throw new Error(`${projectId} primitive ${id} should render one specimen per declared variant or size × state combination, received ${evidence.iframes}.`);
+          throw new Error(`${projectId} ${section}/${id} should render one specimen per offered variant × state and size × state, expected ${expectedFrames}, received ${evidence.iframes}.`);
         }
+      }
+      if (section === 'primitives') {
         families.add(evidence.family);
       }
     }

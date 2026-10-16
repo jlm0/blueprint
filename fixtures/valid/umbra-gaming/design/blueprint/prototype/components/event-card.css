@@ -74,41 +74,41 @@
   padding: 0 var(--app-space-4);
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] {
   min-height: 132px;
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__art {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__art {
   object-position: 80% 36%;
   transform: scale(1.9);
   transform-origin: 80% 36%;
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__shade {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__shade {
   background: linear-gradient(90deg, color-mix(in srgb, var(--app-color-background) 94%, transparent) 30%, transparent 85%);
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__body {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__body {
   grid-template-columns: 1fr auto;
   align-items: end;
   gap: var(--app-space-3) var(--app-space-3);
   padding: 14px var(--app-space-4) var(--app-space-4);
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__top {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__top {
   grid-column: 1 / -1;
   justify-content: flex-start;
   gap: 10px;
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__title {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__title {
   font-size: 19px;
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__description {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__description {
   font-size: 13px;
 }
 
-[data-blueprint-component="event-card"][data-blueprint-state="compact"] .event-card__cta {
+[data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__cta {
   justify-self: end;
 }

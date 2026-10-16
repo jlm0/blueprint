@@ -4,7 +4,8 @@ import { BASE_PRIMITIVE_CONTRACT } from '../src/core/base-primitives';
 import { loadProjectFromFs } from '../src/core/load';
 import { collectDesignFindings } from '../src/core/findings';
 import { validateProject } from '../src/core/validate';
-import type { BlueprintProjectBundle, PrimitiveStateSet } from '../src/core/types';
+import { axisIds, REUSABLE_AXES } from '../src/core/reusable-contract';
+import type { BlueprintProjectBundle } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
@@ -21,16 +22,17 @@ describe('Blueprint closed primitive set', () => {
     for (const entry of BASE_PRIMITIVE_CONTRACT) {
       const primitive = starterById.get(entry.id);
       assert.ok(primitive, `starter base declaration is missing ${entry.id}`);
-      for (const required of entry.stateSets) {
-        const stateSet: PrimitiveStateSet | undefined = primitive.stateSets.find(candidate => candidate.id === required.id);
-        assert.ok(stateSet, `starter ${entry.id} is missing locked state set ${required.id}`);
-        const stateIds: string[] = stateSet.states.map(state => state.id);
-        assert.deepEqual(
-          required.states.filter(state => !stateIds.includes(state)),
-          [],
-          `starter ${entry.id}.${required.id} must carry every locked state`
-        );
+      assert.equal(primitive.name, entry.name);
+      assert.equal(primitive.group, entry.group);
+      assert.deepEqual(primitive.platforms, entry.platforms);
+      for (const axis of REUSABLE_AXES) {
+        const floor = entry[axis.key];
+        const ids = axisIds(primitive[axis.key]);
+        assert.deepEqual(floor.values.filter(id => !ids.includes(id)), [], `starter ${entry.id}.${axis.key} must carry every locked ${axis.label}`);
+        if (floor.default) assert.equal(primitive[axis.key].default, floor.default, `starter ${entry.id}.${axis.key} keeps the Blueprint default`);
       }
+      const slotIds = primitive.slots.map(slot => slot.id);
+      assert.deepEqual(entry.slots.filter(id => !slotIds.includes(id)), [], `starter ${entry.id} must carry every locked slot`);
     }
   });
 
@@ -53,43 +55,32 @@ describe('Blueprint closed primitive set', () => {
     assert.match(result.errors.join('\n'), /app-specific pieces are components built from primitives/);
   });
 
-  it('rejects a high-fidelity project with a reduced base state set', async () => {
+  it('rejects a high-fidelity project below a base primitive state floor', async () => {
     const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     const switchPrimitive = requirePrimitive(broken, 'switch');
-    const stateSet = switchPrimitive.stateSets.find(candidate => candidate.id === 'state');
-    assert.ok(stateSet);
-    stateSet.states = stateSet.states.filter(state => state.id !== 'disabled-on');
+    switchPrimitive.states.values = switchPrimitive.states.values.filter(state => state.id !== 'disabled-on');
 
     const result = validateProject(broken);
     assert.equal(result.ok, false);
-    assert.match(result.errors.join('\n'), /primitive\.switch\.stateSet\.state is missing locked base state "disabled-on"/);
+    assert.match(result.errors.join('\n'), /primitive\.switch\.states is missing the Blueprint state "disabled-on"\. Fix: add it/);
     assert.match(result.errors.join('\n'), /primitive set is closed/);
   });
 
-  it('rejects a high-fidelity project missing a required base state-set id', async () => {
+  it('rejects a high-fidelity project below a base primitive variant floor', async () => {
     const broken = cloneBundle(await loadProjectFromFs(meridianRoot));
     const button = requirePrimitive(broken, 'button');
-    button.stateSets = button.stateSets.filter(stateSet => stateSet.id !== 'interaction');
+    button.variants.values = button.variants.values.filter(variant => variant.id !== 'ghost');
 
     const result = validateProject(broken);
     assert.equal(result.ok, false);
-    assert.match(result.errors.join('\n'), /primitive\.button\.stateSets is missing locked base state-set "interaction"/);
+    assert.match(result.errors.join('\n'), /primitive\.button\.variants is missing the Blueprint variant "ghost"/);
     assert.match(result.errors.join('\n'), /primitive set is closed/);
   });
 
-  it('allows app-added state sets and states on the fixed primitives', async () => {
+  it('allows app-added variants, sizes, and states on the fixed primitives', async () => {
     const extended = cloneBundle(await loadProjectFromFs(meridianRoot));
-    const switchStateSet = requirePrimitive(extended, 'switch').stateSets.find(candidate => candidate.id === 'state');
-    assert.ok(switchStateSet);
-    switchStateSet.states.push({ id: 'indeterminate', name: 'Indeterminate', tokens: [], prototypeOnly: false, notes: [], implementationHints: [] });
-
-    requirePrimitive(extended, 'card').stateSets.push({
-      id: 'priority',
-      name: 'Priority States',
-      description: 'App-added card priority treatments.',
-      styleRefs: [],
-      states: [{ id: 'flagged', name: 'Flagged', tokens: [], prototypeOnly: false, notes: [], implementationHints: [] }]
-    });
+    requirePrimitive(extended, 'switch').states.values.push({ id: 'indeterminate', name: 'Indeterminate', description: 'Part of a group is on.' });
+    requirePrimitive(extended, 'card').variants.values.push({ id: 'flagged', name: 'Flagged', description: 'Marks a card that needs attention.' });
 
     assert.equal(validateProject(extended).ok, true, validateProject(extended).errors.join('\n'));
     assert.equal(validateProject(extended, { mode: 'strict' }).errors.some(error => /primitive set/.test(error)), false);
@@ -99,7 +90,7 @@ describe('Blueprint closed primitive set', () => {
     const extended = cloneBundle(await loadProjectFromFs(meridianRoot));
     const chip = structuredClone(requirePrimitive(extended, 'badge'));
     chip.id = 'stat-chip';
-    chip.name = 'Stat Chip';
+    chip.name = 'Stat chip';
     extended.primitives.primitives.push(chip);
 
     assert.equal(validateProject(extended).ok, true, 'existing sidecars with extra primitives stay baseline-valid');

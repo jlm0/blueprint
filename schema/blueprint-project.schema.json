@@ -128,9 +128,10 @@
     },
     "primitiveFile": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["schemaVersion", "projectId", "primitives"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "primitives": {
           "type": "array",
@@ -139,91 +140,8 @@
       }
     },
     "primitive": {
-      "type": "object",
-      "required": ["id", "name", "description", "tokenGroupIds", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "stateSets"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "tokenGroupIds": { "$ref": "#/$defs/stringArray" },
-        "uses": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/boundaryDependency" }
-        },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/styleEvidence" }
-        },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "prototypeOnly": { "type": "boolean" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" },
-        "implementationTargets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/implementationTarget" }
-        },
-        "platforms": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "enum": ["mobile", "desktop"] }
-        },
-        "prototype": { "$ref": "#/$defs/primitivePrototype" },
-        "stateSets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/stateSet" }
-        }
-      }
-    },
-    "primitivePrototype": {
-      "type": "object",
-      "required": ["source", "styles", "states", "slots", "variants", "accessibilityIntent", "tokenRoles"],
-      "properties": {
-        "source": { "type": "string" },
-        "styles": { "$ref": "#/$defs/stringArray" },
-        "states": { "$ref": "#/$defs/stringArray" },
-        "slots": { "$ref": "#/$defs/stringArray" },
-        "variants": { "$ref": "#/$defs/stringArray" },
-        "sizes": { "$ref": "#/$defs/stringArray" },
-        "accessibilityIntent": { "type": "string" },
-        "tokenRoles": { "type": "object", "additionalProperties": { "type": "string" } },
-        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
-        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
-      }
-    },
-    "stateSet": {
-      "type": "object",
-      "required": ["id", "name", "description", "styleRefs", "states"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/styleEvidence" }
-        },
-        "states": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/primitiveState" }
-        }
-      }
-    },
-    "primitiveState": {
-      "type": "object",
-      "required": ["id", "name", "tokens", "prototypeOnly", "notes", "implementationHints"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "tokens": { "$ref": "#/$defs/stringArray" },
-        "tokenRoles": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        "prototypeOnly": { "type": "boolean" },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" }
-      }
+      "description": "One of the closed set of Blueprint primitives, in the shared reusable shape.",
+      "$ref": "#/$defs/reusable"
     },
     "brandFile": {
       "type": "object",
@@ -238,7 +156,10 @@
           "items": {
             "type": "object",
             "required": ["name", "description"],
-            "properties": { "name": { "type": "string" }, "description": { "type": "string" } }
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
           }
         },
         "voice": {
@@ -250,7 +171,10 @@
             "dont": { "$ref": "#/$defs/stringArray" }
           }
         },
-        "marks": { "type": "array", "items": { "$ref": "#/$defs/brandMark" } },
+        "marks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/brandMark" }
+        },
         "usage": {
           "type": "object",
           "required": ["do", "dont"],
@@ -269,7 +193,10 @@
         "name": { "type": "string" },
         "role": { "enum": ["mark", "wordmark", "lockup", "app-icon"] },
         "description": { "type": "string" },
-        "source": { "type": "string", "pattern": "\\.svg$" },
+        "source": {
+          "type": "string",
+          "pattern": "\\.svg$"
+        },
         "variants": {
           "type": "array",
           "minItems": 1,
@@ -289,7 +216,10 @@
           "type": "object",
           "required": ["ratio", "basis"],
           "properties": {
-            "ratio": { "type": "number", "exclusiveMinimum": 0 },
+            "ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
             "basis": { "enum": ["height", "width"] },
             "note": { "type": "string" }
           }
@@ -298,7 +228,10 @@
           "type": "object",
           "required": ["px", "axis"],
           "properties": {
-            "px": { "type": "number", "exclusiveMinimum": 0 },
+            "px": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
             "axis": { "enum": ["height", "width"] },
             "note": { "type": "string" }
           }
@@ -320,7 +253,10 @@
       "properties": {
         "schemaVersion": { "type": "string" },
         "projectId": { "type": "string" },
-        "pages": { "type": "array", "items": { "$ref": "#/$defs/declaredGroup" } },
+        "pages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/declaredGroup" }
+        },
         "screens": {
           "type": "array",
           "items": { "$ref": "#/$defs/screen" }
@@ -353,8 +289,16 @@
       "required": ["id", "title", "intent", "lifecycle", "target", "candidates"],
       "properties": {
         "id": { "$ref": "#/$defs/safeId" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
-        "intent": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
         "lifecycle": { "enum": ["active", "archived", "promoted"] },
         "target": { "$ref": "#/$defs/explorationTarget" },
         "candidates": {
@@ -374,7 +318,10 @@
         "screenId": { "type": "string" },
         "state": { "type": "string" },
         "framePresetId": { "type": "string" },
-        "baseDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "baseDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "baseline": { "$ref": "#/$defs/explorationBaseline" }
       }
     },
@@ -391,7 +338,11 @@
       "required": ["id", "label", "prototype"],
       "properties": {
         "id": { "$ref": "#/$defs/safeId" },
-        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
         "prototype": { "$ref": "#/$defs/explorationPrototype" }
       }
     },
@@ -430,7 +381,10 @@
       "required": ["screenId", "version", "state", "framePresetId", "screen", "replacedBy"],
       "properties": {
         "screenId": { "type": "string" },
-        "version": { "type": "integer", "minimum": 1 },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
         "state": { "type": "string" },
         "framePresetId": { "type": "string" },
         "screen": { "$ref": "#/$defs/screen" },
@@ -450,7 +404,10 @@
               "required": ["type", "version"],
               "properties": {
                 "type": { "const": "history-restore" },
-                "version": { "type": "integer", "minimum": 1 }
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           ]
@@ -459,52 +416,47 @@
     },
     "componentFile": {
       "type": "object",
-      "required": ["schemaVersion", "projectId", "sections", "components"],
+      "additionalProperties": false,
+      "required": ["schemaVersion", "projectId", "groups", "components"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
-        "sections": { "type": "array", "items": { "$ref": "#/$defs/declaredGroup" } },
-        "components": { "type": "array", "items": { "$ref": "#/$defs/component" } }
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/componentGroup" }
+        },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/component" }
+        }
       }
     },
     "component": {
-      "type": "object",
-      "required": ["id", "name", "description", "section", "uses", "tokenGroupIds", "prototype"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "section": { "type": "string" },
-        "uses": { "type": "array", "items": { "$ref": "#/$defs/boundaryDependency" } },
-        "tokenGroupIds": { "$ref": "#/$defs/stringArray" },
-        "prototype": { "$ref": "#/$defs/componentPrototype" },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": { "type": "array", "items": { "$ref": "#/$defs/styleEvidence" } },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "prototypeOnly": { "type": "boolean" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" },
-        "implementationTargets": { "type": "array", "items": { "$ref": "#/$defs/implementationTarget" } }
-      }
-    },
-    "componentPrototype": {
-      "type": "object",
-      "required": ["source", "styles", "states", "slots"],
-      "properties": {
-        "source": { "type": "string" },
-        "styles": { "$ref": "#/$defs/stringArray" },
-        "states": { "$ref": "#/$defs/stringArray" },
-        "slots": { "$ref": "#/$defs/stringArray" },
-        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
-        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
-      }
+      "description": "An app-owned component, in the shared reusable shape.",
+      "$ref": "#/$defs/reusable"
     },
     "screen": {
       "type": "object",
-      "required": ["id", "name", "description", "framePresetId", "page", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "sections"],
+      "required": [
+        "id",
+        "name",
+        "description",
+        "framePresetId",
+        "page",
+        "styleRefs",
+        "notes",
+        "prototypeOnly",
+        "implementationHints",
+        "prototype",
+        "sections"
+      ],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "version": { "type": "integer", "minimum": 1 },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
         "description": { "type": "string" },
         "framePresetId": { "type": "string" },
         "page": { "type": "string" },
@@ -536,7 +488,10 @@
         "styles": { "$ref": "#/$defs/stringArray" },
         "states": { "$ref": "#/$defs/stringArray" },
         "assetRefs": { "$ref": "#/$defs/stringArray" },
-        "reviewConditions": { "type": "array", "items": { "$ref": "#/$defs/reviewCondition" } },
+        "reviewConditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewCondition" }
+        },
         "renderedUses": { "$ref": "#/$defs/prototypeUses" },
         "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
       }
@@ -602,7 +557,7 @@
       "type": "object",
       "required": ["kind", "id", "reason"],
       "properties": {
-        "kind": { "enum": ["token-group", "primitive", "state-set", "component", "screen", "section"] },
+        "kind": { "enum": ["token-group", "primitive", "component", "screen", "section"] },
         "id": { "type": "string" },
         "reason": { "type": "string" },
         "binding": { "$ref": "#/$defs/compositionBinding" }
@@ -613,7 +568,14 @@
       "required": ["kind"],
       "properties": {
         "kind": {
-          "enum": ["new-route", "existing-route", "state-of-existing-screen", "variant-of-existing-screen", "section-replacement", "embedded-flow"]
+          "enum": [
+            "new-route",
+            "existing-route",
+            "state-of-existing-screen",
+            "variant-of-existing-screen",
+            "section-replacement",
+            "embedded-flow"
+          ]
         },
         "routePath": { "type": "string" },
         "targetScreenId": { "type": "string" },
@@ -631,12 +593,25 @@
         "copy": { "type": "string" },
         "data": { "type": "string" },
         "layout": { "type": "string" },
-        "accessibility": { "type": "string" }
+        "accessibility": { "type": "string" },
+        "size": { "type": "string" }
       }
     },
     "implementationTarget": {
       "type": "object",
-      "required": ["platform", "framework", "candidatePath", "symbolName", "operationIntent", "propMapping", "stateMapping", "tokenAdapter", "testPaths", "storyPaths", "unresolvedDecisions"],
+      "required": [
+        "platform",
+        "framework",
+        "candidatePath",
+        "symbolName",
+        "operationIntent",
+        "propMapping",
+        "stateMapping",
+        "tokenAdapter",
+        "testPaths",
+        "storyPaths",
+        "unresolvedDecisions"
+      ],
       "properties": {
         "platform": { "type": "string" },
         "framework": { "type": "string" },
@@ -729,6 +704,229 @@
     "safeId": {
       "type": "string",
       "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "reusable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description",
+        "group",
+        "platforms",
+        "uses",
+        "variants",
+        "sizes",
+        "states",
+        "unsupported",
+        "slots",
+        "prototype",
+        "tokenGroupIds",
+        "tokenRoles",
+        "accessibility",
+        "notes",
+        "implementationHints",
+        "implementationTargets",
+        "styleRefs",
+        "styleEvidence",
+        "prototypeOnly"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "group": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/platform" }
+        },
+        "uses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reusableUse" }
+        },
+        "variants": { "$ref": "#/$defs/reusableAxis" },
+        "sizes": { "$ref": "#/$defs/reusableAxis" },
+        "states": { "$ref": "#/$defs/reusableAxis" },
+        "unsupported": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reusableUnsupported" }
+        },
+        "slots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reusableSlot" }
+        },
+        "prototype": { "$ref": "#/$defs/reusablePrototype" },
+        "tokenGroupIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "tokenRoles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "accessibility": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "notes": { "$ref": "#/$defs/stringArray" },
+        "implementationHints": { "$ref": "#/$defs/stringArray" },
+        "implementationTargets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/implementationTarget" }
+        },
+        "styleRefs": { "$ref": "#/$defs/stringArray" },
+        "styleEvidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/styleEvidence" }
+        },
+        "prototypeOnly": { "type": "boolean" }
+      }
+    },
+    "platform": { "enum": ["web", "mobile", "desktop"] },
+    "reusableUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "reason"],
+      "properties": {
+        "kind": { "enum": ["primitive", "component"] },
+        "id": { "type": "string" },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "reusableAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "values"],
+      "properties": {
+        "default": { "type": "string" },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/reusableAxisValue" }
+        }
+      }
+    },
+    "reusableAxisValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "reusableUnsupported": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "value", "state", "reason"],
+      "properties": {
+        "axis": { "enum": ["variant", "size"] },
+        "value": { "type": "string" },
+        "state": { "type": "string" },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "reusableSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "accepts"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "accepts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(text|graphic|brand-mark|(primitive|component):[a-z0-9]+(?:-[a-z0-9]+)*)$"
+          }
+        }
+      }
+    },
+    "reusablePrototype": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "styles", "localValueExceptions"],
+      "properties": {
+        "source": { "type": "string" },
+        "styles": { "$ref": "#/$defs/stringArray" },
+        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
+      }
+    },
+    "componentGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
     }
   }
 }

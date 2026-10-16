@@ -93,16 +93,16 @@
   outline-offset: 2px;
 }
 
-[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-first"] {
+[data-blueprint-primitive="pressable-row"][data-blueprint-variant="group-first"] {
   border-radius: var(--app-radius-lg) var(--app-radius-lg) 0 0;
 }
 
-[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-middle"] {
+[data-blueprint-primitive="pressable-row"][data-blueprint-variant="group-middle"] {
   border-top-color: transparent;
   border-radius: 0;
 }
 
-[data-blueprint-primitive="pressable-row"][data-blueprint-state="group-last"] {
+[data-blueprint-primitive="pressable-row"][data-blueprint-variant="group-last"] {
   border-top-color: transparent;
   border-radius: 0 0 var(--app-radius-lg) var(--app-radius-lg);
 }

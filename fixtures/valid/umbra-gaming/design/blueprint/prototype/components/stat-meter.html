@@ -1,6 +1,14 @@
-<div class="stat-meter" data-blueprint-component="stat-meter" data-blueprint-state="above">
-  <span class="stat-meter__label" data-blueprint-slot="label">Eliminations</span>
-  <b class="stat-meter__value" data-blueprint-slot="value">11</b>
-  <span class="stat-meter__bar" aria-hidden="true"><i></i></span>
-  <span class="stat-meter__delta" data-blueprint-slot="delta">+4 vs your average</span>
+<div class="stat-meter" data-blueprint-component="stat-meter">
+  <blueprint-use kind="primitive" ref="text" size="label" variant="muted" class="stat-meter__label">
+    <span slot="text" data-blueprint-slot="label">Eliminations</span>
+  </blueprint-use>
+  <blueprint-use kind="primitive" ref="text" size="display" class="stat-meter__value">
+    <span slot="text" data-blueprint-slot="value">11</span>
+  </blueprint-use>
+  <span class="stat-meter__bar" aria-hidden="true">
+    <blueprint-use kind="primitive" ref="progress" state="value"></blueprint-use>
+  </span>
+  <blueprint-use kind="primitive" ref="text" size="body" variant="muted" class="stat-meter__delta">
+    <span slot="text" data-blueprint-slot="delta">+4 vs your average</span>
+  </blueprint-use>
 </div>

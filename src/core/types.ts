@@ -1,4 +1,4 @@
-export type BoundaryKind = 'project' | 'board' | 'token-group' | 'primitive' | 'state-set' | 'component' | 'screen' | 'section';
+export type BoundaryKind = 'project' | 'board' | 'token-group' | 'primitive' | 'component' | 'screen' | 'section';
 
 export type BoardKind = 'primitives' | 'screens';
 
@@ -82,24 +82,91 @@ export interface PrimitiveFile {
   primitives: PrimitiveDefinition[];
 }
 
-export interface PrimitiveDefinition {
+/** Where a reusable runs: a website or web app, a native phone app, or a native desktop app. */
+export type Platform = 'web' | 'mobile' | 'desktop';
+
+export type ReusableKind = 'primitive' | 'component';
+
+export type ReusableAxisName = 'variant' | 'size' | 'state';
+
+/** One named value on a reusable axis. */
+export interface ReusableAxisValue {
   id: string;
   name: string;
   description: string;
-  tokenGroupIds: string[];
-  uses?: BoundaryDependency[];
-  styleRefs: string[];
-  styleEvidence?: StyleEvidence[];
-  notes: string[];
-  prototypeOnly: boolean;
-  implementationHints: string[];
-  implementationTargets?: ImplementationTarget[];
-  /** Frame types the primitive is designed for; omit when it is shared across mobile and desktop. */
-  platforms?: Array<FramePreset['type']>;
-  /** Canonical app-owned render source. */
-  prototype: PrimitivePrototypeSource;
-  stateSets: PrimitiveStateSet[];
 }
+
+/** Variants, sizes, or states: every value a reusable offers on that axis and the one an omitted attribute takes. */
+export interface ReusableAxis {
+  default: string;
+  values: ReusableAxisValue[];
+}
+
+/** A variant or size that does not offer one of the reusable's states. */
+export interface ReusableUnsupportedCombination {
+  axis: 'variant' | 'size';
+  value: string;
+  state: string;
+  reason: string;
+}
+
+/** A place a placement fills to customize the reusable, and what it accepts there. */
+export interface ReusableSlot {
+  id: string;
+  name: string;
+  description: string;
+  /** `text`, `graphic`, `brand-mark`, `primitive:<id>`, or `component:<id>`. */
+  accepts: string[];
+}
+
+/** A primitive or component the reusable's source renders. */
+export interface ReusableDependency {
+  kind: ReusableKind;
+  id: string;
+  reason: string;
+}
+
+/** Governed HTML/CSS source of a primitive or component. */
+export interface ReusablePrototypeSource {
+  /** Sidecar-relative HTML source path. */
+  source: string;
+  /** Sidecar-relative CSS source paths loaded with the HTML source. */
+  styles: string[];
+  /** Explicit exceptions for otherwise token-governed reusable style values. */
+  localValueExceptions: LocalValueException[];
+}
+
+/** The one shape every primitive and component shares. */
+export interface ReusableDefinition {
+  id: string;
+  name: string;
+  description: string;
+  /** A primitive's Blueprint group, or a component's declared entry in components.groups. */
+  group: string;
+  platforms: Platform[];
+  uses: ReusableDependency[];
+  variants: ReusableAxis;
+  sizes: ReusableAxis;
+  states: ReusableAxis;
+  unsupported: ReusableUnsupportedCombination[];
+  slots: ReusableSlot[];
+  prototype: ReusablePrototypeSource;
+  tokenGroupIds: string[];
+  /** Token reference to reusable visual role mapping. */
+  tokenRoles: Record<string, string>;
+  /** The role and how assistive technology announces it. */
+  accessibility: string;
+  notes: string[];
+  implementationHints: string[];
+  implementationTargets: ImplementationTarget[];
+  styleRefs: string[];
+  styleEvidence: StyleEvidence[];
+  prototypeOnly: boolean;
+}
+
+export type PrimitiveDefinition = ReusableDefinition;
+
+export type ComponentDefinition = ReusableDefinition;
 
 /** Declares one intentional reusable-style literal that is not token-governed. */
 export interface LocalValueException {
@@ -111,7 +178,7 @@ export interface LocalValueException {
   reason: string;
 }
 
-/** Shared source fields for canonical primitives, components, and screens. */
+/** Shared source fields for screens. */
 export interface PrototypeSource {
   /** Sidecar-relative HTML source path. */
   source: string;
@@ -128,42 +195,9 @@ export interface PrototypeSource {
 /** Identifies a canonical reusable boundary instantiated by a prototype source. */
 export interface PrototypeUseDeclaration {
   /** Reusable boundary category. */
-  kind: 'primitive' | 'component';
+  kind: ReusableKind;
   /** App-owned local boundary ID. */
   id: string;
-}
-
-/** Canonical source contract used for a primitive on every board and screen. */
-export interface PrimitivePrototypeSource extends PrototypeSource {
-  /** Named content slots accepted by the primitive. */
-  slots: string[];
-  /** Supported variant IDs. */
-  variants: string[];
-  /** Supported size IDs, forwarded as `data-blueprint-size`; omit when the primitive has one size. */
-  sizes?: string[];
-  /** Human-readable accessibility semantics the source must preserve. */
-  accessibilityIntent: string;
-  /** Token reference to reusable visual role mapping. */
-  tokenRoles: Record<string, string>;
-}
-
-export interface PrimitiveStateSet {
-  id: string;
-  name: string;
-  description: string;
-  styleRefs: string[];
-  styleEvidence?: StyleEvidence[];
-  states: PrimitiveState[];
-}
-
-export interface PrimitiveState {
-  id: string;
-  name: string;
-  tokens: string[];
-  tokenRoles?: Record<string, string>;
-  prototypeOnly: boolean;
-  notes: string[];
-  implementationHints: string[];
 }
 
 export interface ScreenFile {
@@ -335,34 +369,9 @@ export interface BrandMarkVariant {
 export interface ComponentFile {
   schemaVersion: string;
   projectId: string;
-  /** Declared component sections; every component belongs to one. */
-  sections: DeclaredGroup[];
+  /** Declared component groups; every component belongs to one. */
+  groups: DeclaredGroup[];
   components: ComponentDefinition[];
-}
-
-/** Reusable app-owned composition built from canonical primitives or other components. */
-export interface ComponentDefinition {
-  id: string;
-  name: string;
-  description: string;
-  /** Id of the declared section in components.sections. */
-  section: string;
-  uses: BoundaryDependency[];
-  tokenGroupIds: string[];
-  /** Canonical app-owned composite source. */
-  prototype: ComponentPrototypeSource;
-  styleRefs?: string[];
-  styleEvidence?: StyleEvidence[];
-  notes?: string[];
-  prototypeOnly?: boolean;
-  implementationHints?: string[];
-  implementationTargets?: ImplementationTarget[];
-}
-
-/** Canonical source contract for a reusable composite component. */
-export interface ComponentPrototypeSource extends PrototypeSource {
-  /** Named content slots accepted by the component. */
-  slots: string[];
 }
 
 export interface ScreenDefinition {
@@ -415,7 +424,7 @@ export interface ScreenSection {
 }
 
 export interface BoundaryDependency {
-  kind: 'token-group' | 'primitive' | 'state-set' | 'component' | 'screen' | 'section';
+  kind: 'token-group' | 'primitive' | 'component' | 'screen' | 'section';
   id: string;
   reason: string;
   binding?: CompositionBinding;
@@ -441,6 +450,7 @@ export interface CompositionBinding {
   slot?: string;
   state?: string;
   variant?: string;
+  size?: string;
   prop?: string;
   copy?: string;
   data?: string;

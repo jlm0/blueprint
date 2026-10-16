@@ -20,7 +20,7 @@ export interface BlueprintCanvasSelection extends BlueprintSelectedBoundary {
   historyVersion?: number;
 }
 
-const selectableKinds = new Set<BoundaryKind>(['token-group', 'primitive', 'state-set', 'component', 'screen', 'section']);
+const selectableKinds = new Set<BoundaryKind>(['token-group', 'primitive', 'component', 'screen', 'section']);
 const frameRoles = new Set<string>(['current', 'version', 'baseline', 'candidate']);
 const maximumContextDepth = 16;
 const maximumFieldLength = 512;
@@ -96,7 +96,7 @@ function selectedFramePrototype(
 
 function boundarySourceFiles(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): string[] {
   const [ownerId] = localId.split('/');
-  const prototype = kind === 'primitive' || kind === 'state-set'
+  const prototype = kind === 'primitive'
     ? bundle.primitives.primitives.find(primitive => primitive.id === ownerId)?.prototype
     : kind === 'component'
       ? bundle.components.components.find(component => component.id === ownerId)?.prototype

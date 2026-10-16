@@ -71,7 +71,7 @@
   height: var(--app-size-icon-md);
 }
 
-[data-blueprint-primitive="nav-bar"][data-blueprint-state="back-only"] .nav-bar__side--right .nav-bar__action,
-[data-blueprint-primitive="nav-bar"][data-blueprint-state="right-only"] .nav-bar__action--back {
+[data-blueprint-primitive="nav-bar"][data-blueprint-variant="back-only"] .nav-bar__side--right .nav-bar__action,
+[data-blueprint-primitive="nav-bar"][data-blueprint-variant="right-only"] .nav-bar__action--back {
   visibility: hidden;
 }

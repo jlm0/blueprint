@@ -9,7 +9,6 @@ export const boundaryKindSchema = z.enum([
   'board',
   'token-group',
   'primitive',
-  'state-set',
   'component',
   'screen',
   'section'
@@ -17,7 +16,7 @@ export const boundaryKindSchema = z.enum([
 
 export const boundarySelectorSchema = z
   .string()
-  .regex(/^(project|board|token-group|primitive|state-set|component|screen|section):.+$/)
+  .regex(/^(project|board|token-group|primitive|component|screen|section):.+$/)
   .describe('Boundary selector in kind:id form.');
 
 export const capturableBoundarySelectorSchema = z
@@ -38,6 +37,14 @@ export const validateInputSchema = z
   .object({
     project: projectPathSchema,
     mode: z.enum(['baseline', 'readiness', 'strict']).default('baseline'),
+    out: outputPathSchema.optional()
+  })
+  .strict();
+
+export const migrateInputSchema = z
+  .object({
+    project: projectPathSchema,
+    dryRun: z.boolean().default(false).describe('Report every change and what validate would then report, without writing anything.'),
     out: outputPathSchema.optional()
   })
   .strict();
@@ -134,8 +141,8 @@ export const captureInputSchema = z
     viewport: nonEmptyString.optional().describe(
       'Declared frame preset. Screens render in its review condition; components and primitives take its width instead of the 1280 px default.'
     ),
-    variant: nonEmptyString.optional().describe('Declared primitive variant.'),
-    size: nonEmptyString.optional().describe('Declared primitive size.'),
+    variant: nonEmptyString.optional().describe('Declared primitive or component variant. Defaults to its default variant.'),
+    size: nonEmptyString.optional().describe('Declared primitive or component size. Defaults to its default size.'),
     out: nonEmptyString.describe('PNG destination path. Existing files are overwritten.')
   })
   .strict();
@@ -279,6 +286,23 @@ export const validateOutputSchema = z.union([
   validationOutputBaseSchema.extend({ mode: z.literal('readiness'), readiness: readinessReportSchema }).strict()
 ]);
 
+export const migrateOutputSchema = z
+  .object({
+    command: z.literal('migrate'),
+    project: z.string(),
+    projectId: z.string(),
+    dryRun: z.boolean(),
+    fromVersion: z.string(),
+    toVersion: z.string(),
+    upToDate: z.boolean().describe('True when the project already reads the current schema and nothing changed.'),
+    changes: z.array(z.string()).describe('Every mechanical change, one per line.'),
+    files: z.array(z.string()).describe('Project files written, or that a real run would write.'),
+    validation: validationResultSchema.describe(
+      'Validation of the migrated project. Each error is a decision left to the agent and ends with "Fix:" and the exact change to make.'
+    )
+  })
+  .strict();
+
 export const boundaryReferenceSchema = z
   .object({
     id: z.string(),
@@ -348,8 +372,8 @@ export const indexOutputSchema = z
     results: z.array(boundaryReferenceSchema),
     pages: z.array(z.object({ ...declaredGroupFields, screens: z.array(z.string()) }).strict())
       .describe('Declared screen pages with their screens. Declare a new page in screens.json before placing a screen on it.'),
-    componentSections: z.array(z.object({ ...declaredGroupFields, components: z.array(z.string()) }).strict())
-      .describe('Declared component sections with their components. Declare a new section in components.json before using it.')
+    componentGroups: z.array(z.object({ ...declaredGroupFields, components: z.array(z.string()) }).strict())
+      .describe('Declared component groups with their components. Declare a new group in components.json before using it.')
   })
   .strict();
 
@@ -579,6 +603,7 @@ export const restoreOutputSchema = z
 
 export type InitInput = z.infer<typeof initInputSchema>;
 export type ValidateInput = z.infer<typeof validateInputSchema>;
+export type MigrateInput = z.infer<typeof migrateInputSchema>;
 export type IndexInput = z.infer<typeof indexInputSchema>;
 export type QueryInput = z.infer<typeof queryInputSchema>;
 export type ExtractInput = z.infer<typeof extractInputSchema>;
@@ -591,6 +616,7 @@ export type RestoreInput = z.infer<typeof restoreInputSchema>;
 
 export type InitOutput = z.infer<typeof initOutputSchema>;
 export type ValidateOutput = z.infer<typeof validateOutputSchema>;
+export type MigrateOutput = z.infer<typeof migrateOutputSchema>;
 export type IndexOutput = z.infer<typeof indexOutputSchema>;
 export type QueryOutput = z.infer<typeof queryOutputSchema>;
 export type ExtractOutput = z.infer<typeof extractOutputSchema>;

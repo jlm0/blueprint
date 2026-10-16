@@ -1,9 +1,9 @@
 <div class="pay" data-blueprint-screen="transfer-mobile" data-blueprint-state="default">
   <header class="pay__nav" data-blueprint-section="header">
-    <blueprint-use kind="primitive" ref="nav-bar" state="back-only" class="pay__navbar pay__navbar--send">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only" class="pay__navbar pay__navbar--send">
       <span slot="title">Send payment</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="nav-bar" state="back-only" class="pay__navbar pay__navbar--review">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only" class="pay__navbar pay__navbar--review">
       <span slot="title">Approve wire</span>
     </blueprint-use>
   </header>
@@ -16,7 +16,7 @@
       </blueprint-use>
       <span class="entry__who"><b>Halcyon Studio</b><small>Wells Fargo ··0917</small></span>
     </div>
-    <blueprint-use kind="component" ref="amount-field" state="compact">
+    <blueprint-use kind="component" ref="amount-field" size="compact">
       <span slot="label">Amount</span>
       <span slot="amount">18,400</span>
       <span slot="cents">.00</span>
@@ -56,7 +56,7 @@
     <p class="approve__kicker">Domestic wire · arrives today</p>
     <h1 id="approve-title" class="approve__amount">$18,400<span>.00</span></h1>
     <p class="approve__to">to Halcyon Studio</p>
-    <blueprint-use kind="component" ref="transfer-summary" state="compact">
+    <blueprint-use kind="component" ref="transfer-summary" size="compact">
       <span slot="amount">$18,400.00</span>
       <span slot="recipient">Halcyon ··0917</span>
       <span slot="source">Operating ··4821</span>

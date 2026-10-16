@@ -77,7 +77,7 @@
   font-weight: 500;
 }
 
-[data-blueprint-component="amount-field"][data-blueprint-state="compact"] {
+[data-blueprint-component="amount-field"][data-blueprint-size="compact"] {
   justify-items: center;
   gap: 10px;
   padding-bottom: 0;
@@ -85,11 +85,11 @@
   text-align: center;
 }
 
-[data-blueprint-component="amount-field"][data-blueprint-state="compact"] .amount-field__value {
+[data-blueprint-component="amount-field"][data-blueprint-size="compact"] .amount-field__value {
   font-size: 72px;
 }
 
-[data-blueprint-component="amount-field"][data-blueprint-state="compact"] .amount-field__foot {
+[data-blueprint-component="amount-field"][data-blueprint-size="compact"] .amount-field__foot {
   flex-direction: column-reverse;
   gap: 10px;
 }

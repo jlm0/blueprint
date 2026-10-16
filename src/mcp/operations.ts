@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { watch } from 'node:fs';
-import { cp, mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +24,8 @@ import { boundaryId, parseBoundarySelector } from '../core/address';
 import { canvasLocationParams } from '../core/canvas-location';
 import { collectDesignFindings, type DesignFinding } from '../core/findings';
 import { loadProjectFromFs } from '../core/load';
+import { migrateProjectFiles } from '../core/migrate';
+import { assertCurrentReusableSchema } from '../core/reusable-validate';
 import {
   parseCanvasSelection,
   selectionReference,
@@ -32,6 +35,7 @@ import {
 import { createReadinessReport, validateProject } from '../core/validate';
 import {
   archiveExploration,
+  computeExplorationBaselineDigest,
   createExplorationMetadata,
   inspectExploration,
   inspectScreenHistory,
@@ -88,6 +92,7 @@ import {
   extractOutputSchema,
   indexOutputSchema,
   initOutputSchema,
+  migrateOutputSchema,
   promoteOutputSchema,
   queryOutputSchema,
   restoreOutputSchema,
@@ -104,6 +109,8 @@ import {
   type IndexOutput,
   type InitInput,
   type InitOutput,
+  type MigrateInput,
+  type MigrateOutput,
   type PromoteInput,
   type PromoteOutput,
   type QueryInput,
@@ -233,10 +240,69 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
   return output;
 }
 
+export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal): Promise<MigrateOutput> {
+  throwIfAborted(signal);
+  const projectRoot = path.resolve(input.project);
+  assertBlueprintProjectPath(projectRoot);
+  const starterRoot = path.join(packageRoot, 'starter', 'design', 'blueprint');
+  const migration = migrateProjectFiles({
+    files: await readProjectTextFiles(projectRoot),
+    starterPrimitives: JSON.parse(await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')),
+    starterAgents: await readFile(path.join(starterRoot, 'AGENTS.md'), 'utf8')
+  });
+
+  throwIfAborted(signal);
+  const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
+  let bundle: BlueprintProjectBundle;
+  let validation: ReturnType<typeof validateProject>;
+  try {
+    await cp(projectRoot, scratch, { recursive: true });
+    await writeProjectFiles(scratch, migration.writes);
+    bundle = await loadProjectFromFs(scratch);
+    const digestWrites = new Map<string, string>();
+    for (const exploration of bundle.explorations.explorations) {
+      const baseDigest = computeExplorationBaselineDigest(bundle, exploration.id);
+      if (baseDigest === exploration.target.baseDigest) continue;
+      const recordRef = explorationRecordRef(exploration.id);
+      const record = JSON.parse(await readFile(path.join(scratch, recordRef), 'utf8'));
+      record.exploration.target.baseDigest = baseDigest;
+      digestWrites.set(recordRef, jsonFileContent(record));
+      migration.changes.push(`exploration ${exploration.id}: recomputed target.baseDigest for the migrated baseline.`);
+    }
+    if (digestWrites.size > 0) {
+      await writeProjectFiles(scratch, digestWrites);
+      for (const [fileRef, content] of digestWrites) migration.writes.set(fileRef, content);
+      bundle = await loadProjectFromFs(scratch);
+    }
+    validation = validateProject(bundle);
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+
+  throwIfAborted(signal);
+  if (!input.dryRun && migration.writes.size > 0) {
+    await applyProjectFileTransaction(projectRoot, [...migration.writes].map(([fileRef, content]) => ({ fileRef, content })));
+  }
+  const output = migrateOutputSchema.parse({
+    command: 'migrate',
+    project: normalize(projectRoot),
+    projectId: bundle.manifest.project.id,
+    dryRun: input.dryRun,
+    fromVersion: migration.fromVersion,
+    toVersion: migration.toVersion,
+    upToDate: migration.upToDate,
+    changes: migration.changes,
+    files: [...migration.writes.keys()].sort(),
+    validation
+  });
+  await writeOptionalJsonArtifact(output, input.out);
+  return output;
+}
+
 export async function indexBlueprint(input: IndexInput, signal?: AbortSignal): Promise<IndexOutput> {
   throwIfAborted(signal);
   const { project } = input;
-  const bundle = await loadProjectFromFs(project);
+  const bundle = await loadCurrentProject(project);
   const output = indexOutputSchema.parse({
     command: 'index',
     project: normalize(path.resolve(project)),
@@ -251,7 +317,7 @@ export async function indexBlueprint(input: IndexInput, signal?: AbortSignal): P
 export async function queryBlueprint(input: QueryInput, signal?: AbortSignal): Promise<QueryOutput> {
   throwIfAborted(signal);
   const { project, query } = input;
-  const bundle = await loadProjectFromFs(project);
+  const bundle = await loadCurrentProject(project);
   let output: unknown;
 
   switch (query.type) {
@@ -313,7 +379,7 @@ export async function queryBlueprint(input: QueryInput, signal?: AbortSignal): P
 export async function extractBlueprint(input: ExtractInput, signal?: AbortSignal): Promise<ExtractOutput> {
   throwIfAborted(signal);
   const { project, boundary, mode } = input;
-  const bundle = await loadProjectFromFs(project);
+  const bundle = await loadCurrentProject(project);
   const packet = createExtractionPacket(bundle, boundary, { mode });
   const output = extractOutputSchema.parse(packet);
   await writeOptionalJsonArtifact(output, input.out);
@@ -324,7 +390,7 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
   throwIfAborted(signal);
   const { project, boundary, out } = input;
   const selector = parseBoundarySelector(boundary);
-  const bundle = await loadProjectFromFs(project);
+  const bundle = await loadCurrentProject(project);
   showBoundary(bundle, selector);
   const resolvedOut = path.resolve(out);
   const base = {
@@ -478,7 +544,7 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
-  const bundle = await loadProjectFromFs(projectRoot);
+  const bundle = await loadCurrentProject(projectRoot);
   const result = input.operation.type === 'create'
     ? createExplorationMetadata(bundle, input.operation)
     : archiveExploration(bundle, input.operation.explorationId);
@@ -517,7 +583,7 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   assertBlueprintProjectPath(projectRoot);
   // The mutation is computed from a fresh filesystem snapshot so the core digest
   // checks are the final read before the bounded file transaction begins.
-  const bundle = await loadProjectFromFs(projectRoot);
+  const bundle = await loadCurrentProject(projectRoot);
   const result = promoteExploration(bundle, input);
   const projectId = bundle.manifest.project.id;
   assertValidMutation({
@@ -562,7 +628,7 @@ export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
-  const bundle = await loadProjectFromFs(projectRoot);
+  const bundle = await loadCurrentProject(projectRoot);
   const result = restoreScreenHistory(bundle, input);
   const projectId = bundle.manifest.project.id;
   assertValidMutation({
@@ -639,7 +705,7 @@ export async function serveBlueprint(
       screenId: inspection.exploration.target.screenId
     };
   }
-  const focusParams = input.focus ? canvasLocationParams(await loadProjectFromFs(projectRoot), input.focus) : undefined;
+  const focusParams = input.focus ? canvasLocationParams(await loadCurrentProject(projectRoot), input.focus) : undefined;
 
   const acquisition = reusable
     ? { server: reusable, reused: true }
@@ -700,7 +766,7 @@ export async function readBlueprintSelection(input: SelectionInput, signal?: Abo
   }
   const payload = await response.json() as { selection?: StoredCanvasSelection | null };
   const selection = payload.selection ?? null;
-  const bundle = selection ? await loadProjectFromFs(projectRoot) : undefined;
+  const bundle = selection ? await loadCurrentProject(projectRoot) : undefined;
   return selectionOutputSchema.parse({
     command: 'selection',
     project: normalize(projectRoot),
@@ -1048,6 +1114,38 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
     writes.push(writeJsonFile(brandPath, brand));
   }
   await Promise.all(writes);
+}
+
+async function loadCurrentProject(projectRoot: string): Promise<BlueprintProjectBundle> {
+  const bundle = await loadProjectFromFs(projectRoot);
+  assertCurrentReusableSchema(bundle);
+  return bundle;
+}
+
+async function readProjectTextFiles(projectRoot: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  const walk = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (/\.(json|html|css|md)$/.test(entry.name)) {
+        files.set(path.relative(projectRoot, full).split(path.sep).join('/'), await readFile(full, 'utf8'));
+      }
+    }
+  };
+  await walk(projectRoot);
+  return files;
+}
+
+async function writeProjectFiles(projectRoot: string, writes: Map<string, string>): Promise<void> {
+  for (const [fileRef, content] of writes) {
+    assertSafeProjectFileRef(fileRef);
+    const target = path.join(projectRoot, fileRef);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, content, 'utf8');
+  }
 }
 
 async function writeOptionalJsonArtifact(value: unknown, out?: string): Promise<void> {

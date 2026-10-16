@@ -1,9 +1,9 @@
 <div class="chat" data-blueprint-screen="chat" data-blueprint-state="default">
   <header class="chat__header" data-blueprint-section="header">
-    <blueprint-use kind="primitive" ref="nav-bar" state="back-and-right" class="chat__nav chat__nav--thread">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-and-right" class="chat__nav chat__nav--thread">
       <span slot="title">Q3 churn drivers</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="nav-bar" state="right-only" class="chat__nav chat__nav--new">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="right-only" class="chat__nav chat__nav--new">
       <span slot="title">New thread</span>
     </blueprint-use>
   </header>
@@ -20,7 +20,7 @@
       </header>
       <h1>Three drivers explain 71% of the Q3 increase.</h1>
       <p>Churn rose from <strong>4.2% to 6.8%</strong>. Most of it comes from the June cohort, which joined on the annual discount and left at renewal.</p>
-      <blueprint-use kind="component" ref="insight-chart" state="compact">
+      <blueprint-use kind="component" ref="insight-chart" size="compact">
         <span slot="eyebrow">Figure 1</span>
         <span slot="title">Churn by signup cohort</span>
         <span slot="note">June joined on the annual discount.</span>
@@ -38,17 +38,17 @@
     <h1 class="welcome__title" id="welcome-title">What should we figure out today, Ari?</h1>
     <p class="welcome__lede">Ask a question, attach a file, or start from a prompt.</p>
     <div class="welcome__starters">
-      <blueprint-use kind="component" ref="prompt-card" state="compact">
+      <blueprint-use kind="component" ref="prompt-card" size="compact">
         <span slot="kicker">Analyze</span>
         <span slot="title">Find what moved retention</span>
         <span slot="description">From a cohort export</span>
       </blueprint-use>
-      <blueprint-use kind="component" ref="prompt-card" state="compact">
+      <blueprint-use kind="component" ref="prompt-card" size="compact">
         <span slot="kicker">Research</span>
         <span slot="title">Map competitor pricing</span>
         <span slot="description">Plans, limits, and recent moves</span>
       </blueprint-use>
-      <blueprint-use kind="component" ref="prompt-card" state="compact">
+      <blueprint-use kind="component" ref="prompt-card" size="compact">
         <span slot="kicker">Write</span>
         <span slot="title">Notes to a decision memo</span>
         <span slot="description">Owners, dates, open questions</span>
@@ -57,10 +57,10 @@
   </section>
 
   <div class="dock" data-blueprint-section="composer">
-    <blueprint-use kind="component" ref="composer" state="compact" class="dock__composer dock__composer--thread">
+    <blueprint-use kind="component" ref="composer" size="compact" class="dock__composer dock__composer--thread">
       <span slot="placeholder">Ask a follow-up</span>
     </blueprint-use>
-    <blueprint-use kind="component" ref="composer" state="compact" class="dock__composer dock__composer--new">
+    <blueprint-use kind="component" ref="composer" size="compact" class="dock__composer dock__composer--new">
       <span slot="placeholder">Ask Mira anything</span>
     </blueprint-use>
   </div>

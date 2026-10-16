@@ -2,185 +2,407 @@
  * The closed Blueprint primitive set.
  *
  * Primitives are the building blocks every app shares, so every project carries
- * exactly this set: none removed and none added. They take the app's design
- * from its token values and may add state sets and states, but an app-specific
- * piece is a component built from primitives, never a new primitive.
+ * exactly this set: none removed and none added. Blueprint owns each one's name,
+ * group, platforms, axis defaults, and the floor of variants, sizes, states, and
+ * slots. An app restyles them through token values and may add values above the
+ * floor, but an app-specific piece is a component built from primitives.
  */
 
-/** Required floor for one locked base primitive: required state ids per required state-set id. */
+import type { Platform } from './types';
+
+export type PrimitiveGroupId = 'actions' | 'inputs' | 'text' | 'surfaces' | 'navigation' | 'structure' | 'feedback' | 'overlays';
+
+export const PRIMITIVE_GROUPS: ReadonlyArray<{ id: PrimitiveGroupId; name: string }> = [
+  { id: 'actions', name: 'Actions' },
+  { id: 'inputs', name: 'Inputs' },
+  { id: 'text', name: 'Text' },
+  { id: 'surfaces', name: 'Surfaces' },
+  { id: 'navigation', name: 'Navigation' },
+  { id: 'structure', name: 'Structure' },
+  { id: 'feedback', name: 'Feedback' },
+  { id: 'overlays', name: 'Overlays' }
+];
+
+/** Required values for one axis; `default` is omitted when the app chooses it. */
+export interface BasePrimitiveAxisFloor {
+  default?: string;
+  values: string[];
+}
+
 export interface BasePrimitiveContractEntry {
   id: string;
+  name: string;
+  group: PrimitiveGroupId;
+  platforms: Platform[];
   /** Primitives added to the set after sidecars already existed block only strict validation until those sidecars catch up. */
   enforcement?: 'strict';
-  stateSets: Array<{
-    id: string;
-    states: string[];
-  }>;
+  variants: BasePrimitiveAxisFloor;
+  sizes: BasePrimitiveAxisFloor;
+  states: BasePrimitiveAxisFloor;
+  slots: string[];
 }
+
+const EVERY_PLATFORM: Platform[] = ['web', 'mobile', 'desktop'];
+const ONLY_DEFAULT: BasePrimitiveAxisFloor = { default: 'default', values: ['default'] };
+const APP_CHOSEN: BasePrimitiveAxisFloor = { values: [] };
 
 export const BASE_PRIMITIVE_CONTRACT: BasePrimitiveContractEntry[] = [
   {
     id: 'button',
-    stateSets: [
-      { id: 'variant', states: ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'] },
-      { id: 'interaction', states: ['normal', 'loading', 'disabled'] }
-    ]
+    name: 'Button',
+    group: 'actions',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'primary', values: ['primary', 'secondary', 'outline', 'ghost', 'destructive', 'link'] },
+    sizes: { default: 'md', values: ['md'] },
+    states: { default: 'normal', values: ['normal', 'loading', 'disabled'] },
+    slots: ['label', 'icon']
   },
   {
     id: 'input',
-    stateSets: [
-      { id: 'variant', states: ['default', 'filled', 'ghost', 'outline', 'underline'] },
-      { id: 'interaction', states: ['empty', 'value', 'focused', 'invalid', 'disabled'] }
-    ]
+    name: 'Input',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'filled', 'ghost', 'outline', 'underline'] },
+    sizes: APP_CHOSEN,
+    states: { default: 'empty', values: ['empty', 'value', 'focused', 'invalid', 'disabled'] },
+    slots: ['label', 'placeholder']
   },
   {
     id: 'checkbox',
-    stateSets: [{ id: 'state', states: ['off', 'on', 'disabled', 'disabled-on'] }]
+    name: 'Checkbox',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'off', values: ['off', 'on', 'disabled', 'disabled-on'] },
+    slots: ['label']
   },
   {
     id: 'switch',
-    stateSets: [{ id: 'state', states: ['off', 'on', 'disabled', 'disabled-on'] }]
+    name: 'Switch',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'off', values: ['off', 'on', 'disabled', 'disabled-on'] },
+    slots: ['label']
   },
   {
     id: 'otp-input',
-    stateSets: [{ id: 'cell', states: ['empty', 'filled', 'focused'] }]
+    name: 'OTP input',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'empty', values: ['empty', 'filled', 'focused'] },
+    slots: []
   },
   {
     id: 'slider',
-    stateSets: [{ id: 'tone', states: ['primary', 'secondary', 'contrast', 'disabled'] }]
+    name: 'Slider',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'primary', values: ['primary', 'secondary', 'contrast'] },
+    sizes: APP_CHOSEN,
+    states: { default: 'normal', values: ['normal', 'disabled'] },
+    slots: []
   },
   {
     id: 'surface',
-    stateSets: [{ id: 'level', states: ['1', '2', '3'] }]
+    name: 'Surface',
+    group: 'surfaces',
+    platforms: EVERY_PLATFORM,
+    variants: { default: '1', values: ['1', '2', '3'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['label']
   },
   {
     id: 'card',
-    stateSets: [{ id: 'variant', states: ['default', 'flat', 'elevated', 'status-accent'] }]
+    name: 'Card',
+    group: 'surfaces',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'flat', 'elevated', 'status-accent'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['default']
   },
   {
     id: 'nav-bar',
-    stateSets: [{ id: 'slots', states: ['back-and-right', 'back-only', 'right-only'] }]
+    name: 'Navigation bar',
+    group: 'navigation',
+    platforms: ['mobile'],
+    variants: { default: 'back-and-right', values: ['back-and-right', 'back-only', 'right-only'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title']
   },
   {
     id: 'back-button',
-    stateSets: [{ id: 'size', states: ['md', 'sm', 'disabled'] }]
+    name: 'Back button',
+    group: 'navigation',
+    platforms: ['mobile'],
+    variants: ONLY_DEFAULT,
+    sizes: { default: 'md', values: ['md', 'sm'] },
+    states: { default: 'normal', values: ['normal', 'disabled'] },
+    slots: []
   },
   {
     id: 'separator',
-    stateSets: [{ id: 'emphasis', states: ['subtle', 'default', 'strong'] }]
+    name: 'Separator',
+    group: 'structure',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['subtle', 'default', 'strong'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: []
   },
   {
     id: 'list',
-    stateSets: [{ id: 'variant', states: ['grouped', 'plain'] }]
+    name: 'List',
+    group: 'structure',
+    platforms: ['mobile'],
+    variants: { default: 'grouped', values: ['grouped', 'plain'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: []
   },
   {
     id: 'pressable-row',
-    stateSets: [{ id: 'shape', states: ['standalone', 'group-first', 'group-middle', 'group-last'] }]
+    name: 'Pressable row',
+    group: 'structure',
+    platforms: ['mobile'],
+    variants: { default: 'standalone', values: ['standalone', 'group-first', 'group-middle', 'group-last'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title']
   },
   {
     id: 'row-layout',
-    stateSets: [{ id: 'slots', states: ['leading-body-trailing'] }]
+    name: 'Row layout',
+    group: 'structure',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'leading-body-trailing', values: ['leading-body-trailing'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title']
   },
   {
     id: 'loading-mark',
-    stateSets: [{ id: 'tone', states: ['primary', 'surface'] }]
+    name: 'Loading mark',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'primary', values: ['primary', 'surface'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: []
   },
   {
     id: 'badge',
-    stateSets: [{ id: 'variant', states: ['default', 'secondary', 'tonal', 'accent', 'destructive', 'success', 'outline'] }]
+    name: 'Badge',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'secondary', 'tonal', 'accent', 'destructive', 'success', 'outline'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['label']
   },
   {
     id: 'icon',
-    stateSets: [{ id: 'tone', states: ['default', 'muted', 'accent'] }]
+    name: 'Icon',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'muted', 'accent'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['default']
   },
   {
     id: 'skeleton',
-    stateSets: [{ id: 'density', states: ['line', 'block'] }]
+    name: 'Skeleton',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'line', values: ['line', 'block'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: []
   },
   {
     id: 'alert-dialog',
-    stateSets: [{ id: 'intent', states: ['neutral', 'destructive'] }]
+    name: 'Alert dialog',
+    group: 'overlays',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'neutral', values: ['neutral', 'destructive'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title', 'message']
   },
   {
     id: 'context-menu',
-    stateSets: [{ id: 'item', states: ['default', 'checked', 'destructive'] }]
+    name: 'Context menu',
+    group: 'overlays',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'default', values: ['default', 'checked', 'destructive'] },
+    slots: []
   },
   {
     id: 'bottom-sheet',
-    stateSets: [{ id: 'slot', states: ['navbar', 'content', 'footer'] }]
+    name: 'Bottom sheet',
+    group: 'overlays',
+    platforms: ['mobile'],
+    variants: { default: 'navbar', values: ['navbar', 'content', 'footer'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title']
   },
   {
     id: 'text',
-    stateSets: [
-      { id: 'variant', states: ['display', 'body', 'label'] },
-      { id: 'tone', states: ['default', 'muted', 'primary'] }
-    ]
+    name: 'Text',
+    group: 'text',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'muted', 'primary'] },
+    sizes: { default: 'body', values: ['display', 'body', 'label'] },
+    states: ONLY_DEFAULT,
+    slots: ['text']
   },
   {
     id: 'radio',
-    stateSets: [{ id: 'state', states: ['off', 'on', 'disabled', 'disabled-on'] }]
+    name: 'Radio',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'off', values: ['off', 'on', 'disabled', 'disabled-on'] },
+    slots: ['label']
   },
   {
     id: 'select',
-    stateSets: [{ id: 'state', states: ['placeholder', 'value', 'open', 'disabled'] }]
+    name: 'Select',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'placeholder', values: ['placeholder', 'value', 'open', 'disabled'] },
+    slots: ['placeholder', 'value']
   },
   {
     id: 'tabs',
-    stateSets: [{ id: 'state', states: ['first-selected', 'second-selected', 'disabled'] }]
+    name: 'Tabs',
+    group: 'navigation',
+    platforms: EVERY_PLATFORM,
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'first-selected', values: ['first-selected', 'second-selected', 'disabled'] },
+    slots: ['tabs']
   },
   {
     id: 'toast',
-    stateSets: [{ id: 'variant', states: ['default', 'success', 'destructive'] }]
+    name: 'Toast',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
+    variants: { default: 'default', values: ['default', 'success', 'destructive'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['label', 'action']
   },
   {
     id: 'textarea',
+    name: 'Textarea',
+    group: 'inputs',
+    platforms: EVERY_PLATFORM,
     enforcement: 'strict',
-    stateSets: [{ id: 'interaction', states: ['empty', 'value', 'focused', 'invalid', 'disabled'] }]
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'empty', values: ['empty', 'value', 'focused', 'invalid', 'disabled'] },
+    slots: ['label', 'placeholder', 'hint']
   },
   {
     id: 'avatar',
+    name: 'Avatar',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
     enforcement: 'strict',
-    stateSets: [
-      { id: 'size', states: ['sm', 'md', 'lg'] },
-      { id: 'content', states: ['initials', 'fallback', 'status'] }
-    ]
+    variants: ONLY_DEFAULT,
+    sizes: { default: 'md', values: ['sm', 'md', 'lg'] },
+    states: { default: 'initials', values: ['initials', 'fallback', 'status'] },
+    slots: ['initials']
   },
   {
     id: 'progress',
+    name: 'Progress',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
     enforcement: 'strict',
-    stateSets: [{ id: 'progress', states: ['value', 'complete', 'indeterminate'] }]
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'value', values: ['value', 'complete', 'indeterminate'] },
+    slots: ['label']
   },
   {
     id: 'tooltip',
+    name: 'Tooltip',
+    group: 'feedback',
+    platforms: ['web', 'desktop'],
     enforcement: 'strict',
-    stateSets: [{ id: 'placement', states: ['top', 'bottom'] }]
+    variants: { default: 'top', values: ['top', 'bottom'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['label']
   },
   {
     id: 'inline-alert',
+    name: 'Inline alert',
+    group: 'feedback',
+    platforms: EVERY_PLATFORM,
     enforcement: 'strict',
-    stateSets: [{ id: 'tone', states: ['info', 'success', 'warning', 'destructive'] }]
+    variants: { default: 'info', values: ['info', 'success', 'warning', 'destructive'] },
+    sizes: APP_CHOSEN,
+    states: ONLY_DEFAULT,
+    slots: ['title', 'message']
   },
   {
     id: 'segmented-control',
+    name: 'Segmented control',
+    group: 'navigation',
+    platforms: EVERY_PLATFORM,
     enforcement: 'strict',
-    stateSets: [{ id: 'state', states: ['first-selected', 'second-selected', 'disabled'] }]
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'first-selected', values: ['first-selected', 'second-selected', 'disabled'] },
+    slots: ['options']
   },
   {
     id: 'table-row',
+    name: 'Table row',
+    group: 'structure',
+    platforms: ['web', 'desktop'],
     enforcement: 'strict',
-    stateSets: [{ id: 'state', states: ['default', 'hover', 'selected'] }]
+    variants: ONLY_DEFAULT,
+    sizes: APP_CHOSEN,
+    states: { default: 'default', values: ['default', 'hover', 'selected'] },
+    slots: ['cells']
   }
 ];
 
-const BASE_PRIMITIVE_IDS = new Set(BASE_PRIMITIVE_CONTRACT.map(entry => entry.id));
+const BASE_PRIMITIVES_BY_ID = new Map(BASE_PRIMITIVE_CONTRACT.map(entry => [entry.id, entry]));
 
 export function isBasePrimitive(id: string): boolean {
-  return BASE_PRIMITIVE_IDS.has(id);
+  return BASE_PRIMITIVES_BY_ID.has(id);
+}
+
+export function basePrimitive(id: string): BasePrimitiveContractEntry | undefined {
+  return BASE_PRIMITIVES_BY_ID.get(id);
+}
+
+export function primitiveGroupName(groupId: string): string | undefined {
+  return PRIMITIVE_GROUPS.find(group => group.id === groupId)?.name;
 }
 
 /** Primitives a project declares outside the closed set; each belongs in components instead. */
 export function primitivesOutsideSet(primitiveIds: string[]): string[] {
-  return primitiveIds.filter(id => !BASE_PRIMITIVE_IDS.has(id));
+  return primitiveIds.filter(id => !BASE_PRIMITIVES_BY_ID.has(id));
 }
 
 export function primitiveOutsideSetMessage(id: string): string {

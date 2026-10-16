@@ -147,28 +147,28 @@
   font-weight: 500;
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] {
   gap: var(--app-space-3);
   padding: 14px;
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__rail,
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__next,
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__badge {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__rail,
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__next,
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__badge {
   display: none;
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__tier {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__tier {
   width: 44px;
   height: 44px;
   border-radius: var(--app-radius-lg);
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__tier b {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__tier b {
   font-size: 17px;
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-state="compact"] .pass-track__meter .progress__bar {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__meter .progress__bar {
   width: 94%;
   background:
     linear-gradient(90deg, var(--app-color-primary) 0 71%, var(--app-color-foreground) 71% 100%);

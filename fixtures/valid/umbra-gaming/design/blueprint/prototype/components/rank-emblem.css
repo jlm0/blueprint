@@ -38,11 +38,9 @@
   opacity: 0.9;
 }
 
-.rank-emblem__tier {
+[data-blueprint-component="rank-emblem"] p.rank-emblem__tier {
   position: relative;
   margin-top: -26%;
-  color: var(--app-color-foreground);
-  font: var(--app-type-label);
   font-weight: 700;
   letter-spacing: 0.04em;
 }

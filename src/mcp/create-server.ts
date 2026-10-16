@@ -6,6 +6,7 @@ import {
   extractBlueprint,
   indexBlueprint,
   initializeBlueprint,
+  migrateBlueprint,
   promoteBlueprint,
   queryBlueprint,
   readBlueprintSelection,
@@ -25,6 +26,8 @@ import {
   indexOutputSchema,
   initInputSchema,
   initOutputSchema,
+  migrateInputSchema,
+  migrateOutputSchema,
   promoteInputSchema,
   promoteOutputSchema,
   queryInputSchema,
@@ -44,6 +47,7 @@ export const BLUEPRINT_MCP_SERVER_VERSION = '0.1.0';
 export const BLUEPRINT_MCP_TOOL_NAMES = [
   'init',
   'validate',
+  'migrate',
   'index',
   'query',
   'extract',
@@ -60,7 +64,7 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
+        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives and components share one reusable contract, described in the AGENTS.md of each sidecar; every validation error ends with "Fix:" and the exact change to make. When a tool reports an older schema, run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
   const activeServeHandles = new Map<string, BlueprintServeHandle>();
@@ -92,6 +96,18 @@ export function createBlueprintMcpServer(): McpServer {
         const output = await validateBlueprint(input, context.mcpReq.signal);
         return toolResult(output, !output.ok);
       })
+  );
+
+  server.registerTool(
+    'migrate',
+    {
+      title: 'Migrate Blueprint',
+      description:
+        'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result; each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project already on the current schema is left unchanged.',
+      inputSchema: migrateInputSchema,
+      outputSchema: migrateOutputSchema
+    },
+    async (input, context) => executeTool(() => migrateBlueprint(input, context.mcpReq.signal))
   );
 
   server.registerTool(

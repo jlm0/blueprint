@@ -1,15 +1,14 @@
 import type {
   BlueprintProjectBundle,
-  BoundaryDependency,
-  ComponentDefinition,
   FramePreset,
-  PrimitiveDefinition,
-  PrototypeSource,
   PrototypeUseDeclaration,
+  ReusableDefinition,
+  ReusableKind,
   ReviewCondition,
   ScreenDefinition
 } from '../core/types';
 import { brandMarkSourceIssues } from '../core/brand-lint';
+import { axisIds } from '../core/reusable-contract';
 
 /**
  * Identifies the canonical source boundary to compile.
@@ -31,9 +30,9 @@ export interface CompilePrototypeDocumentOptions {
   target: PrototypeCompileTarget;
   /** Declared target state. The first declared state is used when omitted. */
   state?: string;
-  /** Declared primitive variant (primitive targets only), e.g. for variant × state review matrices. */
+  /** Declared reusable variant (primitive and component targets only); the variant default when omitted. */
   variant?: string;
-  /** Declared primitive size (primitive targets only). */
+  /** Declared reusable size (primitive and component targets only); the size default when omitted. */
   size?: string;
   /** Frame preset the screen renders in; exposes its safe-area insets as `--blueprint-safe-area-*`. */
   framePreset?: FramePreset;
@@ -52,6 +51,10 @@ export interface ObservedPrototypeUse {
   kind: 'primitive' | 'component';
   /** App-owned local reusable-boundary ID. */
   id: string;
+  /** Variant selected for this instance, the reusable's default when the placement names none. */
+  variant: string;
+  /** Size selected for this instance, the reusable's default when the placement names none. */
+  size: string;
   /** Deterministic state selected for this instance. */
   state: string;
 }
@@ -121,8 +124,13 @@ interface SourceBoundary {
   kind: PrototypeCompileTarget['kind'];
   id: string;
   name: string;
-  prototype: PrototypeSource & { slots?: string[]; assetRefs?: string[] };
-  uses: BoundaryDependency[];
+  prototype: { source: string; styles: string[]; assetRefs?: string[] };
+  /** Reusables the source renders, checked against what it actually renders. */
+  renderedUses: PrototypeUseDeclaration[];
+  states: string[];
+  defaultState: string;
+  /** The full definition, for primitive and component boundaries. */
+  reusable?: ReusableDefinition;
 }
 
 interface CompilerContext {
@@ -186,7 +194,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
     styleRefs: [],
     styleRefSet: new Set()
   };
-  const fragment = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelVariant(boundary, options.variant, options.size));
+  const fragment = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelAxes(boundary, options.variant, options.size));
   const appCss = context.styleRefs.map(styleRef => loadAndRewriteStyle(context, styleRef)).join('\n\n');
   const tokenCss = createTokenCss(options.bundle);
   const targetBoundaryId = boundaryId(options.bundle, boundary);
@@ -223,13 +231,13 @@ export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): Pro
   const targets: Array<{ target: PrototypeCompileTarget; state: string }> = [];
   for (const primitive of bundle.primitives.primitives) {
     if (primitive.prototype) {
-      for (const state of primitive.prototype.states) {
+      for (const state of axisIds(primitive.states)) {
         targets.push({ target: { kind: 'primitive', id: primitive.id }, state });
       }
     }
   }
   for (const component of bundle.components.components) {
-    for (const state of component.prototype.states) {
+    for (const state of axisIds(component.states)) {
       targets.push({ target: { kind: 'component', id: component.id }, state });
     }
   }
@@ -308,21 +316,39 @@ export function selectPrototypeReviewCondition(
   };
 }
 
-function resolveTopLevelVariant(boundary: SourceBoundary, variant: string | undefined, size: string | undefined): ForwardedInvocationAttributes {
-  if (!variant && !size) {
+function resolveTopLevelAxes(boundary: SourceBoundary, variant: string | undefined, size: string | undefined): ForwardedInvocationAttributes {
+  if (!boundary.reusable) {
+    if (variant || size) {
+      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a ${variant ? 'variant' : 'size'}; only primitives and components have them.`);
+    }
     return {};
   }
-  if (boundary.kind !== 'primitive') {
-    throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a primitive ${variant ? 'variant' : 'size'}.`);
-  }
-  const primitive = boundary.prototype as PrimitiveDefinition['prototype'];
-  if (variant && !primitive?.variants.includes(variant)) {
-    throw new Error(`Primitive "${boundary.id}" does not declare variant "${variant}".`);
-  }
-  if (size && !primitive?.sizes?.includes(size)) {
-    throw new Error(`Primitive "${boundary.id}" does not declare size "${size}".`);
-  }
+  assertDeclaredAxisValue(boundary, 'variant', variant);
+  assertDeclaredAxisValue(boundary, 'size', size);
   return { ...(variant ? { variant } : {}), ...(size ? { size } : {}) };
+}
+
+function assertDeclaredAxisValue(boundary: SourceBoundary, axis: 'variant' | 'size', value: string | undefined): void {
+  if (value === undefined || !boundary.reusable) return;
+  const declared = axisIds(axis === 'variant' ? boundary.reusable.variants : boundary.reusable.sizes);
+  if (!declared.includes(value)) {
+    throw new Error(`${boundary.kind} "${boundary.id}" does not declare ${axis} "${value}"; it declares ${declared.map(id => `"${id}"`).join(', ')}.`);
+  }
+}
+
+/** Every reusable root carries all three axes, so its CSS can select on each one. */
+function resolveReusableAxes(boundary: SourceBoundary, state: string, attributes: ForwardedInvocationAttributes): ForwardedInvocationAttributes {
+  const reusable = boundary.reusable;
+  if (!reusable) return attributes;
+  const variant = attributes.variant ?? reusable.variants.default;
+  const size = attributes.size ?? reusable.sizes.default;
+  for (const combination of reusable.unsupported ?? []) {
+    const value = combination.axis === 'variant' ? variant : size;
+    if (combination.value === value && combination.state === state) {
+      throw new Error(`${boundary.kind} "${boundary.id}" does not support ${combination.axis} "${value}" in state "${state}": ${combination.reason}`);
+    }
+  }
+  return { ...attributes, variant, size };
 }
 
 function compileBoundaryFragment(
@@ -347,9 +373,9 @@ function compileBoundaryFragment(
   let fragment = rewriteHtmlAssetRefs(context, source, boundary.prototype.source);
   fragment = rewriteNavigationAttributes(fragment, boundary.prototype.source);
   fragment = markSlotAuthor(fragment, `${boundary.kind}:${boundary.id}`);
-  fragment = applySlots(fragment, invocationChildren, boundary.prototype.slots ?? [], currentBoundaryId);
+  fragment = applySlots(fragment, invocationChildren, boundary, currentBoundaryId);
   fragment = selectFragmentState(fragment, state);
-  fragment = applyInvocationAttributes(fragment, invocationAttributes, boundary);
+  fragment = applyInvocationAttributes(fragment, resolveReusableAxes(boundary, state, invocationAttributes), boundary);
 
   const nextStack = [...stack, currentBoundaryId];
   while (true) {
@@ -376,11 +402,14 @@ function compileBoundaryFragment(
     const targetState = resolveState(target, useAttributes.get('state'));
     const forwardedAttributes = resolveForwardedInvocationAttributes(useAttributes, target);
     const targetBoundaryId = boundaryId(context.bundle, target);
+    const axes = resolveReusableAxes(target, targetState, forwardedAttributes);
     context.observedUses.push({
       sourceBoundaryId: boundaryId(context.bundle, owner),
       targetBoundaryId,
       kind,
       id,
+      variant: axes.variant ?? 'default',
+      size: axes.size ?? 'default',
       state: targetState
     });
     const rendered = compileBoundaryFragment(context, target, targetState, use.children, nextStack, forwardedAttributes);
@@ -497,26 +526,27 @@ function resolveBoundary(bundle: BlueprintProjectBundle, target: PrototypeCompil
   return screenBoundary(screen);
 }
 
-function primitiveBoundary(primitive: PrimitiveDefinition): SourceBoundary {
+function primitiveBoundary(primitive: ReusableDefinition): SourceBoundary {
   if (!primitive.prototype) {
     throw new Error(`Primitive "${primitive.id}" is missing its canonical prototype source.`);
   }
-  return {
-    kind: 'primitive',
-    id: primitive.id,
-    name: primitive.name,
-    prototype: primitive.prototype,
-    uses: primitive.uses ?? []
-  };
+  return reusableBoundary('primitive', primitive);
 }
 
-function componentBoundary(component: ComponentDefinition): SourceBoundary {
+function componentBoundary(component: ReusableDefinition): SourceBoundary {
+  return reusableBoundary('component', component);
+}
+
+function reusableBoundary(kind: ReusableKind, reusable: ReusableDefinition): SourceBoundary {
   return {
-    kind: 'component',
-    id: component.id,
-    name: component.name,
-    prototype: component.prototype,
-    uses: component.uses
+    kind,
+    id: reusable.id,
+    name: reusable.name,
+    prototype: reusable.prototype,
+    renderedUses: (reusable.uses ?? []).map(use => ({ kind: use.kind, id: use.id })),
+    states: axisIds(reusable.states),
+    defaultState: reusable.states?.default,
+    reusable
   };
 }
 
@@ -524,21 +554,26 @@ function screenBoundary(screen: ScreenDefinition): SourceBoundary {
   if (!screen.prototype) {
     throw new Error(`Screen "${screen.id}" is missing its browser-native prototype source.`);
   }
+  const uses = screen.sections.flatMap(section => section.uses);
   return {
     kind: 'screen',
     id: screen.id,
     name: screen.name,
     prototype: screen.prototype,
-    uses: screen.sections.flatMap(section => section.uses)
+    renderedUses: screen.prototype.renderedUses ?? uses.flatMap(use => (
+      use.kind === 'primitive' || use.kind === 'component' ? [{ kind: use.kind, id: use.id }] : []
+    )),
+    states: screen.prototype.states,
+    defaultState: screen.prototype.states[0]
   };
 }
 
 function resolveState(boundary: SourceBoundary, requestedState: string | undefined): string {
-  const state = requestedState ?? boundary.prototype.states[0];
+  const state = requestedState ?? boundary.defaultState;
   if (!state) {
     throw new Error(`${boundary.kind} "${boundary.id}" has no declared prototype state.`);
   }
-  if (!boundary.prototype.states.includes(state)) {
+  if (!boundary.states.includes(state)) {
     throw new Error(`${boundary.kind} "${boundary.id}" does not declare prototype state "${state}".`);
   }
   return state;
@@ -665,16 +700,28 @@ function createTokenCss(bundle: BlueprintProjectBundle): string {
   return `:root {\n${declarations.join('\n')}\n}`;
 }
 
-function applySlots(template: string, invocationChildren: string, declaredSlots: string[], boundary: string): string {
+function applySlots(template: string, invocationChildren: string, boundary: SourceBoundary, label: string): string {
   const slotContent = collectInvocationSlots(invocationChildren);
-  for (const name of slotContent.keys()) {
-    if (name !== 'default' && !declaredSlots.includes(name)) {
-      throw new Error(`${boundary} received undeclared slot "${name}".`);
+  const slots = boundary.reusable?.slots ?? [];
+  const declaredSlots = slots.map(slot => slot.id);
+  for (const [name, content] of slotContent) {
+    const slot = slots.find(candidate => candidate.id === name);
+    if (!slot) {
+      if (name === 'default' && !boundary.reusable) continue;
+      throw new Error(name === 'default'
+        ? `${label} received content outside any named slot, but declares no "default" slot.`
+        : `${label} received undeclared slot "${name}".`);
+    }
+    const refused = slotContentAccepts(content).filter(accept => !slot.accepts.includes(accept));
+    if (refused.length > 0) {
+      throw new Error(
+        `${label} slot "${name}" received ${refused.join(', ')}, which it does not accept; it accepts ${slot.accepts.join(', ')}.`
+      );
     }
   }
 
   let result = template;
-  for (const slotName of declaredSlots) {
+  for (const slotName of declaredSlots.filter(id => id !== 'default')) {
     const content = slotContent.get(slotName);
     result = replaceNamedSlotElements(result, slotName, content);
     result = replaceDataSlotContents(result, slotName, content);
@@ -683,9 +730,81 @@ function applySlots(template: string, invocationChildren: string, declaredSlots:
   const hadDefaultPlaceholder = /<slot(?:\s[^>]*)?>/i.test(result);
   result = replaceDefaultSlotElements(result, defaultContent);
   if (defaultContent && !hadDefaultPlaceholder) {
-    throw new Error(`${boundary} received default slot content but declares no default slot placeholder.`);
+    throw new Error(`${label} received default slot content but declares no default slot placeholder.`);
   }
   return result;
+}
+
+/** One `<blueprint-use>` found in markup, with the content it passes to each slot. */
+export interface UsePlacement {
+  kind: string;
+  ref: string;
+  attributes: Map<string, string>;
+  slots: Map<string, string>;
+}
+
+/** Every `<blueprint-use>` in the markup, outer placements before the ones nested in their slots. */
+export function listUsePlacements(markup: string): UsePlacement[] {
+  const placements: UsePlacement[] = [];
+  let rest = markup;
+  for (let use = findFirstUseElement(rest); use; use = findFirstUseElement(rest)) {
+    const attributes = parseUseAttributes(use.attributes, 'markup');
+    placements.push({
+      kind: attributes.get('kind') ?? '',
+      ref: attributes.get('ref') ?? '',
+      attributes,
+      slots: collectInvocationSlots(use.children)
+    });
+    placements.push(...listUsePlacements(use.children));
+    rest = rest.slice(use.end);
+  }
+  return placements;
+}
+
+/** The default content each slot of a reusable source holds, keyed by slot id; a bare `<slot>` is `default`. */
+export function sourceSlotContents(source: string): Map<string, string> {
+  const contents = new Map<string, string>();
+  const dataSlot = /<([a-zA-Z][\w:-]*)\b[^>]*\bdata-blueprint-slot\s*=\s*(['"])([^'"]+)\2[^>]*>/gi;
+  for (let open = dataSlot.exec(source); open; open = dataSlot.exec(source)) {
+    const openEnd = open.index + open[0].length - 1;
+    const end = findElementEnd(source, open[1], open.index, openEnd);
+    const inner = end === openEnd + 1 ? '' : source.slice(openEnd + 1, source.lastIndexOf('<', end - 1));
+    contents.set(open[3], `${contents.get(open[3]) ?? ''}${inner}`);
+  }
+  for (const match of source.matchAll(/<slot\b([^>]*)>([\s\S]*?)<\/slot\s*>|<slot\b([^>]*?)\s*\/>/gi)) {
+    const attributes = match[1] ?? match[3] ?? '';
+    const id = /\bname\s*=\s*(['"])([^'"]+)\1/i.exec(attributes)?.[2] ?? 'default';
+    contents.set(id, `${contents.get(id) ?? ''}${match[2] ?? ''}`);
+  }
+  return contents;
+}
+
+/** What slot content is: `text`, `graphic`, `brand-mark`, or the `primitive:<id>` and `component:<id>` it places. */
+export function slotContentAccepts(content: string): string[] {
+  const accepts = new Set<string>();
+  let rest = '';
+  let remaining = content;
+  for (let use = findFirstUseElement(remaining); use; use = findFirstUseElement(remaining)) {
+    const attributes = parseUseAttributes(use.attributes, 'slot content');
+    const kind = attributes.get('kind');
+    accepts.add(kind === 'brand-mark' ? 'brand-mark' : `${kind}:${attributes.get('ref')}`);
+    rest += remaining.slice(0, use.start);
+    remaining = remaining.slice(use.end);
+  }
+  rest += remaining;
+  const withoutGraphics = rest
+    .replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, () => {
+      accepts.add('graphic');
+      return '';
+    })
+    .replace(/<(?:img|picture)\b[^>]*>/gi, () => {
+      accepts.add('graphic');
+      return '';
+    });
+  if (withoutGraphics.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()) {
+    accepts.add('text');
+  }
+  return [...accepts].sort();
 }
 
 /** Slot attributes inside a nested `<blueprint-use>` belong to that use, so the scan skips over it. */
@@ -895,25 +1014,9 @@ function resolveForwardedInvocationAttributes(
     throw new Error(`${target.kind} "${target.id}" received an unsafe class invocation attribute.`);
   }
   const variant = attributes.get('variant');
-  if (variant) {
-    if (target.kind !== 'primitive') {
-      throw new Error(`${target.kind} "${target.id}" cannot receive a primitive variant.`);
-    }
-    const primitive = target.prototype as PrimitiveDefinition['prototype'];
-    if (!primitive?.variants.includes(variant)) {
-      throw new Error(`Primitive "${target.id}" does not declare variant "${variant}".`);
-    }
-  }
+  assertDeclaredAxisValue(target, 'variant', variant);
   const size = attributes.get('size');
-  if (size) {
-    if (target.kind !== 'primitive') {
-      throw new Error(`${target.kind} "${target.id}" cannot receive a primitive size.`);
-    }
-    const primitive = target.prototype as PrimitiveDefinition['prototype'];
-    if (!primitive?.sizes?.includes(size)) {
-      throw new Error(`Primitive "${target.id}" does not declare size "${size}".`);
-    }
-  }
+  assertDeclaredAxisValue(target, 'size', size);
   const href = attributes.get('href');
   if (href && !isSafePrototypeHref(href)) {
     throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}".`);
@@ -1088,7 +1191,7 @@ function isSafePrototypeHref(href: string): boolean {
 }
 
 function declaresUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): boolean {
-  return boundary.uses.some(dependency => dependency.kind === use.kind && dependency.id === use.id);
+  return boundary.renderedUses.some(dependency => dependency.kind === use.kind && dependency.id === use.id);
 }
 
 function assertDeclaredUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): void {
@@ -1098,11 +1201,8 @@ function assertDeclaredUse(boundary: SourceBoundary, use: PrototypeUseDeclaratio
 }
 
 function assertRenderedUses(boundary: SourceBoundary, observed: ObservedPrototypeUse[]): void {
-  const declaredRenderedUses = boundary.prototype.renderedUses ?? boundary.uses.filter(
-    dependency => dependency.kind === 'primitive' || dependency.kind === 'component'
-  );
   const observedKeys = [...new Set(observed.map(use => `${use.kind}:${use.id}`))].sort();
-  const declaredKeys = [...new Set(declaredRenderedUses.map(use => `${use.kind}:${use.id}`))].sort();
+  const declaredKeys = [...new Set(boundary.renderedUses.map(use => `${use.kind}:${use.id}`))].sort();
   if (observedKeys.join('\n') !== declaredKeys.join('\n')) {
     throw new Error(
       `${boundary.kind} "${boundary.id}" rendered uses do not match its declared reusable dependencies.`

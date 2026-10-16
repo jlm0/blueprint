@@ -17,20 +17,23 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--app-space-3);
-  color: var(--app-color-muted);
+}
+
+[data-blueprint-component="account-tile"] [data-blueprint-primitive="text"].account-tile__kind,
+[data-blueprint-component="account-tile"] [data-blueprint-primitive="text"].account-tile__meta {
   font: var(--app-type-caption);
 }
 
-.account-tile__number {
+[data-blueprint-component="account-tile"] [data-blueprint-primitive="text"].account-tile__number {
   font: var(--app-type-code);
   font-size: 11px;
 }
 
-.account-tile__name {
+[data-blueprint-component="account-tile"] [data-blueprint-primitive="text"].account-tile__name {
   font: var(--app-type-heading);
 }
 
-.account-tile__balance {
+[data-blueprint-component="account-tile"] [data-blueprint-primitive="text"].account-tile__balance {
   font: var(--app-type-body);
   font-size: 17px;
   font-weight: 500;
@@ -38,10 +41,8 @@
   letter-spacing: -0.01em;
 }
 
-.account-tile__meta {
+[data-blueprint-component="account-tile"] .account-tile__meta {
   margin-top: var(--app-space-2);
-  color: var(--app-color-muted);
-  font: var(--app-type-caption);
 }
 
 .account-tile__check {
@@ -68,15 +69,15 @@
   margin-right: 26px;
 }
 
-[data-blueprint-component="account-tile"][data-blueprint-state="compact"] {
+[data-blueprint-component="account-tile"][data-blueprint-size="compact"] {
   min-width: 0;
   padding: 14px;
 }
 
-[data-blueprint-component="account-tile"][data-blueprint-state="compact"] .account-tile__top {
+[data-blueprint-component="account-tile"][data-blueprint-size="compact"] .account-tile__top {
   margin-bottom: var(--app-space-2);
 }
 
-[data-blueprint-component="account-tile"][data-blueprint-state="compact"] .account-tile__balance {
+[data-blueprint-component="account-tile"][data-blueprint-size="compact"] .account-tile__balance {
   font-size: 15px;
 }

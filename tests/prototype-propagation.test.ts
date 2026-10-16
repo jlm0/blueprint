@@ -149,8 +149,7 @@ describe('canonical prototype propagation', () => {
       'umbra-gaming/token-group/color',
       'umbra-gaming/token-group/shape',
       'umbra-gaming/token-group/space',
-      'umbra-gaming/token-group/typography',
-      'umbra-gaming/state-set/badge/variant'
+      'umbra-gaming/token-group/typography'
     ]);
     assert.ok(first.resolvedTokens.some(token => token.id === 'color.primary'));
     assert.ok(first.resolvedTokens.some(token => token.id === 'typography.body'));

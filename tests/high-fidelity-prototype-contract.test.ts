@@ -7,9 +7,8 @@ import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, listBoundaryReferences, showBoundary } from '../src/core/query';
 import type {
   BlueprintProjectBundle,
-  BoundaryDependency,
+  ComponentFile,
   DeepHandoffPacket,
-  PrimitiveDefinition,
   ScreenDefinition
 } from '../src/core/types';
 import { createReadinessReport, validateProject } from '../src/core/validate';
@@ -20,47 +19,15 @@ import { captureInputSchema } from '../src/mcp/schemas';
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 
-interface PrototypeSource {
-  source: string;
-  styles: string[];
-  states: string[];
-}
-
-interface RedPrimitive extends PrimitiveDefinition {
-  prototype: PrototypeSource & {
-    slots: string[];
-    variants: string[];
-    accessibilityIntent: string;
-    tokenRoles: Record<string, string>;
-  };
-}
-
-interface RedComponentDefinition {
-  id: string;
-  name: string;
-  description: string;
-  section: string;
-  uses: BoundaryDependency[];
-  tokenGroupIds: string[];
-  prototype: PrototypeSource & { slots: string[] };
-}
-
-interface RedComponentFile {
-  schemaVersion: string;
-  projectId: string;
-  sections: BlueprintProjectBundle['components']['sections'];
-  components: RedComponentDefinition[];
-}
-
 interface RedScreen extends ScreenDefinition {
-  prototype: PrototypeSource & {
+  prototype: NonNullable<ScreenDefinition['prototype']> & {
     assetRefs: string[];
     reviewConditions: Array<{ id: string; framePresetId: string; state: string }>;
   };
 }
 
 interface HighFidelityBundle extends BlueprintProjectBundle {
-  components: RedComponentFile;
+  components: ComponentFile;
   sourceFiles: BlueprintProjectBundle['sourceFiles'] & {
     components: string;
     prototypeSources: string[];
@@ -85,7 +52,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
   it('T1/R1-R2 rejects primitive prototype sources that escape the app-owned sidecar', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
-    const primitive = (bundle.primitives.primitives as RedPrimitive[])[0];
+    const primitive = bundle.primitives.primitives[0];
     assert.ok(primitive?.prototype, 'red fixture must declare a canonical primitive prototype source');
     primitive.prototype.source = '../../outside-sidecar/button.html';
 
@@ -162,20 +129,15 @@ describe('Blueprint high-fidelity prototype red contract', () => {
             'mira-ai/primitive/badge',
             'mira-ai/component/prompt-card',
             'mira-ai/component/composer',
-            'mira-ai/state-set/nav-bar/slots',
             'mira-ai/token-group/color',
             'mira-ai/token-group/shape',
             'mira-ai/token-group/size',
             'mira-ai/token-group/space',
             'mira-ai/token-group/typography',
             'mira-ai/primitive/segmented-control',
-            'mira-ai/state-set/badge/variant',
+            'mira-ai/primitive/icon',
             'mira-ai/primitive/button',
-            'mira-ai/state-set/segmented-control/state',
-            'mira-ai/token-group/motion',
-            'mira-ai/state-set/button/interaction',
-            'mira-ai/state-set/button/size',
-            'mira-ai/state-set/button/variant'
+            'mira-ai/token-group/motion'
           ],
           'T3 contract gap: deep extraction must expose the complete declared composition graph in stable order'
         );
@@ -306,7 +268,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 async function withComponents(bundle: BlueprintProjectBundle): Promise<HighFidelityBundle> {
   const components = JSON.parse(
     await readFile(path.join(fixtureRoot, 'components.json'), 'utf8')
-  ) as RedComponentFile;
+  ) as ComponentFile;
   return Object.assign(bundle, {
     components,
     sourceFiles: {

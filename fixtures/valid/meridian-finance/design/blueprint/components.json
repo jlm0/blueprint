@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "meridian-finance",
-  "sections": [
+  "groups": [
     {
       "id": "navigation",
       "name": "Navigation",
@@ -26,67 +26,87 @@
   "components": [
     {
       "id": "web-header",
-      "name": "Web Header",
+      "name": "Web header",
       "description": "Desktop top bar with the wordmark, primary sections, search, the move-money command, and the member.",
-      "section": "navigation",
+      "group": "navigation",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "tabs",
-          "reason": "Primary section navigation.",
-          "binding": {
-            "slot": "sections",
-            "state": "first-selected, second-selected"
-          }
+          "reason": "Primary section navigation."
         },
         {
           "kind": "primitive",
           "id": "input",
-          "reason": "Global search.",
-          "binding": {
-            "slot": "search",
-            "variant": "filled",
-            "state": "empty"
-          }
+          "reason": "Global search."
         },
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Move money command.",
-          "binding": {
-            "slot": "action",
-            "variant": "primary",
-            "copy": "Move money"
-          }
+          "reason": "Move money command."
         },
         {
           "kind": "primitive",
           "id": "avatar",
-          "reason": "Signed-in member.",
-          "binding": {
-            "slot": "member",
-            "state": "initials"
-          }
+          "reason": "Signed-in member."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "overview",
+        "values": [
+          {
+            "id": "overview",
+            "name": "Overview",
+            "description": "Overview is the selected section tab."
+          },
+          {
+            "id": "transactions",
+            "name": "Transactions",
+            "description": "Transactions is the selected section tab."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [],
+      "prototype": {
+        "source": "prototype/components/web-header.html",
+        "styles": [
+          "prototype/components/web-header.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/web-header.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/web-header.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/web-header.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A banner landmark with a home link, a tablist that announces the selected section, a search field, the move-money button, and the member avatar.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -109,71 +129,133 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/web-header.html",
-        "styles": [
-          "prototype/components/web-header.css"
-        ],
-        "slots": [],
-        "states": [
-          "overview",
-          "transactions"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "tabs"
-          },
-          {
-            "kind": "primitive",
-            "id": "input"
-          },
-          {
-            "kind": "primitive",
-            "id": "button"
-          },
-          {
-            "kind": "primitive",
-            "id": "avatar"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/web-header.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/web-header.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/web-header.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "balance-card",
-      "name": "Balance Card",
+      "name": "Balance card",
       "description": "A cash figure with its change since the period start. Hero on the editorial overview, card in dashboards, compact on phone.",
-      "section": "accounts",
+      "group": "accounts",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Period change.",
-          "binding": {
-            "slot": "change",
-            "variant": "success",
-            "data": "balance.changePercent"
-          }
+          "reason": "Period change."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Borderless, with a 56px figure for the phone home screen."
+          }
+        ]
+      },
+      "states": {
+        "default": "card",
+        "values": [
+          {
+            "id": "hero",
+            "name": "Hero",
+            "description": "Borderless, with a 112px figure for the editorial overview."
+          },
+          {
+            "id": "card",
+            "name": "Card",
+            "description": "A bordered surface card with a 46px figure, for dashboards."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "label",
+          "name": "Label",
+          "description": "What the figure counts, such as total cash.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "amount",
+          "name": "Amount",
+          "description": "The whole-dollar figure, after the muted currency sign.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "cents",
+          "name": "Cents",
+          "description": "The decimal part with its point, set smaller and muted.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "change",
+          "name": "Change",
+          "description": "The percentage change since the period start, inside the success badge.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "delta",
+          "name": "Delta",
+          "description": "The signed dollar change and the date it is measured from.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/balance-card.html",
+        "styles": [
+          "prototype/components/balance-card.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/balance-card.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/balance-card.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/balance-card.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "Static text read in order: the label, the figure with its cents, then the change and delta; nothing in it is interactive.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -197,66 +279,111 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/balance-card.html",
-        "styles": [
-          "prototype/components/balance-card.css"
-        ],
-        "slots": [
-          "label",
-          "amount",
-          "cents",
-          "change",
-          "delta"
-        ],
-        "states": [
-          "hero",
-          "card",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/balance-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/balance-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/balance-card.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "cashflow-chart",
-      "name": "Cash Flow Chart",
+      "name": "Cash flow chart",
       "description": "Money in above and money out below a zero line for each month, with the current month called out.",
-      "section": "accounts",
+      "group": "accounts",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "segmented-control",
-          "reason": "Chart range.",
-          "binding": {
-            "slot": "range",
-            "state": "first-selected",
-            "copy": "12M / 6M / YTD"
-          }
+          "reason": "Chart range."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "The last six months only, without the range control, scale labels, callouts, or legend."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Twelve months of bars with the range control, scale labels, current-month callouts, and legend."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "The muted chart title above the figure, such as Cash flow.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "figure",
+          "name": "Figure",
+          "description": "The net cash flow for the current month.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "caption",
+          "name": "Caption",
+          "description": "One line on the current month, with money in and money out.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/cashflow-chart.html",
+        "styles": [
+          "prototype/components/cashflow-chart.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/cashflow-chart.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/cashflow-chart.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/cashflow-chart.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A figure whose plot is one image with a text summary of the trend; the range control is a radio group and the bars are hidden from assistive technology.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -279,72 +406,133 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/cashflow-chart.html",
-        "styles": [
-          "prototype/components/cashflow-chart.css"
-        ],
-        "slots": [
-          "title",
-          "figure",
-          "caption"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "segmented-control"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/cashflow-chart.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/cashflow-chart.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/cashflow-chart.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "transaction-row",
-      "name": "Transaction Row",
+      "name": "Transaction row",
       "description": "One ledger entry with merchant mark, context, signed amount, and date.",
-      "section": "activity",
+      "group": "activity",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "avatar",
-          "reason": "Merchant monogram.",
-          "binding": {
-            "slot": "mark",
-            "state": "initials"
-          }
+          "reason": "Merchant monogram."
         },
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Pending marker.",
-          "binding": {
-            "slot": "status",
-            "variant": "tonal",
-            "copy": "Pending"
-          }
+          "reason": "Pending marker."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "A posted entry with its signed amount and date."
+          },
+          {
+            "id": "pending",
+            "name": "Pending",
+            "description": "Shows a pending badge in place of the date and mutes the amount."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "mark",
+          "name": "Mark",
+          "description": "Two-letter merchant monogram inside the avatar.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "name",
+          "name": "Name",
+          "description": "The merchant or counterparty, truncated to one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "description": "Category and account, truncated to one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "amount",
+          "name": "Amount",
+          "description": "The signed amount, with a minus sign for money out.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "date",
+          "name": "Date",
+          "description": "The posting date, hidden while the entry is pending.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/transaction-row.html",
+        "styles": [
+          "prototype/components/transaction-row.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/transaction-row.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/transaction-row.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/transaction-row.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link whose name reads the merchant, context, amount, and date or pending badge; the monogram is an image named by the merchant.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -366,58 +554,133 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/transaction-row.html",
-        "styles": [
-          "prototype/components/transaction-row.css"
-        ],
-        "slots": [
-          "mark",
-          "name",
-          "meta",
-          "amount",
-          "date"
-        ],
-        "states": [
-          "default",
-          "pending"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "avatar"
-          },
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/transaction-row.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/transaction-row.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/transaction-row.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "account-tile",
-      "name": "Account Tile",
+      "name": "Account tile",
       "description": "An account with its type, masked number, balance, and share of cash. Selectable as a transfer source.",
-      "section": "accounts",
-      "uses": [],
+      "group": "accounts",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "text",
+          "reason": "The account type, masked number, nickname, balance, and note."
+        }
+      ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Tighter padding and a 15px balance, for the phone home screen."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "An unselected tile with a plain border."
+          },
+          {
+            "id": "selected",
+            "name": "Selected",
+            "description": "Accent border, soft accent ring, and a check mark, for the chosen transfer source."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "kind",
+          "name": "Kind",
+          "description": "The account type, such as Checking, with a rate when it earns one.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "number",
+          "name": "Number",
+          "description": "The masked account number, such as ··4821.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "name",
+          "name": "Name",
+          "description": "The account nickname, such as Operating.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "balance",
+          "name": "Balance",
+          "description": "The account balance with its currency sign.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "description": "A short note, such as its share of cash or when funds are available.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/account-tile.html",
+        "styles": [
+          "prototype/components/account-tile.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/account-tile.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/account-tile.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/account-tile.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link whose name reads the type, masked number, nickname, balance, and note; the check mark is decorative, so the host must expose selection.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -440,61 +703,125 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/account-tile.html",
-        "styles": [
-          "prototype/components/account-tile.css"
-        ],
-        "slots": [
-          "kind",
-          "number",
-          "name",
-          "balance",
-          "meta"
-        ],
-        "states": [
-          "default",
-          "selected",
-          "compact"
-        ],
-        "renderedUses": []
-      }
+      "styleRefs": [
+        "prototype/components/account-tile.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/account-tile.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/account-tile.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "amount-field",
-      "name": "Amount Field",
+      "name": "Amount field",
       "description": "Large money entry with the available balance and currency.",
-      "section": "transfers",
+      "group": "transfers",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Currency code.",
-          "binding": {
-            "slot": "currency",
-            "variant": "outline",
-            "copy": "USD"
-          }
+          "reason": "Currency code."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Centered, without the underline, a 72px figure, and the currency badge above the hint."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "A large figure over a dark underline, with the available balance below."
+          },
+          {
+            "id": "error",
+            "name": "Error",
+            "description": "The underline, caret, and hint turn destructive when the amount is over the balance."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "label",
+          "name": "Label",
+          "description": "The field label, such as Amount.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "amount",
+          "name": "Amount",
+          "description": "The whole-dollar amount being entered.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "cents",
+          "name": "Cents",
+          "description": "The decimal part with its point, set muted.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "hint",
+          "name": "Hint",
+          "description": "The available balance and source account, or what is wrong with the amount.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/amount-field.html",
+        "styles": [
+          "prototype/components/amount-field.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/amount-field.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/amount-field.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/amount-field.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A display of the entered amount rather than a native input: the label, amount, hint, and currency badge are read as text and the caret is hidden.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -518,65 +845,127 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/amount-field.html",
-        "styles": [
-          "prototype/components/amount-field.css"
-        ],
-        "slots": [
-          "label",
-          "amount",
-          "cents",
-          "hint"
-        ],
-        "states": [
-          "default",
-          "error",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/amount-field.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/amount-field.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/amount-field.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "upcoming-payment",
-      "name": "Upcoming Payment",
+      "name": "Upcoming payment",
       "description": "A scheduled outgoing payment with its date, payee, and approval status.",
-      "section": "activity",
+      "group": "activity",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Approval status.",
-          "binding": {
-            "slot": "status",
-            "variant": "tonal",
-            "copy": "Needs approval"
-          }
+          "reason": "Approval status."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "An approved scheduled payment, without a badge."
+          },
+          {
+            "id": "approval",
+            "name": "Approval",
+            "description": "Shows a warning needs-approval badge and tints the date tile border."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "day",
+          "name": "Day",
+          "description": "The day of the month the payment goes out.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "month",
+          "name": "Month",
+          "description": "The short month name, shown in uppercase under the day.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "name",
+          "name": "Name",
+          "description": "The payee and the provider that sends it.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "description": "How often it repeats and the rail and account it leaves from.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "amount",
+          "name": "Amount",
+          "description": "The scheduled amount.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/upcoming-payment.html",
+        "styles": [
+          "prototype/components/upcoming-payment.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/upcoming-payment.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/upcoming-payment.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/upcoming-payment.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link whose name reads the date, payee, schedule, amount, and the approval badge when it shows.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -598,54 +987,144 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/upcoming-payment.html",
-        "styles": [
-          "prototype/components/upcoming-payment.css"
-        ],
-        "slots": [
-          "day",
-          "month",
-          "name",
-          "meta",
-          "amount"
-        ],
-        "states": [
-          "default",
-          "approval"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/upcoming-payment.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/upcoming-payment.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/upcoming-payment.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "transfer-summary",
-      "name": "Transfer Summary",
+      "name": "Transfer summary",
       "description": "What a transfer will send, from where, by which rail, and the balance it leaves.",
-      "section": "transfers",
-      "uses": [],
+      "group": "transfers",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "text",
+          "reason": "The summary eyebrow, the amount, and the settlement note."
+        }
+      ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Hides the eyebrow and amount and tightens the padding, for the phone review step."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The full card with the eyebrow, large amount, detail list, and note."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "amount",
+          "name": "Amount",
+          "description": "The amount being sent, set as the large figure.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "recipient",
+          "name": "Recipient",
+          "description": "The recipient name and masked account.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "source",
+          "name": "Source",
+          "description": "The source account and its masked number.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "method",
+          "name": "Method",
+          "description": "The payment rail, such as Domestic wire.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "arrival",
+          "name": "Arrival",
+          "description": "When the money arrives, or Blocked when it cannot be sent.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "after",
+          "name": "After",
+          "description": "The source balance the transfer leaves, which can be negative.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "note",
+          "name": "Note",
+          "description": "A settlement or approval note under the list.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/transfer-summary.html",
+        "styles": [
+          "prototype/components/transfer-summary.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/transfer-summary.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/transfer-summary.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/transfer-summary.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A complementary landmark with a description list pairing each term, such as To or Fee, with its value; nothing in it is interactive.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -667,26 +1146,17 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/transfer-summary.html",
-        "styles": [
-          "prototype/components/transfer-summary.css"
-        ],
-        "slots": [
-          "amount",
-          "recipient",
-          "source",
-          "method",
-          "arrival",
-          "after",
-          "note"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": []
-      }
+      "styleRefs": [
+        "prototype/components/transfer-summary.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/transfer-summary.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/transfer-summary.css"
+        }
+      ],
+      "prototypeOnly": false
     }
   ]
 }

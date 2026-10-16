@@ -7,7 +7,7 @@ import {
 } from '../src/prototype/compiler';
 import { parseBoundarySelector } from '../src/core/address';
 import { loadProjectFromFs } from '../src/core/load';
-import type { BlueprintProjectBundle, BoundaryDependency } from '../src/core/types';
+import type { BlueprintProjectBundle, BoundaryDependency, ReusableDefinition } from '../src/core/types';
 import { createReadinessReport, validateProject } from '../src/core/validate';
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
@@ -37,26 +37,29 @@ describe('canonical prototype compiler', () => {
     assert.match(first.html, /script-src &#39;none&#39;/);
     assert.match(first.html, new RegExp(escapeRegExpForTest(PROTOTYPE_CONTENT_SECURITY_POLICY.replaceAll("'", '&#39;'))));
     assert.deepEqual(
-      first.observedUses.map(use => `${use.kind}:${use.id}:${use.state}`),
+      first.observedUses.map(use => `${use.kind}:${use.id}:${use.variant}:${use.size}:${use.state}`),
       [
-        'primitive:nav-bar:back-and-right',
-        'primitive:nav-bar:right-only',
-        'component:insight-chart:compact',
-        'primitive:segmented-control:second-selected',
-        'primitive:badge:default',
-        'primitive:badge:default',
-        'primitive:badge:default',
-        'component:prompt-card:compact',
-        'component:prompt-card:compact',
-        'component:prompt-card:compact',
-        'component:composer:compact',
-        'primitive:button:normal',
-        'primitive:badge:default',
-        'primitive:button:normal',
-        'component:composer:compact',
-        'primitive:button:normal',
-        'primitive:badge:default',
-        'primitive:button:normal'
+        'primitive:nav-bar:back-and-right:default:default',
+        'primitive:nav-bar:right-only:default:default',
+        'component:insight-chart:default:compact:default',
+        'primitive:segmented-control:default:default:second-selected',
+        'primitive:badge:outline:default:default',
+        'primitive:badge:outline:default:default',
+        'primitive:badge:outline:default:default',
+        'component:prompt-card:default:compact:default',
+        'primitive:icon:muted:default:default',
+        'component:prompt-card:default:compact:default',
+        'primitive:icon:muted:default:default',
+        'component:prompt-card:default:compact:default',
+        'primitive:icon:muted:default:default',
+        'component:composer:default:compact:default',
+        'primitive:button:ghost:icon:normal',
+        'primitive:badge:accent:default:default',
+        'primitive:button:primary:icon:normal',
+        'component:composer:default:compact:default',
+        'primitive:button:ghost:icon:normal',
+        'primitive:badge:accent:default:default',
+        'primitive:button:primary:icon:normal'
       ]
     );
 
@@ -117,7 +120,7 @@ describe('canonical prototype compiler', () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
     assert.ok(button?.prototype);
-    button.prototype.variants.push('quiet');
+    button.variants.values.push({ id: 'quiet', name: 'Quiet', description: 'A test variant.' });
     focusChat(
       bundle,
       '<main><blueprint-use kind="primitive" ref="button" state="normal" variant="quiet" class="chat-action"><span slot="label" class="slotted-label">Open</span></blueprint-use></main>',
@@ -205,8 +208,9 @@ describe('canonical prototype compiler', () => {
 
   it('credits slot content to the boundary that wrote it unless the container declares it', async () => {
     const original = await loadProjectFromFs(fixtureRoot);
+    acceptInSlot(original.primitives.primitives, 'alert-dialog', 'message', 'primitive:badge');
     const dialogWithBadge =
-      '<main><blueprint-use kind="primitive" ref="alert-dialog" state="neutral"><div slot="message"><blueprint-use kind="primitive" ref="badge" state="default"><span slot="label">Beta</span></blueprint-use></div></blueprint-use></main>';
+      '<main><blueprint-use kind="primitive" ref="alert-dialog" variant="neutral"><div slot="message"><blueprint-use kind="primitive" ref="badge" state="default"><span slot="label">Beta</span></blueprint-use></div></blueprint-use></main>';
 
     const authored = structuredClone(original);
     focusChat(authored, dialogWithBadge, [
@@ -241,9 +245,10 @@ describe('canonical prototype compiler', () => {
     const promptCard = bundle.components.components.find(component => component.id === 'prompt-card');
     assert.ok(promptCard);
     promptCard.uses = [{ kind: 'primitive', id: 'surface', reason: 'card body' }];
-    delete promptCard.prototype.renderedUses;
+    acceptInSlot(bundle.components.components, 'prompt-card', 'title', 'primitive:badge');
+    acceptInSlot(bundle.primitives.primitives, 'surface', 'label', 'primitive:badge');
     bundle.prototypeSourceContents[promptCard.prototype.source] =
-      '<article data-blueprint-component="prompt-card"><blueprint-use kind="primitive" ref="surface" state="1"><span slot="label"><slot name="title"></slot></span></blueprint-use></article>';
+      '<article data-blueprint-component="prompt-card"><blueprint-use kind="primitive" ref="surface" variant="1"><span slot="label"><slot name="title"></slot></span></blueprint-use></article>';
     focusChat(
       bundle,
       '<main><blueprint-use kind="component" ref="prompt-card" state="default"><b slot="title"><blueprint-use kind="primitive" ref="badge" state="default"><span slot="label">New</span></blueprint-use></b></blueprint-use></main>',
@@ -369,7 +374,7 @@ describe('canonical prototype compiler', () => {
     const composer = cyclic.components.components.find(component => component.id === 'composer');
     assert.ok(composer);
     composer.uses.push({ kind: 'component', id: 'composer', reason: 'cycle fixture' });
-    cyclic.prototypeSourceContents[composer.prototype.source] = '<blueprint-use kind="component" ref="composer" state="compact"></blueprint-use>';
+    cyclic.prototypeSourceContents[composer.prototype.source] = '<div data-blueprint-component="composer"><blueprint-use kind="component" ref="composer" size="compact"></blueprint-use></div>';
     assert.throws(
       () => compilePrototypeDocument({ bundle: cyclic, target: { kind: 'component', id: 'composer' } }),
       /composition cycle detected/
@@ -512,6 +517,12 @@ function focusChat(bundle: BlueprintProjectBundle, markup: string, uses: Boundar
   screen.sections = [{ ...screen.sections[0], uses }];
   delete screen.prototype.renderedUses;
   bundle.prototypeSourceContents[chatSource] = markup;
+}
+
+function acceptInSlot(reusables: ReusableDefinition[], reusableId: string, slotId: string, accept: string): void {
+  const slot = reusables.find(reusable => reusable.id === reusableId)?.slots.find(candidate => candidate.id === slotId);
+  assert.ok(slot, `expected ${reusableId} slot ${slotId}`);
+  slot.accepts.push(accept);
 }
 
 function placeInActionCluster(bundle: BlueprintProjectBundle, markup: string): void {

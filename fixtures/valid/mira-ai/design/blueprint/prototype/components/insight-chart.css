@@ -142,21 +142,21 @@
   background: var(--app-color-accent);
 }
 
-[data-blueprint-component="insight-chart"][data-blueprint-state="compact"] {
+[data-blueprint-component="insight-chart"][data-blueprint-size="compact"] {
   gap: var(--app-space-4);
   padding: var(--app-space-4);
 }
 
-[data-blueprint-component="insight-chart"][data-blueprint-state="compact"] .insight-chart__range {
+[data-blueprint-component="insight-chart"][data-blueprint-size="compact"] .insight-chart__range {
   display: none;
 }
 
-[data-blueprint-component="insight-chart"][data-blueprint-state="compact"] .insight-chart__plot {
+[data-blueprint-component="insight-chart"][data-blueprint-size="compact"] .insight-chart__plot {
   height: 148px;
   padding-left: 30px;
 }
 
-[data-blueprint-component="insight-chart"][data-blueprint-state="compact"] .insight-chart__bars {
+[data-blueprint-component="insight-chart"][data-blueprint-size="compact"] .insight-chart__bars {
   gap: 10px;
   padding: 0 var(--app-space-1);
 }

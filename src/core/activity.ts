@@ -113,12 +113,6 @@ export function boundaryDisplayName(bundle: BlueprintProjectBundle, kind: Bounda
       .find(candidate => candidate.id === screenId)
       ?.sections.find(candidate => candidate.id === sectionId)?.name ?? localId;
   }
-  if (kind === 'state-set') {
-    const [primitiveId, stateSetId] = localId.split('/');
-    return bundle.primitives.primitives
-      .find(candidate => candidate.id === primitiveId)
-      ?.stateSets.find(candidate => candidate.id === stateSetId)?.name ?? localId;
-  }
   return localId;
 }
 

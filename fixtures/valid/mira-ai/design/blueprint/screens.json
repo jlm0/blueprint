@@ -636,8 +636,8 @@
               "reason": "Back to threads and thread actions.",
               "binding": {
                 "slot": "title",
-                "state": "back-and-right",
-                "copy": "Q3 churn drivers"
+                "copy": "Q3 churn drivers",
+                "variant": "back-and-right"
               }
             }
           ],
@@ -683,7 +683,7 @@
               "reason": "Figure embedded in the answer.",
               "binding": {
                 "slot": "figure",
-                "state": "compact"
+                "size": "compact"
               }
             },
             {
@@ -738,7 +738,7 @@
               "reason": "Starter prompts.",
               "binding": {
                 "slot": "starters",
-                "state": "compact"
+                "size": "compact"
               }
             }
           ],
@@ -786,8 +786,8 @@
               "reason": "Follow-up entry under a thread.",
               "binding": {
                 "slot": "composer",
-                "state": "compact",
-                "copy": "Ask a follow-up"
+                "copy": "Ask a follow-up",
+                "size": "compact"
               }
             },
             {
@@ -796,8 +796,8 @@
               "reason": "First prompt entry on a new thread.",
               "binding": {
                 "slot": "composer",
-                "state": "compact",
-                "copy": "Ask Mira anything"
+                "copy": "Ask Mira anything",
+                "size": "compact"
               }
             }
           ],

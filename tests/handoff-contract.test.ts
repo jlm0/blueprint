@@ -140,17 +140,15 @@ describe('Blueprint production handoff contract', () => {
     assert.ok(boundaryIds.includes('meridian-finance/section/transfer/summary'));
     assert.ok(boundaryIds.includes('meridian-finance/component/transfer-summary'));
     assert.ok(boundaryIds.includes('meridian-finance/primitive/button'));
-    assert.ok(boundaryIds.includes('meridian-finance/state-set/button/interaction'));
     assert.ok(boundaryIds.includes('meridian-finance/token-group/color'));
 
     const section = extract(bundle, 'section:transfer/details', { mode: 'deep' });
     assert.equal(section.extraction.selected.id, 'meridian-finance/section/transfer/details');
     assert.ok(section.boundaries.some((boundary: { id: string }) => boundary.id === 'meridian-finance/primitive/button'));
 
-    const stateSet = extract(bundle, 'state-set:button/interaction', { mode: 'deep' });
-    assert.equal(stateSet.extraction.selected.id, 'meridian-finance/state-set/button/interaction');
-    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'meridian-finance/primitive/button'));
-    assert.ok(stateSet.boundaries.some((boundary: { id: string }) => boundary.id === 'meridian-finance/token-group/color'));
+    const primitive = extract(bundle, 'primitive:button', { mode: 'deep' });
+    assert.equal(primitive.extraction.selected.id, 'meridian-finance/primitive/button');
+    assert.ok(primitive.boundaries.some((boundary: { id: string }) => boundary.id === 'meridian-finance/token-group/color'));
   });
 
   it('resolves token records for primitive and screen deep packets without follow-up token queries', async () => {
@@ -191,7 +189,7 @@ describe('Blueprint production handoff contract', () => {
   it('reports unresolved token references during baseline validation', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const broken = structuredClone(bundle);
-    broken.primitives.primitives[0].stateSets[0].states[0].tokens.push('color.missing');
+    broken.primitives.primitives[0].tokenRoles['color.missing'] = 'fill';
 
     const result = validate(broken);
     assert.equal(result.ok, false);
@@ -205,22 +203,21 @@ describe('Blueprint production handoff contract', () => {
     const rows = ledger.uses.find((use: { id: string }) => use.id === 'table-row');
     const component = showBoundary(bundle, 'component:web-header') as any;
     const action = component.data.uses.find((use: { id: string }) => use.id === 'button');
+    const actionSource = bundle.prototypeSourceContents[component.data.prototype.source];
 
     assert.equal(screen.data.productionRelationship.kind, 'new-route');
     assert.equal(screen.data.productionRelationship.routePath, '/transactions');
     assert.equal(rows.binding.slot, 'rows');
     assert.equal(rows.binding.state, 'default, selected');
     assert.equal(rows.binding.data, 'transactions.page');
-    assert.equal(action.binding.variant, 'primary');
-    assert.equal(action.binding.copy, 'Move money');
+    assert.deepEqual(Object.keys(action).sort(), ['id', 'kind', 'reason'], 'reusable uses carry no binding; the source shows how each piece is placed');
+    assert.match(actionSource, /<blueprint-use kind="primitive" ref="button"[^>]*>[\s\S]*?Move money/);
 
     const packet = extract(bundle, 'screen:transactions', { mode: 'deep' });
     const header = packet.boundaries.find(
       (boundary: { id: string }) => boundary.id === 'meridian-finance/section/transactions/header'
     );
     assert.equal(header.data.uses[0].binding.slot, 'header');
-    const webHeader = packet.boundaries.find((boundary: { id: string }) => boundary.id === 'meridian-finance/component/web-header');
-    assert.equal(webHeader.data.uses[0].binding.slot, 'sections');
   });
 
   it('carries implementation target metadata without generating target code', async () => {

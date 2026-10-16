@@ -165,7 +165,7 @@ export function collectHistoryAssetRefs(history: ScreenHistoryFile): string[] {
   return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
 }
 
-function sourceRefs(prototype: PrototypeSource | undefined): string[] {
+function sourceRefs(prototype: Pick<PrototypeSource, 'source' | 'styles'> | undefined): string[] {
   return prototype ? [prototype.source, ...prototype.styles] : [];
 }
 

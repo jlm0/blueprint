@@ -23,10 +23,10 @@
   transform: translateX(-50%) rotate(45deg);
 }
 
-[data-blueprint-primitive="tooltip"][data-blueprint-state="top"]::after {
+[data-blueprint-primitive="tooltip"][data-blueprint-variant="top"]::after {
   bottom: -4px;
 }
 
-[data-blueprint-primitive="tooltip"][data-blueprint-state="bottom"]::after {
+[data-blueprint-primitive="tooltip"][data-blueprint-variant="bottom"]::after {
   top: -4px;
 }

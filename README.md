@@ -29,11 +29,11 @@ Every boundary is addressable as `kind:id`, for example `primitive:button`, `com
 
 ### One sidecar format
 
-Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar carries the closed set of 33 primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle primitives through tokens and may add states, but never add or remove primitives: app-specific pieces are components built from primitives.
+Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar carries the closed set of 33 primitives from `src/core/base-primitives.ts`. Apps restyle primitives through tokens and may add variants, sizes, states, and slots above each primitive's floor, but never add or remove primitives: app-specific pieces are components built from primitives. Primitives and components share one JSON shape, one set of rules, and one canvas page.
 
 `brand.json` holds the brand guideline: personality, voice, and the marks, wordmarks, and lockups with their approved color variants, clear space, minimum sizes, and usage rules. Marks are SVGs drawn with `currentColor` so token-based variants can recolor them. Screens and components place a mark with `<blueprint-use kind="brand-mark" ref="…" variant="…">`, which inlines the SVG colored by the variant's tokens, so a logo edit reaches every placement the way a token edit does. Foundations opens with the brand, and a strict handoff requires one.
 
-Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares sections, and every component names its section. An agent starting a new page or section must declare it first, and validation rejects undeclared references.
+Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares groups, and every component names its group. An agent starting a new page or group must declare it first, and validation rejects undeclared references.
 
 Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, color contrast, and primitives outside the closed set.
 
@@ -65,13 +65,14 @@ Then register the stdio server with your agent host, running from the app reposi
 }
 ```
 
-The server exposes eleven project-scoped tools:
+The server exposes twelve project-scoped tools:
 
 | Tool | Purpose |
 | --- | --- |
 | `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. |
-| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks. |
-| `index` | List every stable boundary ID, plus the declared screen pages and component sections with their members. |
+| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks. Every error ends with `Fix:` and the exact change to make. |
+| `migrate` | Upgrade a sidecar to the current schema, or report the changes with `dryRun`. It makes every mechanical change and returns the remaining decisions as validation errors. |
+| `index` | List every stable boundary ID, plus the declared screen pages and component groups with their members. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
 | `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
 | `capture` | Render one screen, state, and viewport to PNG, or one component or primitive cropped to its own box. |

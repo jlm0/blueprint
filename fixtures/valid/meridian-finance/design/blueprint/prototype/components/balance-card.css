@@ -97,14 +97,14 @@
   font: var(--app-type-body);
 }
 
-[data-blueprint-component="balance-card"][data-blueprint-state="compact"] {
+[data-blueprint-component="balance-card"][data-blueprint-size="compact"] {
   gap: 10px;
   padding: 0;
   border: 0;
   background: transparent;
 }
 
-[data-blueprint-component="balance-card"][data-blueprint-state="compact"] .balance-card__amount {
+[data-blueprint-component="balance-card"][data-blueprint-size="compact"] .balance-card__amount {
   font-size: 56px;
   line-height: 1;
 }

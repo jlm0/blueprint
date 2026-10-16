@@ -72,6 +72,7 @@ describe('source-focused prototype MCP contract', () => {
       'mira-ai/primitive/segmented-control',
       'mira-ai/primitive/badge',
       'mira-ai/component/prompt-card',
+      'mira-ai/primitive/icon',
       'mira-ai/component/composer',
       'mira-ai/primitive/button'
     ]);

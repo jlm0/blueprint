@@ -9,10 +9,9 @@ const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 const baselineDefects = [
-  'primitive.checkbox.stateSet.state is missing locked base state "disabled-on"',
+  'primitive.checkbox.states is missing the Blueprint state "disabled-on". Fix: add it',
   'primitive.tooltip.prototype.source "prototype/primitives/tooltip.html" does not exist',
-  'broken-sidecar/primitive/tooltip state "top" cannot compile',
-  'broken-sidecar/primitive/tooltip state "bottom" cannot compile',
+  'broken-sidecar/primitive/tooltip state "default" cannot compile',
   'primitive "badge" does not declare prototype state "celebrating"',
   'screen "unknown-component" renders undeclared component "citation-card"',
   'Prototype resource URL "https://images.example.com/cover.png"'

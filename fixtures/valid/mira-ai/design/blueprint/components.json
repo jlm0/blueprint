@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "mira-ai",
-  "sections": [
+  "groups": [
     {
       "id": "conversation",
       "name": "Conversation",
@@ -18,47 +18,90 @@
       "id": "composer",
       "name": "Composer",
       "description": "Prompt entry with attachment, research mode, and send commands. Docked under a thread, enlarged on the empty workspace, and compact on phone.",
-      "section": "conversation",
+      "group": "conversation",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Attach and send commands.",
-          "binding": {
-            "slot": "actions",
-            "variant": "ghost, primary",
-            "layout": "icon"
-          }
+          "reason": "Attach and send commands."
         },
         {
           "kind": "primitive",
           "id": "badge",
-          "reason": "Active research mode.",
-          "binding": {
-            "slot": "mode",
-            "variant": "accent",
-            "copy": "Deep research"
-          }
+          "reason": "Active research mode."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Phone dock: tighter padding, smaller attach and send buttons, and no source hint."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Docked under a thread: the draft line above a bar of attach, research mode, source hint, and send."
+          },
+          {
+            "id": "hero",
+            "name": "Hero",
+            "description": "Enlarged on the empty workspace with roomier padding, a larger draft line, and a deeper shadow."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "placeholder",
+          "name": "Placeholder",
+          "description": "Draft prompt shown before the user types, such as Ask a follow-up.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/composer.html",
+        "styles": [
+          "prototype/components/composer.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/composer.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/composer.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/composer.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A prompt entry group: the draft line reads as text, attach and send are buttons named by their labels, and the research mode reads as its badge label.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -78,65 +121,112 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/composer.html",
-        "styles": [
-          "prototype/components/composer.css"
-        ],
-        "slots": [
-          "placeholder"
-        ],
-        "states": [
-          "default",
-          "hero",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "button"
-          },
-          {
-            "kind": "primitive",
-            "id": "badge"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/composer.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/composer.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/composer.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "insight-chart",
-      "name": "Insight Chart",
+      "name": "Insight chart",
       "description": "Figure card an answer embeds to show one ranked series with a single highlighted value.",
-      "section": "answers",
+      "group": "answers",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "segmented-control",
-          "reason": "Date range for the series.",
-          "binding": {
-            "slot": "range",
-            "state": "second-selected"
-          }
+          "reason": "Date range for the series."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Phone figure: tighter padding, a shorter plot with narrower bar gaps, and no date range control."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Full figure: eyebrow and title beside the date range control, a tall plot, and wide bar spacing."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "eyebrow",
+          "name": "Eyebrow",
+          "description": "Figure label above the title, such as Figure 1.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "What the series measures, in one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "note",
+          "name": "Note",
+          "description": "One-line caption under the plot that explains the highlighted bar.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/insight-chart.html",
+        "styles": [
+          "prototype/components/insight-chart.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/insight-chart.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/insight-chart.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/insight-chart.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A figure captioned by its title; the plot is one image whose label reads the series and its highlight, and the date range is a segmented control.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -156,52 +246,112 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/insight-chart.html",
-        "styles": [
-          "prototype/components/insight-chart.css"
-        ],
-        "slots": [
-          "eyebrow",
-          "title",
-          "note"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "segmented-control"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/insight-chart.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/insight-chart.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/insight-chart.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "prompt-card",
-      "name": "Prompt Card",
+      "name": "Prompt card",
       "description": "Starter prompt that opens a new thread with a prepared task.",
-      "section": "conversation",
-      "uses": [],
+      "group": "conversation",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "uses": [
+        {
+          "kind": "primitive",
+          "id": "icon",
+          "reason": "Arrow glyph that marks the card as a link."
+        }
+      ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "One row for phone: kicker, title, and description stacked left, with the arrow centered right."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Tall card with the kicker and arrow on top, then the title and description below."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "kicker",
+          "name": "Kicker",
+          "description": "Short task label above the title, such as Analyze.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "The prepared task, in a few words.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "description": "One line on what the prompt needs or returns.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/prompt-card.html",
+        "styles": [
+          "prototype/components/prompt-card.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/prompt-card.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/prompt-card.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/prompt-card.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link named by its kicker, title, and description; the arrow glyph is hidden from assistive technology.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -220,57 +370,119 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/prompt-card.html",
-        "styles": [
-          "prototype/components/prompt-card.css"
-        ],
-        "slots": [
-          "kicker",
-          "title",
-          "description"
-        ],
-        "states": [
-          "default",
-          "compact"
-        ],
-        "renderedUses": []
-      }
+      "styleRefs": [
+        "prototype/components/prompt-card.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/prompt-card.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/prompt-card.css"
+        }
+      ],
+      "prototypeOnly": false
     },
     {
       "id": "source-item",
-      "name": "Source Item",
+      "name": "Source item",
       "description": "Numbered citation row linking an answer to the file, table, or page it read.",
-      "section": "answers",
+      "group": "answers",
+      "platforms": [
+        "web"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "avatar",
-          "reason": "Source monogram.",
-          "binding": {
-            "slot": "mark",
-            "state": "initials"
-          }
+          "reason": "Source monogram."
         }
       ],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "Resting row with no background; hovering tints it with the muted surface."
+          },
+          {
+            "id": "active",
+            "name": "Active",
+            "description": "The cited source in focus, raised on the surface with a hairline border and a soft shadow."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "index",
+          "name": "Index",
+          "description": "Citation number that matches the marker in the answer.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "mark",
+          "name": "Mark",
+          "description": "Two-letter monogram for the source, set in the avatar.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "title",
+          "name": "Title",
+          "description": "Source name, truncated to one line.",
+          "accepts": [
+            "text"
+          ]
+        },
+        {
+          "id": "meta",
+          "name": "Meta",
+          "description": "Where the source lives and what it is, truncated to one line.",
+          "accepts": [
+            "text"
+          ]
+        }
+      ],
+      "prototype": {
+        "source": "prototype/components/source-item.html",
+        "styles": [
+          "prototype/components/source-item.css"
+        ],
+        "localValueExceptions": []
+      },
       "tokenGroupIds": [
         "color",
         "space",
         "shape",
         "typography"
       ],
-      "styleRefs": [
-        "prototype/components/source-item.css"
-      ],
-      "styleEvidence": [
-        {
-          "styleRef": "prototype/components/source-item.css",
-          "status": "source",
-          "sourceAnchor": "prototype/components/source-item.css"
-        }
-      ],
+      "tokenRoles": {},
+      "accessibility": "A link named by its citation number, monogram, title, and meta, read in that order.",
       "notes": [],
-      "prototypeOnly": false,
       "implementationHints": [],
       "implementationTargets": [
         {
@@ -289,28 +501,17 @@
           "unresolvedDecisions": []
         }
       ],
-      "prototype": {
-        "source": "prototype/components/source-item.html",
-        "styles": [
-          "prototype/components/source-item.css"
-        ],
-        "slots": [
-          "index",
-          "mark",
-          "title",
-          "meta"
-        ],
-        "states": [
-          "default",
-          "active"
-        ],
-        "renderedUses": [
-          {
-            "kind": "primitive",
-            "id": "avatar"
-          }
-        ]
-      }
+      "styleRefs": [
+        "prototype/components/source-item.css"
+      ],
+      "styleEvidence": [
+        {
+          "styleRef": "prototype/components/source-item.css",
+          "status": "source",
+          "sourceAnchor": "prototype/components/source-item.css"
+        }
+      ],
+      "prototypeOnly": false
     }
   ]
 }

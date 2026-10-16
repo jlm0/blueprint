@@ -44,10 +44,6 @@ interface ReadinessReport {
 
 type ReadinessReportFactory = (bundle: BlueprintProjectBundle) => ReadinessReport;
 
-interface PrimitiveStateWithTokenRoles {
-  tokenRoles?: Record<string, string>;
-}
-
 interface EnrichedDeepHandoffPacket extends DeepHandoffPacket {
   tokenUsage: TokenUsage[];
   declaredModes?: unknown[];
@@ -87,7 +83,7 @@ describe('Blueprint handoff readiness semantics', () => {
     assert.equal(validateProject(declared).ok, true, 'declared unresolved decisions should not break baseline schema validity');
 
     const synthesizedMissing = cloneBundle(ready);
-    delete requirePrimitive(synthesizedMissing, 'button').styleEvidence;
+    delete (requirePrimitive(synthesizedMissing, 'button') as { styleEvidence?: unknown }).styleEvidence;
     const synthesizedReport = createReadinessReport(synthesizedMissing);
     assert.equal(synthesizedReport.tier, 'blocked');
     assert.ok(
@@ -173,17 +169,9 @@ describe('Blueprint handoff readiness semantics', () => {
   it('adds role-aware token usage to deep packets without inventing mode data', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const button = requirePrimitive(bundle, 'button');
-    assert.equal(button.prototype?.tokenRoles['color.primary'], 'background');
-    const destructive = button.stateSets
-      .find(stateSet => stateSet.id === 'variant')
-      ?.states.find(state => state.id === 'destructive') as
-      | (typeof button.stateSets[0]['states'][number] & PrimitiveStateWithTokenRoles)
-      | undefined;
-    assert.ok(destructive);
-    destructive.tokenRoles = {
-      'color.destructive': 'destructive-background',
-      'color.on-destructive': 'destructive-foreground'
-    };
+    assert.equal(button.tokenRoles['color.primary'], 'background');
+    button.tokenRoles['color.destructive'] = 'destructive-background';
+    button.tokenRoles['color.on-destructive'] = 'destructive-foreground';
     assert.equal(validateProject(bundle).ok, true);
 
     const packet = createExtractionPacket(bundle, 'screen:transfer', { mode: 'deep' }) as EnrichedDeepHandoffPacket;
@@ -200,7 +188,7 @@ describe('Blueprint handoff readiness semantics', () => {
     const destructiveUsage = packet.tokenUsage.find(
       usage => usage.tokenId === 'color.destructive' && usage.boundaryId === 'meridian-finance/primitive/button'
     );
-    assert.ok(destructiveUsage, 'button should name the state-level color.destructive token usage');
+    assert.ok(destructiveUsage, 'button should name the color.destructive token usage');
     assert.equal(destructiveUsage.role, 'destructive-background');
     assert.equal(destructiveUsage.boundaryKind, 'primitive');
     assert.equal(destructiveUsage.styleRef, '--app-color-destructive');
@@ -218,12 +206,12 @@ describe('Blueprint handoff readiness semantics', () => {
         reason: 'Cards can expose the same primary action in compact summaries.'
       }
     ];
-    assert.ok(card.prototype);
+    card.slots.find(slot => slot.id === 'default')?.accepts.push('primitive:button');
     composed.prototypeSourceContents[card.prototype.source] = composed.prototypeSourceContents[
       card.prototype.source
     ].replace(
       '</slot>',
-      '<blueprint-use kind="primitive" ref="button" state="normal"><span slot="label">Review</span></blueprint-use></slot>'
+      '<blueprint-use kind="primitive" ref="button"><span slot="label">Review</span></blueprint-use></slot>'
     );
 
     assert.equal(validateProject(composed).ok, true);
@@ -266,8 +254,8 @@ describe('Blueprint handoff readiness semantics', () => {
     const schema = JSON.parse(await readFile('schema/blueprint-project.schema.json', 'utf8')) as {
       $defs: Record<string, { properties?: Record<string, unknown> }>;
     };
-    assert.ok(schema.$defs.primitive?.properties?.uses, 'schema should expose primitive-to-primitive uses');
-    assert.ok(schema.$defs.primitiveState?.properties?.tokenRoles, 'schema should expose app-owned state token roles');
+    assert.ok(schema.$defs.reusable?.properties?.uses, 'schema should expose reusable uses');
+    assert.ok(schema.$defs.reusable?.properties?.tokenRoles, 'schema should expose app-owned token roles');
     assert.ok(schema.$defs.boundaryDependency, 'schema should share the boundary dependency shape');
     assert.ok(schema.$defs.readinessReport, 'schema should document readiness report output');
     assert.ok(schema.$defs.deepHandoffPacket?.properties?.tokenUsage, 'schema should document deep packet token usage');
@@ -309,13 +297,6 @@ function fullyResolveStyleEvidence(bundle: BlueprintProjectBundle): BlueprintPro
       status: 'source',
       sourceAnchor: `${resolved.sourceFiles.primitives}#${primitive.id}.${styleRef}`
     }));
-    for (const stateSet of primitive.stateSets) {
-      stateSet.styleEvidence = stateSet.styleRefs.map(styleRef => ({
-        styleRef,
-        status: 'source',
-        sourceAnchor: `${resolved.sourceFiles.primitives}#${primitive.id}.${stateSet.id}.${styleRef}`
-      }));
-    }
   }
 
   for (const screen of resolved.screens.screens) {

@@ -219,41 +219,41 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-color-foreground) 18%, transparent);
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] {
   gap: var(--app-space-4);
   padding: var(--app-space-4);
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__range,
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__scale i {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__range,
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__scale i {
   font-size: 0;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__range {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__range {
   display: none;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__figure {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__figure {
   font-size: 30px;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__plot {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__plot {
   min-height: 120px;
   padding-left: 0;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__scale i:nth-child(2) {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__scale i:nth-child(2) {
   padding-left: 0;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__months {
   grid-template-columns: repeat(6, 1fr);
   gap: var(--app-space-3);
   padding: 0;
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months li:nth-child(-n + 6),
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months b,
-[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__legend {
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__months li:nth-child(-n + 6),
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__months b,
+[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__legend {
   display: none;
 }

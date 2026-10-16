@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createExtractionPacket, queryPrototypeOnly, querySections, queryUsedBy, queryUses, showBoundary } from '../src/core/query';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateProject } from '../src/core/validate';
-import type { BoundaryPacket, PrimitiveDefinition, PrimitiveState, ScreenDefinition, ScreenSection } from '../src/core/types';
+import type { BoundaryPacket, PrimitiveDefinition, ReusableDefinition, ScreenDefinition, ScreenSection } from '../src/core/types';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
@@ -46,7 +46,7 @@ describe('Blueprint schema contract', () => {
 
     const errors = validateProject(bundle).errors;
     assert.ok(errors.includes('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none".'), errors.join('\n'));
-    assert.ok(errors.includes('primitive.button.prototype must declare a canonical HTML/CSS source.'), errors.join('\n'));
+    assert.ok(errors.includes('primitive.button.prototype must be { "source", "styles", "localValueExceptions" }. Fix: point "source" at its HTML and "styles" at its CSS.'), errors.join('\n'));
     assert.ok(errors.includes('screen.workspace.prototype must declare a browser-native HTML/CSS source.'), errors.join('\n'));
 
     const permissive = structuredClone(await loadProjectFromFs(miraRoot));
@@ -56,10 +56,10 @@ describe('Blueprint schema contract', () => {
     assert.ok(hostErrors.includes('manifest.prototypeHost.scripts must be "none".'), hostErrors.join('\n'));
   });
 
-  it('represents tokens, primitives, state sets, screens, sections, notes, style refs, and hints as structured files', async () => {
+  it('represents tokens, primitives, screens, sections, notes, style refs, and hints as structured files', async () => {
     const bundle = await loadProjectFromFs(umbraRoot);
     assert.ok(bundle.tokens.tokenGroups.length >= 3);
-    assert.ok(bundle.primitives.primitives.some(primitive => primitive.stateSets.length > 0));
+    assert.ok(bundle.primitives.primitives.some(primitive => primitive.states.values.length > 1));
     assert.ok(bundle.screens.screens.some(screen => screen.sections.length > 0));
     assert.equal(bundle.manifest.framePresets[0]?.width, 393);
     assert.equal(bundle.manifest.framePresets[0]?.height, 852);
@@ -73,21 +73,25 @@ describe('Blueprint schema contract', () => {
     assert.ok(screen.implementationHints.length > 0);
   });
 
-  it('rejects primitive states missing required canvas metadata before serve can crash', async () => {
+  it('rejects reusables missing required fields, naming each fix, before serve can crash', async () => {
     const bundle = await loadProjectFromFs(miraRoot);
     const broken = structuredClone(bundle);
-    const state = broken.primitives.primitives[0]?.stateSets[0]?.states[0];
-    assert.ok(state);
+    const primitive = broken.primitives.primitives[0];
+    const component = broken.components.components[0];
+    assert.ok(primitive && component);
 
-    delete (state as Partial<PrimitiveState>).notes;
-    delete (state as Partial<PrimitiveState>).implementationHints;
-    delete (state as Partial<PrimitiveState>).prototypeOnly;
+    delete (primitive as Partial<ReusableDefinition>).notes;
+    delete (primitive as Partial<ReusableDefinition>).prototypeOnly;
+    delete (component as Partial<ReusableDefinition>).platforms;
+    Object.assign(component, { tone: 'warm' });
 
-    const result = validateProject(broken);
-    assert.equal(result.ok, false);
-    assert.match(result.errors.join('\n'), /state\..*\.notes must be an array/);
-    assert.match(result.errors.join('\n'), /state\..*\.implementationHints must be an array/);
-    assert.match(result.errors.join('\n'), /state\..*\.prototypeOnly must be a boolean/);
+    const errors = validateProject(broken).errors.join('\n');
+    assert.match(errors, new RegExp(`primitive\\.${primitive.id} is missing "notes", "prototypeOnly"\\. Fix: `));
+    assert.match(errors, new RegExp(`component\\.${component.id} has unknown field "tone"\\. Fix: remove it`));
+    assert.match(errors, new RegExp(`component\\.${component.id} is missing "platforms"\\. Fix: `));
+    for (const error of validateProject(broken).errors.filter(error => error.startsWith(`primitive.${primitive.id}`) || error.startsWith(`component.${component.id}`))) {
+      assert.match(error, /Fix: /, `every reusable error names its fix: ${error}`);
+    }
   });
 
   it('keeps frame presets scoped to mobile and desktop prototype modes', async () => {
@@ -105,21 +109,36 @@ describe('Blueprint schema contract', () => {
     assert.match(result.errors.join('\n'), /framePreset\..*\.width must be a positive number/);
   });
 
-  it('accepts primitive platform tags and rejects unknown or repeated platforms', async () => {
+  it('locks primitive platforms and keeps component platforms inside what they use', async () => {
     const bundle = structuredClone(await loadProjectFromFs(miraRoot));
-    const [first, second, third] = bundle.primitives.primitives;
-    assert.ok(first && second && third);
-
-    first.platforms = ['mobile'];
-    second.platforms = ['mobile', 'desktop'];
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    const [first, second, third] = bundle.components.components;
+    assert.ok(button && first && second && third);
     assert.equal(validateProject(bundle).ok, true, validateProject(bundle).errors.join('\n'));
 
-    (second as { platforms: string[] }).platforms = ['tablet'];
-    third.platforms = ['desktop', 'desktop'];
-    const result = validateProject(bundle);
-    assert.equal(result.ok, false);
-    assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${second.id}\\.platforms must list "mobile" and/or "desktop" once each`));
-    assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${third.id}\\.platforms must list`));
+    button.platforms = ['mobile'];
+    (first as { platforms: string[] }).platforms = ['tablet'];
+    second.platforms = ['web', 'web'];
+    third.platforms = [];
+    const errors = validateProject(bundle).errors.join('\n');
+    assert.match(errors, /primitive\.button\.platforms is "mobile"\. Fix: set it to the Blueprint platforms "web", "mobile", "desktop"/);
+    assert.match(errors, new RegExp(`component\\.${first.id}\\.platforms has "tablet"\\. Fix: use only "web", "mobile", "desktop"`));
+    assert.match(errors, new RegExp(`component\\.${second.id}\\.platforms repeats a platform\\. Fix: list each platform once`));
+    assert.match(errors, new RegExp(`component\\.${third.id}\\.platforms is empty\\. Fix: list where it runs`));
+  });
+
+  it('rejects a component that claims a platform one of its pieces does not run on', async () => {
+    const bundle = structuredClone(await loadProjectFromFs(miraRoot));
+    const component = bundle.components.components.find(candidate => candidate.uses.some(use => use.kind === 'primitive'));
+    assert.ok(component);
+    const use = component.uses.find(candidate => candidate.kind === 'primitive')!;
+    const primitive = bundle.primitives.primitives.find(candidate => candidate.id === use.id)!;
+    primitive.platforms = ['mobile'];
+    component.platforms = ['web', 'mobile'];
+    assert.match(
+      validateProject(bundle).errors.join('\n'),
+      new RegExp(`component\\.${component.id}\\.platforms includes "web", but it uses primitive "${primitive.id}" \\("mobile"\\)\\. Fix: remove "web"`)
+    );
   });
 
   it('validates the brand guideline, its mark sources, and its variants, and requires it for a strict handoff', async () => {
@@ -158,11 +177,11 @@ describe('Blueprint schema contract', () => {
     assert.match(strict, /brand\.mark\.wordmark\.variant\.faint\.foreground color\.surface-2 on color\.background has contrast [\d.]+:1; a mark needs at least 3:1/);
   });
 
-  it('requires every screen page and component section to be declared before use', async () => {
+  it('requires every screen page and component group to be declared before use', async () => {
     const bundle = structuredClone(await loadProjectFromFs(miraRoot));
     const [screen, other] = bundle.screens.screens;
-    const [component, unsectioned] = bundle.components.components;
-    assert.ok(screen && other && component && unsectioned);
+    const [component, ungrouped] = bundle.components.components;
+    assert.ok(screen && other && component && ungrouped);
 
     bundle.screens.pages.push({ id: 'landing', name: 'Landing' });
     assert.equal(validateProject(bundle).ok, true, 'A declared page may start empty');
@@ -170,16 +189,16 @@ describe('Blueprint schema contract', () => {
     screen.page = 'onboarding';
     (other as { page?: string }).page = undefined;
     Object.assign(other, { flow: 'Legacy' });
-    component.section = 'charts';
-    (unsectioned as { section?: string }).section = undefined;
+    component.group = 'charts';
+    (ungrouped as { group?: string }).group = undefined;
     bundle.screens.pages.push({ id: 'landing', name: '' });
 
     const errors = validateProject(bundle).errors.join('\n');
     assert.match(errors, new RegExp(`screen\\.${screen.id}\\.page "onboarding" is not declared; add it to screens\\.pages`));
     assert.match(errors, new RegExp(`screen\\.${other.id}\\.page must be a non-empty string`));
     assert.match(errors, new RegExp(`screen\\.${other.id}\\.flow was replaced by page`));
-    assert.match(errors, new RegExp(`component\\.${component.id}\\.section "charts" is not declared; add it to components\\.sections`));
-    assert.match(errors, new RegExp(`component\\.${unsectioned.id}\\.section must be a non-empty string`));
+    assert.match(errors, new RegExp(`component\\.${component.id}\\.group "charts" is not declared\\. Fix: add`));
+    assert.match(errors, new RegExp(`component\\.${ungrouped.id}\\.group is missing\\. Fix: set it to a group declared in components\\.json`));
     assert.match(errors, /Duplicate id "landing" in screens\.pages/);
     assert.match(errors, /screens\.page\.landing\.name must be a non-empty string/);
   });

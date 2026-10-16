@@ -16,7 +16,7 @@ const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
-const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
+const toolNames = ['init', 'validate', 'migrate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
 interface McpSession {
   client: Client;
@@ -172,7 +172,7 @@ describe('Blueprint MCP and template governance', () => {
           [['web', ['workspace']], ['mobile', ['chat']]]
         );
         assert.deepEqual(
-          (index.componentSections as Array<{ id: string; components: string[] }>).map(section => [section.id, section.components]),
+          (index.componentGroups as Array<{ id: string; components: string[] }>).map(group => [group.id, group.components]),
           [['conversation', ['composer', 'prompt-card']], ['answers', ['insight-chart', 'source-item']]]
         );
 
@@ -486,7 +486,7 @@ describe('Blueprint MCP and template governance', () => {
           name: 'capture',
           arguments: { project: miraRoot, boundary: 'component:composer', variant: 'secondary', out: path.join(tempDir, 'bad.png') }
         });
-        assertToolError(undeclared, /cannot receive a primitive variant/);
+        assertToolError(undeclared, /component "composer" does not declare variant "secondary"; it declares "default"/);
       } finally {
         await session.close();
       }

@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "starter-app",
-  "sections": [
+  "groups": [
     {
       "id": "actions",
       "name": "Actions",
@@ -11,31 +11,80 @@
   "components": [
     {
       "id": "action-cluster",
-      "name": "Action Cluster",
-      "description": "Neutral reusable composition showing how an app-owned component consumes the canonical button primitive.",
-      "section": "actions",
+      "name": "Action cluster",
+      "description": "Groups the actions that close a region, primary first.",
+      "group": "actions",
+      "platforms": [
+        "web",
+        "mobile",
+        "desktop"
+      ],
       "uses": [
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Canonical command rendered inside the reusable action region.",
-          "binding": {
-            "slot": "primary-action",
-            "state": "normal",
-            "variant": "primary"
-          }
+          "reason": "Each action in the cluster."
         }
       ],
-      "tokenGroupIds": ["space"],
+      "variants": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only variant."
+          }
+        ]
+      },
+      "sizes": {
+        "default": "default",
+        "values": [
+          {
+            "id": "default",
+            "name": "Default",
+            "description": "The only size."
+          }
+        ]
+      },
+      "states": {
+        "default": "normal",
+        "values": [
+          {
+            "id": "normal",
+            "name": "Normal",
+            "description": "At rest; each action keeps its own states."
+          }
+        ]
+      },
+      "unsupported": [],
+      "slots": [
+        {
+          "id": "actions",
+          "name": "Actions",
+          "description": "One or two buttons, primary first.",
+          "accepts": [
+            "primitive:button"
+          ]
+        }
+      ],
       "prototype": {
         "source": "prototype/components/action-cluster.html",
-        "styles": ["prototype/components/action-cluster.css"],
-        "slots": ["primary-action"],
-        "states": ["normal"],
-        "renderedUses": [
-          { "kind": "primitive", "id": "button" }
-        ]
-      }
+        "styles": [
+          "prototype/components/action-cluster.css"
+        ],
+        "localValueExceptions": []
+      },
+      "tokenGroupIds": [
+        "space"
+      ],
+      "tokenRoles": {},
+      "accessibility": "A group of ordinary buttons read in order; it adds no role of its own.",
+      "notes": [],
+      "implementationHints": [],
+      "implementationTargets": [],
+      "styleRefs": [],
+      "styleEvidence": [],
+      "prototypeOnly": false
     }
   ]
 }

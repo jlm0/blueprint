@@ -41,19 +41,19 @@
   outline-offset: 2px;
 }
 
-[data-blueprint-primitive="slider"][data-blueprint-state="secondary"] .slider__fill {
+[data-blueprint-primitive="slider"][data-blueprint-variant="secondary"] .slider__fill {
   background: var(--app-color-muted);
 }
 
-[data-blueprint-primitive="slider"][data-blueprint-state="secondary"] .slider__thumb {
+[data-blueprint-primitive="slider"][data-blueprint-variant="secondary"] .slider__thumb {
   border-color: var(--app-color-muted);
 }
 
-[data-blueprint-primitive="slider"][data-blueprint-state="contrast"] .slider__fill {
+[data-blueprint-primitive="slider"][data-blueprint-variant="contrast"] .slider__fill {
   background: var(--app-color-foreground);
 }
 
-[data-blueprint-primitive="slider"][data-blueprint-state="contrast"] .slider__thumb {
+[data-blueprint-primitive="slider"][data-blueprint-variant="contrast"] .slider__thumb {
   border-color: var(--app-color-foreground);
 }
 

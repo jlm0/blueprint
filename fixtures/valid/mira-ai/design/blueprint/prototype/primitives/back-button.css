@@ -32,13 +32,13 @@
   outline-offset: 2px;
 }
 
-[data-blueprint-primitive="back-button"][data-blueprint-state="sm"] {
+[data-blueprint-primitive="back-button"][data-blueprint-size="sm"] {
   width: var(--app-size-control-sm);
   height: var(--app-size-control-sm);
   border-radius: var(--app-radius-md);
 }
 
-[data-blueprint-primitive="back-button"][data-blueprint-state="sm"] svg {
+[data-blueprint-primitive="back-button"][data-blueprint-size="sm"] svg {
   width: var(--app-size-icon-sm);
   height: var(--app-size-icon-sm);
 }

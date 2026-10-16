@@ -1439,6 +1439,54 @@ body {
   line-height: 1.55;
 }
 
+.bp-chrome-doc-defs {
+  display: grid;
+  max-width: 780px;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.bp-chrome-doc-def-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: var(--bp-chrome-fg);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.bp-chrome-doc-def-value {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+}
+
+.bp-chrome-doc-defs > dd.bp-chrome-doc-chips {
+  margin: 0;
+}
+
+.bp-chrome-doc-default {
+  color: var(--bp-chrome-muted-fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 560px) {
+  .bp-chrome-doc-defs {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .bp-chrome-doc-def-value,
+  .bp-chrome-doc-defs > dd.bp-chrome-doc-chips {
+    margin-bottom: 8px;
+  }
+}
+
 .bp-chrome-brand-traits {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
@@ -1599,10 +1647,34 @@ body {
 }
 
 .bp-chrome-specimen-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
   margin: 0;
   color: var(--bp-chrome-fg);
   font-size: 14px;
   font-weight: 600;
+}
+
+.bp-chrome-specimen-description {
+  max-width: 780px;
+  margin: 0 0 6px;
+  color: var(--bp-chrome-muted-fg);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.bp-chrome-specimen-empty {
+  display: grid;
+  max-width: 100%;
+  min-height: 64px;
+  margin: 12px;
+  place-items: center;
+  border: 1px dashed var(--bp-chrome-border);
+  border-radius: var(--bp-chrome-radius-sm);
+  color: var(--bp-chrome-muted-fg);
+  font-size: 12px;
 }
 
 /* Previews paint 12px of app canvas around the control; the negative margin

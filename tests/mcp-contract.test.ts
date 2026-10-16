@@ -18,6 +18,7 @@ describe('Blueprint MCP typed contract', () => {
     assert.deepEqual(BLUEPRINT_MCP_TOOL_NAMES, [
       'init',
       'validate',
+      'migrate',
       'index',
       'query',
       'extract',

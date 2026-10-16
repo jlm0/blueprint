@@ -1,8 +1,10 @@
-<span data-blueprint-component="rank-emblem" data-blueprint-state="diamond" role="img" aria-label="Diamond rank">
+<div data-blueprint-component="rank-emblem" role="img" aria-label="Diamond rank">
   <svg class="rank-emblem__shape" viewBox="0 0 40 44" aria-hidden="true">
     <path class="rank-emblem__plate" d="M20 1.5 37.5 11.5v21L20 42.5 2.5 32.5v-21Z"/>
     <path class="rank-emblem__edge" d="M20 1.5 37.5 11.5v21L20 42.5 2.5 32.5v-21Z"/>
     <path class="rank-emblem__chevron" d="m12 30 8-5 8 5M12 35.5l8-5 8 5"/>
   </svg>
-  <b class="rank-emblem__tier" data-blueprint-slot="tier">II</b>
-</span>
+  <blueprint-use kind="primitive" ref="text" size="label" class="rank-emblem__tier">
+    <span slot="text" data-blueprint-slot="tier">II</span>
+  </blueprint-use>
+</div>

@@ -5,6 +5,7 @@ import { createServer, type ViteDevServer } from 'vite';
 import { boundaryId } from '../src/core/address';
 import { canvasLocationParams } from '../src/core/canvas-location';
 import { loadProjectFromFs } from '../src/core/load';
+import { reusableSpecimens } from '../src/core/reusable-contract';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../src/core/review';
 import type { BlueprintProjectBundle } from '../src/core/types';
 
@@ -94,8 +95,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
           assert.equal(evidence.compileErrors, 0, `${label} canonical specimen should compile`);
           assert.equal(
             evidence.iframes,
-            primitive.prototype.states.length * (Math.max(primitive.prototype.variants.length, 1) + (primitive.prototype.sizes?.length ?? 0)),
-            `${label} should render one canonical iframe per declared variant or size × state combination`
+            reusableSpecimens(primitive).length,
+            `${label} should render one canonical iframe per offered variant × state and size × state combination`
           );
           assert.ok(evidence.overflow <= 1, `${label} page should not scroll sideways (${evidence.overflow}px)`);
         }
@@ -104,18 +105,18 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
         await page.locator('.bp-chrome-board-switcher [data-section="components"]').click();
         await page.waitForSelector('.board-primitives[data-section="components"] .bp-chrome-doc-page', { timeout: 5000 });
-        const componentsBySection = bundle.components.sections
-          .map(section => ({ section, members: bundle.components.components.filter(component => component.section === section.id) }))
+        const componentsByGroup = bundle.components.groups
+          .map(group => ({ group, members: bundle.components.components.filter(component => component.group === group.id) }))
           .filter(({ members }) => members.length > 0);
         assert.deepEqual(
           await navItemIds(page),
-          componentsBySection.flatMap(({ members }) => members.map(component => component.id)),
-          `${projectId} components should list every component under its declared section`
+          componentsByGroup.flatMap(({ members }) => members.map(component => component.id)),
+          `${projectId} components should list every component under its declared group`
         );
         assert.deepEqual(
           await page.locator('.bp-chrome-item-nav .bp-chrome-nav-group-name').allTextContents(),
-          componentsBySection.map(({ section }) => section.name),
-          `${projectId} component sections should follow their declaration order`
+          componentsByGroup.map(({ group }) => group.name),
+          `${projectId} component groups should follow their declaration order`
         );
         if (bundle.components.components.length === 0) {
           assert.equal(await page.locator('.board-primitives .bp-chrome-doc-empty').count(), 1, `${projectId} should explain an empty components section`);
@@ -125,8 +126,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
           records.push(...await collectPrimitiveRecords(page));
           assert.equal(
             await item.locator('.component-preview-iframe').count(),
-            component.prototype?.states.length ?? 0,
-            `${projectId}/${component.id} should preview every declared state`
+            reusableSpecimens(component).length,
+            `${projectId}/${component.id} should preview every offered variant, size, and state`
           );
           assert.equal(await item.locator('.prototype-compile-error').count(), 0, `${projectId}/${component.id} previews should compile`);
           const overflow = await page.locator('#document').evaluate(element => element.scrollWidth - element.clientWidth);
@@ -319,7 +320,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
         const specimen = item.locator('.bp-chrome-doc-specimen');
         assert.equal(await item.locator('.token-probe').count(), 0, `${primitiveId} should not show token probe chips`);
         assert.equal(
-          await specimen.locator('[data-prototype-render-mode="canonical-app-owned"]').count(),
+          await item.locator('.bp-chrome-doc-specimen[data-prototype-render-mode="canonical-app-owned"]').count(),
           1,
           `${primitiveId} should render its canonical app-owned specimen`
         );
@@ -331,7 +332,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
           1,
           `${primitiveId} canonical specimen should render its governed primitive root`
         );
-        assert.doesNotMatch(await specimen.innerText(), /\b(?:RADIUS|SHADOW|state set)\b/i, `${primitiveId} specimen should not foreground token/debug labels`);
+        assert.doesNotMatch(await specimen.innerText(), /\b(?:RADIUS|SHADOW)\b|\bstate set\b/, `${primitiveId} specimen should not foreground token/debug labels`);
       }
 
       const backSpecimen = (await showItem(page, 'back-button')).locator('.bp-chrome-doc-specimen');
@@ -380,13 +381,12 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       assert.notEqual(focusedInputStyles.boxShadow, 'none', 'focused input should render a visible focus halo');
 
       await showItem(page, 'back-button');
-      const backButtonFrames = page.frameLocator(
-        `${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .canonical-primitive-iframe`
-      );
       const backButtons: Array<{ text: string; width: number; height: number; borderRadius: string; overflowX: number; overflowY: number }> = [];
-      for (let index = 0; index < 3; index += 1) {
+      for (const title of ['Back button · default · md · normal', 'Back button · default · sm · normal', 'Back button · default · md · disabled']) {
         backButtons.push(
-          await backButtonFrames.nth(index).locator('[data-blueprint-primitive="back-button"]').evaluate(element => {
+          await page.frameLocator(
+            `${boundarySelector(boundaryId(projectId, 'primitive', 'back-button'))} .canonical-primitive-iframe[title="${title}"]`
+          ).first().locator('[data-blueprint-primitive="back-button"]').evaluate(element => {
             const node = element as HTMLElement;
             return {
               text: node.textContent?.trim() ?? '',
@@ -515,18 +515,18 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       assert.equal(switchOnStyles.background, 'rgb(24, 24, 27)', 'on switch should use the default color.primary track');
 
       await showItem(page, 'slider');
-      const sliderFrames = page.frameLocator(
-        `${boundarySelector(boundaryId(projectId, 'primitive', 'slider'))} .canonical-primitive-iframe`
-      );
+      const sliderFrame = (title: string) => page.frameLocator(
+        `${boundarySelector(boundaryId(projectId, 'primitive', 'slider'))} .canonical-primitive-iframe[title="Slider · ${title}"]`
+      ).first();
       const sliderFills: string[] = [];
-      for (let index = 0; index < 4; index += 1) {
-        sliderFills.push(await sliderFrames.nth(index).locator('.slider__fill').evaluate(element => window.getComputedStyle(element).backgroundColor));
+      for (const title of ['primary · default · normal', 'secondary · default · normal', 'contrast · default · normal']) {
+        sliderFills.push(await sliderFrame(title).locator('.slider__fill').evaluate(element => window.getComputedStyle(element).backgroundColor));
       }
       assert.equal(sliderFills[0], 'rgb(24, 24, 27)', 'primary slider should use the default color.primary fill');
       assert.equal(sliderFills[1], 'rgb(113, 113, 122)', 'secondary slider should use the default color.muted fill');
       assert.equal(sliderFills[2], 'rgb(24, 24, 27)', 'contrast slider should use the default color.foreground fill');
       assert.equal(
-        await sliderFrames.nth(3).locator('[data-blueprint-primitive="slider"]').evaluate(element => window.getComputedStyle(element).opacity),
+        await sliderFrame('primary · default · disabled').locator('[data-blueprint-primitive="slider"]').evaluate(element => window.getComputedStyle(element).opacity),
         '0.5',
         'disabled slider should dim the whole control'
       );
@@ -600,7 +600,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       },
       {
         primitiveId: 'card',
-        frameTitle: 'Card · elevated · default',
+        frameTitle: 'Card · elevated · default · default',
         tokenRef: 'shape.shadow-md',
         groupId: 'shape',
         tokenId: 'shadow-md',
@@ -717,7 +717,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       assert.deepEqual(groups, ['Actions', 'Inputs', 'Text', 'Surfaces', 'Navigation', 'Structure', 'Feedback', 'Overlays']);
       assert.equal(await page.locator('.bp-chrome-item-nav [data-notice]').count(), 0, 'starter primitives should all be in the set');
 
-      for (const [primitiveId, platform] of [['nav-bar', 'Mobile'], ['table-row', 'Web'], ['button', 'Mobile and web']]) {
+      for (const [primitiveId, platform] of [['nav-bar', 'Mobile'], ['table-row', 'Web and desktop'], ['button', 'Web, mobile and desktop']]) {
         const item = await showItem(page, primitiveId);
         assert.equal(await item.locator('.bp-chrome-doc-platform').getAttribute('aria-label'), platform, `${primitiveId} should state its platform beside the title`);
       }
@@ -1058,8 +1058,9 @@ describe('Blueprint data-driven pages and screens canvas', () => {
         const boardSignature = await primitiveSignature(
           primitivesPage
             .frameLocator(
-              `${boundarySelector(boundaryId(projectId, 'primitive', use.primitiveId))} .canonical-primitive-iframe[title="${escapeAttribute(`${primitive.name} · ${use.variant} · ${use.state}`)}"]`
+              `${boundarySelector(boundaryId(projectId, 'primitive', use.primitiveId))} .canonical-primitive-iframe[title="${escapeAttribute(`${primitive.name} · ${use.variant} · ${primitive.sizes.default} · ${use.state}`)}"]`
             )
+            .first()
             .locator(`[data-blueprint-primitive="${use.primitiveId}"]`)
         );
         assert.equal(screenSignature.boundaryId, boundaryId(projectId, 'primitive', use.primitiveId), `screen ${use.primitiveId} should be the governed primitive boundary`);
@@ -1101,7 +1102,6 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     assert.deepEqual(canvasLocationParams(bundle, 'project:root'), { board: 'primitives', section: 'foundations', item: 'brand' });
     assert.deepEqual(canvasLocationParams(bundle, 'token-group:color'), { board: 'primitives', section: 'foundations', item: 'color' });
-    assert.deepEqual(canvasLocationParams(bundle, 'state-set:button/interaction'), { board: 'primitives', section: 'primitives', item: 'button' });
     assert.deepEqual(canvasLocationParams(bundle, 'component:web-header'), { board: 'primitives', section: 'components', item: 'web-header' });
     assert.deepEqual(canvasLocationParams(bundle, 'section:transactions/header'), { board: 'screens', page: 'ledger', screen: 'transactions' });
     assert.throws(() => canvasLocationParams(bundle, 'component:missing'), /missing/);

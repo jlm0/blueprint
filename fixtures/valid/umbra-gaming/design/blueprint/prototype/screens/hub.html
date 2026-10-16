@@ -12,7 +12,7 @@
     </span>
     <span class="player__coins"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 14 4.5v7L8 15 2 11.5v-7Z"/></svg>2,480</span>
     <span class="player__sync">
-      <blueprint-use kind="primitive" ref="loading-mark" state="primary"></blueprint-use>
+      <blueprint-use kind="primitive" ref="loading-mark" variant="primary"></blueprint-use>
       <span>Syncing</span>
     </span>
   </header>
@@ -28,11 +28,11 @@
     </blueprint-use>
     <div class="skel skel--pass" aria-hidden="true">
       <span class="skel__head">
-        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__tile"></blueprint-use>
-        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="block" class="skel__tile"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="line" class="skel__text"></blueprint-use>
       </span>
-      <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__rail"></blueprint-use>
-      <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__foot"></blueprint-use>
+      <blueprint-use kind="primitive" ref="skeleton" variant="block" class="skel__rail"></blueprint-use>
+      <blueprint-use kind="primitive" ref="skeleton" variant="line" class="skel__foot"></blueprint-use>
     </div>
   </section>
 
@@ -55,13 +55,13 @@
   </section>
 
   <section class="event" data-blueprint-section="event" aria-label="Live event">
-    <blueprint-use kind="component" ref="event-card" state="compact">
+    <blueprint-use kind="component" ref="event-card" size="compact">
       <span slot="timer">1d 04:12:55</span>
       <span slot="title">Blackout Weekend</span>
       <span slot="description">Double XP on night maps</span>
     </blueprint-use>
     <div class="skel skel--event" aria-hidden="true">
-      <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+      <blueprint-use kind="primitive" ref="skeleton" variant="line" class="skel__text"></blueprint-use>
     </div>
   </section>
 
@@ -92,12 +92,12 @@
     </div>
     <div class="skel skel--rows" aria-hidden="true">
       <span class="skel__row">
-        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__glyph"></blueprint-use>
-        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="block" class="skel__glyph"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="line" class="skel__text"></blueprint-use>
       </span>
       <span class="skel__row">
-        <blueprint-use kind="primitive" ref="skeleton" state="block" class="skel__glyph"></blueprint-use>
-        <blueprint-use kind="primitive" ref="skeleton" state="line" class="skel__text"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="block" class="skel__glyph"></blueprint-use>
+        <blueprint-use kind="primitive" ref="skeleton" variant="line" class="skel__text"></blueprint-use>
       </span>
     </div>
   </section>

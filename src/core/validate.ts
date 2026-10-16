@@ -3,15 +3,12 @@ import type {
   BoardDefinition,
   BoundaryDependency,
   BrandMark,
-  ComponentDefinition,
   DeclaredGroup,
   ExplorationDefinition,
   ExplorationPrototypeSource,
   FramePreset,
   ImplementationTarget,
-  PrimitiveDefinition,
   PrototypeSource,
-  PrimitiveStateSet,
   ReadinessItem,
   ReadinessReport,
   ProductionRelationship,
@@ -28,6 +25,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
+import { reusableSchemaVersionErrors, validateReusables } from './reusable-validate';
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
@@ -41,6 +39,10 @@ import { storageRecordSegment } from './storage-records';
 const supportedHandoffContractVersion = '1.0.0';
 
 export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
+  const schemaErrors = reusableSchemaVersionErrors(bundle);
+  if (schemaErrors.length > 0) {
+    return { ok: false, errors: schemaErrors };
+  }
   const errors: string[] = [];
   const projectId = bundle.manifest.project?.id;
 
@@ -80,71 +82,24 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
 
   const framePresetIds = collectIds(errors, 'manifest.framePresets', bundle.manifest.framePresets, framePreset => validateFramePreset(errors, framePreset));
   const tokenGroupIds = collectIds(errors, 'tokens.tokenGroups', bundle.tokens.tokenGroups, group => validateTokenGroup(errors, group));
-  const primitiveIds = collectIds(errors, 'primitives.primitives', bundle.primitives.primitives, primitive => {
-    validatePrimitive(errors, primitive, tokenGroupIds);
-  });
+  const primitiveIds = collectIds(errors, 'primitives.primitives', bundle.primitives.primitives, () => {});
   const tokenIds = collectTokenIds(bundle.tokens.tokenGroups);
-  const componentSectionIds = collectIds(errors, 'components.sections', bundle.components.sections, section => {
-    validateDeclaredGroup(errors, 'components.section', section);
-  });
-  const componentIds = collectIds(errors, 'components.components', bundle.components.components, component => {
-    validateComponent(errors, component, tokenGroupIds);
-    if (component.section && !componentSectionIds.has(component.section)) {
-      errors.push(`component.${component.id}.section "${component.section}" is not declared; add it to components.sections before using it.`);
-    }
-  });
-
-  const stateSetIds = new Set<string>();
-  for (const primitive of bundle.primitives.primitives) {
-    for (const stateSet of primitive.stateSets ?? []) {
-      const localId = `${primitive.id}/${stateSet.id}`;
-      if (stateSetIds.has(localId)) {
-        errors.push(`Duplicate state-set id "${localId}".`);
-      }
-      stateSetIds.add(localId);
-      validateStateTokenReferences(errors, primitive, stateSet, tokenIds);
-    }
-  }
+  const componentIds = collectIds(errors, 'components.components', bundle.components.components, () => {});
+  validateReusables(errors, bundle, tokenGroupIds, tokenIds);
 
   const pageIds = collectIds(errors, 'screens.pages', bundle.screens.pages, page => validateDeclaredGroup(errors, 'screens.page', page));
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
-    validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
+    validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds);
     if (screen.page && !pageIds.has(screen.page)) {
       errors.push(`screen.${screen.id}.page "${screen.page}" is not declared; add it to screens.pages before using it.`);
     }
   });
   validateScreenVersions(errors, bundle.screens.screens);
   validateExplorations(errors, bundle, screenIds, framePresetIds);
-  validateScreenHistory(errors, bundle, screenIds, framePresetIds, primitiveIds, componentIds, stateSetIds);
+  validateScreenHistory(errors, bundle, screenIds, framePresetIds, primitiveIds, componentIds);
   const sectionIds = new Set(
     bundle.screens.screens.flatMap(screen => (screen.sections ?? []).map(section => `${screen.id}/${section.id}`))
   );
-
-  for (const primitive of bundle.primitives.primitives) {
-    for (const dependency of primitive.uses ?? []) {
-      validateDependency(errors, `primitive.${primitive.id}.uses`, dependency, {
-        tokenGroupIds,
-        primitiveIds,
-        stateSetIds,
-        componentIds,
-        screenIds,
-        sectionIds
-      });
-    }
-  }
-
-  for (const component of bundle.components.components) {
-    for (const dependency of component.uses ?? []) {
-      validateDependency(errors, `component.${component.id}.uses`, dependency, {
-        tokenGroupIds,
-        primitiveIds,
-        stateSetIds,
-        componentIds,
-        screenIds,
-        sectionIds
-      });
-    }
-  }
 
   for (const screen of bundle.screens.screens) {
     for (const section of screen.sections ?? []) {
@@ -152,7 +107,6 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
         validateDependency(errors, `screens.${screen.id}.sections.${section.id}.uses`, dependency, {
           tokenGroupIds,
           primitiveIds,
-          stateSetIds,
           componentIds,
           screenIds,
           sectionIds
@@ -211,19 +165,6 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
       primitive.styleRefs,
       primitive.styleEvidence
     );
-
-    for (const stateSet of primitive.stateSets ?? []) {
-      if ((stateSet.states ?? []).every(state => state.prototypeOnly)) {
-        continue;
-      }
-      recordStyleEvidenceReadiness(
-        items,
-        bundle,
-        `primitive.${primitive.id}.stateSet.${stateSet.id}.styleEvidence`,
-        stateSet.styleRefs,
-        stateSet.styleEvidence
-      );
-    }
   }
 
   for (const screen of bundle.screens.screens ?? []) {
@@ -266,14 +207,12 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
     if (component.prototypeOnly) {
       continue;
     }
-    if (component.implementationTargets) {
-      recordImplementationTargetReadiness(items, `component.${component.id}.implementationTargets`, component.implementationTargets);
-    }
+    recordImplementationTargetReadiness(items, `component.${component.id}.implementationTargets`, component.implementationTargets);
     recordStyleEvidenceReadiness(
       items,
       bundle,
       `component.${component.id}.styleEvidence`,
-      component.styleRefs ?? [],
+      component.styleRefs,
       component.styleEvidence
     );
   }
@@ -518,46 +457,6 @@ function validateTokenGroup(errors: string[], group: TokenGroup): void {
   }
 }
 
-function validatePrimitive(errors: string[], primitive: PrimitiveDefinition, tokenGroupIds: Set<string>): void {
-  requireString(errors, 'primitive.id', primitive.id);
-  requireString(errors, `primitive.${primitive.id}.name`, primitive.name);
-  requireArray(errors, `primitive.${primitive.id}.tokenGroupIds`, primitive.tokenGroupIds);
-  requireArray(errors, `primitive.${primitive.id}.styleRefs`, primitive.styleRefs);
-  requireArray(errors, `primitive.${primitive.id}.notes`, primitive.notes);
-  requireBoolean(errors, `primitive.${primitive.id}.prototypeOnly`, primitive.prototypeOnly);
-  requireArray(errors, `primitive.${primitive.id}.implementationHints`, primitive.implementationHints);
-  requireArray(errors, `primitive.${primitive.id}.stateSets`, primitive.stateSets);
-  if (primitive.platforms !== undefined) {
-    const platforms = Array.isArray(primitive.platforms) ? primitive.platforms : [];
-    if (platforms.length === 0 || new Set(platforms).size !== platforms.length || platforms.some(platform => platform !== 'mobile' && platform !== 'desktop')) {
-      errors.push(`primitive.${primitive.id}.platforms must list "mobile" and/or "desktop" once each, or be omitted for shared primitives.`);
-    }
-  }
-
-  for (const tokenGroupId of primitive.tokenGroupIds ?? []) {
-    if (!tokenGroupIds.has(tokenGroupId)) {
-      errors.push(`primitive.${primitive.id}.tokenGroupIds references missing token group "${tokenGroupId}".`);
-    }
-  }
-
-  collectIds(errors, `primitive.${primitive.id}.stateSets`, primitive.stateSets, stateSet => validateStateSet(errors, primitive, stateSet));
-}
-
-function validateComponent(errors: string[], component: ComponentDefinition, tokenGroupIds: Set<string>): void {
-  requireString(errors, 'component.id', component.id);
-  requireString(errors, `component.${component.id}.name`, component.name);
-  requireString(errors, `component.${component.id}.description`, component.description);
-  requireString(errors, `component.${component.id}.section`, component.section);
-  requireArray(errors, `component.${component.id}.uses`, component.uses);
-  requireArray(errors, `component.${component.id}.tokenGroupIds`, component.tokenGroupIds);
-  requireObject(errors, `component.${component.id}.prototype`, component.prototype);
-  for (const tokenGroupId of component.tokenGroupIds ?? []) {
-    if (!tokenGroupIds.has(tokenGroupId)) {
-      errors.push(`component.${component.id}.tokenGroupIds references missing token group "${tokenGroupId}".`);
-    }
-  }
-}
-
 function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode): void {
   const brand = bundle.brand;
   if (!brand) {
@@ -680,29 +579,12 @@ function validateDeclaredGroup(errors: string[], label: string, group: DeclaredG
   }
 }
 
-function validateStateSet(errors: string[], primitive: PrimitiveDefinition, stateSet: PrimitiveStateSet): void {
-  requireString(errors, `primitive.${primitive.id}.stateSet.id`, stateSet.id);
-  requireString(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.name`, stateSet.name);
-  requireArray(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.styleRefs`, stateSet.styleRefs);
-  requireArray(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.states`, stateSet.states);
-
-  collectIds(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.states`, stateSet.states, state => {
-    requireString(errors, `stateSet.${stateSet.id}.state.id`, state.id);
-    requireString(errors, `stateSet.${stateSet.id}.state.${state.id}.name`, state.name);
-    requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.tokens`, state.tokens);
-    requireBoolean(errors, `stateSet.${stateSet.id}.state.${state.id}.prototypeOnly`, state.prototypeOnly);
-    requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.notes`, state.notes);
-    requireArray(errors, `stateSet.${stateSet.id}.state.${state.id}.implementationHints`, state.implementationHints);
-  });
-}
-
 function validateScreen(
   errors: string[],
   screen: ScreenDefinition,
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
   componentIds: Set<string>,
-  stateSetIds: Set<string>,
   historySnapshot = false
 ): void {
   requireString(errors, 'screen.id', screen.id);
@@ -731,9 +613,6 @@ function validateScreen(
     for (const dependency of section.uses ?? []) {
       if (dependency.kind === 'primitive' && !primitiveIds.has(dependency.id)) {
         errors.push(`screen.${screen.id}.section.${section.id}.uses references missing primitive "${dependency.id}".`);
-      }
-      if (dependency.kind === 'state-set' && !stateSetIds.has(dependency.id)) {
-        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing state-set "${dependency.id}".`);
       }
       if (dependency.kind === 'component' && !componentIds.has(dependency.id)) {
         errors.push(`screen.${screen.id}.section.${section.id}.uses references missing component "${dependency.id}".`);
@@ -794,8 +673,7 @@ function validateScreenHistory(
   screenIds: Set<string>,
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
-  componentIds: Set<string>,
-  stateSetIds: Set<string>
+  componentIds: Set<string>
 ): void {
   requireArray(errors, 'history.entries', bundle.history.entries);
   const versionsByScreen = new Map<string, number[]>();
@@ -808,8 +686,7 @@ function validateScreenHistory(
       screenIds,
       framePresetIds,
       primitiveIds,
-      componentIds,
-      stateSetIds
+      componentIds
     );
     const key = `${entry.screenId}\u0000${entry.version}`;
     if (keys.has(key)) {
@@ -836,8 +713,7 @@ function validateScreenHistoryEntry(
   screenIds: Set<string>,
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
-  componentIds: Set<string>,
-  stateSetIds: Set<string>
+  componentIds: Set<string>
 ): void {
   const label = `history.${entry.screenId}.v${entry.version}`;
   requireString(errors, `${label}.screenId`, entry.screenId);
@@ -857,7 +733,7 @@ function validateScreenHistoryEntry(
     errors.push(`${label}.screen.id must match canonical screen "${entry.screenId}".`);
   }
   if (entry.screen) {
-    validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, stateSetIds, true);
+    validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, true);
   }
   const prototype = entry.screen?.prototype;
   if (!prototype) {
@@ -1110,7 +986,6 @@ function validateDependency(
   known: {
     tokenGroupIds: Set<string>;
     primitiveIds: Set<string>;
-    stateSetIds: Set<string>;
     componentIds: Set<string>;
     screenIds: Set<string>;
     sectionIds: Set<string>;
@@ -1123,7 +998,6 @@ function validateDependency(
   const map = {
     'token-group': known.tokenGroupIds,
     primitive: known.primitiveIds,
-    'state-set': known.stateSetIds,
     component: known.componentIds,
     screen: known.screenIds,
     section: known.sectionIds
@@ -1147,28 +1021,8 @@ function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjec
   }
   for (const base of BASE_PRIMITIVE_CONTRACT) {
     const primitive = primitivesById.get(base.id);
-    if (!primitive) {
-      if (base.enforcement !== 'strict' || mode === 'strict') {
-        errors.push(`primitives is missing locked base primitive "${base.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
-      }
-      continue;
-    }
-
-    // Supersets stay valid: apps may add state sets and states, never reduce the base floor.
-    const stateSetsById = new Map((primitive.stateSets ?? []).map(stateSet => [stateSet.id, stateSet]));
-    for (const requiredSet of base.stateSets) {
-      const stateSet = stateSetsById.get(requiredSet.id);
-      if (!stateSet) {
-        errors.push(`primitive.${base.id}.stateSets is missing locked base state-set "${requiredSet.id}". ${BASE_PRIMITIVE_LOCK_REASON}`);
-        continue;
-      }
-
-      const stateIds = new Set((stateSet.states ?? []).map(state => state.id));
-      for (const stateId of requiredSet.states) {
-        if (!stateIds.has(stateId)) {
-          errors.push(`primitive.${base.id}.stateSet.${requiredSet.id} is missing locked base state "${stateId}". ${BASE_PRIMITIVE_LOCK_REASON}`);
-        }
-      }
+    if (!primitive && (base.enforcement !== 'strict' || mode === 'strict')) {
+      errors.push(`primitives is missing locked base primitive "${base.id}". Fix: restore it from the Blueprint starter's primitives.json and its prototype files. ${BASE_PRIMITIVE_LOCK_REASON}`);
     }
   }
 }
@@ -1179,32 +1033,13 @@ function validatePrototypeContracts(
   tokenIds: Set<string>,
   framePresetIds: Set<string>
 ): void {
-  for (const primitive of bundle.primitives.primitives) {
-    if (!primitive.prototype) {
-      errors.push(`primitive.${primitive.id}.prototype must declare a canonical HTML/CSS source.`);
-      continue;
-    }
-    validatePrototypeSource(errors, bundle, `primitive.${primitive.id}.prototype`, primitive.prototype);
-    requireArray(errors, `primitive.${primitive.id}.prototype.slots`, primitive.prototype.slots);
-    requireArray(errors, `primitive.${primitive.id}.prototype.variants`, primitive.prototype.variants);
-    if (primitive.prototype.sizes !== undefined) {
-      requireArray(errors, `primitive.${primitive.id}.prototype.sizes`, primitive.prototype.sizes);
-    }
-    requireString(errors, `primitive.${primitive.id}.prototype.accessibilityIntent`, primitive.prototype.accessibilityIntent);
-    requireObject(errors, `primitive.${primitive.id}.prototype.tokenRoles`, primitive.prototype.tokenRoles);
-    for (const [tokenRef, role] of Object.entries(primitive.prototype.tokenRoles ?? {})) {
-      if (!tokenIds.has(tokenRef)) {
-        errors.push(`primitive.${primitive.id}.prototype.tokenRoles references missing token "${tokenRef}".`);
+  for (const [kind, reusables] of [['primitive', bundle.primitives.primitives], ['component', bundle.components.components]] as const) {
+    for (const reusable of reusables) {
+      if (!reusable.prototype || typeof reusable.prototype !== 'object') {
+        continue;
       }
-      requireString(errors, `primitive.${primitive.id}.prototype.tokenRoles.${tokenRef}`, role);
+      validatePrototypeSource(errors, bundle, `${kind}.${reusable.id}.prototype`, reusable.prototype);
     }
-    validateRenderedUses(errors, `primitive.${primitive.id}.prototype.renderedUses`, primitive.uses ?? [], primitive.prototype.renderedUses);
-  }
-
-  for (const component of bundle.components.components) {
-    validatePrototypeSource(errors, bundle, `component.${component.id}.prototype`, component.prototype);
-    requireArray(errors, `component.${component.id}.prototype.slots`, component.prototype.slots);
-    validateRenderedUses(errors, `component.${component.id}.prototype.renderedUses`, component.uses, component.prototype.renderedUses);
   }
 
   for (const screen of bundle.screens.screens) {
@@ -1241,11 +1076,13 @@ function validatePrototypeSource(
   errors: string[],
   bundle: BlueprintProjectBundle,
   label: string,
-  prototype: PrototypeSource
+  prototype: Pick<PrototypeSource, 'source' | 'styles' | 'localValueExceptions'> & { states?: string[] }
 ): void {
   requireString(errors, `${label}.source`, prototype.source);
   requireArray(errors, `${label}.styles`, prototype.styles);
-  requireArray(errors, `${label}.states`, prototype.states);
+  if (label.startsWith('screen.')) {
+    requireArray(errors, `${label}.states`, prototype.states);
+  }
   validatePrototypeFileRef(errors, bundle, `${label}.source`, prototype.source);
   for (const styleRef of prototype.styles ?? []) {
     validatePrototypeFileRef(errors, bundle, `${label}.style`, styleRef);
@@ -1341,35 +1178,6 @@ function collectTokenIds(groups: TokenGroup[]): Set<string> {
   return tokenIds;
 }
 
-function validateStateTokenReferences(
-  errors: string[],
-  primitive: PrimitiveDefinition,
-  stateSet: PrimitiveStateSet,
-  tokenIds: Set<string>
-): void {
-  for (const state of stateSet.states ?? []) {
-    for (const tokenRef of state.tokens ?? []) {
-      if (!tokenIds.has(tokenRef)) {
-        errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokens references missing token "${tokenRef}".`);
-      }
-    }
-    if (state.tokenRoles) {
-      requireObject(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles`, state.tokenRoles);
-      for (const [tokenRef, role] of Object.entries(state.tokenRoles)) {
-        if (!tokenIds.has(tokenRef)) {
-          errors.push(`primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references missing token "${tokenRef}".`);
-        }
-        if (!(state.tokens ?? []).includes(tokenRef)) {
-          errors.push(
-            `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles references token "${tokenRef}" that is not listed in state tokens.`
-          );
-        }
-        requireString(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.state.${state.id}.tokenRoles.${tokenRef}`, role);
-      }
-    }
-  }
-}
-
 function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProjectBundle): void {
   for (const issue of lintLocalStyleValues(bundle)) {
     errors.push(`${issue.boundary} ${issue.styleRef} ${localStyleValueMessage(issue)}`);
@@ -1396,13 +1204,15 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
 
     validateImplementationTargets(errors, `primitive.${primitive.id}.implementationTargets`, primitive.implementationTargets);
     validateStyleEvidence(errors, `primitive.${primitive.id}.styleEvidence`, primitive.styleRefs, primitive.styleEvidence);
+  }
 
-    for (const stateSet of primitive.stateSets ?? []) {
-      if ((stateSet.states ?? []).every(state => state.prototypeOnly)) {
-        continue;
-      }
-      validateStyleEvidence(errors, `primitive.${primitive.id}.stateSet.${stateSet.id}.styleEvidence`, stateSet.styleRefs, stateSet.styleEvidence);
+  for (const component of bundle.components.components ?? []) {
+    if (component.prototypeOnly) {
+      continue;
     }
+
+    validateImplementationTargets(errors, `component.${component.id}.implementationTargets`, component.implementationTargets);
+    validateStyleEvidence(errors, `component.${component.id}.styleEvidence`, component.styleRefs, component.styleEvidence);
   }
 
   for (const screen of bundle.screens.screens ?? []) {
@@ -1526,6 +1336,7 @@ function validateCompositionBindings(errors: string[], screen: ScreenDefinition,
     const hasBindingDetail = [
       dependency.binding.state,
       dependency.binding.variant,
+      dependency.binding.size,
       dependency.binding.prop,
       dependency.binding.copy,
       dependency.binding.data,
@@ -1534,7 +1345,7 @@ function validateCompositionBindings(errors: string[], screen: ScreenDefinition,
     ].some(value => typeof value === 'string' && value.length > 0);
 
     if (!hasBindingDetail) {
-      errors.push(`${label} must describe at least one state, variant, prop, copy, data, layout, or accessibility binding.`);
+      errors.push(`${label} must describe at least one state, variant, size, prop, copy, data, layout, or accessibility binding.`);
     }
   }
 }
@@ -1577,12 +1388,6 @@ function requireNumber(errors: string[], label: string, value: unknown): void {
 function requirePositiveNumber(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     errors.push(`${label} must be a positive number.`);
-  }
-}
-
-function requireBoolean(errors: string[], label: string, value: unknown): void {
-  if (typeof value !== 'boolean') {
-    errors.push(`${label} must be a boolean.`);
   }
 }
 

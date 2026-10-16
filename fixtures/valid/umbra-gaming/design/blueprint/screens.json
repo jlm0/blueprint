@@ -581,7 +581,7 @@
               "reason": "Sync indicator in loading.",
               "binding": {
                 "slot": "sync",
-                "state": "primary"
+                "variant": "primary"
               }
             }
           ],
@@ -640,8 +640,8 @@
               "reason": "Tier tile placeholder while loading.",
               "binding": {
                 "slot": "pass",
-                "state": "block",
-                "layout": "tier tile"
+                "layout": "tier tile",
+                "variant": "block"
               }
             },
             {
@@ -650,8 +650,8 @@
               "reason": "Pass title placeholder while loading.",
               "binding": {
                 "slot": "pass",
-                "state": "line",
-                "layout": "title and XP"
+                "layout": "title and XP",
+                "variant": "line"
               }
             },
             {
@@ -660,8 +660,8 @@
               "reason": "Reward rail placeholder while loading.",
               "binding": {
                 "slot": "pass",
-                "state": "block",
-                "layout": "reward rail"
+                "layout": "reward rail",
+                "variant": "block"
               }
             },
             {
@@ -670,8 +670,8 @@
               "reason": "Next reward placeholder while loading.",
               "binding": {
                 "slot": "pass",
-                "state": "line",
-                "layout": "next reward"
+                "layout": "next reward",
+                "variant": "line"
               }
             }
           ],
@@ -767,7 +767,7 @@
               "reason": "Live event.",
               "binding": {
                 "slot": "event",
-                "state": "compact"
+                "size": "compact"
               }
             },
             {
@@ -776,7 +776,7 @@
               "reason": "Event copy placeholder while loading.",
               "binding": {
                 "slot": "event",
-                "state": "line"
+                "variant": "line"
               }
             }
           ],
@@ -834,8 +834,8 @@
               "reason": "Challenge glyph placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "state": "block",
-                "layout": "glyph"
+                "layout": "glyph",
+                "variant": "block"
               }
             },
             {
@@ -844,7 +844,7 @@
               "reason": "Challenge copy placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "state": "line"
+                "variant": "line"
               }
             },
             {
@@ -853,8 +853,8 @@
               "reason": "Challenge glyph placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "state": "block",
-                "layout": "glyph"
+                "layout": "glyph",
+                "variant": "block"
               }
             },
             {
@@ -863,7 +863,7 @@
               "reason": "Challenge copy placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "state": "line"
+                "variant": "line"
               }
             }
           ],
@@ -1044,8 +1044,8 @@
               "reason": "Back and match actions.",
               "binding": {
                 "slot": "title",
-                "state": "back-and-right",
-                "copy": "Match summary"
+                "copy": "Match summary",
+                "variant": "back-and-right"
               }
             }
           ],
@@ -1137,7 +1137,7 @@
               "reason": "Pass progress with XP gained.",
               "binding": {
                 "slot": "xp",
-                "state": "compact"
+                "size": "compact"
               }
             }
           ],
