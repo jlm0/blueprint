@@ -122,6 +122,42 @@ describe('Blueprint schema contract', () => {
     assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${third.id}\\.platforms must list`));
   });
 
+  it('validates the brand guideline, its mark sources, and its variants, and requires it for a strict handoff', async () => {
+    const meridian = await loadProjectFromFs(meridianRoot);
+    assert.equal(validateProject(meridian, { mode: 'strict' }).ok, true, validateProject(meridian, { mode: 'strict' }).errors.join('\n'));
+
+    const mira = await loadProjectFromFs(miraRoot);
+    assert.equal(mira.brand, undefined);
+    assert.equal(validateProject(mira).errors.some(error => error.startsWith('brand')), false, 'The brand is optional below strict');
+    assert.match(validateProject(mira, { mode: 'strict' }).errors.join('\n'), /brand\.json is required for a strict handoff/);
+
+    const broken = structuredClone(meridian);
+    const [globe, wordmark, lockup] = broken.brand!.marks;
+    assert.ok(globe && wordmark && lockup);
+    broken.prototypeSourceContents[globe.source] = broken.prototypeSourceContents[globe.source]!.replace('<circle', '<script>fetch("https://example.com")</script><circle');
+    broken.prototypeSourceContents[wordmark.source] = broken.prototypeSourceContents[wordmark.source]!
+      .replace('fill="currentColor"', 'fill="#16140f"')
+      .replace('<path', '<text>Meridian</text><path');
+    broken.prototypeSourceContents[lockup.source] = broken.prototypeSourceContents[lockup.source]!.replace(/d="M[\d.]+/, 'd="MNaN');
+    globe.variants[0]!.accent = 'color.brand-blue';
+    wordmark.variants.push({ id: 'faint', name: 'Faint', background: 'color.background', foreground: 'color.surface-2' });
+    lockup.role = 'badge' as typeof lockup.role;
+    lockup.minimumSize.px = 0;
+
+    const baseline = validateProject(broken).errors.join('\n');
+    assert.match(baseline, /brand\.mark\.globe\.source contains a script/);
+    assert.match(baseline, /brand\.mark\.lockup\.source contains a NaN or Infinity coordinate/);
+    assert.match(baseline, /brand\.mark\.globe\.variant\.ink\.accent "color\.brand-blue" must reference a declared color token/);
+    assert.match(baseline, /brand\.mark\.lockup\.role must be one of "mark", "wordmark", "lockup", "app-icon"/);
+    assert.match(baseline, /brand\.mark\.lockup\.minimumSize\.px must be a positive number/);
+    assert.doesNotMatch(baseline, /literal color|live text|contrast/, 'Handoff rules apply only in strict mode');
+
+    const strict = validateProject(broken, { mode: 'strict' }).errors.join('\n');
+    assert.match(strict, /brand\.mark\.wordmark\.source draws with a literal color/);
+    assert.match(strict, /brand\.mark\.wordmark\.source sets live text; outline the lettering/);
+    assert.match(strict, /brand\.mark\.wordmark\.variant\.faint\.foreground color\.surface-2 on color\.background has contrast [\d.]+:1; a mark needs at least 3:1/);
+  });
+
   it('requires every screen page and component section to be declared before use', async () => {
     const bundle = structuredClone(await loadProjectFromFs(miraRoot));
     const [screen, other] = bundle.screens.screens;

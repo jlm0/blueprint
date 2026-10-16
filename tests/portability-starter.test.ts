@@ -51,7 +51,7 @@ describe('starter and high-fidelity portability contract', () => {
       ]
     );
 
-    const governedSource = Object.values(bundle.prototypeSourceContents).join('\n');
+    const governedSource = Object.values(bundle.prototypeSourceContents).join('\n').replace(/xmlns(?::\w+)?="http:\/\/www\.w3\.org\/[^"]+"/g, '');
     assert.doesNotMatch(governedSource, /<script\b|https?:\/\//i);
   });
 

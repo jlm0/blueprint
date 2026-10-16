@@ -2,6 +2,7 @@ import type {
   BlueprintProjectBundle,
   BoardDefinition,
   BoundaryDependency,
+  BrandMark,
   ComponentDefinition,
   DeclaredGroup,
   ExplorationDefinition,
@@ -30,7 +31,9 @@ import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSe
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
-import { contrastMessage, lintColorContrast } from './contrast-lint';
+import { contrastMessage, contrastRatio, lintColorContrast } from './contrast-lint';
+import { BRAND_MARK_ROLES, brandMarkHandoffIssues, brandMarkSourceIssues } from './brand-lint';
+import { parseOpaqueColor } from './color';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
 import { computeExplorationBaselineDigest } from './exploration';
 import { storageRecordSegment } from './storage-records';
@@ -159,6 +162,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   validatePrototypeHost(errors, bundle.manifest.prototypeHost);
+  validateBrand(errors, bundle, options.mode ?? 'baseline');
   validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
   recordPrototypeSourceGraphValidation(errors, bundle);
@@ -185,6 +189,14 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
     }
   }
   recordPrototypeSourceGraphReadiness(items, bundle);
+  if (!bundle.brand) {
+    items.push({
+      path: 'brand',
+      severity: 'pending',
+      source: 'synthesized-missing',
+      message: 'No brand.json yet: declare the brand name, marks, voice, and usage so every layer has a brand to express.'
+    });
+  }
 
   for (const primitive of bundle.primitives.primitives ?? []) {
     if (primitive.prototypeOnly) {
@@ -543,6 +555,120 @@ function validateComponent(errors: string[], component: ComponentDefinition, tok
     if (!tokenGroupIds.has(tokenGroupId)) {
       errors.push(`component.${component.id}.tokenGroupIds references missing token group "${tokenGroupId}".`);
     }
+  }
+}
+
+function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode): void {
+  const brand = bundle.brand;
+  if (!brand) {
+    if (mode === 'strict') {
+      errors.push('brand.json is required for a strict handoff: declare the brand name, marks, and usage.');
+    }
+    return;
+  }
+  if (brand.projectId !== bundle.manifest.project.id) {
+    errors.push(`brand.projectId "${brand.projectId}" must match manifest project id "${bundle.manifest.project.id}".`);
+  }
+  requireString(errors, 'brand.name', brand.name);
+  if (brand.tagline !== undefined) {
+    requireString(errors, 'brand.tagline', brand.tagline);
+  }
+  for (const [index, trait] of (brand.personality ?? []).entries()) {
+    requireString(errors, `brand.personality.${index}.name`, trait.name);
+    requireString(errors, `brand.personality.${index}.description`, trait.description);
+  }
+  if (brand.voice) {
+    requireString(errors, 'brand.voice.summary', brand.voice.summary);
+    requireStringList(errors, 'brand.voice.do', brand.voice.do);
+    requireStringList(errors, 'brand.voice.dont', brand.voice.dont);
+  }
+  if (brand.usage) {
+    requireStringList(errors, 'brand.usage.do', brand.usage.do);
+    requireStringList(errors, 'brand.usage.dont', brand.usage.dont);
+  }
+  const colors = new Map(bundle.tokens.tokenGroups.flatMap(group => (group.tokens ?? [])
+    .filter(token => token.type === 'color')
+    .map(token => [`${group.id}.${token.id}`, token.value] as const)));
+  collectIds(errors, 'brand.marks', brand.marks, mark => validateBrandMark(errors, bundle, mark, colors, mode));
+  if (mode === 'strict' && (brand.marks ?? []).length === 0) {
+    errors.push('brand.marks must declare at least one mark for a strict handoff.');
+  }
+}
+
+function validateBrandMark(
+  errors: string[],
+  bundle: BlueprintProjectBundle,
+  mark: BrandMark,
+  colors: Map<string, string>,
+  mode: ValidationMode
+): void {
+  const label = `brand.mark.${mark.id}`;
+  requireString(errors, 'brand.mark.id', mark.id);
+  requireString(errors, `${label}.name`, mark.name);
+  requireString(errors, `${label}.description`, mark.description);
+  if (!BRAND_MARK_ROLES.includes(mark.role)) {
+    errors.push(`${label}.role must be one of ${BRAND_MARK_ROLES.map(role => `"${role}"`).join(', ')}.`);
+  }
+  requireString(errors, `${label}.source`, mark.source);
+  if (typeof mark.source === 'string' && mark.source.length > 0) {
+    const svg = bundle.prototypeSourceContents[mark.source];
+    if (!mark.source.endsWith('.svg')) {
+      errors.push(`${label}.source must be an .svg file.`);
+    } else if (svg === undefined) {
+      errors.push(`${label}.source "${mark.source}" does not exist or could not be loaded.`);
+    } else {
+      const issues = [...brandMarkSourceIssues(svg), ...(mode === 'strict' ? brandMarkHandoffIssues(svg) : [])];
+      errors.push(...issues.map(issue => `${label}.source ${issue}`));
+    }
+  }
+
+  collectIds(errors, `${label}.variants`, mark.variants, variant => {
+    requireString(errors, `${label}.variant.id`, variant.id);
+    requireString(errors, `${label}.variant.${variant.id}.name`, variant.name);
+    for (const role of ['background', 'foreground', 'accent'] as const) {
+      const ref = variant[role];
+      if (role === 'accent' && ref === undefined) continue;
+      if (typeof ref !== 'string' || !colors.has(ref)) {
+        errors.push(`${label}.variant.${variant.id}.${role} "${ref}" must reference a declared color token, such as "color.background".`);
+      }
+    }
+    if (mode !== 'strict') return;
+    const background = parseOpaqueColor(colors.get(variant.background) ?? '');
+    for (const role of ['foreground', 'accent'] as const) {
+      const ref = variant[role];
+      const ink = ref ? parseOpaqueColor(colors.get(ref) ?? '') : undefined;
+      const ratio = ink && background ? contrastRatio(ink, background) : undefined;
+      if (ratio !== undefined && ratio < 3) {
+        errors.push(`${label}.variant.${variant.id}.${role} ${ref} on ${variant.background} has contrast ${Math.floor(ratio * 100) / 100}:1; a mark needs at least 3:1.`);
+      }
+    }
+  });
+  if (Array.isArray(mark.variants) && mark.variants.length === 0) {
+    errors.push(`${label}.variants must declare at least one approved treatment.`);
+  }
+
+  requireObject(errors, `${label}.clearSpace`, mark.clearSpace);
+  if (mark.clearSpace) {
+    requirePositiveNumber(errors, `${label}.clearSpace.ratio`, mark.clearSpace.ratio);
+    requireAxis(errors, `${label}.clearSpace.basis`, mark.clearSpace.basis);
+  }
+  requireObject(errors, `${label}.minimumSize`, mark.minimumSize);
+  if (mark.minimumSize) {
+    requirePositiveNumber(errors, `${label}.minimumSize.px`, mark.minimumSize.px);
+    requireAxis(errors, `${label}.minimumSize.axis`, mark.minimumSize.axis);
+  }
+}
+
+function requireStringList(errors: string[], label: string, value: unknown): void {
+  requireArray(errors, label, value);
+  for (const [index, item] of (Array.isArray(value) ? value : []).entries()) {
+    requireString(errors, `${label}.${index}`, item);
+  }
+}
+
+function requireAxis(errors: string[], label: string, value: unknown): void {
+  if (value !== 'height' && value !== 'width') {
+    errors.push(`${label} must be "height" or "width".`);
   }
 }
 

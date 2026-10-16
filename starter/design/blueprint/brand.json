@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "starter-app",
+  "name": "Starter App",
+  "tagline": "A neutral starting point. Replace this brand with your app's own before designing screens.",
+  "personality": [
+    {
+      "name": "Clear",
+      "description": "Says one thing at a time and leaves room around it."
+    },
+    {
+      "name": "Calm",
+      "description": "Quiet surfaces and steady motion; nothing shouts for attention."
+    },
+    {
+      "name": "Capable",
+      "description": "Gets out of the way so the work stays in focus."
+    }
+  ],
+  "voice": {
+    "summary": "Plain and direct. Lead with what happened or what to do next, in as few words as it takes.",
+    "do": [
+      "Saved. Your changes are live.",
+      "Add a payment method to continue."
+    ],
+    "dont": [
+      "Oops! Something went wrong 😬",
+      "Your request could not be processed at this time."
+    ]
+  },
+  "marks": [
+    {
+      "id": "mark",
+      "name": "Mark",
+      "role": "mark",
+      "description": "Placeholder symbol: a rounded tile with a round counter. Replace it with the app mark.",
+      "source": "brand/mark.svg",
+      "variants": [
+        {
+          "id": "default",
+          "name": "Default",
+          "background": "color.background",
+          "foreground": "color.foreground"
+        },
+        {
+          "id": "reversed",
+          "name": "Reversed",
+          "background": "color.primary",
+          "foreground": "color.on-primary"
+        }
+      ],
+      "clearSpace": {
+        "ratio": 0.25,
+        "basis": "height",
+        "note": "A quarter of the mark's height on every side."
+      },
+      "minimumSize": {
+        "px": 16,
+        "axis": "height",
+        "note": "Below 16 px the counter fills in."
+      }
+    },
+    {
+      "id": "wordmark",
+      "name": "Wordmark",
+      "role": "wordmark",
+      "description": "Placeholder wordmark set in Inter and outlined to paths. Replace it with the app name.",
+      "source": "brand/wordmark.svg",
+      "variants": [
+        {
+          "id": "default",
+          "name": "Default",
+          "background": "color.background",
+          "foreground": "color.foreground"
+        },
+        {
+          "id": "reversed",
+          "name": "Reversed",
+          "background": "color.primary",
+          "foreground": "color.on-primary"
+        }
+      ],
+      "clearSpace": {
+        "ratio": 0.5,
+        "basis": "height",
+        "note": "Half the wordmark's height on every side."
+      },
+      "minimumSize": {
+        "px": 64,
+        "axis": "width",
+        "note": "Below 64 px wide, use the mark."
+      }
+    }
+  ],
+  "usage": {
+    "do": [
+      "Use an approved variant on its listed background.",
+      "Keep the clear space free of text and other marks.",
+      "Use the mark alone below the wordmark's minimum size."
+    ],
+    "dont": [
+      "Stretch, rotate, or add effects to a mark.",
+      "Recolor a mark outside its approved variants.",
+      "Retype the wordmark in a font."
+    ]
+  }
+}

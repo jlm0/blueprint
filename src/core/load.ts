@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {
+  collectBrandSourceRefs,
   collectExplorationAssetRefs,
   collectExplorationTextSourceRefs,
   collectHistoryAssetRefs,
@@ -13,6 +14,7 @@ import { explorationRecordRef, historyRecordRef } from './storage-records';
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
+  BrandFile,
   ComponentFile,
   ExplorationDefinition,
   ExplorationFile,
@@ -33,12 +35,15 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const primitives = await readJson<PrimitiveFile>(reader, 'primitives.json');
   const components = await readJson<ComponentFile>(reader, 'components.json');
   const screens = await readJson<ScreenFile>(reader, 'screens.json');
+  const brandText = await reader.readText('brand.json', { kind: 'fixed JSON', optional: true });
+  const brand = brandText === undefined ? undefined : JSON.parse(brandText) as BrandFile;
   const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
   const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
   const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs);
   const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs);
   const sourceRefs = [
     ...collectPrototypeTextSourceRefs(primitives, components, screens),
+    ...collectBrandSourceRefs(brand),
     ...collectExplorationTextSourceRefs(explorations),
     ...collectHistoryTextSourceRefs(history)
   ];
@@ -71,6 +76,7 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
     primitives,
     components,
     screens,
+    brand,
     explorations,
     history,
     explorationRecordRefs,

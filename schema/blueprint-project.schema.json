@@ -12,6 +12,7 @@
     "primitives": { "$ref": "#/$defs/primitiveFile" },
     "components": { "$ref": "#/$defs/componentFile" },
     "screens": { "$ref": "#/$defs/screenFile" },
+    "brand": { "$ref": "#/$defs/brandFile" },
     "explorations": { "$ref": "#/$defs/explorationFile" },
     "history": { "$ref": "#/$defs/screenHistoryFile" }
   },
@@ -222,6 +223,86 @@
         "prototypeOnly": { "type": "boolean" },
         "notes": { "$ref": "#/$defs/stringArray" },
         "implementationHints": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "brandFile": {
+      "type": "object",
+      "required": ["schemaVersion", "projectId", "name", "marks"],
+      "properties": {
+        "schemaVersion": { "type": "string" },
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "personality": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "properties": { "name": { "type": "string" }, "description": { "type": "string" } }
+          }
+        },
+        "voice": {
+          "type": "object",
+          "required": ["summary", "do", "dont"],
+          "properties": {
+            "summary": { "type": "string" },
+            "do": { "$ref": "#/$defs/stringArray" },
+            "dont": { "$ref": "#/$defs/stringArray" }
+          }
+        },
+        "marks": { "type": "array", "items": { "$ref": "#/$defs/brandMark" } },
+        "usage": {
+          "type": "object",
+          "required": ["do", "dont"],
+          "properties": {
+            "do": { "$ref": "#/$defs/stringArray" },
+            "dont": { "$ref": "#/$defs/stringArray" }
+          }
+        }
+      }
+    },
+    "brandMark": {
+      "type": "object",
+      "required": ["id", "name", "role", "description", "source", "variants", "clearSpace", "minimumSize"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "enum": ["mark", "wordmark", "lockup", "app-icon"] },
+        "description": { "type": "string" },
+        "source": { "type": "string", "pattern": "\\.svg$" },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "background", "foreground"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "background": { "type": "string" },
+              "foreground": { "type": "string" },
+              "accent": { "type": "string" }
+            }
+          }
+        },
+        "clearSpace": {
+          "type": "object",
+          "required": ["ratio", "basis"],
+          "properties": {
+            "ratio": { "type": "number", "exclusiveMinimum": 0 },
+            "basis": { "enum": ["height", "width"] },
+            "note": { "type": "string" }
+          }
+        },
+        "minimumSize": {
+          "type": "object",
+          "required": ["px", "axis"],
+          "properties": {
+            "px": { "type": "number", "exclusiveMinimum": 0 },
+            "axis": { "enum": ["height", "width"] },
+            "note": { "type": "string" }
+          }
+        }
       }
     },
     "declaredGroup": {

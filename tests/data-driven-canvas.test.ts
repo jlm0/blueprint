@@ -48,7 +48,11 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       const page = await openDocumentSection(bundle, 'foundations');
       try {
         const records: VisibleBoundaryRecord[] = [];
-        assert.deepEqual(await navItemIds(page), bundle.tokens.tokenGroups.map(group => group.id), `${projectId} foundations should list every token group`);
+        assert.deepEqual(
+          await navItemIds(page),
+          [...(bundle.brand ? ['brand'] : []), ...bundle.tokens.tokenGroups.map(group => group.id)],
+          `${projectId} foundations should open with the brand, when there is one, then list every token group`
+        );
         for (const group of bundle.tokens.tokenGroups) {
           const item = await showItem(page, group.id);
           records.push(...await collectPrimitiveRecords(page));
@@ -140,6 +144,75 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       } finally {
         await page.close();
       }
+    }
+  });
+
+  it('opens foundations with the brand guideline drawn from brand.json and its mark sources', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const brand = bundle.brand;
+    assert.ok(brand, 'Meridian should declare its brand');
+    const page = await openDocumentSection(bundle, 'foundations');
+
+    try {
+      const brandPage = page.locator('.board-primitives .bp-chrome-doc-page[data-brand]');
+      await brandPage.waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await brandPage.locator('.bp-chrome-doc-title').innerText(), brand.name);
+      assert.equal(await brandPage.locator('.bp-chrome-doc-lede').innerText(), brand.tagline);
+      assert.deepEqual(await brandPage.locator('.bp-chrome-brand-trait-name').allTextContents(), brand.personality?.map(trait => trait.name));
+
+      const marks = await brandPage.locator('[data-brand-mark]').evaluateAll(specimens => specimens.map(specimen => ({
+        id: (specimen as HTMLElement).dataset.brandMark,
+        variants: [...specimen.querySelectorAll<HTMLElement>('.bp-chrome-brand-tile')].map(tile => tile.dataset.brandVariant),
+        graphics: specimen.querySelectorAll('svg[role="img"]').length
+      })));
+      assert.deepEqual(
+        marks,
+        brand.marks.map(mark => {
+          const variants = mark.variants.map(variant => variant.id);
+          return { id: mark.id, variants: [...variants, variants[0], variants[0]], graphics: variants.length + 2 };
+        }),
+        'Each mark should show every approved variant, then its clear space and minimum size on the primary variant'
+      );
+
+      const ink = brandPage.locator('[data-brand-mark="globe"] .bp-chrome-brand-tile[data-brand-variant="ink"]').first();
+      assert.deepEqual(
+        await ink.locator('.bp-chrome-brand-surface').evaluate(surface => ({
+          background: getComputedStyle(surface).backgroundColor,
+          color: getComputedStyle(surface).color,
+          meridian: getComputedStyle(surface.querySelector('path[style]')!).stroke
+        })),
+        { background: 'rgb(243, 240, 232)', color: 'rgb(22, 20, 15)', meridian: 'rgb(45, 69, 224)' },
+        'Variants should color marks from their token refs, with the accent reaching var(--brand-accent)'
+      );
+
+      const globe = brand.marks.find(mark => mark.id === 'globe')!;
+      assert.equal(
+        await brandPage.locator('[data-brand-mark="globe"] .bp-chrome-brand-clearspace').evaluate(area => getComputedStyle(area).paddingTop),
+        `${globe.clearSpace.ratio * 56}px`
+      );
+      const minimumBox = async (id: string) => brandPage.locator(`[data-brand-mark="${id}"] .bp-chrome-brand-tile`).last().locator('svg').boundingBox();
+      assert.equal(Math.round((await minimumBox('globe'))!.height), 16, 'The globe should render at its minimum height');
+      assert.equal(Math.round((await minimumBox('wordmark'))!.width), 72, 'The wordmark should render at its minimum width');
+
+      const examples = (tone: string, section: number) => brandPage.locator('.bp-chrome-brand-examples').nth(section).locator(`[data-tone="${tone}"] li`).allTextContents();
+      assert.deepEqual(await examples('do', 0), brand.voice?.do.map(line => `“${line}”`));
+      assert.deepEqual(await examples('dont', 1), brand.usage?.dont);
+      assert.ok(await page.locator('#document').evaluate(element => element.scrollWidth - element.clientWidth <= 1), 'The brand page should not scroll sideways');
+    } finally {
+      await page.close();
+    }
+
+    const starter = cloneBundle(await loadProjectFromFs(starterRoot));
+    starter.prototypeSourceContents['brand/mark.svg'] = starter.prototypeSourceContents['brand/mark.svg']!.replace('<path', '<path onclick="alert(1)"');
+    const starterPage = await openDocumentSection(starter, 'foundations', 'brand');
+    try {
+      const unsafe = starterPage.locator('[data-brand-mark="mark"]');
+      await unsafe.waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await unsafe.locator('svg').count(), 0, 'A mark that fails the source checks should not be drawn');
+      assert.match(await unsafe.locator('.bp-chrome-doc-notice').innerText(), /failed the brand mark source checks/);
+      assert.equal(await starterPage.locator('[data-brand-mark="wordmark"] svg[role="img"]').count(), 4);
+    } finally {
+      await starterPage.close();
     }
   });
 

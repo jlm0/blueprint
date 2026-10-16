@@ -4,11 +4,15 @@ import type { CanvasStyleEvidenceArtifact, ReviewManifest, VisibleBoundarySyncRe
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
+  BrandFile,
   ComponentFile,
   PrimitiveFile,
   ScreenFile,
   TokenFile
 } from '../core/types';
+import starterBrand from '../../starter/design/blueprint/brand.json';
+import starterBrandMarkSvg from '../../starter/design/blueprint/brand/mark.svg?raw';
+import starterBrandWordmarkSvg from '../../starter/design/blueprint/brand/wordmark.svg?raw';
 import starterComponents from '../../starter/design/blueprint/components.json';
 import starterManifest from '../../starter/design/blueprint/manifest.json';
 import starterPrimitives from '../../starter/design/blueprint/primitives.json';
@@ -95,7 +99,10 @@ export function loadStarterProject(): BlueprintProjectBundle {
     primitives: starterPrimitives as unknown as PrimitiveFile,
     components: starterComponents as ComponentFile,
     screens: starterScreens as ScreenFile,
+    brand: starterBrand as BrandFile,
     prototypeSourceContents: {
+      'brand/mark.svg': starterBrandMarkSvg,
+      'brand/wordmark.svg': starterBrandWordmarkSvg,
       'prototype/components/action-cluster.css': starterActionClusterCss,
       'prototype/components/action-cluster.html': starterActionClusterHtml,
       'prototype/primitives/alert-dialog.css': starterAlertDialogCss,

@@ -946,6 +946,13 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
   const screens = JSON.parse(await readFile(screensPath, 'utf8'));
   screens.projectId = projectId;
 
+  const brandPath = path.join(destination, 'brand.json');
+  const brand = existsSync(brandPath) ? JSON.parse(await readFile(brandPath, 'utf8')) : undefined;
+  if (brand) {
+    brand.projectId = projectId;
+    brand.name = name;
+  }
+
   const writes = [
     writeJsonFile(manifestPath, manifest),
     writeJsonFile(tokensPath, tokens),
@@ -954,6 +961,9 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
   ];
   if (components) {
     writes.push(writeJsonFile(componentsPath, components));
+  }
+  if (brand) {
+    writes.push(writeJsonFile(brandPath, brand));
   }
   await Promise.all(writes);
 }

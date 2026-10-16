@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectId": "meridian-finance",
+  "name": "Meridian",
+  "tagline": "Treasury for companies that would rather be building.",
+  "personality": [
+    {
+      "name": "Precise",
+      "description": "Exact figures and named sources; never rounds away the detail that matters."
+    },
+    {
+      "name": "Unhurried",
+      "description": "Calm pacing and generous space. Money is serious, not stressful."
+    },
+    {
+      "name": "Editorial",
+      "description": "Reads like a well-set financial page: serif headlines over quiet supporting text."
+    },
+    {
+      "name": "Trustworthy",
+      "description": "Says what will happen before it happens and never hides a fee."
+    }
+  ],
+  "voice": {
+    "summary": "Speaks like a good controller: the number first, then the context that explains it. Short sentences, no hype.",
+    "do": [
+      "Runway is 31 months at current burn.",
+      "Sent $12,400 to Gusto. It arrives Thursday."
+    ],
+    "dont": [
+      "Whoa, you're crushing it! 🚀",
+      "Your transaction processing request has been successfully initiated."
+    ]
+  },
+  "marks": [
+    {
+      "id": "globe",
+      "name": "Globe",
+      "role": "mark",
+      "description": "A globe crossed by its meridian, the line every position is measured from. The meridian takes the accent where the background allows it.",
+      "source": "brand/mark.svg",
+      "variants": [
+        {
+          "id": "ink",
+          "name": "Ink with accent",
+          "background": "color.background",
+          "foreground": "color.foreground",
+          "accent": "color.accent"
+        },
+        {
+          "id": "one-color",
+          "name": "One color",
+          "background": "color.surface",
+          "foreground": "color.foreground"
+        },
+        {
+          "id": "reversed",
+          "name": "Reversed",
+          "background": "color.primary",
+          "foreground": "color.on-primary"
+        }
+      ],
+      "clearSpace": {
+        "ratio": 0.25,
+        "basis": "height",
+        "note": "A quarter of the globe's diameter on every side."
+      },
+      "minimumSize": {
+        "px": 16,
+        "axis": "height",
+        "note": "Below 16 px the meridians close up."
+      }
+    },
+    {
+      "id": "wordmark",
+      "name": "Wordmark",
+      "role": "wordmark",
+      "description": "Meridian set in Instrument Serif and outlined to paths, so it never depends on an installed font.",
+      "source": "brand/wordmark.svg",
+      "variants": [
+        {
+          "id": "ink",
+          "name": "Ink",
+          "background": "color.background",
+          "foreground": "color.foreground"
+        },
+        {
+          "id": "reversed",
+          "name": "Reversed",
+          "background": "color.primary",
+          "foreground": "color.on-primary"
+        }
+      ],
+      "clearSpace": {
+        "ratio": 0.5,
+        "basis": "height",
+        "note": "Half the cap height on every side."
+      },
+      "minimumSize": {
+        "px": 72,
+        "axis": "width",
+        "note": "Below 72 px wide, use the globe alone."
+      }
+    },
+    {
+      "id": "lockup",
+      "name": "Lockup",
+      "role": "lockup",
+      "description": "Globe and wordmark on one baseline, as in the product header.",
+      "source": "brand/lockup.svg",
+      "variants": [
+        {
+          "id": "ink",
+          "name": "Ink with accent",
+          "background": "color.background",
+          "foreground": "color.foreground",
+          "accent": "color.accent"
+        },
+        {
+          "id": "reversed",
+          "name": "Reversed",
+          "background": "color.primary",
+          "foreground": "color.on-primary"
+        }
+      ],
+      "clearSpace": {
+        "ratio": 0.5,
+        "basis": "height",
+        "note": "Half the lockup's height on every side."
+      },
+      "minimumSize": {
+        "px": 96,
+        "axis": "width",
+        "note": "Below 96 px wide, use the wordmark or the globe."
+      }
+    }
+  ],
+  "usage": {
+    "do": [
+      "Lead with the lockup in the product header and on first-touch surfaces.",
+      "Use the globe alone for favicons, avatars, and tight spaces.",
+      "Keep the meridian in the accent only on light backgrounds."
+    ],
+    "dont": [
+      "Stretch, rotate, or outline the marks.",
+      "Set the wordmark in Inter Tight or any other face.",
+      "Place a mark on photography without a paper or ink backing."
+    ]
+  }
+}

@@ -103,13 +103,14 @@ describe('Blueprint MCP and template governance', () => {
         const out = path.join(tempDir, 'app-a', 'design', 'blueprint');
         const output = await call(session, 'init', { projectId: 'app-a', name: 'App A', out });
         assert.equal(output.command, 'init');
-        assert.deepEqual((output.files as string[]).sort(), ['AGENTS.md', 'components.json', 'manifest.json', 'primitives.json', 'prototype', 'screens.json', 'tokens.json']);
+        assert.deepEqual((output.files as string[]).sort(), ['AGENTS.md', 'brand', 'brand.json', 'components.json', 'manifest.json', 'primitives.json', 'prototype', 'screens.json', 'tokens.json']);
 
         const manifest = JSON.parse(await readFile(path.join(out, 'manifest.json'), 'utf8'));
         const tokens = JSON.parse(await readFile(path.join(out, 'tokens.json'), 'utf8'));
         const primitives = JSON.parse(await readFile(path.join(out, 'primitives.json'), 'utf8'));
         const components = JSON.parse(await readFile(path.join(out, 'components.json'), 'utf8'));
         const screens = JSON.parse(await readFile(path.join(out, 'screens.json'), 'utf8'));
+        const brand = JSON.parse(await readFile(path.join(out, 'brand.json'), 'utf8'));
         assert.equal(manifest.project.id, 'app-a');
         assert.equal(manifest.project.name, 'App A');
         assert.equal(manifest.project.sourceRoot, normalize(out));
@@ -117,7 +118,9 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal(primitives.projectId, 'app-a');
         assert.equal(components.projectId, 'app-a');
         assert.equal(screens.projectId, 'app-a');
-        assert.equal(JSON.stringify({ manifest, tokens, primitives, components, screens }).includes('starter-app'), false);
+        assert.equal(brand.projectId, 'app-a');
+        assert.equal(brand.name, 'App A', 'init should name the brand after the app');
+        assert.equal(JSON.stringify({ manifest, tokens, primitives, components, screens, brand }).includes('starter-app'), false);
         assert.deepEqual(screens.screens.map((screen: { id: string; sections: unknown[] }) => [screen.id, screen.sections.length]), [['home', 0], ['web-home', 0]]);
 
         const sentinel = path.join(out, 'keep.txt');

@@ -274,6 +274,63 @@ export type ScreenHistoryReplacement =
       version: number;
     };
 
+/** Optional brand guideline that tokens, primitives, components, and screens express. */
+export interface BrandFile {
+  schemaVersion: string;
+  projectId: string;
+  name: string;
+  /** One line that positions the product. */
+  tagline?: string;
+  personality?: BrandTrait[];
+  voice?: BrandVoice;
+  marks: BrandMark[];
+  usage?: BrandUsage;
+}
+
+export interface BrandTrait {
+  name: string;
+  description: string;
+}
+
+export interface BrandVoice {
+  summary: string;
+  /** Example copy written in the voice. */
+  do: string[];
+  /** Example copy the voice rules out. */
+  dont: string[];
+}
+
+export interface BrandUsage {
+  do: string[];
+  dont: string[];
+}
+
+export type BrandMarkRole = 'mark' | 'wordmark' | 'lockup' | 'app-icon';
+
+export interface BrandMark {
+  id: string;
+  name: string;
+  role: BrandMarkRole;
+  description: string;
+  /** Sidecar-relative SVG drawn with currentColor and, for a second color, var(--brand-accent). */
+  source: string;
+  /** Approved color treatments; the first is the primary treatment. */
+  variants: BrandMarkVariant[];
+  /** Empty space kept on every side, as a ratio of the mark's height or width. */
+  clearSpace: { ratio: number; basis: 'height' | 'width'; note?: string };
+  /** Smallest on-screen size, in CSS pixels along one axis. */
+  minimumSize: { px: number; axis: 'height' | 'width'; note?: string };
+}
+
+export interface BrandMarkVariant {
+  id: string;
+  name: string;
+  /** Color token refs such as color.background. */
+  background: string;
+  foreground: string;
+  accent?: string;
+}
+
 /** Optional fifth structured sidecar file containing reusable composite boundaries. */
 export interface ComponentFile {
   schemaVersion: string;
@@ -422,6 +479,7 @@ export interface BlueprintProjectBundle {
   primitives: PrimitiveFile;
   components: ComponentFile;
   screens: ScreenFile;
+  brand?: BrandFile;
   /** Saved alternatives assembled from separate exploration records. */
   explorations: ExplorationFile;
   /** Prior canonical versions assembled from separate history records. */
@@ -433,6 +491,7 @@ export interface BlueprintProjectBundle {
     primitives: string;
     components: string;
     screens: string;
+    brand?: string;
     explorationRecords: string[];
     historyRecords: string[];
     /** Normalized absolute provenance paths for every governed prototype input. */
@@ -442,7 +501,7 @@ export interface BlueprintProjectBundle {
     /** Governed historical prototype inputs kept separate from canonical sources. */
     historySources: string[];
   };
-  /** Serializable source text keyed by sidecar-relative prototype path for browser compilation. */
+  /** Serializable source text keyed by sidecar-relative path, including brand mark SVGs, for browser compilation. */
   prototypeSourceContents: Record<string, string>;
   /** Serializable controlled asset data keyed by sidecar-relative path for browser URL rewriting. */
   prototypeAssetContents: Record<string, PrototypeAssetContent>;

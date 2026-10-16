@@ -1439,6 +1439,140 @@ body {
   line-height: 1.55;
 }
 
+.bp-chrome-brand-traits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 20px 28px;
+}
+
+.bp-chrome-brand-trait {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.bp-chrome-brand-trait-name {
+  margin: 0;
+  color: var(--bp-chrome-fg);
+  font-family: var(--bp-chrome-font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bp-chrome-brand-trait-text {
+  margin: 0;
+  color: var(--bp-chrome-muted-fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bp-chrome-brand-marks {
+  display: grid;
+  gap: 40px;
+}
+
+.bp-chrome-brand-mark {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.bp-chrome-brand-mark-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.bp-chrome-brand-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.bp-chrome-brand-tile {
+  display: grid;
+  max-width: 100%;
+  gap: 8px;
+  margin: 0;
+}
+
+.bp-chrome-brand-surface {
+  display: grid;
+  min-width: 160px;
+  min-height: 120px;
+  max-width: 100%;
+  place-items: center;
+  padding: 28px 36px;
+  border: 1px solid var(--bp-chrome-border);
+  border-radius: var(--bp-chrome-radius);
+  overflow: hidden;
+}
+
+.bp-chrome-brand-graphic {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.bp-chrome-brand-clearspace {
+  outline: 1px dashed currentColor;
+  outline-offset: -1px;
+}
+
+.bp-chrome-brand-clearspace .bp-chrome-brand-graphic {
+  outline: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.bp-chrome-brand-caption {
+  contain: inline-size;
+  color: var(--bp-chrome-muted-fg);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.bp-chrome-brand-examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  max-width: 780px;
+  gap: 20px 32px;
+}
+
+.bp-chrome-brand-example-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.bp-chrome-brand-example-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bp-chrome-brand-example-items li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.bp-chrome-brand-example-list[data-tone='do'] li::before {
+  content: "\2713";
+  color: var(--bp-chrome-success);
+  font-weight: 700;
+}
+
+.bp-chrome-brand-example-list[data-tone='dont'] li::before {
+  content: "\2715";
+  color: var(--bp-chrome-destructive);
+  font-weight: 700;
+}
+
 .bp-chrome-doc-link {
   cursor: pointer;
 }

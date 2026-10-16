@@ -1,6 +1,7 @@
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
+  BrandFile,
   ComponentFile,
   ExplorationFile,
   PrimitiveFile,
@@ -22,6 +23,7 @@ export interface RawProjectFiles {
   primitives: PrimitiveFile;
   components: ComponentFile;
   screens: ScreenFile;
+  brand?: BrandFile;
   explorations?: ExplorationFile;
   history?: ScreenHistoryFile;
   explorationRecordRefs?: string[];
@@ -43,6 +45,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
     primitives: raw.primitives,
     components,
     screens: raw.screens,
+    ...(raw.brand ? { brand: raw.brand } : {}),
     explorations,
     history,
     sourceRoot,
@@ -52,6 +55,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
       primitives: `${sourceRoot}/primitives.json`,
       components: `${sourceRoot}/components.json`,
       screens: `${sourceRoot}/screens.json`,
+      ...(raw.brand ? { brand: `${sourceRoot}/brand.json` } : {}),
       explorationRecords: (raw.explorationRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       historyRecords: (raw.historyRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),
@@ -92,6 +96,11 @@ export function collectPrototypeTextSourceRefs(
     ...screens.screens.flatMap(screen => sourceRefs(screen.prototype))
   ];
   return [...new Set(refs.flatMap(ref => safePrototypeRef(ref)))];
+}
+
+/** Lists safe sidecar-relative SVG sources for brand marks. */
+export function collectBrandSourceRefs(brand: BrandFile | undefined): string[] {
+  return [...new Set((brand?.marks ?? []).flatMap(mark => typeof mark.source === 'string' ? safePrototypeRef(mark.source) : []))];
 }
 
 /** Lists safe controlled asset refs that must retain their original bytes. */
