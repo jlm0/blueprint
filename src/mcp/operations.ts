@@ -63,7 +63,7 @@ import {
 import { assertChromiumExecutableAvailable, createChromiumDependencyError } from '../prototype/browser-preflight';
 import { installPrototypeNetworkGuard } from '../prototype/network-guard';
 import { createBlueprintResponseHeaders, evaluateLoopbackHost } from '../prototype/host-policy';
-import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
+import { compilePrototypeDocument, PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
 import {
   BLUEPRINT_ACTIVITY_POST_PATH,
   BLUEPRINT_ACTIVITY_STREAM_PATH,
@@ -322,30 +322,101 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
   throwIfAborted(signal);
   const { project, boundary, out } = input;
   const selector = parseBoundarySelector(boundary);
-  if (selector.kind !== 'screen') {
-    throw new Error(`The capture tool currently supports screen boundaries. Received ${selector.kind}:${selector.id}.`);
-  }
-
   const bundle = await loadProjectFromFs(project);
   showBoundary(bundle, selector);
-  const selectedScreen = bundle.screens.screens.find(screen => screen.id === selector.id);
-  if (!selectedScreen) {
-    throw new Error(`Screen not found: ${selector.id}.`);
+  const resolvedOut = path.resolve(out);
+  const base = {
+    command: 'capture' as const,
+    project: normalize(path.resolve(project)),
+    projectId: bundle.manifest.project.id,
+    out: normalize(resolvedOut),
+    mediaType: 'image/png' as const
+  };
+
+  if (selector.kind === 'screen') {
+    if (input.variant || input.size) {
+      throw new Error('Screen captures take a state and viewport; variant and size apply to primitives.');
+    }
+    const selection = resolvePrototypeReviewSelection(bundle, {
+      screenId: selector.id,
+      state: input.state,
+      viewport: input.viewport
+    });
+    const compiled = compilePrototypeReview(bundle, selection);
+    await capturePrototypeDocument(compiled.html, { width: selection.width, height: selection.height }, resolvedOut, undefined, signal);
+    return captureOutputSchema.parse({
+      ...base,
+      boundary: selection.boundaryId,
+      state: selection.state,
+      viewport: selection.framePresetId,
+      reviewCondition: selection.conditionId,
+      dimensions: { width: selection.width, height: selection.height },
+      source: captureSource(compiled.observedBoundaryIds)
+    });
   }
 
-  const selection = resolvePrototypeReviewSelection(bundle, {
-    screenId: selectedScreen.id,
+  if (selector.kind !== 'component' && selector.kind !== 'primitive') {
+    throw new Error(`The capture tool supports screen, component, and primitive boundaries. Received ${selector.kind}:${selector.id}.`);
+  }
+  const preset = input.viewport ? bundle.manifest.framePresets.find(candidate => candidate.id === input.viewport) : undefined;
+  if (input.viewport && !preset) {
+    throw new Error(`Frame preset "${input.viewport}" is not declared in manifest.json.`);
+  }
+  const compiled = compilePrototypeDocument({
+    bundle,
+    target: { kind: selector.kind, id: selector.id },
     state: input.state,
-    viewport: input.viewport
+    variant: input.variant,
+    size: input.size
   });
+  const width = preset?.width ?? REUSABLE_CAPTURE_WIDTH;
+  const dimensions = await capturePrototypeDocument(
+    compiled.html,
+    { width, height: preset?.height ?? REUSABLE_CAPTURE_HEIGHT },
+    resolvedOut,
+    compiled.targetBoundaryId,
+    signal
+  );
+  return captureOutputSchema.parse({
+    ...base,
+    boundary: compiled.targetBoundaryId,
+    state: compiled.state,
+    ...(input.variant ? { variant: input.variant } : {}),
+    ...(input.size ? { size: input.size } : {}),
+    ...(preset ? { viewport: preset.id } : {}),
+    dimensions,
+    source: captureSource([...new Set(compiled.observedUses.map(use => use.targetBoundaryId))])
+  });
+}
+
+const REUSABLE_CAPTURE_WIDTH = 1280;
+const REUSABLE_CAPTURE_HEIGHT = 800;
+const SPECIMEN_CAPTURE_PADDING = 12;
+
+function captureSource(observedBoundaryIds: string[]) {
+  return {
+    context: 'source-focused' as const,
+    captureTarget: 'compiled-prototype-document' as const,
+    method: 'browser-page-screenshot' as const,
+    editorChrome: false as const,
+    readiness: { fonts: 'ready' as const, images: 'decoded' as const, layout: 'stable' as const },
+    observedBoundaryIds
+  };
+}
+
+async function capturePrototypeDocument(
+  html: string,
+  viewport: { width: number; height: number },
+  out: string,
+  cropToBoundaryId: string | undefined,
+  signal?: AbortSignal
+): Promise<{ width: number; height: number }> {
   const chromium = await preflightChromium();
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-
   try {
     browser = await withAbort(chromium.launch(), signal);
-    const compiled = compilePrototypeReview(bundle, selection);
     const page = await browser.newPage({
-      viewport: { width: selection.width, height: selection.height },
+      viewport,
       deviceScaleFactor: 1,
       // Ambient app animation is authored under prefers-reduced-motion: no-preference,
       // so emulating reduce keeps capture bytes deterministic across runs.
@@ -364,46 +435,38 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
       },
       currentUrl: () => page.url()
     });
-    await withAbort(page.setContent(compiled.html, { waitUntil: 'load' }), signal);
+    await withAbort(page.setContent(html, { waitUntil: 'load' }), signal);
     networkGuard.assertClean();
     await withAbort(waitForPrototypeCaptureReadiness(page), signal);
     networkGuard.assertClean();
 
-    const resolvedOut = path.resolve(out);
-    await mkdir(path.dirname(resolvedOut), { recursive: true });
+    let clip: { x: number; y: number; width: number; height: number } | undefined;
+    if (cropToBoundaryId) {
+      const bounds = await page.locator(`[data-blueprint-boundary-id="${cropToBoundaryId}"]`).first().boundingBox();
+      if (!bounds || bounds.width === 0 || bounds.height === 0) {
+        throw new Error(`${cropToBoundaryId} rendered no visible box to capture.`);
+      }
+      const x = Math.max(0, Math.floor(bounds.x - SPECIMEN_CAPTURE_PADDING));
+      const y = Math.max(0, Math.floor(bounds.y - SPECIMEN_CAPTURE_PADDING));
+      clip = {
+        x,
+        y,
+        width: Math.ceil(bounds.x + bounds.width + SPECIMEN_CAPTURE_PADDING) - x,
+        height: Math.ceil(bounds.y + bounds.height + SPECIMEN_CAPTURE_PADDING) - y
+      };
+    }
+
+    await mkdir(path.dirname(out), { recursive: true });
     await withAbort(page.screenshot({
-      path: resolvedOut,
+      path: out,
       type: 'png',
-      fullPage: false,
+      fullPage: Boolean(clip),
+      ...(clip ? { clip } : {}),
       animations: 'disabled',
       caret: 'hide',
       scale: 'css'
     }), signal);
-
-    return captureOutputSchema.parse({
-      command: 'capture',
-      project: normalize(path.resolve(project)),
-      projectId: bundle.manifest.project.id,
-      boundary: selection.boundaryId,
-      state: selection.state,
-      viewport: selection.framePresetId,
-      reviewCondition: selection.conditionId,
-      dimensions: { width: selection.width, height: selection.height },
-      out: normalize(resolvedOut),
-      mediaType: 'image/png',
-      source: {
-        context: 'source-focused',
-        captureTarget: 'compiled-prototype-document',
-        method: 'browser-page-screenshot',
-        editorChrome: false,
-        readiness: {
-          fonts: 'ready',
-          images: 'decoded',
-          layout: 'stable'
-        },
-        observedBoundaryIds: compiled.observedBoundaryIds
-      }
-    });
+    return clip ? { width: clip.width, height: clip.height } : viewport;
   } finally {
     await browser?.close();
   }

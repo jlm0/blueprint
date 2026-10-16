@@ -74,7 +74,7 @@ The server exposes eleven project-scoped tools:
 | `index` | List every stable boundary ID. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
 | `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
-| `capture` | Render one screen, state, and viewport to PNG. |
+| `capture` | Render one screen, state, and viewport to PNG, or one component or primitive cropped to its own box. |
 | `serve` | Open the live review canvas for the sidecar, optionally linked to one boundary's page with `focus`. |
 | `selection` | Read what the person selected on the canvas. |
 | `explore` | Create or archive two to five candidate alternatives for a single screen state. |

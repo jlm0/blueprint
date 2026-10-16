@@ -119,7 +119,7 @@ describe('Blueprint MCP typed contract', () => {
     }).success, false);
   });
 
-  it('requires capture to target a typed screen boundary and explicit output path', () => {
+  it('requires capture to target a screen, component, or primitive and an explicit output path', () => {
     assert.equal(captureInputSchema.safeParse({
       project: 'design/blueprint',
       boundary: 'screen:home',
@@ -130,7 +130,13 @@ describe('Blueprint MCP typed contract', () => {
     assert.equal(captureInputSchema.safeParse({
       project: 'design/blueprint',
       boundary: 'primitive:button',
+      variant: 'primary',
       out: '.blueprint-artifacts/button.png'
+    }).success, true);
+    assert.equal(captureInputSchema.safeParse({
+      project: 'design/blueprint',
+      boundary: 'token-group:color',
+      out: '.blueprint-artifacts/color.png'
     }).success, false);
     assert.equal(captureInputSchema.safeParse({ project: 'design/blueprint', boundary: 'screen:home' }).success, false);
   });

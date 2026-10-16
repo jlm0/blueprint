@@ -116,7 +116,8 @@ describe('source-focused prototype MCP contract', () => {
 
     const operationsSource = await readFile('src/mcp/operations.ts', 'utf8');
     assert.match(operationsSource, /\/__blueprint\/prototype/);
-    assert.match(operationsSource, /page\.setContent\(compiled\.html/);
+    assert.match(operationsSource, /capturePrototypeDocument\(\s*compiled\.html/);
+    assert.match(operationsSource, /page\.setContent\(html,/);
     assert.match(operationsSource, /editorChrome:\s*false/);
   });
 });

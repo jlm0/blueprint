@@ -423,7 +423,7 @@ describe('Blueprint MCP and template governance', () => {
       assertToolError(missing, /not found|unknown/i);
       const invalidQuery = await session.client.callTool({ name: 'query', arguments: { project: miraRoot, query: { type: 'sections', boundary: 'screen:workspace' } } });
       assertToolError(invalidQuery, /input validation error|invalid/i);
-      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: miraRoot, boundary: 'primitive:button', out: 'button.png' } });
+      const invalidCapture = await session.client.callTool({ name: 'capture', arguments: { project: miraRoot, boundary: 'token-group:color', out: 'color.png' } });
       assertToolError(invalidCapture, /input validation error|screen/i);
       await assert.rejects(session.client.callTool({ name: 'missing-tool', arguments: {} }), /not found|unknown|missing-tool/i);
     } finally {
@@ -452,6 +452,33 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal(focusedPng.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
         assert.equal(focusedPng.readUInt32BE(16), 393);
         assert.equal(focusedPng.readUInt32BE(20), 852);
+
+        const buttonOut = path.join(tempDir, 'button.png');
+        const button = await call(session, 'capture', {
+          project: miraRoot,
+          boundary: 'primitive:button',
+          state: 'normal',
+          variant: 'secondary',
+          out: buttonOut
+        });
+        const buttonSize = button.dimensions as { width: number; height: number };
+        assert.equal(button.boundary, 'mira-ai/primitive/button');
+        assert.equal(button.variant, 'secondary');
+        assert.ok(buttonSize.width < 400 && buttonSize.height < 120, `a button capture should crop to the button, got ${JSON.stringify(buttonSize)}`);
+        const buttonPng = await readFile(buttonOut);
+        assert.equal(buttonPng.readUInt32BE(16), buttonSize.width);
+        assert.equal(buttonPng.readUInt32BE(20), buttonSize.height);
+
+        const composer = await call(session, 'capture', { project: miraRoot, boundary: 'component:composer', viewport: 'phone', out: path.join(tempDir, 'composer.png') });
+        assert.equal(composer.viewport, 'phone');
+        assert.ok((composer.dimensions as { width: number }).width <= 393);
+        assert.ok((composer.source as { observedBoundaryIds: string[] }).observedBoundaryIds.length > 0);
+
+        const undeclared = await session.client.callTool({
+          name: 'capture',
+          arguments: { project: miraRoot, boundary: 'component:composer', variant: 'secondary', out: path.join(tempDir, 'bad.png') }
+        });
+        assertToolError(undeclared, /cannot receive a primitive variant/);
       } finally {
         await session.close();
       }

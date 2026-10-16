@@ -133,9 +133,9 @@ export function createBlueprintMcpServer(): McpServer {
   server.registerTool(
     'capture',
     {
-      title: 'Capture Blueprint Screen',
+      title: 'Capture Blueprint Boundary',
       description:
-        'Capture one screen boundary, named state, and declared viewport as a deterministic PNG.',
+        'Capture one screen in a named state and declared viewport, or one component or primitive in a named state cropped to its own box, as a deterministic PNG.',
       inputSchema: captureInputSchema,
       outputSchema: captureOutputSchema
     },

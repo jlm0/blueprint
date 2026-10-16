@@ -20,10 +20,10 @@ export const boundarySelectorSchema = z
   .regex(/^(project|board|token-group|primitive|state-set|component|screen|section):.+$/)
   .describe('Boundary selector in kind:id form.');
 
-export const screenBoundarySelectorSchema = z
+export const capturableBoundarySelectorSchema = z
   .string()
-  .regex(/^screen:.+$/)
-  .describe('Screen boundary selector in screen:id form.');
+  .regex(/^(screen|component|primitive):.+$/)
+  .describe('Screen, component, or primitive boundary selector in kind:id form.');
 
 export const initInputSchema = z
   .object({
@@ -129,9 +129,13 @@ export const extractInputSchema = z
 export const captureInputSchema = z
   .object({
     project: projectPathSchema,
-    boundary: screenBoundarySelectorSchema,
-    state: nonEmptyString.optional(),
-    viewport: nonEmptyString.optional(),
+    boundary: capturableBoundarySelectorSchema,
+    state: nonEmptyString.optional().describe('Declared state to render. Defaults to the first declared state.'),
+    viewport: nonEmptyString.optional().describe(
+      'Declared frame preset. Screens render in its review condition; components and primitives take its width instead of the 1280 px default.'
+    ),
+    variant: nonEmptyString.optional().describe('Declared primitive variant.'),
+    size: nonEmptyString.optional().describe('Declared primitive size.'),
     out: nonEmptyString.describe('PNG destination path. Existing files are overwritten.')
   })
   .strict();
@@ -408,7 +412,16 @@ const sourceFocusedCaptureSchema = captureOutputBaseSchema.extend({
     .strict()
 }).strict();
 
-export const captureOutputSchema = sourceFocusedCaptureSchema;
+const reusableCaptureSchema = captureOutputBaseSchema.extend({
+  state: z.string(),
+  variant: z.string().optional(),
+  size: z.string().optional(),
+  viewport: z.string().optional(),
+  dimensions: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict(),
+  source: sourceFocusedCaptureSchema.shape.source
+}).strict();
+
+export const captureOutputSchema = z.union([sourceFocusedCaptureSchema, reusableCaptureSchema]);
 
 export const serveOutputSchema = z
   .object({
