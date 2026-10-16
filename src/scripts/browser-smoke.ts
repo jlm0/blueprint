@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
@@ -118,6 +119,7 @@ async function main(): Promise<void> {
       await configured.locator('.board-screens .frame-shot').first().focus();
     });
     await assertCanonicalFrameExports(browser, url);
+    await assertLargeMinimumFont(url);
 
     await assertSubnav(page, false);
     await assertSectionRailChrome(page);
@@ -339,6 +341,43 @@ async function assertSectionRailChrome(page: import('playwright').Page): Promise
 
   if (!chrome.className.split(/\s+/).includes('bp-chrome-board-switcher')) {
     throw new Error(`Section rail should expose a namespaced chrome class, received ${chrome.className}.`);
+  }
+}
+
+async function assertLargeMinimumFont(url: string): Promise<void> {
+  // Browsers let people raise the minimum font size (Brave and Chrome settings); chrome must reflow, not clip.
+  const profile = await mkdtemp(path.join(tmpdir(), 'blueprint-min-font-'));
+  await mkdir(path.join(profile, 'Default'), { recursive: true });
+  await writeFile(path.join(profile, 'Default', 'Preferences'), JSON.stringify({ webkit: { webprefs: { minimum_font_size: 16, minimum_logical_font_size: 16 } } }));
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', viewport: { width: 1280, height: 860 } });
+  try {
+    const page = context.pages()[0] ?? await context.newPage();
+    await page.goto(`${url}?board=primitives&section=primitives&item=button`);
+    await page.waitForSelector('.board-primitives .canonical-primitive-specimen', { timeout: 10000 });
+    const report = await page.evaluate(() => {
+      const label = document.querySelector<HTMLElement>('.bp-chrome-section-label');
+      const rail = document.querySelector<HTMLElement>('.bp-chrome-rail')!.getBoundingClientRect();
+      const clipped = [...document.querySelectorAll<HTMLElement>('.bp-chrome-section-button, .bp-chrome-section-label')]
+        .filter(element => {
+          const rect = element.getBoundingClientRect();
+          return element.scrollWidth > element.clientWidth + 1 || rect.left < rail.left - 1 || rect.right > rail.right + 1;
+        })
+        .map(element => element.textContent?.trim() ?? element.className);
+      const wrapped = [...document.querySelectorAll<HTMLElement>('.canonical-primitive-variant-label')]
+        .filter(element => element.getBoundingClientRect().height > parseFloat(getComputedStyle(element).fontSize) * 1.8)
+        .map(element => element.textContent?.trim() ?? '');
+      return { labelSize: label ? getComputedStyle(label).fontSize : '', clipped, wrapped };
+    });
+    if (report.labelSize !== '16px') {
+      throw new Error(`Minimum font size preference should apply to the rail labels, received ${report.labelSize}.`);
+    }
+    if (report.clipped.length > 0 || report.wrapped.length > 0) {
+      throw new Error(`Chrome should reflow under a 16px minimum font size: ${JSON.stringify(report)}`);
+    }
+    await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-minimum-font.png') });
+  } finally {
+    await context.close();
+    await rm(profile, { recursive: true, force: true });
   }
 }
 

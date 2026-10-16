@@ -932,11 +932,18 @@ function createTokenVisual(token: DesignToken, value: string): HTMLElement {
 function createTokenCaption(group: TokenGroup, token: DesignToken): HTMLElement {
   const caption = el('div', 'token-caption');
   const name = el('div', 'token-caption-name');
-  name.append(el('b', '', token.name), el('code', '', token.value));
+  name.append(el('b', '', token.name), createCodeWords('', token.value));
   caption.append(name);
   if (token.description && token.type !== 'typography') caption.append(el('p', 'token-caption-description', token.description));
-  caption.append(el('code', 'token-caption-ref', `${group.id}.${token.id} · ${token.styleRef}`));
+  caption.append(createCodeWords('token-caption-ref', `${group.id}.${token.id} · ${token.styleRef}`));
   return caption;
+}
+
+function createCodeWords(className: string, text: string): HTMLElement {
+  const code = el('code', className);
+  // Keeps names like --app-font-sans whole: a line may only break between words, not after a hyphen.
+  for (const part of text.split(/(\s+)/)) code.append(/^\s*$/.test(part) ? part : el('span', 'token-code-word', part));
+  return code;
 }
 
 function isFontStack(value: string): boolean {
@@ -979,7 +986,7 @@ function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIn
   const roles = Object.entries(prototype?.tokenRoles ?? {});
   if (roles.length > 0) {
     const list = el('div', 'bp-chrome-doc-roles');
-    for (const [role, tokenRef] of roles) {
+    for (const [tokenRef, role] of roles) {
       const row = el('div', 'bp-chrome-doc-role');
       const record = tokenIndex.byRef.get(tokenRef);
       const swatch = el('span', 'token-role-swatch');
@@ -1556,9 +1563,12 @@ function applyTokenPreview(element: HTMLElement, token: DesignToken, tokenIndex:
       element.style.background = value;
       break;
     case 'space':
-    case 'size':
-      element.style.width = value;
+    case 'size': {
+      const bar = el('span', 'token-role-bar');
+      bar.style.width = value;
+      element.append(bar);
       break;
+    }
     case 'radius':
       element.style.borderRadius = value;
       break;
