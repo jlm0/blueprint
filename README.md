@@ -70,7 +70,7 @@ The server exposes eleven project-scoped tools:
 | Tool | Purpose |
 | --- | --- |
 | `init` | Create a sidecar from the starter: neutral tokens, the base primitives, and empty `home` phone and `web-home` browser screens. |
-| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode. |
+| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks. |
 | `index` | List every stable boundary ID. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
 | `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |

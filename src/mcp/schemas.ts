@@ -248,12 +248,26 @@ export const initOutputSchema = z
   })
   .strict();
 
+const designFindingSchema = z
+  .object({
+    boundaryId: z.string(),
+    kind: boundaryKindSchema,
+    localId: z.string(),
+    rule: z.enum(['local-value', 'native-control', 'section-marker', 'contrast', 'primitive-set']),
+    location: z.string(),
+    message: z.string()
+  })
+  .strict();
+
 const validationOutputBaseSchema = z.object({
   command: z.literal('validate'),
   project: z.string(),
   projectId: z.string(),
   ok: z.boolean(),
-  errors: z.array(z.string())
+  errors: z.array(z.string()),
+  findings: z.array(designFindingSchema).describe(
+    'Design findings the canvas marks on boundaries, each fixable in the source named by location. Strict validation rejects them.'
+  )
 });
 
 export const validateOutputSchema = z.union([

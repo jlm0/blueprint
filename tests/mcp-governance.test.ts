@@ -14,6 +14,7 @@ const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
 const codexHookPath = path.join(projectRoot, 'dist/mcp/codex-activity-hook.js');
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 const toolNames = ['init', 'validate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
@@ -151,6 +152,12 @@ describe('Blueprint MCP and template governance', () => {
         const strict = await call(session, 'validate', { project: meridianRoot, mode: 'strict' });
         assert.equal(strict.mode, 'strict');
         assert.equal(strict.ok, true);
+        assert.deepEqual(strict.findings, []);
+
+        const broken = structured(await session.client.callTool({ name: 'validate', arguments: { project: brokenRoot } }));
+        const findings = broken.findings as Array<{ rule: string; kind: string; localId: string; location: string }>;
+        assert.ok(findings.some(finding => finding.rule === 'local-value' && finding.kind === 'screen' && finding.location.endsWith('.css')));
+        assert.ok(findings.some(finding => finding.rule === 'native-control' && /\.html:\d+$/.test(finding.location)));
 
         const blocked = await session.client.callTool({ name: 'validate', arguments: { project: miraRoot, mode: 'readiness' } });
         assert.equal(blocked.isError, true);

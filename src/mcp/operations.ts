@@ -21,6 +21,7 @@ import type {
 } from '../core/types';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import { canvasLocationParams } from '../core/canvas-location';
+import { collectDesignFindings, type DesignFinding } from '../core/findings';
 import { loadProjectFromFs } from '../core/load';
 import {
   parseCanvasSelection,
@@ -211,6 +212,7 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
       mode,
       ok,
       errors: baseline.errors,
+      findings: advisoryDesignFindings(bundle),
       readiness
     });
     await writeOptionalJsonArtifact(output, input.out);
@@ -223,7 +225,8 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
     project: normalize(path.resolve(project)),
     projectId: bundle.manifest.project.id,
     mode,
-    ...result
+    ...result,
+    findings: advisoryDesignFindings(bundle)
   });
   await writeOptionalJsonArtifact(output, input.out);
   return output;
@@ -728,6 +731,14 @@ async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
     }
     throw new Error('Prototype layout did not stabilize before capture.');
   });
+}
+
+function advisoryDesignFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
+  try {
+    return collectDesignFindings(bundle);
+  } catch {
+    return [];
+  }
 }
 
 function assertValidMutation(bundle: BlueprintProjectBundle): void {
