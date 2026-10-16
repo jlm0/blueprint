@@ -25,7 +25,7 @@ Screenshots and visual diffs are review evidence only, never source.
 
 Screens compose reusable parts with `<blueprint-use kind="primitive|component" ref="…" state="…">`. Blueprint replaces each use with the referenced root, without wrapper elements, so ordinary sibling, flex, grid, and breakpoint rules keep working. Tokens become `--app-*` CSS custom properties. Every screen renders in a sandboxed frame with a no-network, no-script content security policy.
 
-Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, and source paths so an implementation agent can build without reading the canvas DOM.
+Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary; `project:root` carries the brand guideline. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, the brand guideline, and source paths so an implementation agent can build without reading the canvas DOM.
 
 ### One sidecar format
 

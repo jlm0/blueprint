@@ -169,6 +169,25 @@ describe('Blueprint production handoff contract', () => {
     assert.equal(accent.styleRef, '--app-color-accent');
   });
 
+  it('hands the brand guideline to builders through the project packet and every deep packet', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const project = showBoundary(bundle, 'project:root');
+    assert.equal((project.data as { brand?: { name: string } }).brand?.name, 'Meridian');
+    for (const file of ['brand.json', 'brand/mark.svg', 'brand/wordmark.svg', 'brand/lockup.svg']) {
+      assert.ok(project.sourceFiles.includes(`${meridianRoot}/${file}`), file);
+    }
+    assert.ok(project.implementationHints.some(hint => hint.includes('brand.voice')));
+
+    const deep = extract(bundle, 'screen:home', { mode: 'deep' });
+    assert.equal(deep.brand?.voice?.summary, bundle.brand?.voice?.summary);
+    assert.deepEqual(deep.brand?.marks.map((mark: { id: string }) => mark.id), ['globe', 'wordmark', 'lockup']);
+
+    delete bundle.brand;
+    delete bundle.sourceFiles.brand;
+    assert.equal('brand' in (showBoundary(bundle, 'project:root').data as object), false);
+    assert.equal('brand' in extract(bundle, 'screen:home', { mode: 'deep' }), false);
+  });
+
   it('reports unresolved token references during baseline validation', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const broken = structuredClone(bundle);

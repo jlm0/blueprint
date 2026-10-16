@@ -358,7 +358,8 @@ export const deepHandoffPacketSchema = boundaryPacketSchema.extend({
     .strict(),
   boundaries: z.array(boundaryPacketSchema),
   resolvedTokens: z.array(resolvedTokenSchema),
-  tokenUsage: z.array(tokenUsageSchema)
+  tokenUsage: z.array(tokenUsageSchema),
+  brand: z.json().optional()
 }).strict();
 
 export const extractOutputSchema = z.union([boundaryPacketSchema, deepHandoffPacketSchema]);

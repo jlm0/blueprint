@@ -51,15 +51,18 @@ export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: Bo
 
   switch (selector.kind) {
     case 'project':
-      return packet(bundle, selector.kind, 'root', bundle.manifest.project, {
-        sourceFiles: [bundle.sourceFiles.manifest],
+      return packet(bundle, selector.kind, 'root', { ...bundle.manifest.project, ...(bundle.brand ? { brand: bundle.brand } : {}) }, {
+        sourceFiles: [bundle.sourceFiles.manifest, ...brandSourceFiles(bundle)],
         styleRefs: [],
         styleEvidence: [],
         uses: [],
         usedBy: [],
         notes: [bundle.manifest.project.description],
         prototypeOnly: false,
-        implementationHints: ['Instantiate this sourceRoot inside an app-owned design/blueprint folder.']
+        implementationHints: [
+          'Instantiate this sourceRoot inside an app-owned design/blueprint folder.',
+          ...(bundle.brand ? [BRAND_IMPLEMENTATION_HINT] : [])
+        ]
       });
     case 'board': {
       const board = requireItem(bundle.manifest.boards.find(item => item.id === selector.id), `board:${selector.id}`);
@@ -254,8 +257,19 @@ function createDeepHandoffPacket(bundle: BlueprintProjectBundle, selectorInput: 
     },
     boundaries,
     resolvedTokens: resolveTokensForPackets(bundle, boundaries),
-    tokenUsage: resolveTokenUsageForPackets(bundle, boundaries)
+    tokenUsage: resolveTokenUsageForPackets(bundle, boundaries),
+    ...(bundle.brand ? { brand: bundle.brand } : {})
   };
+}
+
+const BRAND_IMPLEMENTATION_HINT =
+  'Write interface copy in brand.voice, and render logos from brand.marks sources with an approved variant at or above its minimum size and clear space.';
+
+function brandSourceFiles(bundle: BlueprintProjectBundle): string[] {
+  if (!bundle.sourceFiles.brand || !bundle.brand) {
+    return [];
+  }
+  return [bundle.sourceFiles.brand, ...new Set(bundle.brand.marks.map(mark => sidecarPath(bundle, mark.source)))];
 }
 
 function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: BoundaryPacket): BoundaryReference[] {
@@ -579,7 +593,11 @@ function prototypeSourceFiles(
   const markSources = placedBrandMarkIds(bundle.prototypeSourceContents[prototype.source] ?? '')
     .flatMap(id => bundle.brand?.marks.find(mark => mark.id === id)?.source ?? []);
   const refs = [prototype.source, ...prototype.styles, ...extraRefs, ...(markSources.length > 0 ? ['brand.json', ...markSources] : [])];
-  return [...new Set(refs.map(sourceRef => `${bundle.sourceRoot}/${sourceRef.replace(/\\/g, '/').replace(/^\.\//, '')}`))];
+  return [...new Set(refs.map(sourceRef => sidecarPath(bundle, sourceRef)))];
+}
+
+function sidecarPath(bundle: BlueprintProjectBundle, sourceRef: string): string {
+  return `${bundle.sourceRoot}/${sourceRef.replace(/\\/g, '/').replace(/^\.\//, '')}`;
 }
 
 function styleEvidenceFor(styleRefs: string[], evidence: StyleEvidence[] = []): StyleEvidence[] {

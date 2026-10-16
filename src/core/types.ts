@@ -596,6 +596,8 @@ export interface DeepHandoffPacket<TData = unknown> extends BoundaryPacket<TData
   boundaries: BoundaryPacket[];
   resolvedTokens: ResolvedToken[];
   tokenUsage: TokenUsage[];
+  /** Project brand guideline every implemented boundary follows, when brand.json exists. */
+  brand?: BrandFile;
 }
 
 export type ExtractionPacket = BoundaryPacket | DeepHandoffPacket;

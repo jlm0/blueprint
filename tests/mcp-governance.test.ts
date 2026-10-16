@@ -182,6 +182,12 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal((deep.extraction as { mode: string }).mode, 'deep');
         assert.ok((deep.boundaries as unknown[]).length > 1);
         assert.ok((deep.resolvedTokens as unknown[]).length > 0);
+        assert.equal('brand' in deep, false);
+
+        const brandedDeep = await call(session, 'extract', { project: meridianRoot, boundary: 'screen:home', mode: 'deep' });
+        assert.equal((brandedDeep.brand as { name: string }).name, 'Meridian');
+        const project = await call(session, 'query', { project: meridianRoot, query: { type: 'show', boundary: 'project:root' } });
+        assert.equal((project.data as { brand: { name: string } }).brand.name, 'Meridian');
       } finally {
         await session.close();
       }
