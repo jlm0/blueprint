@@ -153,7 +153,7 @@ setSubnavCollapsed(narrowViewport.matches || readStoredSubnavCollapsed(), false)
 function setSubnavCollapsed(collapsed: boolean, remember = !narrowViewport.matches): void {
   shell.dataset.subnav = collapsed ? 'collapsed' : 'open';
   subnav.inert = collapsed;
-  const label = collapsed ? 'Show sidebar' : 'Hide sidebar';
+  const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
   subnavToggle.title = label;
   subnavToggle.setAttribute('aria-label', label);
   subnavToggle.setAttribute('aria-expanded', String(!collapsed));
@@ -394,6 +394,8 @@ function refreshBoardSwitcher(): void {
     button.dataset.section = section;
     if (section === 'primitives' || section === 'screens') button.dataset.board = section;
     button.innerHTML = sectionIcon(section);
+    button.title = sectionLabel(section);
+    button.setAttribute('aria-label', sectionLabel(section));
     button.append(el('span', 'bp-chrome-section-label', sectionLabel(section)));
     button.addEventListener('click', () => showSection(section));
     switcher.append(button);

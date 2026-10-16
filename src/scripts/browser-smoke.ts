@@ -205,8 +205,14 @@ async function assertSubnav(page: import('playwright').Page, narrow: boolean): P
     throw new Error('The sidebar toggle should expose an accessible label.');
   }
 
+  const railWidth = () => page.locator('.bp-chrome-rail').evaluate(element => element.getBoundingClientRect().width);
+  const initialRailWidth = await railWidth();
   await toggle.click();
   const toggled = narrow ? 'open' : 'collapsed';
+  const toggledRailWidth = await railWidth();
+  if (narrow ? toggledRailWidth <= initialRailWidth : toggledRailWidth >= initialRailWidth) {
+    throw new Error(`Collapsing the sidebar should shrink the rail to icons, received ${initialRailWidth}px then ${toggledRailWidth}px.`);
+  }
   if (await shell.getAttribute('data-subnav') !== toggled || await toggle.getAttribute('aria-expanded') !== String(toggled === 'open')) {
     throw new Error(`The sidebar toggle should switch the sidebar ${toggled}.`);
   }
