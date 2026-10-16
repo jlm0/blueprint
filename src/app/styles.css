@@ -1229,7 +1229,7 @@ body {
   position: relative;
 }
 
-.screen-flow-label {
+.screen-page-label {
   position: absolute;
   display: flex;
   align-items: center;
@@ -1243,7 +1243,7 @@ body {
   white-space: nowrap;
 }
 
-.screen-flow-label::before {
+.screen-page-label::before {
   content: "";
   width: 8px;
   height: 8px;

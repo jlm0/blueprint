@@ -1,12 +1,25 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "starter-app",
+  "pages": [
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "description": "Phone screens."
+    },
+    {
+      "id": "web",
+      "name": "Web",
+      "description": "Desktop browser screens."
+    }
+  ],
   "screens": [
     {
       "id": "home",
       "name": "Mobile Base",
       "description": "Empty mobile frame for new screen composition.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [],
       "notes": [],
       "prototypeOnly": false,
@@ -36,6 +49,7 @@
       "name": "Browser Base",
       "description": "Empty desktop browser frame for new screen composition.",
       "framePresetId": "desktop-web",
+      "page": "web",
       "styleRefs": [],
       "notes": [],
       "prototypeOnly": false,

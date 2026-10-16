@@ -56,7 +56,7 @@ describe('Blueprint focused exploration canvas', () => {
     const bundle = await bundleWithExploration();
     const page = await openBundle(
       bundle,
-      '?board=screens&flow=ops&state=not-declared&viewport=not-declared&exploration=hero-directions'
+      '?board=screens&page=ops&state=not-declared&viewport=not-declared&exploration=hero-directions'
     );
 
     try {
@@ -122,8 +122,8 @@ describe('Blueprint focused exploration canvas', () => {
       await page.locator('.bp-chrome-exploration-back').click();
       await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });
       assert.equal(new URL(page.url()).searchParams.has('exploration'), false);
-      assert.equal(new URL(page.url()).searchParams.get('flow'), 'marketing');
-      assert.equal(await page.locator('.bp-chrome-nav-group-label[data-flow="marketing"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(new URL(page.url()).searchParams.get('page'), 'marketing');
+      assert.equal(await page.locator('.bp-chrome-nav-group-label[data-page="marketing"]').getAttribute('aria-pressed'), 'true');
     } finally {
       await page.close();
     }
@@ -151,7 +151,7 @@ describe('Blueprint focused exploration canvas', () => {
 
   it('keeps promoted work discoverable through a screen-local History view', async () => {
     const bundle = await bundleWithHistory();
-    const page = await openBundle(bundle, '?board=screens&flow=marketing');
+    const page = await openBundle(bundle, '?board=screens&page=marketing');
 
     try {
       assert.equal(await page.getByRole('button', { name: 'Variations', exact: true }).count(), 0);
@@ -206,8 +206,9 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
   if (!screen?.prototype || !other) {
     throw new Error('Expected the Mira screen fixture.');
   }
-  screen.flow = 'marketing';
-  other.flow = 'ops';
+  bundle.screens.pages = [{ id: 'marketing', name: 'Marketing' }, { id: 'ops', name: 'Ops' }];
+  screen.page = 'marketing';
+  other.page = 'ops';
   const baselineScreen = structuredClone(screen) as ScreenDefinition;
   const baselinePrototype: ExplorationPrototypeSource = {
     source: screen.prototype.source,

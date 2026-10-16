@@ -99,7 +99,19 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
         await page.locator('.bp-chrome-board-switcher [data-section="components"]').click();
         await page.waitForSelector('.board-primitives[data-section="components"] .bp-chrome-doc-page', { timeout: 5000 });
-        assert.deepEqual(await navItemIds(page), bundle.components.components.map(component => component.id), `${projectId} components should list every component`);
+        const componentsBySection = bundle.components.sections
+          .map(section => ({ section, members: bundle.components.components.filter(component => component.section === section.id) }))
+          .filter(({ members }) => members.length > 0);
+        assert.deepEqual(
+          await navItemIds(page),
+          componentsBySection.flatMap(({ members }) => members.map(component => component.id)),
+          `${projectId} components should list every component under its declared section`
+        );
+        assert.deepEqual(
+          await page.locator('.bp-chrome-item-nav .bp-chrome-nav-group-name').allTextContents(),
+          componentsBySection.map(({ section }) => section.name),
+          `${projectId} component sections should follow their declaration order`
+        );
         if (bundle.components.components.length === 0) {
           assert.equal(await page.locator('.board-primitives .bp-chrome-doc-empty').count(), 1, `${projectId} should explain an empty components section`);
         }
@@ -691,7 +703,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
   it('renders every screen frame and section boundary from structured screen composition', async () => {
     const bundle = await loadProjectFromFs(miraRoot);
-    const page = await openScreensBoard(bundle);
+    const page = await openScreensBoard(allScreensOnOnePage(bundle));
     const projectId = bundle.manifest.project.id;
 
     try {
@@ -741,7 +753,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
   it('renders desktop web frames and mobile frames from frame presets on the same canvas', async () => {
     const bundle = await loadProjectFromFs(miraRoot);
-    const page = await openScreensBoard(bundle);
+    const page = await openScreensBoard(allScreensOnOnePage(bundle));
 
     try {
       const mobileFrame = page.locator(screenFrameSelector('mira-ai/screen/chat'));
@@ -789,7 +801,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
   it('lists each screen page as a sub-navigation group whose label switches the canvas', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const page = await openScreensBoard(bundle);
-    const pageLabel = (flow: string) => page.locator(`.bp-chrome-nav-group-label[data-flow="${flow}"]`);
+    const pageLabel = (pageId: string) => page.locator(`.bp-chrome-nav-group-label[data-page="${pageId}"]`);
+    const pageItems = (pageId: string) => page.locator(`.bp-chrome-nav-group:has([data-page="${pageId}"]) .bp-chrome-nav-group-items`);
     const screenFrames = () => page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
       elements.map(element => (element as HTMLElement).dataset.boundaryId)
     );
@@ -797,56 +810,52 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     try {
       assert.deepEqual(
         await page.locator('.bp-chrome-item-nav .bp-chrome-nav-group-name').allTextContents(),
-        ['Overview', 'Ledger', 'Send payment', 'Phone'],
-        'Pages should be the declared flows in first-seen order'
+        bundle.screens.pages.map(screenPage => screenPage.name),
+        'Pages should follow their declaration order'
       );
-      assert.equal(await pageLabel('Overview').getAttribute('aria-pressed'), 'true', 'First declared page should be the default canvas');
+      assert.equal(await pageLabel('overview').getAttribute('aria-pressed'), 'true', 'First declared page should be the default canvas');
       assert.deepEqual(
         await page.locator('.bp-chrome-nav-group').evaluateAll(groups =>
           groups.map(group => [...group.querySelectorAll<HTMLElement>('[data-screen]')].map(button => button.dataset.screen))
         ),
-        bundle.screens.screens.reduce<string[][]>((pages, screen) => {
-          const index = ['Overview', 'Ledger', 'Send payment', 'Phone'].indexOf(screen.flow ?? '');
-          pages[index] = [...pages[index] ?? [], screen.id];
-          return pages;
-        }, []),
+        bundle.screens.pages.map(screenPage => bundle.screens.screens.filter(screen => screen.page === screenPage.id).map(screen => screen.id)),
         'Each page should nest its screens'
       );
       assert.equal((await screenFrames()).length, 2);
 
-      await pageLabel('Ledger').click();
+      await pageLabel('ledger').click();
       await page.waitForFunction(() => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 1, undefined, { timeout: 5000 });
       assert.deepEqual(await screenFrames(), ['meridian-finance/screen/transactions'], 'Ledger page should mount only its frames');
-      assert.equal(await pageLabel('Ledger').getAttribute('aria-pressed'), 'true');
-      assert.match(page.url(), /flow=Ledger/);
+      assert.equal(await pageLabel('ledger').getAttribute('aria-pressed'), 'true');
+      assert.match(page.url(), /page=ledger/);
 
-      const transferId = bundle.screens.screens.find(screen => screen.flow === 'Send payment')!.id;
+      const transferId = bundle.screens.screens.find(screen => screen.page === 'send-payment')!.id;
       await page.locator(`.bp-chrome-item-nav [data-screen="${transferId}"]`).click();
       await page.waitForFunction(id => {
         const frames = [...document.querySelectorAll<HTMLElement>('.board-screens .frame[data-boundary-kind="screen"]')];
         return frames.length > 0 && frames.every(frame => frame.dataset.screenId === id);
       }, transferId, { timeout: 5000 });
-      assert.equal(await pageLabel('Send payment').getAttribute('aria-pressed'), 'true', 'Picking a screen on another page should switch to that page');
+      assert.equal(await pageLabel('send-payment').getAttribute('aria-pressed'), 'true', 'Picking a screen on another page should switch to that page');
 
       await page.locator('.bp-chrome-nav-group-toggle[aria-label="Collapse Overview"]').click();
-      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Overview"]) .bp-chrome-nav-group-items').isVisible(), false);
-      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Ledger"]) .bp-chrome-nav-group-items').isVisible(), true, 'Pages open and close independently');
+      assert.equal(await pageItems('overview').isVisible(), false);
+      assert.equal(await pageItems('ledger').isVisible(), true, 'Pages open and close independently');
       await page.reload();
       await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });
       assert.equal(await page.locator('.bp-chrome-nav-group-toggle[aria-label="Expand Overview"]').count(), 1, 'Collapsed pages should survive a reload');
-      await pageLabel('Overview').click();
+      await pageLabel('overview').click();
       await page.waitForFunction(() => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 2, undefined, { timeout: 5000 });
-      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Overview"]) .bp-chrome-nav-group-items').isVisible(), true, 'Opening a page should expand it');
+      assert.equal(await pageItems('overview').isVisible(), true, 'Opening a page should expand it');
 
       // Deep links (state/viewport, used by capture) resolve every screen regardless of the active page.
-      await page.goto(`${baseUrl}?board=screens&flow=Ledger&state=review&viewport=phone`);
+      await page.goto(`${baseUrl}?board=screens&page=ledger&state=review&viewport=phone`);
       await page.waitForSelector('.board-screens [data-boundary-id="meridian-finance/screen/transfer-mobile"]', { timeout: 5000 });
     } finally {
       await page.close();
     }
   });
 
-  it('keeps the starter screens board at two empty base frames', async () => {
+  it('keeps the starter screens board at one empty base frame on each declared page', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
     const page = await openScreensBoard(bundle);
 
@@ -859,17 +868,20 @@ describe('Blueprint data-driven pages and screens canvas', () => {
         ]
       );
 
-      const frames = page.locator('.board-screens .frame');
-      assert.equal(await frames.count(), 2);
-      assert.equal(await frames.nth(0).getAttribute('data-frame-type'), 'mobile');
-      assert.equal(await frames.nth(1).getAttribute('data-frame-type'), 'desktop');
       assert.deepEqual(
-        [await frames.nth(0).getAttribute('data-review-condition-id'), await frames.nth(1).getAttribute('data-review-condition-id')],
-        ['phone-default', 'desktop-web-default']
+        bundle.screens.pages.map(screenPage => [screenPage.id, bundle.screens.screens.filter(screen => screen.page === screenPage.id).map(screen => screen.id)]),
+        [['mobile', ['home']], ['web', ['web-home']]]
       );
-      assert.equal(await frames.locator('[data-boundary-kind="section"]').count(), 0);
-      assert.equal(await frames.locator('.prototype-compile-error').count(), 0);
-      for (const screenId of ['home', 'web-home']) {
+
+      for (const [pageId, screenId, frameType, condition] of [['mobile', 'home', 'mobile', 'phone-default'], ['web', 'web-home', 'desktop', 'desktop-web-default']]) {
+        await page.locator(`.bp-chrome-nav-group-label[data-page="${pageId}"]`).click();
+        await page.waitForSelector(`.board-screens .frame[data-screen-id="${screenId}"]`, { timeout: 5000 });
+        const frames = page.locator('.board-screens .frame');
+        assert.equal(await frames.count(), 1, `${pageId} page should hold one base frame`);
+        assert.equal(await frames.getAttribute('data-frame-type'), frameType);
+        assert.equal(await frames.getAttribute('data-review-condition-id'), condition);
+        assert.equal(await frames.locator('[data-boundary-kind="section"]').count(), 0);
+        assert.equal(await frames.locator('.prototype-compile-error').count(), 0);
         const prototype = await screenPrototype(page, boundaryId(bundle.manifest.project.id, 'screen', screenId));
         assert.equal(await prototype.locator('[data-blueprint-section-boundary-id]').count(), 0, `${screenId} should mark no sections`);
         assert.equal(
@@ -884,10 +896,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
   });
 
   it('keeps all-screens review evidence tied to rendered screen frames without a false top-level screen context', async () => {
-    const bundle = cloneBundle(await loadProjectFromFs(meridianRoot));
-    for (const screen of bundle.screens.screens) {
-      delete screen.flow;
-    }
+    const bundle = allScreensOnOnePage(await loadProjectFromFs(meridianRoot));
     const page = await openScreensBoard(bundle);
 
     try {
@@ -920,7 +929,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
   it('renders screen composition as prototype content rather than primary metadata labels', async () => {
     const bundle = await loadProjectFromFs(miraRoot);
-    const page = await openScreensBoard(bundle);
+    const page = await openScreensBoard(allScreensOnOnePage(bundle));
 
     try {
       assert.equal(
@@ -990,8 +999,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
   it('changes visible screen output when a section prototype source changes', async () => {
     const baseBundle = await loadProjectFromFs(miraRoot);
     const mutatedBundle = mutatePrototypeSource(baseBundle, 'prototype/screens/chat.html', 'Three drivers explain 71% of the Q3 increase.', 'Two drivers explain most of the Q3 increase.');
-    const basePage = await openScreensBoard(baseBundle);
-    const mutatedPage = await openScreensBoard(mutatedBundle);
+    const basePage = await openScreensBoard(allScreensOnOnePage(baseBundle));
+    const mutatedPage = await openScreensBoard(allScreensOnOnePage(mutatedBundle));
 
     try {
       const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'chat');
@@ -1021,8 +1030,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     assert.ok(mutatedChat && mutatedSection, 'Mira chat should declare the conversation section');
     mutatedChat.prototype.renderedUses = [...(mutatedChat.prototype.renderedUses ?? []), { kind: 'primitive', id: 'button' }];
     mutatedSection.uses = [...mutatedSection.uses, { ...mutatedSection.uses.find(use => use.id === 'badge')!, id: 'button' }];
-    const basePage = await openScreensBoard(baseBundle);
-    const mutatedPage = await openScreensBoard(mutatedBundle);
+    const basePage = await openScreensBoard(allScreensOnOnePage(baseBundle));
+    const mutatedPage = await openScreensBoard(allScreensOnOnePage(mutatedBundle));
 
     try {
       const screenBoundary = boundaryId(baseBundle.manifest.project.id, 'screen', 'chat');
@@ -1202,6 +1211,15 @@ async function primitiveSignature(locator: Locator): Promise<{ boundaryId: strin
         .map(node => [node.tagName.toLowerCase(), node.getAttribute('class') ?? '', node.dataset.blueprintSlot ?? ''].join('|'))
     };
   });
+}
+
+function allScreensOnOnePage(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
+  const clone = cloneBundle(bundle);
+  clone.screens.pages = [{ id: 'all', name: 'All screens' }];
+  for (const screen of clone.screens.screens) {
+    screen.page = 'all';
+  }
+  return clone;
 }
 
 function cloneBundle(bundle: BlueprintProjectBundle): BlueprintProjectBundle {

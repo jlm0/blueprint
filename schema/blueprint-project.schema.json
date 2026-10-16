@@ -224,12 +224,22 @@
         "implementationHints": { "$ref": "#/$defs/stringArray" }
       }
     },
+    "declaredGroup": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
     "screenFile": {
       "type": "object",
-      "required": ["schemaVersion", "projectId", "screens"],
+      "required": ["schemaVersion", "projectId", "pages", "screens"],
       "properties": {
         "schemaVersion": { "type": "string" },
         "projectId": { "type": "string" },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/declaredGroup" } },
         "screens": {
           "type": "array",
           "items": { "$ref": "#/$defs/screen" }
@@ -368,20 +378,22 @@
     },
     "componentFile": {
       "type": "object",
-      "required": ["schemaVersion", "projectId", "components"],
+      "required": ["schemaVersion", "projectId", "sections", "components"],
       "properties": {
         "schemaVersion": { "type": "string" },
         "projectId": { "type": "string" },
+        "sections": { "type": "array", "items": { "$ref": "#/$defs/declaredGroup" } },
         "components": { "type": "array", "items": { "$ref": "#/$defs/component" } }
       }
     },
     "component": {
       "type": "object",
-      "required": ["id", "name", "description", "uses", "tokenGroupIds", "prototype"],
+      "required": ["id", "name", "description", "section", "uses", "tokenGroupIds", "prototype"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "section": { "type": "string" },
         "uses": { "type": "array", "items": { "$ref": "#/$defs/boundaryDependency" } },
         "tokenGroupIds": { "$ref": "#/$defs/stringArray" },
         "prototype": { "$ref": "#/$defs/componentPrototype" },
@@ -407,14 +419,14 @@
     },
     "screen": {
       "type": "object",
-      "required": ["id", "name", "description", "framePresetId", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "sections"],
+      "required": ["id", "name", "description", "framePresetId", "page", "styleRefs", "notes", "prototypeOnly", "implementationHints", "prototype", "sections"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "version": { "type": "integer", "minimum": 1 },
         "description": { "type": "string" },
         "framePresetId": { "type": "string" },
-        "flow": { "type": "string" },
+        "page": { "type": "string" },
         "styleRefs": { "$ref": "#/$defs/stringArray" },
         "styleEvidence": {
           "type": "array",

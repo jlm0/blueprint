@@ -1,11 +1,19 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "starter-app",
+  "sections": [
+    {
+      "id": "actions",
+      "name": "Actions",
+      "description": "Commands grouped into one reusable region."
+    }
+  ],
   "components": [
     {
       "id": "action-cluster",
       "name": "Action Cluster",
       "description": "Neutral reusable composition showing how an app-owned component consumes the canonical button primitive.",
+      "section": "actions",
       "uses": [
         {
           "kind": "primitive",

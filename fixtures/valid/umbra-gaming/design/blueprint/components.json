@@ -1,11 +1,24 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "umbra-gaming",
+  "sections": [
+    {
+      "id": "season",
+      "name": "Season",
+      "description": "Season pass, events, challenges, and editions."
+    },
+    {
+      "id": "competitive",
+      "name": "Competitive",
+      "description": "Modes, squads, stats, and rank."
+    }
+  ],
   "components": [
     {
       "id": "pass-track",
       "name": "Pass Track",
       "description": "Season pass progress: current tier, XP to the next tier, the reward rail around it, and the next reward.",
+      "section": "season",
       "uses": [
         {
           "kind": "primitive",
@@ -99,6 +112,7 @@
       "id": "event-card",
       "name": "Event Card",
       "description": "Live limited-time event over cropped key art, with a countdown and queue command.",
+      "section": "season",
       "uses": [
         {
           "kind": "primitive",
@@ -187,6 +201,7 @@
       "id": "challenge-row",
       "name": "Challenge Row",
       "description": "Daily challenge with objective, progress, and XP reward. State encodes progress band.",
+      "section": "season",
       "uses": [
         {
           "kind": "primitive",
@@ -264,6 +279,7 @@
       "id": "squad-member",
       "name": "Squad Member",
       "description": "Squadmate identity with presence, and match stats in scoreboard and MVP rows.",
+      "section": "competitive",
       "uses": [
         {
           "kind": "primitive",
@@ -341,6 +357,7 @@
       "id": "stat-meter",
       "name": "Stat Meter",
       "description": "One performance stat with a bar against the player average. Plain drops the frame and bar for headline figures.",
+      "section": "competitive",
       "uses": [],
       "tokenGroupIds": [
         "color",
@@ -402,6 +419,7 @@
       "id": "edition-card",
       "name": "Edition Card",
       "description": "Purchasable edition with price, perks, and a purchase command. Featured raises the card and swaps to the primary command.",
+      "section": "season",
       "uses": [
         {
           "kind": "primitive",
@@ -493,6 +511,7 @@
       "id": "mode-tile",
       "name": "Mode Tile",
       "description": "Game mode entry with index, line glyph, name, and rules summary.",
+      "section": "competitive",
       "uses": [
         {
           "kind": "primitive",
@@ -568,6 +587,7 @@
       "id": "rank-emblem",
       "name": "Rank Emblem",
       "description": "Competitive rank insignia: a hex plate tinted by rank tier with a division numeral.",
+      "section": "competitive",
       "uses": [],
       "tokenGroupIds": [
         "color",

@@ -1,11 +1,24 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "mira-ai",
+  "sections": [
+    {
+      "id": "conversation",
+      "name": "Conversation",
+      "description": "Starting and steering a thread."
+    },
+    {
+      "id": "answers",
+      "name": "Answers",
+      "description": "How an answer shows its evidence."
+    }
+  ],
   "components": [
     {
       "id": "composer",
       "name": "Composer",
       "description": "Prompt entry with attachment, research mode, and send commands. Docked under a thread, enlarged on the empty workspace, and compact on phone.",
+      "section": "conversation",
       "uses": [
         {
           "kind": "primitive",
@@ -94,6 +107,7 @@
       "id": "insight-chart",
       "name": "Insight Chart",
       "description": "Figure card an answer embeds to show one ranked series with a single highlighted value.",
+      "section": "answers",
       "uses": [
         {
           "kind": "primitive",
@@ -168,6 +182,7 @@
       "id": "prompt-card",
       "name": "Prompt Card",
       "description": "Starter prompt that opens a new thread with a prepared task.",
+      "section": "conversation",
       "uses": [],
       "tokenGroupIds": [
         "color",
@@ -226,6 +241,7 @@
       "id": "source-item",
       "name": "Source Item",
       "description": "Numbered citation row linking an answer to the file, table, or page it read.",
+      "section": "answers",
       "uses": [
         {
           "kind": "primitive",

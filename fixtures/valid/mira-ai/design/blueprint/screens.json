@@ -1,12 +1,25 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "mira-ai",
+  "pages": [
+    {
+      "id": "web",
+      "name": "Web",
+      "description": "The desktop research workspace."
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "description": "The phone companion."
+    }
+  ],
   "screens": [
     {
       "id": "workspace",
       "name": "Workspace",
       "description": "Three-column research workspace: thread library, the active answer with its figure and findings, and the sources the answer cites. The empty state opens a new thread.",
       "framePresetId": "desktop-web",
+      "page": "web",
       "styleRefs": [
         "prototype/screens/workspace.css"
       ],
@@ -512,6 +525,7 @@
       "name": "Chat",
       "description": "Phone thread: the same answer condensed around a compact figure and citations, with the composer above the home indicator. The empty state opens a new thread.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/chat.css"
       ],

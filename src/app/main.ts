@@ -32,6 +32,7 @@ import type {
   BoardDefinition,
   BoundaryKind,
   ComponentDefinition,
+  DeclaredGroup,
   DesignToken,
   ExplorationDefinition,
   ExplorationPrototypeSource,
@@ -298,11 +299,11 @@ const boardConfigs: Record<BoardId, BoardConfig> = {
 const boardState = new Map<BoardId, MountedBoard>();
 let activeBoardId: BoardId | null = null;
 
-// Screens board pages: one sub-navigation group per declared flow; each page is a
-// fresh canvas showing only that flow's frames. The first flow is the default
+// Screens board pages: one sub-navigation group per declared page; each page is a
+// fresh canvas showing only that page's frames. The first page is the default
 // canvas — grouping is intentional, there is no catch-all page.
-let screenFlows = projectScreenFlows(project);
-let activeScreenFlow: string | null = null;
+let screenPages = declaredScreenPages(project);
+let activeScreenPage: string | null = null;
 
 type DocumentSectionId = 'foundations' | 'primitives' | 'components';
 type SectionId = DocumentSectionId | 'screens';
@@ -329,12 +330,12 @@ const activeItemBySection = new Map<DocumentSectionId, string>();
 const requestedItem = new URLSearchParams(location.search).get('item');
 if (requestedItem) activeItemBySection.set(activeSection, requestedItem);
 
-function projectScreenFlows(bundle: BlueprintProjectBundle): string[] {
-  return [...new Set(
-    bundle.screens.screens
-      .map(screen => screen.flow)
-      .filter((flow): flow is string => typeof flow === 'string' && flow.length > 0)
-  )];
+function declaredScreenPages(bundle: BlueprintProjectBundle): DeclaredGroup[] {
+  return bundle.screens.pages ?? [];
+}
+
+function hasScreenPage(pageId: string): boolean {
+  return screenPages.some(page => page.id === pageId);
 }
 
 function requestedDocumentSection(): DocumentSectionId | undefined {
@@ -357,7 +358,17 @@ function sectionItems(bundle: BlueprintProjectBundle, section: DocumentSectionId
       }))
     );
   }
-  return bundle.components.components.map(component => ({ id: component.id, label: component.name, boundaryKind: 'component' }));
+  const sections = bundle.components.sections ?? [];
+  const rank = (component: ComponentDefinition): number => {
+    const index = sections.findIndex(section => section.id === component.section);
+    return index === -1 ? sections.length : index;
+  };
+  return [...bundle.components.components].sort((a, b) => rank(a) - rank(b)).map(component => ({
+    id: component.id,
+    label: component.name,
+    group: sections.find(section => section.id === component.section)?.name,
+    boundaryKind: 'component' as const
+  }));
 }
 
 function activeItem(bundle: BlueprintProjectBundle, section: DocumentSectionId): SectionItem | undefined {
@@ -447,6 +458,7 @@ function refreshItemNav(): void {
 }
 
 function refreshScreenNav(): void {
+  const pageIds = new Set(screenPages.map(page => page.id));
   const createScreenButton = (screen: ScreenDefinition): HTMLElement => {
     const button = el('button', 'bp-chrome-item') as HTMLButtonElement;
     button.type = 'button';
@@ -454,28 +466,30 @@ function refreshScreenNav(): void {
     button.append(el('span', 'bp-chrome-item-label', screenFrameLabel(screen)));
     button.addEventListener('click', () => {
       closeOverlaySubnav();
-      if (screen.flow && screen.flow !== activeScreenFlow) setScreenFlow(screen.flow, screen.id);
+      if (pageIds.has(screen.page) && screen.page !== activeScreenPage) setScreenPage(screen.page, screen.id);
       else focusScreenFrames(screen.id);
     });
     return button;
   };
-  for (const flow of screenFlows) {
-    const screens = project.screens.screens.filter(screen => screen.flow === flow);
+  for (const screenPage of screenPages) {
+    const screens = project.screens.screens.filter(screen => screen.page === screenPage.id);
     itemNav.append(createNavGroup({
-      key: `screens:${flow}`,
-      label: flow,
+      key: `screens:${screenPage.id}`,
+      label: screenPage.name,
+      description: screenPage.description,
       items: screens.map(createScreenButton),
-      page: { flow, active: flow === activeScreenFlow, select: () => setScreenFlow(flow) }
+      page: { id: screenPage.id, active: screenPage.id === activeScreenPage, select: () => setScreenPage(screenPage.id) }
     }));
   }
-  itemNav.append(...project.screens.screens.filter(screen => !screen.flow).map(createScreenButton));
+  itemNav.append(...project.screens.screens.filter(screen => !pageIds.has(screen.page)).map(createScreenButton));
 }
 
 function createNavGroup(options: {
   key: string;
   label: string;
+  description?: string;
   items: HTMLElement[];
-  page?: { flow: string; active: boolean; select: () => void };
+  page?: { id: string; active: boolean; select: () => void };
 }): HTMLElement {
   const storageKey = navGroupStorageKey(options.key);
   const group = el('div', 'bp-chrome-nav-group');
@@ -488,8 +502,9 @@ function createNavGroup(options: {
   label.append(el('span', 'bp-chrome-nav-group-name', options.label), el('span', 'bp-chrome-nav-group-count', String(options.items.length)));
   const list = el('div', 'bp-chrome-nav-group-items');
   list.append(...options.items);
+  if (options.description) label.title = options.description;
   if (options.page) {
-    label.dataset.flow = options.page.flow;
+    label.dataset.page = options.page.id;
     label.setAttribute('aria-pressed', String(options.page.active));
   }
   const setOpen = (open: boolean, remember: boolean): void => {
@@ -551,16 +566,16 @@ function refreshNavigationState(): void {
   refreshItemNav();
 }
 
-function requestedScreenFlow(): string | null {
-  const param = new URLSearchParams(location.search).get('flow');
-  return param && screenFlows.includes(param) ? param : null;
+function requestedScreenPage(): string | null {
+  const param = new URLSearchParams(location.search).get('page');
+  return param && hasScreenPage(param) ? param : null;
 }
 
-function setScreenFlow(flow: string, focusScreenId?: string): void {
-  activeScreenFlow = flow;
-  revealNavGroup(`screens:${flow}`);
+function setScreenPage(pageId: string, focusScreenId?: string): void {
+  activeScreenPage = pageId;
+  revealNavGroup(`screens:${pageId}`);
   const url = new URL(window.location.href);
-  url.searchParams.set('flow', flow);
+  url.searchParams.set('page', pageId);
   history.replaceState(null, '', url);
   refreshItemNav();
   if (activeBoardId === 'screens') {
@@ -639,18 +654,18 @@ function exitFocusedReview(): void {
   const historyScreen = project.screens.screens.find(candidate => (
     candidate.id === (new URLSearchParams(location.search).get('history') ?? '')
   ));
-  const targetFlow = exploration?.target.baseline.screen.flow ?? historyScreen?.flow;
+  const targetPage = exploration?.target.baseline.screen.page ?? historyScreen?.page;
   const url = new URL(window.location.href);
   url.searchParams.delete('exploration');
   url.searchParams.delete('history');
   url.searchParams.delete('state');
   url.searchParams.delete('viewport');
-  if (targetFlow && screenFlows.includes(targetFlow)) {
-    activeScreenFlow = targetFlow;
-    url.searchParams.set('flow', targetFlow);
+  if (targetPage && hasScreenPage(targetPage)) {
+    activeScreenPage = targetPage;
+    url.searchParams.set('page', targetPage);
   } else {
-    activeScreenFlow = screenFlows[0] ?? null;
-    url.searchParams.delete('flow');
+    activeScreenPage = screenPages[0]?.id ?? null;
+    url.searchParams.delete('page');
   }
   history.replaceState(null, '', url);
   remountBoard('screens');
@@ -766,7 +781,7 @@ function discardBoard(id: BoardId): void {
   boardState.delete(id);
 }
 
-// Rebuilds a board from scratch (used when the screens flow subpage or the
+// Rebuilds a board from scratch (used when the screens page or the
 // document item changes); the fresh mount refits instead of restoring a stale view.
 function remountBoard(id: BoardId): void {
   discardBoard(id);
@@ -1090,7 +1105,8 @@ function createPlatformBadge(platforms: PrimitiveDefinition['platforms']): HTMLE
 }
 
 function createComponentPage(bundle: BlueprintProjectBundle, component: ComponentDefinition): HTMLElement {
-  const { page, body } = createDocumentPage('Component', component.name, component.description);
+  const section = bundle.components.sections?.find(candidate => candidate.id === component.section);
+  const { page, body } = createDocumentPage(section ? `Component · ${section.name}` : 'Component', component.name, component.description);
   setBoundary(page, 'component', component.id, bundle.manifest.project.id, component.name);
   page.dataset.boundarySummary = component.description;
 
@@ -1713,10 +1729,10 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
   };
-  // Flow subpages filter the board view only; deep links (state/viewport) always
-  // resolve their frames regardless of the active subpage.
-  const flowFilter = request.state || request.viewport ? undefined : (activeScreenFlow ?? undefined);
-  const frameLayouts = layoutScreenFrames(bundle, request, flowFilter);
+  // Pages filter the board view only; deep links (state/viewport) always
+  // resolve their frames regardless of the active page.
+  const pageFilter = request.state || request.viewport ? undefined : (activeScreenPage ?? undefined);
+  const frameLayouts = layoutScreenFrames(bundle, request, pageFilter);
   const fallbackWidth = frameLayouts.length > 0 ? Math.max(393, ...frameLayouts.map(layout => layout.preset.width)) : 1440;
   const fallbackHeight = frameLayouts.length > 0
     ? Math.max(852, ...frameLayouts.map(layout => frameExtentHeight(layout.preset)))
@@ -1731,10 +1747,10 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
   const controller = configure();
   const tokenIndex = createTokenIndex(bundle);
   frameLayouts.forEach(layout => {
-    if (layout.flowLabel) {
-      const label = el('div', 'screen-flow-label bp-chrome-world-label', layout.flowLabel.text);
-      label.style.left = `${layout.flowLabel.x}px`;
-      label.style.top = `${layout.flowLabel.y}px`;
+    if (layout.pageLabel) {
+      const label = el('div', 'screen-page-label bp-chrome-world-label', layout.pageLabel.text);
+      label.style.left = `${layout.pageLabel.x}px`;
+      label.style.top = `${layout.pageLabel.y}px`;
       root.append(label);
     }
     root.append(createPrototypeFrame(
@@ -2233,8 +2249,7 @@ interface ScreenFrameLayout {
   preset: FramePreset;
   x: number;
   y: number;
-  flow?: string;
-  flowLabel?: { text: string; x: number; y: number };
+  pageLabel?: { text: string; x: number; y: number };
   prototypeSelection?: SelectedPrototypeReviewCondition;
   selectionError?: string;
 }
@@ -2250,20 +2265,20 @@ function routeGroupOf(screen: ScreenDefinition): string {
 function layoutScreenFrames(
   bundle: BlueprintProjectBundle,
   request: PrototypeReviewSelectionRequest,
-  flowFilter?: string
+  pageFilter?: string
 ): ScreenFrameLayout[] {
   const startX = 90;
   const startY = 160;
   const gapX = 80;
   const gapY = 120;
 
-  // Screens group by declared sub-flow (first-seen order); a flow filter narrows
-  // the board to one flow's subpage. Within a flow, each top-level route gets its
-  // own row in first-seen order; the frame chip names the route.
+  // Screens group by declared page; a page filter narrows the board to one page.
+  // Within a page, each top-level route gets its own row in first-seen order; the
+  // frame chip names the route.
   const groups = new Map<string | undefined, ScreenDefinition[]>();
   for (const screen of bundle.screens.screens) {
-    const key = screen.flow;
-    if (flowFilter !== undefined && key !== flowFilter) {
+    const key = screen.page;
+    if (pageFilter !== undefined && key !== pageFilter) {
       continue;
     }
     if (!groups.has(key)) {
@@ -2274,10 +2289,10 @@ function layoutScreenFrames(
 
   const layouts: ScreenFrameLayout[] = [];
   let y = startY;
-  // Flow labels only earn their place when several flows share one canvas
-  // (deep-link boards); on a single-flow page the rail already names it.
-  const showFlowLabels = groups.size > 1;
-  for (const [flow, screens] of groups) {
+  // Page labels only earn their place when several pages share one canvas
+  // (deep-link boards); on a single page the sub-navigation already names it.
+  const showPageLabels = groups.size > 1;
+  for (const [pageId, screens] of groups) {
     const rows = new Map<string, ScreenDefinition[]>();
     for (const screen of screens) {
       const key = routeGroupOf(screen);
@@ -2286,16 +2301,17 @@ function layoutScreenFrames(
       }
       rows.get(key)?.push(screen);
     }
-    let flowLabeled = !showFlowLabels;
+    let pageLabeled = !showPageLabels;
     for (const rowScreens of rows.values()) {
       let x = startX;
       let rowHeight = 0;
       for (const screen of rowScreens) {
         for (const resolved of resolveScreenFrameVariants(bundle, screen, request)) {
-          const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, flow, ...resolved.prototype };
-          if (!flowLabeled && flow !== undefined) {
-            layout.flowLabel = { text: flow, x: startX, y: y - 70 };
-            flowLabeled = true;
+          const layout: ScreenFrameLayout = { screen, preset: resolved.preset, x, y, ...resolved.prototype };
+          if (!pageLabeled && pageId !== undefined) {
+            const text = bundle.screens.pages?.find(page => page.id === pageId)?.name ?? pageId;
+            layout.pageLabel = { text, x: startX, y: y - 70 };
+            pageLabeled = true;
           }
           layouts.push(layout);
           x += resolved.preset.width + gapX;
@@ -3082,9 +3098,9 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   project = createConfiguredProjectBundle(snapshot.bundle);
   window.__BLUEPRINT_PROJECT_BUNDLE__ = snapshot.bundle;
   refreshSurround();
-  screenFlows = projectScreenFlows(project);
-  if (!activeScreenFlow || !screenFlows.includes(activeScreenFlow)) {
-    activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
+  screenPages = declaredScreenPages(project);
+  if (!activeScreenPage || !hasScreenPage(activeScreenPage)) {
+    activeScreenPage = requestedScreenPage() ?? screenPages[0]?.id ?? null;
   }
   refreshBoardSwitcher();
   refreshItemNav();
@@ -3136,8 +3152,8 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
   };
-  const flowFilter = request.state || request.viewport ? undefined : (activeScreenFlow ?? undefined);
-  const layouts = layoutScreenFrames(project, request, flowFilter).filter(layout => affected.has(layout.screen.id));
+  const pageFilter = request.state || request.viewport ? undefined : (activeScreenPage ?? undefined);
+  const layouts = layoutScreenFrames(project, request, pageFilter).filter(layout => affected.has(layout.screen.id));
   const oldFrames = new Map(
     [...state.root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')]
       .map(frame => [frame.dataset.liveFrameKey ?? '', frame] as const)
@@ -4065,7 +4081,7 @@ function el(tag: string, className = '', text = ''): HTMLElement {
   return node;
 }
 
-activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
+activeScreenPage = requestedScreenPage() ?? screenPages[0]?.id ?? null;
 refreshBoardSwitcher();
 
 const requestedBoard = new URLSearchParams(location.search).get('board');

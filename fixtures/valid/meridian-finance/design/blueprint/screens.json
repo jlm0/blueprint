@@ -1,6 +1,28 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "meridian-finance",
+  "pages": [
+    {
+      "id": "overview",
+      "name": "Overview",
+      "description": "Cash position across every account."
+    },
+    {
+      "id": "ledger",
+      "name": "Ledger",
+      "description": "Every transaction, searchable and filterable."
+    },
+    {
+      "id": "send-payment",
+      "name": "Send payment",
+      "description": "Moving money out, from amount to approval."
+    },
+    {
+      "id": "phone",
+      "name": "Phone",
+      "description": "The mobile app."
+    }
+  ],
   "screens": [
     {
       "id": "overview",
@@ -8,7 +30,7 @@
       "version": 1,
       "description": "Original dashboard overview: sidebar navigation, a row of cash figures and runway, cash flow beside recent activity, and account tiles.",
       "framePresetId": "desktop-web",
-      "flow": "Overview",
+      "page": "overview",
       "styleRefs": [
         "prototype/screens/overview.css"
       ],
@@ -386,7 +408,7 @@
       "version": 2,
       "description": "Editorial treasury overview: the total cash figure leads, with account allocation and runway beside it, then cash flow, recent activity, and the next seven days of payments.",
       "framePresetId": "desktop-web",
-      "flow": "Overview",
+      "page": "overview",
       "styleRefs": [
         "prototype/screens/overview-v2.css"
       ],
@@ -713,7 +735,7 @@
       "name": "Transactions",
       "description": "Dense ledger grouped by day with direction, search, account, and date filters, and the selected transaction open in a detail panel.",
       "framePresetId": "desktop-web",
-      "flow": "Ledger",
+      "page": "ledger",
       "styleRefs": [
         "prototype/screens/transactions.css"
       ],
@@ -1036,7 +1058,7 @@
       "name": "Send payment",
       "description": "Focused three-step payment flow: choose source, recipient, amount, and rail; approve with a one-time code; then confirm. The error state blocks a payment larger than the source balance.",
       "framePresetId": "desktop-web",
-      "flow": "Send payment",
+      "page": "send-payment",
       "styleRefs": [
         "prototype/screens/transfer.css"
       ],
@@ -1521,7 +1543,7 @@
       "name": "Home",
       "description": "Phone home: total cash with quick actions, a horizontal strip of accounts, and the latest activity.",
       "framePresetId": "phone",
-      "flow": "Phone",
+      "page": "phone",
       "styleRefs": [
         "prototype/screens/home.css"
       ],
@@ -1846,7 +1868,7 @@
       "name": "Send money",
       "description": "Phone payment flow: keypad amount entry with source and rail, approval with a one-time code, and confirmation.",
       "framePresetId": "phone",
-      "flow": "Phone",
+      "page": "phone",
       "styleRefs": [
         "prototype/screens/transfer-mobile.css"
       ],

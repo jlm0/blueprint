@@ -169,7 +169,16 @@ export interface PrimitiveState {
 export interface ScreenFile {
   schemaVersion: string;
   projectId: string;
+  /** Declared screens-board pages, such as Web, Mobile, or Landing; each page is its own canvas. */
+  pages: DeclaredGroup[];
   screens: ScreenDefinition[];
+}
+
+/** A named grouping that must be declared before screens or components can reference it. */
+export interface DeclaredGroup {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 /** In-memory collection of non-canonical screen alternatives. */
@@ -269,6 +278,8 @@ export type ScreenHistoryReplacement =
 export interface ComponentFile {
   schemaVersion: string;
   projectId: string;
+  /** Declared component sections; every component belongs to one. */
+  sections: DeclaredGroup[];
   components: ComponentDefinition[];
 }
 
@@ -277,6 +288,8 @@ export interface ComponentDefinition {
   id: string;
   name: string;
   description: string;
+  /** Id of the declared section in components.sections. */
+  section: string;
   uses: BoundaryDependency[];
   tokenGroupIds: string[];
   /** Canonical app-owned composite source. */
@@ -302,8 +315,8 @@ export interface ScreenDefinition {
   version?: number;
   description: string;
   framePresetId: string;
-  /** Optional sub-flow grouping for the screens board; screens sharing a flow lay out on the same canvas row. */
-  flow?: string;
+  /** Id of the declared page in screens.pages; the screen renders on that page's canvas. */
+  page: string;
   styleRefs: string[];
   styleEvidence?: StyleEvidence[];
   notes: string[];

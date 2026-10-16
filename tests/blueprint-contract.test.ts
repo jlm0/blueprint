@@ -121,6 +121,32 @@ describe('Blueprint schema contract', () => {
     assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${second.id}\\.platforms must list "mobile" and/or "desktop" once each`));
     assert.match(result.errors.join('\n'), new RegExp(`primitive\\.${third.id}\\.platforms must list`));
   });
+
+  it('requires every screen page and component section to be declared before use', async () => {
+    const bundle = structuredClone(await loadProjectFromFs(miraRoot));
+    const [screen, other] = bundle.screens.screens;
+    const [component, unsectioned] = bundle.components.components;
+    assert.ok(screen && other && component && unsectioned);
+
+    bundle.screens.pages.push({ id: 'landing', name: 'Landing' });
+    assert.equal(validateProject(bundle).ok, true, 'A declared page may start empty');
+
+    screen.page = 'onboarding';
+    (other as { page?: string }).page = undefined;
+    Object.assign(other, { flow: 'Legacy' });
+    component.section = 'charts';
+    (unsectioned as { section?: string }).section = undefined;
+    bundle.screens.pages.push({ id: 'landing', name: '' });
+
+    const errors = validateProject(bundle).errors.join('\n');
+    assert.match(errors, new RegExp(`screen\\.${screen.id}\\.page "onboarding" is not declared; add it to screens\\.pages`));
+    assert.match(errors, new RegExp(`screen\\.${other.id}\\.page must be a non-empty string`));
+    assert.match(errors, new RegExp(`screen\\.${other.id}\\.flow was replaced by page`));
+    assert.match(errors, new RegExp(`component\\.${component.id}\\.section "charts" is not declared; add it to components\\.sections`));
+    assert.match(errors, new RegExp(`component\\.${unsectioned.id}\\.section must be a non-empty string`));
+    assert.match(errors, /Duplicate id "landing" in screens\.pages/);
+    assert.match(errors, /screens\.page\.landing\.name must be a non-empty string/);
+  });
 });
 
 describe('Blueprint query contract', () => {

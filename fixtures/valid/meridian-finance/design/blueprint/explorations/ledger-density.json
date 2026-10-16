@@ -10,14 +10,14 @@
       "screenId": "transactions",
       "state": "default",
       "framePresetId": "desktop-web",
-      "baseDigest": "3de6079a86b3967fefd38024b78771caf9297712404dccd8089f30efff4af6e3",
+      "baseDigest": "9947acc20b35eaa79a63fe0a36c6b2d19f253ee557b540335fbb747d33b65803",
       "baseline": {
         "screen": {
           "id": "transactions",
           "name": "Transactions",
           "description": "Dense ledger grouped by day with direction, search, account, and date filters, and the selected transaction open in a detail panel.",
           "framePresetId": "desktop-web",
-          "flow": "Ledger",
+          "page": "ledger",
           "styleRefs": [
             "prototype/screens/transactions.css"
           ],

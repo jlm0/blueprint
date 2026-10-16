@@ -31,6 +31,8 @@ Every boundary is addressable as `kind:id`, for example `primitive:button`, `com
 
 Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar carries the closed set of 33 primitives from `src/core/base-primitives.ts`, with their state sets and states. Apps restyle primitives through tokens and may add states, but never add or remove primitives: app-specific pieces are components built from primitives.
 
+Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares sections, and every component names its section. An agent starting a new page or section must declare it first, and validation rejects undeclared references.
+
 Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, and color contrast.
 
 ## Getting started

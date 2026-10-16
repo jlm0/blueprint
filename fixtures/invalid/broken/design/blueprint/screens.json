@@ -1,12 +1,20 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "broken-sidecar",
+  "pages": [
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "description": "Phone screens."
+    }
+  ],
   "screens": [
     {
       "id": "undeclared-state",
       "name": "Undeclared state",
       "description": "Defect: renders the badge primitive in a state it does not declare.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/undeclared-state.css"
       ],
@@ -114,6 +122,7 @@
       "name": "Unknown component",
       "description": "Defect: renders a component that no components.json record defines.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/unknown-component.css"
       ],
@@ -206,6 +215,7 @@
       "name": "Remote asset",
       "description": "Defect: loads an image from the network instead of a declared local asset.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/remote-asset.css"
       ],
@@ -298,6 +308,7 @@
       "name": "Literal color",
       "description": "Defect: hard-codes a color instead of reading a token role. Fails strict validation.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/literal-color.css"
       ],
@@ -390,6 +401,7 @@
       "name": "Hand-built control",
       "description": "Defect: hand-builds a native button instead of using the button primitive. Fails strict validation.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/hand-built-control.css"
       ],
@@ -482,6 +494,7 @@
       "name": "Unmarked section",
       "description": "Defect: declares a section that the source never marks. Fails strict validation.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/unmarked-section.css"
       ],

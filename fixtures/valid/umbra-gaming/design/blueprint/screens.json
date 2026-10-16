@@ -1,12 +1,25 @@
 {
   "schemaVersion": "1.0.0",
   "projectId": "umbra-gaming",
+  "pages": [
+    {
+      "id": "landing",
+      "name": "Landing",
+      "description": "The season launch site."
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "description": "The companion app."
+    }
+  ],
   "screens": [
     {
       "id": "launch",
       "name": "Season Launch",
       "description": "Season 04 launch page: cinematic eclipse hero with the season name as a giant horizon wordmark, a highlight ticker, modes bento with the trailer, editions, and patch notes.",
       "framePresetId": "desktop-web-page",
+      "page": "landing",
       "styleRefs": [
         "prototype/screens/launch.css"
       ],
@@ -405,6 +418,7 @@
       "name": "Season Hub",
       "description": "Companion app home: player identity, the season and pass progress over key art, squad presence, the live event, and daily challenges. Loading swaps data regions for skeletons while identity stays.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/hub.css"
       ],
@@ -921,6 +935,7 @@
       "name": "Match Summary",
       "description": "Post-match summary: victory wordmark, placement and rank change, XP into the pass, four stat meters against the player average, the squad scoreboard, and requeue.",
       "framePresetId": "phone",
+      "page": "mobile",
       "styleRefs": [
         "prototype/screens/match.css"
       ],

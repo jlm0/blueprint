@@ -39,6 +39,7 @@ interface RedComponentDefinition {
   id: string;
   name: string;
   description: string;
+  section: string;
   uses: BoundaryDependency[];
   tokenGroupIds: string[];
   prototype: PrototypeSource & { slots: string[] };
@@ -47,6 +48,7 @@ interface RedComponentDefinition {
 interface RedComponentFile {
   schemaVersion: string;
   projectId: string;
+  sections: BlueprintProjectBundle['components']['sections'];
   components: RedComponentDefinition[];
 }
 

@@ -3,6 +3,7 @@ import type {
   BoardDefinition,
   BoundaryDependency,
   ComponentDefinition,
+  DeclaredGroup,
   ExplorationDefinition,
   ExplorationPrototypeSource,
   FramePreset,
@@ -80,8 +81,14 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     validatePrimitive(errors, primitive, tokenGroupIds);
   });
   const tokenIds = collectTokenIds(bundle.tokens.tokenGroups);
+  const componentSectionIds = collectIds(errors, 'components.sections', bundle.components.sections, section => {
+    validateDeclaredGroup(errors, 'components.section', section);
+  });
   const componentIds = collectIds(errors, 'components.components', bundle.components.components, component => {
     validateComponent(errors, component, tokenGroupIds);
+    if (component.section && !componentSectionIds.has(component.section)) {
+      errors.push(`component.${component.id}.section "${component.section}" is not declared; add it to components.sections before using it.`);
+    }
   });
 
   const stateSetIds = new Set<string>();
@@ -96,8 +103,12 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
     }
   }
 
+  const pageIds = collectIds(errors, 'screens.pages', bundle.screens.pages, page => validateDeclaredGroup(errors, 'screens.page', page));
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
     validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds, stateSetIds);
+    if (screen.page && !pageIds.has(screen.page)) {
+      errors.push(`screen.${screen.id}.page "${screen.page}" is not declared; add it to screens.pages before using it.`);
+    }
   });
   validateScreenVersions(errors, bundle.screens.screens);
   validateExplorations(errors, bundle, screenIds, framePresetIds);
@@ -524,6 +535,7 @@ function validateComponent(errors: string[], component: ComponentDefinition, tok
   requireString(errors, 'component.id', component.id);
   requireString(errors, `component.${component.id}.name`, component.name);
   requireString(errors, `component.${component.id}.description`, component.description);
+  requireString(errors, `component.${component.id}.section`, component.section);
   requireArray(errors, `component.${component.id}.uses`, component.uses);
   requireArray(errors, `component.${component.id}.tokenGroupIds`, component.tokenGroupIds);
   requireObject(errors, `component.${component.id}.prototype`, component.prototype);
@@ -531,6 +543,14 @@ function validateComponent(errors: string[], component: ComponentDefinition, tok
     if (!tokenGroupIds.has(tokenGroupId)) {
       errors.push(`component.${component.id}.tokenGroupIds references missing token group "${tokenGroupId}".`);
     }
+  }
+}
+
+function validateDeclaredGroup(errors: string[], label: string, group: DeclaredGroup): void {
+  requireString(errors, `${label}.id`, group.id);
+  requireString(errors, `${label}.${group.id}.name`, group.name);
+  if (group.description !== undefined && typeof group.description !== 'string') {
+    errors.push(`${label}.${group.id}.description must be a string.`);
   }
 }
 
@@ -564,6 +584,10 @@ function validateScreen(
     errors.push(`screen.${screen.id}.version must be a positive integer.`);
   }
   requireString(errors, `screen.${screen.id}.framePresetId`, screen.framePresetId);
+  requireString(errors, `screen.${screen.id}.page`, screen.page);
+  if ('flow' in screen) {
+    errors.push(`screen.${screen.id}.flow was replaced by page; declare the page in screens.pages and reference its id.`);
+  }
   requireArray(errors, `screen.${screen.id}.sections`, screen.sections);
 
   if (!framePresetIds.has(screen.framePresetId)) {
