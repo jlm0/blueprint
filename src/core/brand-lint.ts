@@ -5,6 +5,8 @@ export const BRAND_MARK_ROLES: readonly BrandMarkRole[] = ['mark', 'wordmark', '
 const UNSAFE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
   [/<script\b/i, 'contains a script'],
   [/<foreignObject\b/i, 'embeds foreign HTML'],
+  [/<style\b/i, 'carries a stylesheet that would restyle the page around it'],
+  [/<blueprint-use\b/i, 'nests a Blueprint use'],
   [/<(?:image|iframe|object|embed)\b/i, 'embeds an external document or image'],
   [/\son[a-z]+\s*=/i, 'declares an event handler'],
   [/\b(?:xlink:)?href\s*=\s*["'](?!#)/i, 'links outside the file'],
@@ -39,4 +41,15 @@ export function brandMarkHandoffIssues(svg: string): string[] {
     issues.push('sets live text; outline the lettering to paths so it never depends on an installed font.');
   }
   return issues;
+}
+
+/** Brand mark IDs a governed prototype source places with `<blueprint-use kind="brand-mark">`, in document order. */
+export function placedBrandMarkIds(html: string): string[] {
+  const ids: string[] = [];
+  for (const [tag] of html.matchAll(/<blueprint-use\b[^>]*>/gi)) {
+    if (!/\skind\s*=\s*(['"])brand-mark\1/i.test(tag)) continue;
+    const ref = /\sref\s*=\s*(['"])(.*?)\1/i.exec(tag)?.[2];
+    if (ref && !ids.includes(ref)) ids.push(ref);
+  }
+  return ids;
 }

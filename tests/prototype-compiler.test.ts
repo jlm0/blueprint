@@ -395,6 +395,64 @@ describe('canonical prototype compiler', () => {
     );
   });
 
+  it('inlines placed brand marks recolored by their declared variant tokens', async () => {
+    const bundle = await loadProjectFromFs('fixtures/valid/meridian-finance/design/blueprint');
+    const header = compilePrototypeDocument({ bundle, target: { kind: 'component', id: 'web-header' } });
+    assert.deepEqual(header.brandMarks.map(mark => `${mark.id}:${mark.variant}`), ['globe:ink', 'wordmark:ink']);
+    assert.match(
+      header.html,
+      /<svg[^>]*class="web-header__globe"[^>]*data-blueprint-brand-mark="globe"[^>]*style="color:var\(--app-color-foreground\);--brand-accent:var\(--app-color-accent\)"[^>]*aria-hidden="true">/
+    );
+    assert.match(header.html, /data-blueprint-brand-mark="wordmark"[^>]*--brand-accent:currentColor/);
+    assert.doesNotMatch(header.html, /<blueprint-use/);
+
+    const screen = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'transactions' } });
+    assert.deepEqual(screen.brandMarks.map(mark => mark.sourceBoundaryId), [
+      'meridian-finance/component/web-header',
+      'meridian-finance/component/web-header'
+    ]);
+    assert.equal(screen.observedUses.some(use => use.id === 'globe'), false);
+  });
+
+  it('labels unhidden marks with the brand name and scopes their internal IDs', async () => {
+    const bundle = await loadProjectFromFs('starter/design/blueprint');
+    placeInActionCluster(bundle, '<blueprint-use kind="brand-mark" ref="mark" class="cluster-logo"></blueprint-use>');
+    bundle.prototypeSourceContents['brand/mark.svg'] =
+      '<?xml version="1.0"?><svg viewBox="0 0 8 8" width="8" height="8"><clipPath id="c"><rect width="8" height="8"/></clipPath><use href="#c"/><path clip-path="url(#c)" d="M0 0h8v8z"/></svg>';
+    const cluster = compilePrototypeDocument({ bundle, target: { kind: 'component', id: 'action-cluster' } });
+    assert.match(cluster.html, /<svg viewBox="0 0 8 8" class="cluster-logo" height="1em" data-blueprint-brand-mark="mark" role="img" aria-label="Starter App">/);
+    assert.match(cluster.html, /<clipPath id="bp-brand-mark-c">/);
+    assert.match(cluster.html, /<use href="#bp-brand-mark-c"\/>/);
+    assert.match(cluster.html, /clip-path="url\(#bp-brand-mark-c\)"/);
+    assert.doesNotMatch(cluster.html, /<\?xml/);
+    assert.deepEqual(cluster.brandMarks, [{ sourceBoundaryId: 'starter-app/component/action-cluster', id: 'mark' }]);
+  });
+
+  it('fails closed for undeclared brand marks, variants, attributes, slot content, and unsafe sources', async () => {
+    const original = await loadProjectFromFs('starter/design/blueprint');
+    const cases: Array<[string, RegExp, (bundle: BlueprintProjectBundle) => void]> = [
+      ['<blueprint-use kind="brand-mark" ref="seal"></blueprint-use>', /places brand mark "seal", which brand\.json does not declare/, () => {}],
+      ['<blueprint-use kind="brand-mark" ref="mark" variant="neon"></blueprint-use>', /does not declare variant "neon"/, () => {}],
+      ['<blueprint-use kind="brand-mark" ref="mark" style="color:red"></blueprint-use>', /unsupported <blueprint-use> attribute "style"/, () => {}],
+      ['<blueprint-use kind="brand-mark" ref="mark" aria-hidden="false"></blueprint-use>', /accepts only aria-hidden="true"/, () => {}],
+      ['<blueprint-use kind="brand-mark" ref="mark"><b>Logo</b></blueprint-use>', /cannot receive slot content/, () => {}],
+      ['<blueprint-use kind="brand-mark" ref="mark"></blueprint-use>', /which brand\.json does not declare/, bundle => { delete bundle.brand; }],
+      ['<blueprint-use kind="brand-mark" ref="mark"></blueprint-use>', /carries a stylesheet/, bundle => {
+        bundle.prototypeSourceContents['brand/mark.svg'] = '<svg viewBox="0 0 8 8"><style>body{display:none}</style></svg>';
+      }]
+    ];
+    for (const [markup, expected, mutate] of cases) {
+      const bundle = structuredClone(original);
+      placeInActionCluster(bundle, markup);
+      mutate(bundle);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'component', id: 'action-cluster' } }), expected, markup);
+    }
+
+    const invalid = structuredClone(original);
+    placeInActionCluster(invalid, '<blueprint-use kind="brand-mark" ref="seal"></blueprint-use>');
+    assert.ok(validateProject(invalid).errors.some(error => /action-cluster.*places brand mark "seal"/.test(error)));
+  });
+
   it('annotates declared section markers, including markers forwarded through blueprint-use', async () => {
     const bundle = await loadProjectFromFs(fixtureRoot);
     const chat = compilePrototypeDocument({
@@ -454,6 +512,11 @@ function focusChat(bundle: BlueprintProjectBundle, markup: string, uses: Boundar
   screen.sections = [{ ...screen.sections[0], uses }];
   delete screen.prototype.renderedUses;
   bundle.prototypeSourceContents[chatSource] = markup;
+}
+
+function placeInActionCluster(bundle: BlueprintProjectBundle, markup: string): void {
+  const source = 'prototype/components/action-cluster.html';
+  bundle.prototypeSourceContents[source] = bundle.prototypeSourceContents[source].replace('>', `>${markup}`);
 }
 
 function escapeRegExpForTest(value: string): string {

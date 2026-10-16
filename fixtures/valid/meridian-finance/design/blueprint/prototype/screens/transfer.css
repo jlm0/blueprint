@@ -30,17 +30,13 @@
   text-decoration: none;
 }
 
-.send__brand svg {
-  width: 24px;
+.send__globe {
   height: 24px;
-  stroke: currentColor;
   stroke-width: 1.25;
 }
 
-.send__brand span {
-  font-family: var(--app-font-serif);
-  font-size: 25px;
-  line-height: 1;
+.send__wordmark {
+  height: 19px;
 }
 
 .steps {

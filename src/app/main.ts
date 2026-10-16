@@ -3360,12 +3360,12 @@ function affectedScreenIds(changedPaths: string[]): Set<string> | undefined {
     ) return undefined;
     if (
       changedPath === 'tokens.json' || changedPath === 'primitives.json' || changedPath === 'components.json' ||
+      changedPath === 'brand.json' || changedPath.startsWith('brand/') ||
       changedPath.startsWith('prototype/primitives/') || changedPath.startsWith('prototype/components/')
     ) {
       project.screens.screens.forEach(screen => screenIds.add(screen.id));
       continue;
     }
-    if (changedPath === 'brand.json' || changedPath.startsWith('brand/')) continue;
     const owner = project.screens.screens.find(screen => screen.prototype && [
       screen.prototype.source,
       ...screen.prototype.styles,

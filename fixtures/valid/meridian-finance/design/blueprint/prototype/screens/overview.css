@@ -32,17 +32,13 @@
   text-decoration: none;
 }
 
-.side__brand svg {
-  width: 24px;
+.side__globe {
   height: 24px;
-  stroke: currentColor;
   stroke-width: 1.25;
 }
 
-.side__brand span {
-  font-family: var(--app-font-serif);
-  font-size: 25px;
-  line-height: 1;
+.side__wordmark {
+  height: 19px;
 }
 
 .side__org {

@@ -9,6 +9,7 @@ import type {
   ReviewCondition,
   ScreenDefinition
 } from '../core/types';
+import { brandMarkSourceIssues } from '../core/brand-lint';
 
 /**
  * Identifies the canonical source boundary to compile.
@@ -55,6 +56,19 @@ export interface ObservedPrototypeUse {
   state: string;
 }
 
+/**
+ * One brand mark placed with `<blueprint-use kind="brand-mark">`.
+ * @see {@linkcode CompiledPrototypeDocument.brandMarks}
+ */
+export interface PlacedBrandMark {
+  /** Boundary whose source placed the mark. */
+  sourceBoundaryId: string;
+  /** Mark ID declared in brand.json. */
+  id: string;
+  /** Declared variant, when the placement picks one. */
+  variant?: string;
+}
+
 /** Complete isolated document and evidence produced by {@linkcode compilePrototypeDocument}. */
 export interface CompiledPrototypeDocument {
   /** Complete HTML document suitable for a sandboxed iframe `srcdoc`. */
@@ -65,6 +79,8 @@ export interface CompiledPrototypeDocument {
   state: string;
   /** Reusable boundaries encountered in deterministic document order. */
   observedUses: ObservedPrototypeUse[];
+  /** Brand marks placed in deterministic document order. */
+  brandMarks: PlacedBrandMark[];
 }
 
 /** One deterministic source-graph error found before mounting or capture. */
@@ -113,6 +129,7 @@ interface CompilerContext {
   bundle: BlueprintProjectBundle;
   allowedAssetRefs: Set<string>;
   observedUses: ObservedPrototypeUse[];
+  brandMarks: PlacedBrandMark[];
   styleRefs: string[];
   styleRefSet: Set<string>;
 }
@@ -165,6 +182,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
     bundle: options.bundle,
     allowedAssetRefs,
     observedUses: [],
+    brandMarks: [],
     styleRefs: [],
     styleRefSet: new Set()
   };
@@ -192,7 +210,8 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
     html,
     targetBoundaryId,
     state,
-    observedUses: context.observedUses
+    observedUses: context.observedUses,
+    brandMarks: context.brandMarks
   };
 }
 
@@ -342,6 +361,12 @@ function compileBoundaryFragment(
     const slotAuthor = useAttributes.get(SLOT_AUTHOR_ATTRIBUTE);
     useAttributes.delete(SLOT_AUTHOR_ATTRIBUTE);
     const kind = requiredParsedUseAttribute(useAttributes, 'kind', currentBoundaryId);
+    if (kind === 'brand-mark') {
+      const placedBy = slotAuthor ? `${context.bundle.manifest.project.id}/${slotAuthor.replace(':', '/')}` : currentBoundaryId;
+      const rendered = renderBrandMark(context, useAttributes, use.children, placedBy);
+      fragment = `${fragment.slice(0, use.start)}${rendered}${fragment.slice(use.end)}`;
+      continue;
+    }
     if (kind !== 'primitive' && kind !== 'component') {
       throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
     }
@@ -901,6 +926,106 @@ function resolveForwardedInvocationAttributes(
     ...(href ? { href } : {}),
     ...(section ? { section } : {})
   };
+}
+
+const BRAND_MARK_USE_ATTRIBUTES = new Set(['kind', 'ref', 'variant', 'class', 'aria-label', 'aria-hidden']);
+
+/**
+ * Inlines the brand.json mark source so every placement redraws when the mark or
+ * its variant tokens change; variants recolor through `color` and `--brand-accent`.
+ */
+function renderBrandMark(
+  context: CompilerContext,
+  attributes: Map<string, string>,
+  children: string,
+  placedBy: string
+): string {
+  const id = requiredParsedUseAttribute(attributes, 'ref', placedBy);
+  const brand = context.bundle.brand;
+  const mark = brand?.marks.find(candidate => candidate.id === id);
+  if (!brand || !mark) {
+    throw new Error(`${placedBy} places brand mark "${id}", which brand.json does not declare.`);
+  }
+  for (const name of attributes.keys()) {
+    if (!BRAND_MARK_USE_ATTRIBUTES.has(name)) {
+      throw new Error(`Brand mark "${id}" received unsupported <blueprint-use> attribute "${name}".`);
+    }
+  }
+  if (children.trim()) {
+    throw new Error(`Brand mark "${id}" cannot receive slot content; it always draws its brand.json source.`);
+  }
+  const className = attributes.get('class');
+  if (className && !/^[a-zA-Z0-9_-]+(?:\s+[a-zA-Z0-9_-]+)*$/.test(className)) {
+    throw new Error(`Brand mark "${id}" received an unsafe class invocation attribute.`);
+  }
+  const hidden = attributes.get('aria-hidden');
+  if (hidden !== undefined && hidden !== 'true') {
+    throw new Error(`Brand mark "${id}" accepts only aria-hidden="true".`);
+  }
+  const variantId = attributes.get('variant');
+  const variant = variantId === undefined ? undefined : mark.variants.find(candidate => candidate.id === variantId);
+  if (variantId !== undefined && !variant) {
+    throw new Error(`Brand mark "${id}" does not declare variant "${variantId}".`);
+  }
+
+  const source = requireSource(context.bundle, mark.source, `Brand mark "${id}" source`);
+  const issue = brandMarkSourceIssues(source)[0];
+  if (issue) {
+    throw new Error(`Brand mark "${id}" source "${mark.source}" ${issue}`);
+  }
+  const svg = scopeSvgIds(/<svg\b[\s\S]*<\/svg\s*>/i.exec(source)?.[0] ?? '', `bp-brand-${id}-`);
+  if (!svg) {
+    throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element.`);
+  }
+  context.brandMarks.push({ sourceBoundaryId: placedBy, id, ...(variantId ? { variant: variantId } : {}) });
+
+  const rootEnd = findTagEnd(svg, 0);
+  let rootAttributes = svg.slice('<svg'.length, rootEnd).replace(/\s(?:width|height)\s*=\s*(['"]).*?\1/gi, '');
+  const existingClass = /\sclass\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes)?.[2] ?? '';
+  const classes = [...new Set(`${existingClass} ${className ?? ''}`.trim().split(/\s+/).filter(Boolean))].join(' ');
+  if (classes) {
+    rootAttributes = setRootAttribute(rootAttributes, 'class', classes);
+  }
+  rootAttributes = setRootAttribute(rootAttributes, 'height', '1em');
+  rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-brand-mark', id);
+  if (variant) {
+    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-brand-variant', variant.id);
+    const accent = variant.accent ? `var(${colorTokenStyleRef(context.bundle, variant.accent, id)})` : 'currentColor';
+    const existingStyle = /\sstyle\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes)?.[2];
+    const declarations = `color:var(${colorTokenStyleRef(context.bundle, variant.foreground, id)});--brand-accent:${accent}`;
+    rootAttributes = setRootAttribute(rootAttributes, 'style', existingStyle ? `${existingStyle.replace(/;?\s*$/, ';')}${declarations}` : declarations);
+  }
+  if (hidden) {
+    rootAttributes = setRootAttribute(rootAttributes, 'aria-hidden', 'true');
+  } else {
+    rootAttributes = setRootAttribute(rootAttributes, 'role', 'img');
+    rootAttributes = setRootAttribute(rootAttributes, 'aria-label', attributes.get('aria-label') ?? brand.name);
+  }
+  return `<svg${rootAttributes}>${svg.slice(rootEnd + 1)}`;
+}
+
+function colorTokenStyleRef(bundle: BlueprintProjectBundle, ref: string, markId: string): string {
+  const separator = ref.indexOf('.');
+  const token = bundle.tokens.tokenGroups
+    .find(group => group.id === ref.slice(0, separator))
+    ?.tokens.find(candidate => candidate.id === ref.slice(separator + 1));
+  if (!token) {
+    throw new Error(`Brand mark "${markId}" variant references undeclared color token "${ref}".`);
+  }
+  return token.styleRef;
+}
+
+/** Prefixes a mark's internal IDs so two inlined marks never resolve each other's clip paths or gradients. */
+function scopeSvgIds(svg: string, prefix: string): string {
+  const ids = new Set([...svg.matchAll(/\sid\s*=\s*(['"])(.*?)\1/gi)].map(match => match[2]));
+  if (ids.size === 0) {
+    return svg;
+  }
+  const scoped = (id: string): string => (ids.has(id) ? `${prefix}${id}` : id);
+  return svg
+    .replace(/(\sid\s*=\s*)(['"])(.*?)\2/gi, (_match, lead: string, quote: string, id: string) => `${lead}${quote}${scoped(id)}${quote}`)
+    .replace(/url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/gi, (_match, quote: string, id: string) => `url(${quote}#${scoped(id)}${quote})`)
+    .replace(/(\s(?:xlink:)?href\s*=\s*)(['"])#(.*?)\2/gi, (_match, lead: string, quote: string, id: string) => `${lead}${quote}#${scoped(id)}${quote}`);
 }
 
 function applyInvocationAttributes(

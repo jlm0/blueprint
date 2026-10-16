@@ -1,4 +1,5 @@
 import { boundaryId, parseBoundarySelector, reference } from './address';
+import { placedBrandMarkIds } from './brand-lint';
 import type {
   BlueprintProjectBundle,
   BoundaryDependency,
@@ -575,7 +576,9 @@ function prototypeSourceFiles(
   prototype: PrototypeSource,
   extraRefs: string[] = []
 ): string[] {
-  const refs = [prototype.source, ...prototype.styles, ...extraRefs];
+  const markSources = placedBrandMarkIds(bundle.prototypeSourceContents[prototype.source] ?? '')
+    .flatMap(id => bundle.brand?.marks.find(mark => mark.id === id)?.source ?? []);
+  const refs = [prototype.source, ...prototype.styles, ...extraRefs, ...(markSources.length > 0 ? ['brand.json', ...markSources] : [])];
   return [...new Set(refs.map(sourceRef => `${bundle.sourceRoot}/${sourceRef.replace(/\\/g, '/').replace(/^\.\//, '')}`))];
 }
 

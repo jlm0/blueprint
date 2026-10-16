@@ -75,6 +75,31 @@ describe('canonical prototype propagation', () => {
     assert.equal(screen.observedUses.some(use => use.targetBoundaryId.endsWith('/primitive/button')), true);
   });
 
+  it('redraws every brand mark placement from one brand source edit and hands off the mark source', async () => {
+    const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
+    const changed = await loadProjectFromFs(meridianRoot);
+    changed.prototypeSourceContents['brand/mark.svg'] = changed.prototypeSourceContents['brand/mark.svg'].replace(
+      '<svg ',
+      '<svg data-propagation-probe="globe-v2" '
+    );
+
+    const placements = [
+      compilePrototypeDocument({ bundle: changed, target: { kind: 'component', id: 'web-header' } }),
+      compilePrototypeDocument({ bundle: changed, target: { kind: 'screen', id: 'transactions' } }),
+      compilePrototypeDocument({ bundle: changed, target: { kind: 'screen', id: 'overview' } }),
+      compilePrototypeDocument({ bundle: changed, target: { kind: 'screen', id: 'transfer' } })
+    ];
+    for (const placement of placements) {
+      assert.match(placement.html, /<svg data-propagation-probe="globe-v2"[^>]*data-blueprint-brand-mark="globe"/);
+    }
+
+    const packet = createExtractionPacket(changed, 'component:web-header');
+    assert.ok(packet.sourceFiles.includes(`${meridianRoot}/brand.json`));
+    assert.ok(packet.sourceFiles.includes(`${meridianRoot}/brand/mark.svg`));
+    assert.ok(packet.sourceFiles.includes(`${meridianRoot}/brand/wordmark.svg`));
+    assert.equal(createExtractionPacket(changed, 'component:balance-card').sourceFiles.some(file => file.includes('/brand')), false);
+  });
+
   it('reuses the same component source across distinct screen consumers', async () => {
     const bundle = await loadProjectFromFs(umbraRoot);
     const hub = compilePrototypeDocument({
