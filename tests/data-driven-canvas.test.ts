@@ -621,7 +621,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     const page = await openDocumentSection(starter, 'primitives');
 
     try {
-      const groups = await page.locator('.bp-chrome-item-nav .bp-chrome-item-group').allTextContents();
+      const groups = await page.locator('.bp-chrome-item-nav .bp-chrome-nav-group-name').allTextContents();
       assert.deepEqual(groups, ['Actions', 'Inputs', 'Text', 'Surfaces', 'Navigation', 'Structure', 'Feedback', 'Overlays']);
       assert.equal(await page.locator('.bp-chrome-item-nav [data-notice]').count(), 0, 'starter primitives should all be in the set');
 
@@ -662,6 +662,15 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       assert.equal(await page.locator(`.bp-chrome-item-nav [data-item="${ids[1]}"]`).getAttribute('aria-pressed'), 'true');
       await page.keyboard.press('ArrowLeft');
       await page.waitForSelector(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${ids[0]}"]`, { timeout: 5000 });
+
+      const nextGroup = page.locator('.bp-chrome-nav-group', { has: page.locator(`[data-item="${ids[2]}"]`) });
+      await nextGroup.locator('.bp-chrome-nav-group-toggle').click();
+      assert.equal(await nextGroup.locator('.bp-chrome-nav-group-items').isVisible(), false);
+      assert.equal(await page.locator(`.bp-chrome-item-nav [data-item="${ids[0]}"]`).isVisible(), true, 'Sections should collapse independently');
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForSelector(`.board-primitives .bp-chrome-doc-page[data-boundary-local-id="${ids[2]}"]`, { timeout: 5000 });
+      assert.equal(await nextGroup.locator('.bp-chrome-nav-group-items').isVisible(), true, 'Selecting an item should reveal its collapsed section');
 
       const shell = page.locator('#app-shell');
       const toggle = page.locator('.bp-chrome-subnav-toggle');
@@ -777,56 +786,59 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     }
   });
 
-  it('splits the screens board into flow subpages that deep links bypass', async () => {
+  it('lists each screen page as a sub-navigation group whose label switches the canvas', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const page = await openScreensBoard(bundle);
+    const pageLabel = (flow: string) => page.locator(`.bp-chrome-nav-group-label[data-flow="${flow}"]`);
+    const screenFrames = () => page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
+      elements.map(element => (element as HTMLElement).dataset.boundaryId)
+    );
 
     try {
-      const switcher = page.locator('.bp-chrome-flow-switcher');
-      assert.equal(await switcher.isVisible(), true, 'Flow subpage switcher should render on the screens board');
       assert.deepEqual(
-        (await switcher.locator('button').allTextContents()).map(text => text.trim()),
+        await page.locator('.bp-chrome-item-nav .bp-chrome-nav-group-name').allTextContents(),
         ['Overview', 'Ledger', 'Send payment', 'Phone'],
-        'Flow pills should be the declared flows in first-seen order'
+        'Pages should be the declared flows in first-seen order'
       );
-      assert.equal(
-        await switcher.locator('button[data-flow="Overview"]').getAttribute('aria-pressed'),
-        'true',
-        'First declared flow should be the default canvas'
-      );
-      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
-
-      await switcher.locator('button[data-flow="Ledger"]').click();
-      await page.waitForFunction(
-        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 1,
-        undefined,
-        { timeout: 5000 }
-      );
-      const ledgerFrames = await page.locator('.board-screens .frame[data-boundary-kind="screen"]').evaluateAll(elements =>
-        elements.map(element => (element as HTMLElement).dataset.boundaryId)
-      );
+      assert.equal(await pageLabel('Overview').getAttribute('aria-pressed'), 'true', 'First declared page should be the default canvas');
       assert.deepEqual(
-        ledgerFrames,
-        ['meridian-finance/screen/transactions'],
-        'Ledger subpage should mount only the ledger-flow frames'
+        await page.locator('.bp-chrome-nav-group').evaluateAll(groups =>
+          groups.map(group => [...group.querySelectorAll<HTMLElement>('[data-screen]')].map(button => button.dataset.screen))
+        ),
+        bundle.screens.screens.reduce<string[][]>((pages, screen) => {
+          const index = ['Overview', 'Ledger', 'Send payment', 'Phone'].indexOf(screen.flow ?? '');
+          pages[index] = [...pages[index] ?? [], screen.id];
+          return pages;
+        }, []),
+        'Each page should nest its screens'
       );
-      assert.equal(await switcher.locator('button[data-flow="Ledger"]').getAttribute('aria-pressed'), 'true');
+      assert.equal((await screenFrames()).length, 2);
+
+      await pageLabel('Ledger').click();
+      await page.waitForFunction(() => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 1, undefined, { timeout: 5000 });
+      assert.deepEqual(await screenFrames(), ['meridian-finance/screen/transactions'], 'Ledger page should mount only its frames');
+      assert.equal(await pageLabel('Ledger').getAttribute('aria-pressed'), 'true');
       assert.match(page.url(), /flow=Ledger/);
-      assert.deepEqual(
-        await page.locator('.bp-chrome-item-nav [data-screen]').evaluateAll(buttons => buttons.map(button => (button as HTMLElement).dataset.screen)),
-        ['transactions'],
-        'The sub-navigation should list the screens of the selected page'
-      );
 
-      await switcher.locator('button[data-flow="Overview"]').click();
-      await page.waitForFunction(
-        () => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 2,
-        undefined,
-        { timeout: 5000 }
-      );
-      assert.equal(await page.locator('.board-screens .frame[data-boundary-kind="screen"]').count(), 2);
+      const transferId = bundle.screens.screens.find(screen => screen.flow === 'Send payment')!.id;
+      await page.locator(`.bp-chrome-item-nav [data-screen="${transferId}"]`).click();
+      await page.waitForFunction(id => {
+        const frames = [...document.querySelectorAll<HTMLElement>('.board-screens .frame[data-boundary-kind="screen"]')];
+        return frames.length > 0 && frames.every(frame => frame.dataset.screenId === id);
+      }, transferId, { timeout: 5000 });
+      assert.equal(await pageLabel('Send payment').getAttribute('aria-pressed'), 'true', 'Picking a screen on another page should switch to that page');
 
-      // Deep links (state/viewport, used by capture) resolve every screen regardless of the active subpage.
+      await page.locator('.bp-chrome-nav-group-toggle[aria-label="Collapse Overview"]').click();
+      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Overview"]) .bp-chrome-nav-group-items').isVisible(), false);
+      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Ledger"]) .bp-chrome-nav-group-items').isVisible(), true, 'Pages open and close independently');
+      await page.reload();
+      await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });
+      assert.equal(await page.locator('.bp-chrome-nav-group-toggle[aria-label="Expand Overview"]').count(), 1, 'Collapsed pages should survive a reload');
+      await pageLabel('Overview').click();
+      await page.waitForFunction(() => document.querySelectorAll('.board-screens .frame[data-boundary-kind="screen"]').length === 2, undefined, { timeout: 5000 });
+      assert.equal(await page.locator('.bp-chrome-nav-group:has([data-flow="Overview"]) .bp-chrome-nav-group-items').isVisible(), true, 'Opening a page should expand it');
+
+      // Deep links (state/viewport, used by capture) resolve every screen regardless of the active page.
       await page.goto(`${baseUrl}?board=screens&flow=Ledger&state=review&viewport=phone`);
       await page.waitForSelector('.board-screens [data-boundary-id="meridian-finance/screen/transfer-mobile"]', { timeout: 5000 });
     } finally {

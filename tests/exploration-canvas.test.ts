@@ -108,7 +108,7 @@ describe('Blueprint focused exploration canvas', () => {
       assert.match(unavailableText, /Variation unavailable/);
       assert.doesNotMatch(unavailableText, /missing-candidate|prototype\/explorations/);
 
-      assert.equal(await page.locator('.bp-chrome-flow-switcher').isVisible(), false);
+      assert.equal(await page.locator('.bp-chrome-item-nav').isVisible(), false);
       assert.equal(await page.locator('.bp-chrome-exploration-nav').isVisible(), true);
       assert.equal(await page.locator('.bp-chrome-board-switcher').isVisible(), true);
       assert.equal(await page.locator('.bp-chrome-fit').isVisible(), true);
@@ -123,7 +123,7 @@ describe('Blueprint focused exploration canvas', () => {
       await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });
       assert.equal(new URL(page.url()).searchParams.has('exploration'), false);
       assert.equal(new URL(page.url()).searchParams.get('flow'), 'marketing');
-      assert.equal(await page.locator('.bp-chrome-flow-switcher').isVisible(), true);
+      assert.equal(await page.locator('.bp-chrome-nav-group-label[data-flow="marketing"]').getAttribute('aria-pressed'), 'true');
     } finally {
       await page.close();
     }
@@ -174,7 +174,7 @@ describe('Blueprint focused exploration canvas', () => {
       assert.equal(await root.locator('.frame[data-boundary-kind="screen"]').count(), 1);
       assert.equal(await root.locator('.frame[data-history-version="1"]').count(), 1);
       assert.equal(await root.locator('.frame[data-exploration-candidate-id="direction-b"]').count(), 1);
-      assert.equal(await page.locator('.bp-chrome-flow-switcher').isVisible(), false);
+      assert.equal(await page.locator('.bp-chrome-item-nav').isVisible(), false);
 
       await page.locator('.bp-chrome-exploration-back').click();
       await page.waitForSelector('.board-screens .frame-chip', { timeout: 5000 });

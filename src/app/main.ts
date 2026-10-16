@@ -143,10 +143,9 @@ subnavHead.append(projectName, sectionTitle);
 const itemNav = el('nav', 'bp-chrome-item-nav');
 itemNav.setAttribute('aria-label', 'Section items');
 
-const flowSwitcher = el('nav', 'flow-switcher bp-chrome-flow-switcher');
-flowSwitcher.setAttribute('aria-label', 'Screen flows');
-flowSwitcher.hidden = true;
-subnav.append(subnavHead, flowSwitcher, itemNav);
+subnav.append(subnavHead, itemNav);
+const NAV_COLLAPSED_STORAGE_KEY = 'blueprint.nav.collapsed';
+const collapsedNavGroups = readCollapsedNavGroups();
 const narrowViewport = window.matchMedia('(max-width: 700px)');
 setSubnavCollapsed(narrowViewport.matches || readStoredSubnavCollapsed(), false);
 
@@ -299,7 +298,7 @@ const boardConfigs: Record<BoardId, BoardConfig> = {
 const boardState = new Map<BoardId, MountedBoard>();
 let activeBoardId: BoardId | null = null;
 
-// Screens board flow subpages: one pill per declared flow; each subpage is a
+// Screens board pages: one sub-navigation group per declared flow; each page is a
 // fresh canvas showing only that flow's frames. The first flow is the default
 // canvas — grouping is intentional, there is no catch-all page.
 let screenFlows = projectScreenFlows(project);
@@ -403,19 +402,6 @@ function refreshBoardSwitcher(): void {
   refreshNavigationState();
 }
 
-function refreshFlowSwitcher(): void {
-  flowSwitcher.replaceChildren();
-  if (screenFlows.length === 0) return;
-  flowSwitcher.append(el('p', 'bp-chrome-item-group', 'Pages'));
-  for (const flow of screenFlows) {
-    const button = el('button', 'bp-chrome-item', flow) as HTMLButtonElement;
-    button.type = 'button';
-    button.dataset.flow = flow;
-    button.addEventListener('click', () => setScreenFlow(flow));
-    flowSwitcher.append(button);
-  }
-  refreshFlowPills();
-}
 
 function refreshItemNav(): void {
   itemNav.replaceChildren();
@@ -423,32 +409,14 @@ function refreshItemNav(): void {
   sectionTitle.textContent = sectionLabel(section);
   if (section === 'screens') {
     itemNav.hidden = focusedReviewIsRequested();
-    if (!itemNav.hidden) {
-      const screens = project.screens.screens.filter(screen => screenFlows.length === 0 || screen.flow === activeScreenFlow);
-      if (screenFlows.length > 0 && screens.length > 0) itemNav.append(el('p', 'bp-chrome-item-group', 'Screens'));
-      for (const screen of screens) {
-        const button = el('button', 'bp-chrome-item', screenFrameLabel(screen)) as HTMLButtonElement;
-        button.type = 'button';
-        button.dataset.screen = screen.id;
-        button.addEventListener('click', () => {
-          closeOverlaySubnav();
-          focusScreenFrames(screen.id);
-        });
-        itemNav.append(button);
-      }
-    }
+    if (!itemNav.hidden) refreshScreenNav();
     return;
   }
   itemNav.hidden = false;
   const items = sectionItems(project, section);
   const selected = activeItem(project, section);
   const changed = new Set(latestChanges.map(change => `${change.kind}:${change.localId}`));
-  let group: string | undefined;
-  for (const item of items) {
-    if (item.group && item.group !== group) {
-      group = item.group;
-      itemNav.append(el('p', 'bp-chrome-item-group', group));
-    }
+  const createItemButton = (item: SectionItem): HTMLElement => {
     const button = el('button', 'bp-chrome-item') as HTMLButtonElement;
     button.type = 'button';
     button.dataset.item = item.id;
@@ -464,10 +432,114 @@ function refreshItemNav(): void {
       closeOverlaySubnav();
       openDocumentItem(section, item.id);
     });
-    itemNav.append(button);
+    return button;
+  };
+  const groups = new Map<string | undefined, SectionItem[]>();
+  for (const item of items) groups.set(item.group, [...groups.get(item.group) ?? [], item]);
+  for (const [group, members] of groups) {
+    const buttons = members.map(createItemButton);
+    if (group === undefined) itemNav.append(...buttons);
+    else itemNav.append(createNavGroup({ key: `${section}:${group}`, label: group, items: buttons }));
   }
   if (items.length === 0) {
     itemNav.append(el('p', 'bp-chrome-item-empty', section === 'components' ? 'No components yet' : 'Nothing here yet'));
+  }
+}
+
+function refreshScreenNav(): void {
+  const createScreenButton = (screen: ScreenDefinition): HTMLElement => {
+    const button = el('button', 'bp-chrome-item') as HTMLButtonElement;
+    button.type = 'button';
+    button.dataset.screen = screen.id;
+    button.append(el('span', 'bp-chrome-item-label', screenFrameLabel(screen)));
+    button.addEventListener('click', () => {
+      closeOverlaySubnav();
+      if (screen.flow && screen.flow !== activeScreenFlow) setScreenFlow(screen.flow, screen.id);
+      else focusScreenFrames(screen.id);
+    });
+    return button;
+  };
+  for (const flow of screenFlows) {
+    const screens = project.screens.screens.filter(screen => screen.flow === flow);
+    itemNav.append(createNavGroup({
+      key: `screens:${flow}`,
+      label: flow,
+      items: screens.map(createScreenButton),
+      page: { flow, active: flow === activeScreenFlow, select: () => setScreenFlow(flow) }
+    }));
+  }
+  itemNav.append(...project.screens.screens.filter(screen => !screen.flow).map(createScreenButton));
+}
+
+function createNavGroup(options: {
+  key: string;
+  label: string;
+  items: HTMLElement[];
+  page?: { flow: string; active: boolean; select: () => void };
+}): HTMLElement {
+  const storageKey = navGroupStorageKey(options.key);
+  const group = el('div', 'bp-chrome-nav-group');
+  const head = el('div', 'bp-chrome-nav-group-head');
+  const toggle = el('button', 'bp-chrome-nav-group-toggle') as HTMLButtonElement;
+  toggle.type = 'button';
+  toggle.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  const label = el('button', 'bp-chrome-nav-group-label') as HTMLButtonElement;
+  label.type = 'button';
+  label.append(el('span', 'bp-chrome-nav-group-name', options.label), el('span', 'bp-chrome-nav-group-count', String(options.items.length)));
+  const list = el('div', 'bp-chrome-nav-group-items');
+  list.append(...options.items);
+  if (options.page) {
+    label.dataset.flow = options.page.flow;
+    label.setAttribute('aria-pressed', String(options.page.active));
+  }
+  const setOpen = (open: boolean, remember: boolean): void => {
+    group.dataset.open = String(open);
+    list.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', `${open ? 'Collapse' : 'Expand'} ${options.label}`);
+    if (!options.page) label.setAttribute('aria-expanded', String(open));
+    if (!remember) return;
+    if (open) collapsedNavGroups.delete(storageKey);
+    else collapsedNavGroups.add(storageKey);
+    storeCollapsedNavGroups();
+  };
+  setOpen(!collapsedNavGroups.has(storageKey), false);
+  toggle.addEventListener('click', () => setOpen(group.dataset.open !== 'true', true));
+  label.addEventListener('click', () => {
+    if (!options.page) {
+      setOpen(group.dataset.open !== 'true', true);
+      return;
+    }
+    setOpen(true, true);
+    options.page.select();
+  });
+  head.append(toggle, label);
+  group.append(head, list);
+  return group;
+}
+
+function navGroupStorageKey(key: string): string {
+  return `${project.manifest.project.id}:${key}`;
+}
+
+function revealNavGroup(key: string | undefined): void {
+  if (key && collapsedNavGroups.delete(navGroupStorageKey(key))) storeCollapsedNavGroups();
+}
+
+function readCollapsedNavGroups(): Set<string> {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(NAV_COLLAPSED_STORAGE_KEY) ?? '[]');
+    return new Set(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function storeCollapsedNavGroups(): void {
+  try {
+    localStorage.setItem(NAV_COLLAPSED_STORAGE_KEY, JSON.stringify([...collapsedNavGroups]));
+  } catch {
+    // Storage can be unavailable in private or sandboxed contexts; groups still toggle for this page.
   }
 }
 
@@ -476,9 +548,7 @@ function refreshNavigationState(): void {
   switcher.querySelectorAll<HTMLButtonElement>('[data-section]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.section === section));
   });
-  flowSwitcher.hidden = section !== 'screens' || screenFlows.length === 0 || focusedReviewIsRequested();
   refreshItemNav();
-  refreshFlowPills();
 }
 
 function requestedScreenFlow(): string | null {
@@ -486,18 +556,12 @@ function requestedScreenFlow(): string | null {
   return param && screenFlows.includes(param) ? param : null;
 }
 
-function refreshFlowPills(): void {
-  flowSwitcher.querySelectorAll<HTMLButtonElement>('[data-flow]').forEach(button => {
-    button.setAttribute('aria-pressed', String((button.dataset.flow || null) === activeScreenFlow));
-  });
-}
-
-function setScreenFlow(flow: string): void {
+function setScreenFlow(flow: string, focusScreenId?: string): void {
   activeScreenFlow = flow;
+  revealNavGroup(`screens:${flow}`);
   const url = new URL(window.location.href);
   url.searchParams.set('flow', flow);
   history.replaceState(null, '', url);
-  refreshFlowPills();
   refreshItemNav();
   if (activeBoardId === 'screens') {
     remountBoard('screens');
@@ -505,6 +569,7 @@ function setScreenFlow(flow: string): void {
     discardBoard('screens');
     showBoard('screens');
   }
+  if (focusScreenId) requestAnimationFrame(() => focusScreenFrames(focusScreenId));
 }
 
 function showSection(section: SectionId): void {
@@ -518,6 +583,8 @@ function showSection(section: SectionId): void {
 function openDocumentItem(section: DocumentSectionId, itemId: string | undefined): void {
   activeSection = section;
   if (itemId) activeItemBySection.set(section, itemId);
+  const group = sectionItems(project, section).find(item => item.id === itemId)?.group;
+  if (group) revealNavGroup(`${section}:${group}`);
   if (activeBoardId === 'primitives') {
     remountBoard('primitives');
   } else {
@@ -586,7 +653,6 @@ function exitFocusedReview(): void {
     url.searchParams.delete('flow');
   }
   history.replaceState(null, '', url);
-  refreshFlowPills();
   remountBoard('screens');
 }
 
@@ -3021,7 +3087,7 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
     activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
   }
   refreshBoardSwitcher();
-  refreshFlowSwitcher();
+  refreshItemNav();
 
   const updates: Promise<void>[] = [];
   if (boardState.has('primitives') && (advancedPastEvent || pathsAffectPrimitives(changedPaths))) {
@@ -4001,7 +4067,6 @@ function el(tag: string, className = '', text = ''): HTMLElement {
 
 activeScreenFlow = requestedScreenFlow() ?? screenFlows[0] ?? null;
 refreshBoardSwitcher();
-refreshFlowSwitcher();
 
 const requestedBoard = new URLSearchParams(location.search).get('board');
 const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
