@@ -124,6 +124,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
             `${projectId}/${component.id} should preview every declared state`
           );
           assert.equal(await item.locator('.prototype-compile-error').count(), 0, `${projectId}/${component.id} previews should compile`);
+          const overflow = await page.locator('#document').evaluate(element => element.scrollWidth - element.clientWidth);
+          assert.ok(overflow <= 1, `${projectId}/${component.id} page should not scroll sideways (${overflow}px)`);
         }
 
         const sync = validateVisibleBoundaryRecords(bundle, records);

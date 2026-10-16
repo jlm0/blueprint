@@ -1486,6 +1486,7 @@ body {
   display: grid;
   min-width: 0;
   max-width: 100%;
+  grid-template-columns: minmax(0, max-content);
   justify-items: start;
   margin: 0;
 }
