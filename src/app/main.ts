@@ -790,10 +790,17 @@ function createDocumentItemPage(
   return component ? createComponentPage(bundle, component) : undefined;
 }
 
-function createDocumentPage(kicker: string, title: string, description: string): { page: HTMLElement; body: HTMLElement } {
+function createDocumentPage(kicker: string, title: string, description: string, badges: HTMLElement[] = []): { page: HTMLElement; body: HTMLElement } {
   const page = el('article', 'bp-chrome-doc-page');
   const head = el('header', 'bp-chrome-doc-head');
-  head.append(el('p', 'bp-chrome-doc-kicker', kicker), el('h1', 'bp-chrome-doc-title', title));
+  const titleRow = el('div', 'bp-chrome-doc-title-row');
+  titleRow.append(el('h1', 'bp-chrome-doc-title', title));
+  if (badges.length > 0) {
+    const facts = el('div', 'bp-chrome-doc-facts');
+    facts.append(...badges);
+    titleRow.append(facts);
+  }
+  head.append(el('p', 'bp-chrome-doc-kicker', kicker), titleRow);
   if (description) head.append(el('p', 'bp-chrome-doc-lede', description));
   const body = el('div', 'bp-chrome-doc-body');
   page.append(head, body);
@@ -959,7 +966,14 @@ function singleLength(value: string): number | undefined {
 
 function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, primitive: PrimitiveDefinition): HTMLElement {
   const family = inferPrimitiveFamily(primitive);
-  const { page, body } = createDocumentPage(`Primitive · ${primitiveGroupLabel(family)}`, primitive.name, primitive.description);
+  const prototype = primitive.prototype;
+  const badges = [
+    createPlatformBadge(primitive.platforms),
+    el('span', 'bp-chrome-doc-fact', plural(prototype?.states.length ?? 0, 'state')),
+    ...(prototype?.variants.length ? [el('span', 'bp-chrome-doc-fact', plural(prototype.variants.length, 'variant'))] : []),
+    ...(prototype?.sizes?.length ? [el('span', 'bp-chrome-doc-fact', plural(prototype.sizes.length, 'size'))] : [])
+  ];
+  const { page, body } = createDocumentPage(`Primitive · ${primitiveGroupLabel(family)}`, primitive.name, primitive.description, badges);
   setBoundary(page, 'primitive', primitive.id, bundle.manifest.project.id, primitive.name);
   page.dataset.boundarySummary = primitive.description;
   page.dataset.primitiveFamily = family;
@@ -967,24 +981,12 @@ function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIn
   if (!isBasePrimitive(primitive.id)) {
     body.append(el('p', 'bp-chrome-doc-notice', `This is not one of the ${BASE_PRIMITIVE_CONTRACT.length} Blueprint primitives. App-specific pieces belong in components, built from primitives.`));
   }
-  const facts = el('div', 'bp-chrome-doc-facts');
-  const platforms = primitive.platforms?.length === 1 ? (primitive.platforms[0] === 'mobile' ? 'Mobile' : 'Web') : 'Mobile and web';
-  const prototype = primitive.prototype;
-  for (const fact of [
-    platforms,
-    plural(prototype?.states.length ?? 0, 'state'),
-    ...(prototype?.variants.length ? [plural(prototype.variants.length, 'variant')] : []),
-    ...(prototype?.sizes?.length ? [plural(prototype.sizes.length, 'size')] : [])
-  ]) facts.append(el('span', 'bp-chrome-doc-fact', fact));
-  body.append(facts);
-
   const specimen = el('div', 'bp-chrome-doc-specimen');
   specimen.append(renderCanonicalPrimitiveSpecimen({ bundle, tokenIndex, primitive, family }));
   body.append(specimen);
 
-  const details = el('dl', 'bp-chrome-doc-details');
-  if (prototype?.accessibilityIntent) appendDetail(details, 'Accessibility', el('span', '', prototype.accessibilityIntent));
-  if (prototype?.slots.length) appendDetail(details, 'Slots', createChipList(prototype.slots));
+  if (prototype?.accessibilityIntent) body.append(createDocumentSection('Accessibility', el('p', 'bp-chrome-doc-text', prototype.accessibilityIntent)));
+  if (prototype?.slots.length) body.append(createDocumentSection('Slots', createChipList(prototype.slots)));
   const roles = Object.entries(prototype?.tokenRoles ?? {});
   if (roles.length > 0) {
     const list = el('div', 'bp-chrome-doc-roles');
@@ -996,15 +998,29 @@ function createPrimitivePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIn
       row.append(swatch, el('span', 'bp-chrome-doc-role-name', role), el('code', '', tokenRef));
       list.append(row);
     }
-    appendDetail(details, 'Token roles', list);
+    body.append(createDocumentSection('Token roles', list));
   }
   if (primitive.notes.length > 0) {
     const notes = el('ul', 'bp-chrome-doc-rules');
     for (const note of primitive.notes) notes.append(el('li', '', note));
-    appendDetail(details, 'Notes', notes);
+    body.append(createDocumentSection('Notes', notes));
   }
-  if (details.childElementCount > 0) body.append(details);
   return page;
+}
+
+function createPlatformBadge(platforms: PrimitiveDefinition['platforms']): HTMLElement {
+  const only = platforms?.length === 1 ? platforms[0] : undefined;
+  const label = only === 'mobile' ? 'Mobile' : only === 'desktop' ? 'Web' : 'Mobile and web';
+  const badge = el('span', 'bp-chrome-doc-fact bp-chrome-doc-platform');
+  badge.setAttribute('role', 'img');
+  badge.setAttribute('aria-label', label);
+  badge.title = label;
+  const icon = (paths: string) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  badge.innerHTML = [
+    only === 'desktop' ? '' : icon('<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'),
+    only === 'mobile' ? '' : icon('<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>')
+  ].join('');
+  return badge;
 }
 
 function createComponentPage(bundle: BlueprintProjectBundle, component: ComponentDefinition): HTMLElement {
@@ -1029,13 +1045,10 @@ function createComponentPage(bundle: BlueprintProjectBundle, component: Componen
   }
 
   const width = componentPreviewWidth(bundle, component.id);
-  const states = el('div', 'bp-chrome-doc-states');
-  for (const state of component.prototype?.states ?? []) {
-    const figure = el('figure', 'bp-chrome-doc-state');
-    figure.append(el('figcaption', 'bp-chrome-doc-state-label', state), createComponentPreview(bundle, component, state, width));
-    states.append(figure);
+  const states = component.prototype?.states ?? [];
+  if (states.length > 0) {
+    body.append(createDocumentSection('States', createSpecimenGroup(undefined, states.map(state => createComponentPreview(bundle, component, state, width)))));
   }
-  body.append(createDocumentSection(plural(component.prototype?.states.length ?? 0, 'state'), states));
 
   if (component.notes?.length) {
     const notes = el('ul', 'bp-chrome-doc-rules');
@@ -1046,28 +1059,72 @@ function createComponentPage(bundle: BlueprintProjectBundle, component: Componen
 }
 
 function createComponentPreview(bundle: BlueprintProjectBundle, component: ComponentDefinition, state: string, width: number): HTMLElement {
-  const host = el('div', 'bp-chrome-doc-preview');
+  const item = el('figure', 'bp-chrome-specimen-cell');
   try {
     const compiled = compilePrototypeDocument({ bundle, target: { kind: 'component', id: component.id }, state });
     const iframe = document.createElement('iframe');
     iframe.className = 'canonical-primitive-iframe component-preview-iframe';
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${component.name} · ${state}`;
-    iframe.style.width = `${width}px`;
-    iframe.style.height = '160px';
     iframe.srcdoc = compiled.html;
     prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
-    host.append(iframe);
-    measureComponentPreview(compiled.html, width, size => {
-      iframe.style.width = `${size.width}px`;
-      iframe.style.height = `${size.height}px`;
-    });
+    item.append(createPreviewFit(iframe));
+    fitPreviewFrame(iframe, { width, height: 160 });
+    measureComponentPreview(compiled.html, width, size => fitPreviewFrame(iframe, size));
   } catch (error) {
-    host.append(createPrototypeCompileError(error));
+    item.append(createPrototypeCompileError(error));
   }
+  item.append(el('figcaption', 'bp-chrome-specimen-caption', humanizeId(state)));
+  return item;
+}
+
+function createSpecimenGroup(title: string | undefined, cells: HTMLElement[]): HTMLElement {
+  const group = el('div', 'bp-chrome-specimen-group');
+  if (title) group.append(el('h3', 'bp-chrome-specimen-title', humanizeId(title)));
+  const row = el('div', 'bp-chrome-specimen-row');
+  row.append(...cells);
+  group.append(row);
+  return group;
+}
+
+function humanizeId(id: string): string {
+  const words = id.replace(/[-_]+/g, ' ').trim();
+  return words.length <= 2 ? words.toUpperCase() : words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// Previews keep their natural size and scale down only when the column is narrower, so pages never scroll sideways.
+const previewFitObserver = new ResizeObserver(entries => {
+  for (const entry of entries) scalePreview(entry.target as HTMLElement);
+});
+
+function createPreviewFit(frame: HTMLIFrameElement): HTMLElement {
+  const host = el('div', 'bp-chrome-preview-fit');
+  host.append(frame);
   return host;
+}
+
+function fitPreviewFrame(frame: HTMLIFrameElement, size: { width: number; height: number }): void {
+  frame.style.width = `${size.width}px`;
+  frame.style.height = `${size.height}px`;
+  const host = frame.parentElement;
+  if (!host) return;
+  host.dataset.previewWidth = String(size.width);
+  host.dataset.previewHeight = String(size.height);
+  host.style.width = `${size.width}px`;
+  scalePreview(host);
+  previewFitObserver.observe(host);
+}
+
+function scalePreview(host: HTMLElement): void {
+  const width = Number(host.dataset.previewWidth);
+  const height = Number(host.dataset.previewHeight);
+  const frame = host.firstElementChild;
+  if (!(frame instanceof HTMLElement) || !width || !height || host.clientWidth === 0) return;
+  const scale = Math.min(1, host.clientWidth / width);
+  frame.style.transform = scale < 1 ? `scale(${scale})` : '';
+  host.style.height = `${Math.ceil(height * scale)}px`;
 }
 
 function measureComponentPreview(html: string, width: number, done: (size: { width: number; height: number }) => void): void {
@@ -1110,11 +1167,6 @@ function componentPreviewWidth(bundle: BlueprintProjectBundle, componentId: stri
   return widths.length > 0 ? Math.min(...widths) : 640;
 }
 
-function appendDetail(list: HTMLElement, term: string, description: HTMLElement): void {
-  const definition = el('dd');
-  definition.append(description);
-  list.append(el('dt', '', term), definition);
-}
 
 function createChipList(values: string[]): HTMLElement {
   const list = el('div', 'bp-chrome-doc-chips');
@@ -1148,7 +1200,6 @@ interface PrimitiveRenderContext {
   tokenIndex: TokenIndex;
   primitive: PrimitiveDefinition;
   family: string;
-  onSpecimenResize?: () => void;
 }
 
 const FAMILY_ORDER = [
@@ -1314,44 +1365,23 @@ function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
 function renderCanonicalPrimitiveSpecimen(context: PrimitiveRenderContext): HTMLElement {
   const root = el('div', 'canonical-primitive-specimen');
   root.dataset.prototypeRenderMode = 'canonical-app-owned';
+  root.style.setProperty('--cell-w', `${primitiveCellWidth(context.family, context.primitive.id)}px`);
   const states = context.primitive.prototype?.states ?? [];
   const variants = context.primitive.prototype?.variants ?? [];
-  // Specimens review on the app's own canvas color, not on a Blueprint-drawn
-  // surface: the stage is the only surface, cells stay transparent.
-  const stage = el('div', 'canonical-primitive-stage');
-  const canvasColor = findTokenValue(context.bundle, ['background']);
-  const labelColor = findTokenValue(context.bundle, ['text-muted', 'muted', 'text-secondary']);
-  if (canvasColor) {
-    stage.style.setProperty('--stage-bg', canvasColor);
+  const sizes = context.primitive.prototype?.sizes ?? [];
+  root.append(createDocumentSection(
+    variants.length > 1 ? 'Variants' : 'States',
+    ...(variants.length > 0 ? variants : [undefined]).map(variant => createSpecimenGroup(
+      variants.length > 1 ? variant : undefined,
+      states.map(state => createCanonicalPrimitiveCell(context, state, variant))
+    ))
+  ));
+  if (sizes.length > 0) {
+    root.append(createDocumentSection(
+      'Sizes',
+      ...sizes.map(size => createSpecimenGroup(size, states.map(state => createCanonicalPrimitiveCell(context, state, undefined, size))))
+    ));
   }
-  if (labelColor) {
-    stage.style.setProperty('--stage-fg', labelColor);
-  }
-  // Every canonical primitive renders as the same review grid: one header row
-  // naming the states, then one content row per variant. Cells keep their
-  // natural family size and the container hugs the grid — never the reverse.
-  const rowLabels = variants.length > 0 ? variants : ['default'];
-  const matrix = el('div', 'canonical-primitive-matrix');
-  matrix.style.setProperty('--matrix-cols', String(states.length));
-  matrix.style.setProperty('--cell-w', `${primitiveCellWidth(context.family, context.primitive.id)}px`);
-  matrix.append(el('p', 'canonical-prototype-state-label canonical-primitive-matrix-corner', 'type'));
-  for (const state of states) {
-    matrix.append(el('p', 'canonical-prototype-state-label canonical-primitive-col-label', state));
-  }
-  for (const variant of rowLabels) {
-    matrix.append(el('p', 'canonical-primitive-variant-label', variant));
-    for (const state of states) {
-      matrix.append(createCanonicalPrimitiveCell(context, state, variants.length > 0 ? variant : undefined));
-    }
-  }
-  for (const size of context.primitive.prototype?.sizes ?? []) {
-    matrix.append(el('p', 'canonical-primitive-variant-label', `size ${size}`));
-    for (const state of states) {
-      matrix.append(createCanonicalPrimitiveCell(context, state, undefined, size));
-    }
-  }
-  stage.append(matrix);
-  root.append(stage);
   return root;
 }
 
@@ -1367,7 +1397,7 @@ function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): str
 }
 
 function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: string, variant?: string, size?: string): HTMLElement {
-  const item = el('section', 'canonical-primitive-state canonical-primitive-cell');
+  const item = el('figure', 'bp-chrome-specimen-cell');
   try {
     const compiled = compilePrototypeDocument({
       bundle: context.bundle,
@@ -1384,26 +1414,23 @@ function createCanonicalPrimitiveCell(context: PrimitiveRenderContext, state: st
     prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
-    item.append(iframe);
+    item.append(createPreviewFit(iframe));
     // The visible frame keeps its empty-permission sandbox, so its content is
     // measured through an ephemeral offscreen twin instead; the twin renders
     // the same CSP-locked no-script document and is removed immediately.
-    measureCanonicalCellSize(compiled.html, primitiveCellWidth(context.family, context.primitive.id), size => {
-      iframe.style.width = `${size.width}px`;
-      iframe.style.height = `${size.height}px`;
-      context.onSpecimenResize?.();
-    });
+    measureCanonicalCellSize(compiled.html, primitiveCellWidth(context.family, context.primitive.id), size => fitPreviewFrame(iframe, size));
   } catch (error) {
     item.append(createPrototypeCompileError(error));
   }
+  item.append(el('figcaption', 'bp-chrome-specimen-caption', humanizeId(state)));
   return item;
 }
 
 /**
- * Fits a specimen cell to its rendered control so the review cell hugs the
- * content instead of clipping or stretching it. The family width is the floor
- * (keeps grid columns uniform); content that runs wider grows its own cell.
- * Full-bleed controls (width:100% roots) measure at the floor and keep it.
+ * Fits a specimen cell to its rendered control so the cell hugs the content
+ * instead of clipping or stretching it. Controls with their own width hug it;
+ * full-bleed controls (width:100% roots) keep the family width, and content
+ * that runs wider grows its own cell.
  */
 function measureCanonicalCellSize(
   html: string,
@@ -1420,10 +1447,15 @@ function measureCanonicalCellSize(
       const documentRoot = probe.contentDocument?.documentElement;
       const control = probe.contentDocument?.querySelector<HTMLElement>('[data-blueprint-primitive]') ?? probe.contentDocument?.body;
       const rect = control?.getBoundingClientRect();
-      const measuredWidth = rect ? Math.max(Math.ceil(rect.width) + 24, documentRoot?.scrollWidth ?? 0) : fallbackWidth;
+      const fillsCell = !rect || rect.width >= fallbackWidth - 25;
+      const extent = control ? [control, ...control.querySelectorAll('*')].reduce((right, node) => Math.max(right, node.getBoundingClientRect().right), 0) : 0;
+      const overflow = (documentRoot?.scrollWidth ?? 0) > fallbackWidth ? documentRoot!.scrollWidth : 0;
+      const measuredWidth = fillsCell
+        ? Math.max(fallbackWidth, documentRoot?.scrollWidth ?? 0)
+        : Math.max(Math.ceil(extent) + 12, overflow);
       const measuredHeight = rect ? Math.max(Math.ceil(rect.height) + 24, documentRoot?.scrollHeight ?? 0) : 88;
       done({
-        width: Math.max(fallbackWidth, Math.min(520, measuredWidth)),
+        width: Math.min(520, measuredWidth),
         height: Math.min(280, Math.max(40, measuredHeight))
       });
     } catch {

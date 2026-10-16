@@ -369,15 +369,16 @@ async function assertLargeMinimumFont(url: string): Promise<void> {
           return element.scrollWidth > element.clientWidth + 1 || rect.left < rail.left - 1 || rect.right > rail.right + 1;
         })
         .map(element => element.textContent?.trim() ?? element.className);
-      const wrapped = [...document.querySelectorAll<HTMLElement>('.canonical-primitive-variant-label')]
+      const wrapped = [...document.querySelectorAll<HTMLElement>('.bp-chrome-specimen-title, .bp-chrome-specimen-caption')]
         .filter(element => element.getBoundingClientRect().height > parseFloat(getComputedStyle(element).fontSize) * 1.8)
         .map(element => element.textContent?.trim() ?? '');
-      return { labelSize: label ? getComputedStyle(label).fontSize : '', clipped, wrapped };
+      const document_ = document.querySelector<HTMLElement>('#document')!;
+      return { labelSize: label ? getComputedStyle(label).fontSize : '', clipped, wrapped, sideways: document_.scrollWidth - document_.clientWidth };
     });
     if (report.labelSize !== '16px') {
       throw new Error(`Minimum font size preference should apply to the rail labels, received ${report.labelSize}.`);
     }
-    if (report.clipped.length > 0 || report.wrapped.length > 0) {
+    if (report.clipped.length > 0 || report.wrapped.length > 0 || report.sideways > 1) {
       throw new Error(`Chrome should reflow under a 16px minimum font size: ${JSON.stringify(report)}`);
     }
     await page.screenshot({ path: path.join(screenshotRoot, 'blueprint-minimum-font.png') });

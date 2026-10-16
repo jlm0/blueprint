@@ -627,7 +627,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
 
       for (const [primitiveId, platform] of [['nav-bar', 'Mobile'], ['table-row', 'Web'], ['button', 'Mobile and web']]) {
         const item = await showItem(page, primitiveId);
-        assert.equal(await item.locator('.bp-chrome-doc-fact').first().innerText(), platform, `${primitiveId} should state its platform as a page fact`);
+        assert.equal(await item.locator('.bp-chrome-doc-platform').getAttribute('aria-label'), platform, `${primitiveId} should state its platform beside the title`);
       }
     } finally {
       await page.close();

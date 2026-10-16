@@ -1231,6 +1231,13 @@ body {
   gap: 8px;
 }
 
+.bp-chrome-doc-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
 .bp-chrome-doc-kicker {
   margin: 0;
   color: var(--bp-chrome-muted-fg);
@@ -1311,6 +1318,7 @@ body {
   display: inline-flex;
   height: 26px;
   align-items: center;
+  gap: 4px;
   padding: 0 10px;
   border: 1px solid var(--bp-chrome-border);
   border-radius: var(--bp-chrome-radius-sm);
@@ -1318,6 +1326,21 @@ body {
   color: var(--bp-chrome-fg);
   font: inherit;
   font-size: 12px;
+}
+
+.bp-chrome-doc-fact {
+  color: var(--bp-chrome-muted-fg);
+}
+
+.bp-chrome-doc-platform {
+  padding: 0 7px;
+}
+
+.bp-chrome-doc-text {
+  max-width: 780px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .bp-chrome-doc-link {
@@ -1329,33 +1352,61 @@ body {
   background: var(--bp-chrome-surface-hover);
 }
 
-.bp-chrome-doc-specimen {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.bp-chrome-doc-details {
+.canonical-primitive-specimen {
   display: grid;
-  max-width: 900px;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 14px 24px;
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.bp-chrome-doc-details dt {
-  color: var(--bp-chrome-muted-fg);
-  font-weight: 500;
-}
-
-.bp-chrome-doc-details dd {
   min-width: 0;
+  gap: 32px;
+}
+
+.bp-chrome-specimen-group {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.bp-chrome-specimen-group + .bp-chrome-specimen-group {
+  margin-top: 10px;
+}
+
+.bp-chrome-specimen-title {
+  margin: 0;
+  color: var(--bp-chrome-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Previews paint 12px of app canvas around the control; the negative margin
+   lines controls up with the headings while that canvas still blends in. */
+.bp-chrome-specimen-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 16px;
+  margin: 0 -12px;
+}
+
+.bp-chrome-specimen-cell {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  justify-items: start;
   margin: 0;
 }
 
-.bp-chrome-doc-details .bp-chrome-doc-rules {
-  padding-left: 16px;
+.bp-chrome-specimen-caption {
+  padding: 0 12px;
+  color: var(--bp-chrome-muted-fg);
+  font-size: 12px;
+}
+
+.bp-chrome-preview-fit {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.bp-chrome-preview-fit > iframe {
+  transform-origin: 0 0;
 }
 
 .bp-chrome-doc-roles {
@@ -1392,39 +1443,6 @@ body {
   border: 1px solid var(--bp-chrome-border);
   border-radius: var(--bp-chrome-radius-sm);
   font-size: 9px;
-}
-
-.bp-chrome-doc-states {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
-}
-
-.bp-chrome-doc-state {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-width: 0;
-  gap: 8px;
-  margin: 0;
-}
-
-.bp-chrome-doc-state-label {
-  color: var(--bp-chrome-muted-fg);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.bp-chrome-doc-preview {
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--bp-chrome-border);
-  border-radius: var(--bp-chrome-radius);
-}
-
-.component-preview-iframe {
-  display: block;
-  border: 0;
 }
 
 .token-card-body {
@@ -1693,82 +1711,12 @@ body {
   text-underline-offset: 3px;
 }
 
-.canonical-primitive-stage {
-  display: grid;
-  justify-self: start;
-  gap: 10px;
-  box-sizing: border-box;
-  border: 1px solid var(--bp-sample-border);
-  border-radius: 10px;
-  background: var(--stage-bg, transparent);
-  padding: 14px;
-}
-
-.canonical-primitive-stage .canonical-prototype-state-label,
-.canonical-primitive-stage .canonical-primitive-variant-label {
-  color: var(--stage-fg, var(--bp-sample-muted-fg));
-}
-
-.canonical-primitive-specimen,
-.canonical-primitive-state {
-  display: grid;
-  gap: 8px;
-}
-
-.canonical-primitive-specimen {
-  gap: 14px;
-}
-
-.canonical-prototype-state-label {
-  margin: 0;
-  color: var(--bp-sample-muted-fg);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .canonical-primitive-iframe {
   display: block;
   width: var(--cell-w, 200px);
   height: 88px;
   border: 0;
   background: transparent;
-}
-
-/* Review grid: state headers centered over natural-width cells, one row per
-   variant; the grid hugs its content like the reference canvas rows. */
-.canonical-primitive-matrix {
-  display: grid;
-  width: max-content;
-  grid-template-columns: max-content repeat(var(--matrix-cols, 1), auto);
-  gap: 10px 8px;
-  align-items: center;
-  justify-content: start;
-}
-
-.canonical-primitive-matrix .canonical-primitive-cell {
-  display: flex;
-  justify-content: center;
-  min-width: 0;
-}
-
-.canonical-primitive-col-label {
-  text-align: center;
-}
-
-.canonical-primitive-matrix-corner {
-  visibility: hidden;
-}
-
-.canonical-primitive-variant-label {
-  margin: 0;
-  white-space: nowrap;
-  color: var(--bp-sample-muted-fg);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .frame {
