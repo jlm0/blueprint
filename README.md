@@ -75,7 +75,7 @@ The server exposes eleven project-scoped tools:
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
 | `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
 | `capture` | Render one screen, state, and viewport to PNG. |
-| `serve` | Open the live review canvas for the sidecar. |
+| `serve` | Open the live review canvas for the sidecar, optionally linked to one boundary's page with `focus`. |
 | `selection` | Read what the person selected on the canvas. |
 | `explore` | Create or archive two to five candidate alternatives for a single screen state. |
 | `promote` | Make a chosen candidate canonical, guarded by content digests. |

@@ -20,6 +20,7 @@ import type {
   ScreenHistoryEntry
 } from '../core/types';
 import { boundaryId, parseBoundarySelector } from '../core/address';
+import { canvasLocationParams } from '../core/canvas-location';
 import { loadProjectFromFs } from '../core/load';
 import {
   parseCanvasSelection,
@@ -570,6 +571,7 @@ export async function serveBlueprint(
       screenId: inspection.exploration.target.screenId
     };
   }
+  const focusParams = input.focus ? canvasLocationParams(await loadProjectFromFs(projectRoot), input.focus) : undefined;
 
   const acquisition = reusable
     ? { server: reusable, reused: true }
@@ -587,13 +589,17 @@ export async function serveBlueprint(
     selectedUrl.searchParams.set('board', 'screens');
     selectedUrl.searchParams.set('exploration', selection.explorationId);
   }
+  for (const [name, value] of Object.entries(focusParams ?? {})) {
+    selectedUrl.searchParams.set(name, value);
+  }
   try {
     const output = serveOutputSchema.parse({
       command: 'serve',
       project: normalize(projectRoot),
       port: server.port,
-      url: selection ? selectedUrl.toString() : baseUrl,
+      url: selection || focusParams ? selectedUrl.toString() : baseUrl,
       runtime: acquisition.reused ? 'reused' : 'started',
+      ...(input.focus ? { focus: input.focus } : {}),
       ...(selection ? { selection } : {})
     });
     return {

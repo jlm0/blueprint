@@ -142,9 +142,13 @@ export const serveInputSchema = z
     port: z.number().int().min(0).max(65535).optional().describe(
       'Stable port for this project runtime. When omitted, Blueprint starts at 4173 and selects the next available port.'
     ),
-    explorationId: nonEmptyString.optional().describe('Saved exploration to open as an isolated Screens review view.')
+    explorationId: nonEmptyString.optional().describe('Saved exploration to open as an isolated Screens review view.'),
+    focus: boundarySelectorSchema.optional().describe(
+      'Boundary the returned URL opens, such as component:web-header, screen:home, token-group:color, or project:root for the brand. Cannot be combined with explorationId.'
+    )
   })
-  .strict();
+  .strict()
+  .refine(input => !(input.explorationId && input.focus), { message: 'Pass either explorationId or focus, not both.' });
 
 export const selectionInputSchema = z
   .object({
@@ -399,6 +403,7 @@ export const serveOutputSchema = z
     port: z.number().int().min(0).max(65535),
     url: z.string().url(),
     runtime: z.enum(['started', 'reused']),
+    focus: z.string().optional(),
     selection: z
       .object({
         kind: z.literal('exploration'),

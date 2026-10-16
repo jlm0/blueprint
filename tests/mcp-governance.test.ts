@@ -263,6 +263,21 @@ describe('Blueprint MCP and template governance', () => {
           screenId: 'launch'
         });
 
+        const focused = await call(session, 'serve', { project: projectCopy, port: 0, focus: 'screen:launch' });
+        const focusedUrl = new URL(focused.url as string);
+        assert.equal(focused.focus, 'screen:launch');
+        assert.equal(focusedUrl.origin, servedUrl.origin, 'focus links reuse the running project runtime');
+        assert.deepEqual(Object.fromEntries(focusedUrl.searchParams), { board: 'screens', page: 'landing', screen: 'launch' });
+        const component = new URL((await call(session, 'serve', { project: projectCopy, port: 0, focus: 'component:edition-card' })).url as string);
+        assert.deepEqual(Object.fromEntries(component.searchParams), { board: 'primitives', section: 'components', item: 'edition-card' });
+        const conflicting = await session.client.callTool({
+          name: 'serve',
+          arguments: { project: projectCopy, port: 0, explorationId: 'launch-hero', focus: 'screen:launch' }
+        });
+        assert.equal(conflicting.isError, true);
+        const missing = await session.client.callTool({ name: 'serve', arguments: { project: projectCopy, port: 0, focus: 'component:missing' } });
+        assert.equal(missing.isError, true);
+
         const screensPath = path.join(projectCopy, 'screens.json');
         const explorationRecordPath = path.join(projectCopy, 'explorations', 'launch-hero.json');
         const canonicalSourcePath = path.join(projectCopy, 'prototype/screens/launch.html');

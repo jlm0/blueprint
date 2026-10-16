@@ -3,6 +3,7 @@ import { after, before, describe, it } from 'node:test';
 import { chromium, type Browser, type FrameLocator, type Locator, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 import { boundaryId } from '../src/core/address';
+import { canvasLocationParams } from '../src/core/canvas-location';
 import { loadProjectFromFs } from '../src/core/load';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../src/core/review';
 import type { BlueprintProjectBundle } from '../src/core/types';
@@ -1089,6 +1090,40 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     } finally {
       await basePage.close();
       await mutatedPage.close();
+    }
+  });
+
+  it('opens the page a serve focus link names and centers a linked screen', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    assert.deepEqual(canvasLocationParams(bundle, 'project:root'), { board: 'primitives', section: 'foundations', item: 'brand' });
+    assert.deepEqual(canvasLocationParams(bundle, 'token-group:color'), { board: 'primitives', section: 'foundations', item: 'color' });
+    assert.deepEqual(canvasLocationParams(bundle, 'state-set:button/interaction'), { board: 'primitives', section: 'primitives', item: 'button' });
+    assert.deepEqual(canvasLocationParams(bundle, 'component:web-header'), { board: 'primitives', section: 'components', item: 'web-header' });
+    assert.deepEqual(canvasLocationParams(bundle, 'section:transactions/header'), { board: 'screens', page: 'ledger', screen: 'transactions' });
+    assert.throws(() => canvasLocationParams(bundle, 'component:missing'), /missing/);
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', { configurable: true, value: projectBundle });
+    }, bundle);
+    try {
+      await page.goto(`${baseUrl}?${new URLSearchParams(canvasLocationParams(bundle, 'screen:transfer-mobile'))}`);
+      const target = page.locator('.board-screens .frame[data-screen-id="transfer-mobile"]').first();
+      await target.waitFor({ state: 'visible', timeout: 5000 });
+      assert.equal(await page.locator('.bp-chrome-nav-group-label[data-page="phone"]').getAttribute('aria-pressed'), 'true');
+      await page.waitForFunction(() => !new URL(location.href).searchParams.has('screen'));
+      await page.waitForTimeout(150);
+      const view = await page.locator('#viewport').boundingBox();
+      const frames = await page.locator('.board-screens .frame[data-screen-id="transfer-mobile"]').evaluateAll(elements => {
+        const rects = elements.map(element => element.getBoundingClientRect());
+        return { top: Math.min(...rects.map(rect => rect.top)), bottom: Math.max(...rects.map(rect => rect.bottom)) };
+      });
+      assert.ok(view);
+      const frameCenter = (frames.top + frames.bottom) / 2;
+      const viewCenter = view.y + view.height / 2;
+      assert.ok(Math.abs(frameCenter - viewCenter) < view.height * 0.1, `transfer-mobile frames should be centered; frame center ${frameCenter}, view center ${viewCenter}`);
+    } finally {
+      await page.close();
     }
   });
 

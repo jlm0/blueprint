@@ -4237,10 +4237,26 @@ function el(tag: string, className = '', text = ''): HTMLElement {
   return node;
 }
 
-activeScreenPage = requestedScreenPage() ?? screenPages[0]?.id ?? null;
+const requestedScreen = project.screens.screens.find(screen => screen.id === new URLSearchParams(location.search).get('screen'));
+activeScreenPage = requestedScreenPage()
+  ?? (requestedScreen?.page && hasScreenPage(requestedScreen.page) ? requestedScreen.page : null)
+  ?? screenPages[0]?.id
+  ?? null;
 refreshBoardSwitcher();
 
 const requestedBoard = new URLSearchParams(location.search).get('board');
 const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
 showBoard(isBoardId(requestedBoard) ? requestedBoard : defaultBoard);
+focusRequestedScreen(requestedScreen?.id);
 connectBlueprintLiveRuntime();
+
+function focusRequestedScreen(screenId: string | undefined): void {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('screen')) return;
+  url.searchParams.delete('screen');
+  history.replaceState(null, '', url);
+  if (screenId && activeBoardId === 'screens') {
+    revealNavGroup(`screens:${activeScreenPage}`);
+    requestAnimationFrame(() => focusScreenFrames(screenId));
+  }
+}
