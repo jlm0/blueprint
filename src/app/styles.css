@@ -1676,13 +1676,6 @@ body {
   font-size: 9px;
 }
 
-.token-card-body {
-  padding: 28px;
-  border: 1px solid var(--bp-sample-border);
-  border-radius: 12px;
-  color: var(--bp-sample-fg);
-}
-
 .token-context {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -1854,13 +1847,8 @@ body {
   line-height: 1.45;
 }
 
-.token-section-label {
-  margin: 0 0 8px;
-  color: var(--bp-sample-muted-fg);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.token-group-title {
+  margin-bottom: 10px;
 }
 
 .token-ladder,

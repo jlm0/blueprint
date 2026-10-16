@@ -241,8 +241,12 @@ describe('Blueprint data-driven pages and screens canvas', () => {
         assert.equal(chrome.radius, '6px', `${fixture.name} chrome should take its radius from shape.radius-md`);
         if (fixture.foreground) {
           assert.equal(chrome.foreground, fixture.foreground, `${fixture.name} chrome text should use color.foreground`);
-          const colorPage = page.locator(`[data-boundary-id="${fixture.bundle.manifest.project.id}/token-group/color"] .token-card-body`);
-          assert.equal(await colorPage.evaluate(element => window.getComputedStyle(element).backgroundColor), fixture.canvas);
+          const colorPage = page.locator(`[data-boundary-id="${fixture.bundle.manifest.project.id}/token-group/color"] .bp-chrome-doc-body`);
+          const body = await colorPage.evaluate(element => {
+            const style = window.getComputedStyle(element);
+            return { background: style.backgroundColor, border: style.borderTopWidth, padding: style.paddingTop };
+          });
+          assert.deepEqual(body, { background: fixture.canvas, border: '0px', padding: '0px' }, `${fixture.name} token pages sit on the page without a box`);
           assert.equal(await colorPage.locator('.token-ladder-step').count(), 7, `${fixture.name} should nest the full surface ladder`);
           const pairs = await colorPage.locator('.token-pair').evaluateAll(rows =>
             rows.map(row => ({

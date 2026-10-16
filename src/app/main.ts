@@ -1065,7 +1065,6 @@ function createFoundationPage(bundle: BlueprintProjectBundle, tokenIndex: TokenI
   setBoundary(page, 'token-group', group.id, bundle.manifest.project.id, group.name);
   page.dataset.boundarySummary = group.description;
   page.dataset.tokenGroup = group.id;
-  body.classList.add('token-card-body');
   applyProjectCanvas(body, tokenIndex);
 
   if (group.notes.length > 0) {
@@ -1531,6 +1530,7 @@ function applyProjectCanvas(element: HTMLElement, tokenIndex: TokenIndex): void 
   const surface = resolvedColor(tokenIndex, '--app-color-surface');
   const border = resolvedColor(tokenIndex, '--app-color-border');
   if (background) element.style.background = background;
+  if (foreground) element.style.color = foreground;
   if (border) element.style.setProperty('--bp-sample-border', border);
   if (foreground) element.style.setProperty('--bp-sample-fg', foreground);
   if (muted) element.style.setProperty('--bp-sample-muted-fg', muted);
@@ -1547,7 +1547,7 @@ function createSurfaceLadder(tokenIndex: TokenIndex): HTMLElement | undefined {
     return undefined;
   }
   const ladder = el('section', 'token-ladder');
-  ladder.append(el('p', 'token-section-label', 'Surface ladder'));
+  ladder.append(el('h3', 'bp-chrome-specimen-title token-group-title', 'Surface ladder'));
   let parent: HTMLElement = ladder;
   for (const { record, value } of steps) {
     const step = el('div', 'token-ladder-step');
@@ -1594,7 +1594,7 @@ function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
     return undefined;
   }
   const section = el('section', 'token-pairs');
-  section.append(el('p', 'token-section-label', 'Contrast pairs'), list);
+  section.append(el('h3', 'bp-chrome-specimen-title token-group-title', 'Contrast pairs'), list);
   return section;
 }
 
