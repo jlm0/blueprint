@@ -52,7 +52,7 @@
           {
             "id": "normal",
             "name": "Normal",
-            "description": "At rest; each action keeps its own states."
+            "description": "At rest. Each action keeps its own states."
           }
         ]
       },
@@ -78,7 +78,7 @@
         "space"
       ],
       "tokenRoles": {},
-      "accessibility": "A group of ordinary buttons read in order; it adds no role of its own.",
+      "accessibility": "A group of ordinary buttons read in order. It adds no role of its own.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [],

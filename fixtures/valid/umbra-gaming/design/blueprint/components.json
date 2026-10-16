@@ -118,7 +118,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A region labeled \"Season pass progress\", read as tier, title, XP, a progress bar, and the next reward; the reward rail is hidden.",
+      "accessibility": "A region labeled \"Season pass progress\", read as tier, title, XP, a progress bar, and the next reward. The reward rail is hidden.",
       "notes": [
         "Compact drops the reward rail and shows XP gained this match in bone over the lime base."
       ],
@@ -251,7 +251,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "An article read as the live badge, timer, title, and description, then the \"Queue now\" button; the key art is decorative.",
+      "accessibility": "An article read as the live badge, timer, title, and description, then the \"Queue now\" button. The key art is decorative.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -392,7 +392,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "Read in order as the objective, a progress bar with its count, and the XP reward; the glyph is hidden.",
+      "accessibility": "Read in order as the objective, a progress bar with its count, and the XP reward. The glyph is hidden.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -475,7 +475,7 @@
           {
             "id": "scoreboard",
             "name": "Scoreboard",
-            "description": "A surface row with match stats on the right; the presence dot is hidden."
+            "description": "A surface row with match stats on the right. The presence dot is hidden."
           },
           {
             "id": "mvp",
@@ -533,7 +533,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "Read as the initials, handle, and status line, then the match stats when shown; presence is carried by the status text.",
+      "accessibility": "Read as the initials, handle, and status line, then the match stats when shown. The status text carries the presence.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -633,7 +633,7 @@
           {
             "id": "plain",
             "name": "Plain",
-            "description": "No frame, bar, or comparison; a larger figure sits above its label, for headline numbers."
+            "description": "No frame, bar, or comparison. A larger figure sits above its label, for headline numbers."
           }
         ]
       },
@@ -678,7 +678,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "Plain text read as label, figure, and comparison; the bar is hidden from assistive technology because the comparison says the same.",
+      "accessibility": "Plain text read as label, figure, and comparison. Assistive technology skips the bar, because the comparison says the same.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -727,7 +727,7 @@
         {
           "kind": "primitive",
           "id": "button",
-          "reason": "Purchase commands; featured shows the primary one."
+          "reason": "Purchase commands. The featured variant shows the primary one."
         }
       ],
       "variants": {
@@ -830,7 +830,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "An article read as the edition name, price and terms, a list of perks, then one purchase button; the Most chosen badge is read only when featured.",
+      "accessibility": "An article read as the edition name, price and terms, a list of perks, then one purchase button. The Most chosen badge reads only when featured.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -903,7 +903,7 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "Muted index and glyph above the mode name and rules; hover lifts the border and surface."
+            "description": "A muted index and glyph above the mode name and rules. On hover, the border and surface lift."
           },
           {
             "id": "new",
@@ -961,7 +961,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A link read as the index, mode name, and rules, plus the New mode badge when shown; the glyph is hidden.",
+      "accessibility": "A link read as the index, mode name, and rules, plus the New mode badge when shown. The glyph is hidden.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -1082,13 +1082,13 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "An image labeled with the full rank, such as \"Diamond rank\"; the plate and numeral are not read separately.",
+      "accessibility": "An image labeled with the full rank, such as \"Diamond rank\". The plate and numeral do not read separately.",
       "notes": [
         "Rank tone comes from existing color roles, so a retheme recolors every tier.",
         "Reserve the glow for the apex tier only."
       ],
       "implementationHints": [
-        "Render from the player rank model; the tier slot carries the division numeral and the accessible name carries the full rank."
+        "Render it from the player rank model. The tier slot carries the division numeral, and the accessible name carries the full rank."
       ],
       "implementationTargets": [],
       "styleRefs": [

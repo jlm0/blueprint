@@ -100,7 +100,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A prompt entry group: the draft line reads as text, attach and send are buttons named by their labels, and the research mode reads as its badge label.",
+      "accessibility": "A prompt entry group. The draft line reads as text, attach and send are buttons named by their labels, and the research mode reads as its badge label.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -225,7 +225,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A figure captioned by its title; the plot is one image whose label reads the series and its highlight, and the date range is a segmented control.",
+      "accessibility": "A figure captioned by its title. The plot is one image whose label reads the series and its highlight. The date range is a segmented control.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -350,7 +350,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A link named by its kicker, title, and description; the arrow glyph is hidden from assistive technology.",
+      "accessibility": "A link named by its kicker, title, and description. Assistive technology skips the arrow glyph.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -423,7 +423,7 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "Resting row with no background; hovering tints it with the muted surface."
+            "description": "A resting row with no background. On hover, the muted surface tints it."
           },
           {
             "id": "active",

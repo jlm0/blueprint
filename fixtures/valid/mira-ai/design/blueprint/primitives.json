@@ -5,7 +5,7 @@
     {
       "id": "button",
       "name": "Button",
-      "description": "Baseline command primitive with six variants, sm/md/lg/icon sizes, and normal/loading/disabled states.",
+      "description": "Runs a command when pressed: form submits, confirmations, toolbar actions, and links styled as actions.",
       "group": "actions",
       "platforms": [
         "web",
@@ -94,12 +94,12 @@
           {
             "id": "pressed",
             "name": "Pressed",
-            "description": "It is being pressed."
+            "description": "A pointer or key holds it down."
           },
           {
             "id": "loading",
             "name": "Loading",
-            "description": "Its command is running; the label gives way to a loading mark."
+            "description": "Its command is running. A loading mark replaces the label."
           },
           {
             "id": "disabled",
@@ -157,14 +157,14 @@
         "size.control-lg": "large-height",
         "size.icon-sm": "icon-size"
       },
-      "accessibility": "A native keyboard-reachable button whose visible label supplies its accessible name; the icon size keeps the label as visually hidden text.",
+      "accessibility": "A native button that is reachable by keyboard. Its visible label is its accessible name, and the icon size keeps that label as visually hidden text.",
       "notes": [
-        "Apps should replace token values and variant naming only when their design system requires it; do not recreate one-off buttons per screen."
+        "Change token values and variant names only when the app's design system needs it. Do not build a one-off button for one screen."
       ],
       "implementationHints": [
         "Map variants to the target app's button API and preserve loading and disabled behavior.",
         "Icon: Keep a text label for the accessible name when rendering icon-only.",
-        "Hover: Apply on pointer hover only; touch platforms skip it.",
+        "Hover: Apply it on pointer hover only. Touch platforms skip it.",
         "Focus: Show on keyboard focus (focus-visible), not on pointer press.",
         "Loading: Expose busy state to accessibility APIs.",
         "Disabled: Prevent interaction and expose disabled state."
@@ -179,7 +179,7 @@
     {
       "id": "input",
       "name": "Input",
-      "description": "Text input primitive with visual variants and validation states.",
+      "description": "A single-line text field for a short value, with its label and validation feedback.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -233,7 +233,7 @@
           {
             "id": "empty",
             "name": "Empty",
-            "description": "Nothing typed yet; the placeholder shows."
+            "description": "The field is empty, so the placeholder shows."
           },
           {
             "id": "value",
@@ -307,7 +307,7 @@
       },
       "accessibility": "A native text input with a programmatically associated label and a visible focus ring.",
       "notes": [
-        "Input states are a core app behavior and should not be inferred from a single rendered form."
+        "Input states are core app behavior. Do not infer them from one rendered form."
       ],
       "implementationHints": [
         "Preserve empty, value, focused, invalid, and disabled states in target code."
@@ -322,7 +322,7 @@
     {
       "id": "checkbox",
       "name": "Checkbox",
-      "description": "Binary selection primitive.",
+      "description": "Turns one option on or off, alone or as one of several independent choices.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -415,7 +415,7 @@
         "typography.body": "label",
         "motion.state": "state-transition"
       },
-      "accessibility": "A keyboard-reachable binary selection control whose checked and disabled states are exposed to assistive technology.",
+      "accessibility": "A checkbox that is reachable by keyboard. Assistive technology reads its checked and disabled states.",
       "notes": [],
       "implementationHints": [
         "Expose checked and disabled states explicitly.",
@@ -431,7 +431,7 @@
     {
       "id": "switch",
       "name": "Switch",
-      "description": "Binary toggle primitive.",
+      "description": "Turns a setting on or off with immediate effect.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -539,7 +539,7 @@
     {
       "id": "otp-input",
       "name": "OTP input",
-      "description": "Fixed-cell verification input primitive.",
+      "description": "A row of fixed cells for typing a one-time verification code.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -630,7 +630,7 @@
     {
       "id": "slider",
       "name": "Slider",
-      "description": "Continuous range control primitive.",
+      "description": "Picks a value along a continuous range by dragging a thumb.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -723,7 +723,7 @@
     {
       "id": "surface",
       "name": "Surface",
-      "description": "Sequential surface ladder: each nested surface, card, grouped list, or pressable row sits one level deeper than its parent.",
+      "description": "Sets the background level of a region. Each nested surface, card, grouped list, or pressable row sits one level deeper than its parent.",
       "group": "surfaces",
       "platforms": [
         "web",
@@ -816,9 +816,9 @@
         "color.border": "outline",
         "shape.radius-lg": "radius"
       },
-      "accessibility": "A non-interactive container level; nested content keeps its own semantics and reachability.",
+      "accessibility": "A container level with no interaction of its own. Nested content keeps its own semantics and keyboard reach.",
       "notes": [
-        "Roots marked data-blueprint-surface take the level after their nearest marked ancestor; a surface state sets an explicit level for its subtree."
+        "A root with `data-blueprint-surface` takes the level after its nearest marked ancestor. A surface variant sets the level for its whole subtree."
       ],
       "implementationHints": [
         "Carry the parent surface level through context so nested cards, lists, and rows render one level deeper."
@@ -833,7 +833,7 @@
     {
       "id": "card",
       "name": "Card",
-      "description": "Content container primitive.",
+      "description": "A bounded container that groups related content into one unit.",
       "group": "surfaces",
       "platforms": [
         "web",
@@ -922,7 +922,7 @@
         "typography.heading": "title",
         "typography.caption": "meta"
       },
-      "accessibility": "A neutral content container; interactive children remain individually reachable.",
+      "accessibility": "A neutral content container. Each interactive child stays reachable on its own.",
       "notes": [],
       "implementationHints": [
         "Use cards for repeated content items, not page sections."
@@ -937,7 +937,7 @@
     {
       "id": "nav-bar",
       "name": "Navigation bar",
-      "description": "Balanced slot navigation primitive.",
+      "description": "The top bar of a mobile screen, with a centered title between a back action and a trailing action.",
       "group": "navigation",
       "platforms": [
         "mobile"
@@ -1033,7 +1033,7 @@
     {
       "id": "back-button",
       "name": "Back button",
-      "description": "Navigation back command primitive.",
+      "description": "Returns to the previous screen in a mobile navigation stack.",
       "group": "navigation",
       "platforms": [
         "mobile"
@@ -1117,7 +1117,7 @@
     {
       "id": "separator",
       "name": "Separator",
-      "description": "Divider primitive.",
+      "description": "A thin rule that divides content into groups.",
       "group": "structure",
       "platforms": [
         "web",
@@ -1195,7 +1195,7 @@
     {
       "id": "list",
       "name": "List",
-      "description": "Grouped list primitive.",
+      "description": "A vertical list of rows, grouped on a surface or plain.",
       "group": "structure",
       "platforms": [
         "mobile"
@@ -1278,7 +1278,7 @@
     {
       "id": "pressable-row",
       "name": "Pressable row",
-      "description": "Row-shaped pressable primitive.",
+      "description": "A full-width row that opens or selects something when pressed, alone or within a grouped list.",
       "group": "structure",
       "platforms": [
         "mobile"
@@ -1381,7 +1381,7 @@
     {
       "id": "row-layout",
       "name": "Row layout",
-      "description": "Leading/body/trailing slot layout primitive without a surface.",
+      "description": "Arranges leading, body, and trailing content in one row, without a surface of its own.",
       "group": "structure",
       "platforms": [
         "web",
@@ -1452,7 +1452,7 @@
         "typography.body": "title",
         "typography.caption": "subtitle"
       },
-      "accessibility": "A purely presentational leading/body/trailing row; only interactive slot content receives focus.",
+      "accessibility": "A row of leading, body, and trailing content with no role of its own. Only interactive slot content takes focus.",
       "notes": [],
       "implementationHints": [
         "Use when a row owns layout but not surface or press behavior."
@@ -1467,7 +1467,7 @@
     {
       "id": "loading-mark",
       "name": "Loading mark",
-      "description": "Generic loading indicator primitive.",
+      "description": "An indeterminate spinner shown while something loads.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -1533,10 +1533,10 @@
       },
       "accessibility": "A polite status indicator that announces busy state without trapping focus.",
       "notes": [
-        "This generalizes the reference mark into a replaceable app-owned loader."
+        "It turns the reference mark into a loader that the app owns and can replace."
       ],
       "implementationHints": [
-        "Replace geometry with the app mark if one exists; keep tone states."
+        "Replace the geometry with the app's mark when it has one. Keep the tone variants."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -1548,7 +1548,7 @@
     {
       "id": "badge",
       "name": "Badge",
-      "description": "Compact status label primitive.",
+      "description": "A compact label for a status, a count, or a category.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -1646,7 +1646,7 @@
         "shape.radius-full": "radius",
         "typography.label": "label"
       },
-      "accessibility": "A compact status label whose visible text supplies the meaning; tone is never color-only.",
+      "accessibility": "A compact status label whose visible text carries the meaning. Its tone never relies on color alone.",
       "notes": [],
       "implementationHints": [
         "Keep semantic badge variants text-backed, not color-only."
@@ -1661,7 +1661,7 @@
     {
       "id": "icon",
       "name": "Icon",
-      "description": "Icon wrapper primitive.",
+      "description": "Sizes and colors one inline glyph to the type around it.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -1735,7 +1735,7 @@
         "color.foreground": "glyph",
         "size.icon-md": "size"
       },
-      "accessibility": "A decorative inline glyph wrapper; the host supplies any accessible naming through surrounding text.",
+      "accessibility": "A decorative inline glyph. The text around it supplies any accessible name.",
       "notes": [],
       "implementationHints": [
         "Keep icon sizing and stroke width tokenized."
@@ -1750,7 +1750,7 @@
     {
       "id": "skeleton",
       "name": "Skeleton",
-      "description": "Loading placeholder primitive.",
+      "description": "A placeholder shape that holds the layout while content loads.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -1827,7 +1827,7 @@
     {
       "id": "alert-dialog",
       "name": "Alert dialog",
-      "description": "Modal confirmation primitive.",
+      "description": "A modal that asks a person to confirm or cancel before an action goes ahead.",
       "group": "overlays",
       "platforms": [
         "web",
@@ -1931,7 +1931,7 @@
     {
       "id": "context-menu",
       "name": "Context menu",
-      "description": "Floating action menu primitive.",
+      "description": "A floating menu of actions for one item, opened from that item.",
       "group": "overlays",
       "platforms": [
         "web",
@@ -2023,7 +2023,7 @@
     {
       "id": "bottom-sheet",
       "name": "Bottom sheet",
-      "description": "Sheet primitive composed from handle, navbar, body, and footer slots.",
+      "description": "A mobile sheet that rises from the bottom edge with its own navigation, content, and footer.",
       "group": "overlays",
       "platforms": [
         "mobile"
@@ -2118,7 +2118,7 @@
     {
       "id": "text",
       "name": "Text",
-      "description": "Canonical type-ramp primitive binding the typography tokens to semantic text tones.",
+      "description": "The type ramp: binds the typography tokens to display, body, and label roles in three tones.",
       "group": "text",
       "platforms": [
         "web",
@@ -2208,7 +2208,7 @@
       },
       "accessibility": "Readable text whose tone never relies on color alone for meaning.",
       "notes": [
-        "Use the ramp roles instead of one-off font styles; screens may still set screen-local display treatments."
+        "Use the ramp roles instead of one-off font styles. A screen may still set its own display treatment."
       ],
       "implementationHints": [
         "Map variants to the app's text component roles and keep tones semantic."
@@ -2223,7 +2223,7 @@
     {
       "id": "radio",
       "name": "Radio",
-      "description": "Single-choice selection primitive.",
+      "description": "Picks exactly one option from a small set shown together.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -2315,7 +2315,7 @@
         "typography.body": "label",
         "motion.state": "state-transition"
       },
-      "accessibility": "A keyboard-reachable single-choice control whose selected and disabled states are exposed to assistive technology.",
+      "accessibility": "A single-choice control that is reachable by keyboard. Assistive technology reads its selected and disabled states.",
       "notes": [],
       "implementationHints": [
         "Expose selected and disabled states explicitly and group radios with one name.",
@@ -2331,7 +2331,7 @@
     {
       "id": "select",
       "name": "Select",
-      "description": "Single-value dropdown field primitive with placeholder, value, open, and disabled states.",
+      "description": "Picks one value from a list that opens on demand.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -2365,7 +2365,7 @@
           {
             "id": "placeholder",
             "name": "Placeholder",
-            "description": "Nothing chosen yet; the placeholder shows."
+            "description": "Nothing is chosen yet, so the placeholder shows."
           },
           {
             "id": "value",
@@ -2432,10 +2432,10 @@
         "typography.body": "text",
         "motion.state": "state-transition"
       },
-      "accessibility": "A named, keyboard-reachable listbox control whose value and expanded state are exposed to assistive technology.",
+      "accessibility": "A named listbox that is reachable by keyboard. Assistive technology reads its value and whether it is open.",
       "notes": [],
       "implementationHints": [
-        "Keep the listbox in the primitive; map options from the target app's data."
+        "Keep the listbox in the primitive. Map its options from the target app's data."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -2447,7 +2447,7 @@
     {
       "id": "tabs",
       "name": "Tabs",
-      "description": "In-screen section switch primitive with a selected tab and a disabled tab.",
+      "description": "Switches between sibling sections of one screen.",
       "group": "navigation",
       "platforms": [
         "web",
@@ -2529,10 +2529,10 @@
         "typography.body": "label",
         "motion.state": "state-transition"
       },
-      "accessibility": "A tablist whose selected tab and disabled tabs are exposed to assistive technology.",
+      "accessibility": "A tablist. Assistive technology reads which tab is selected and which tabs are disabled.",
       "notes": [],
       "implementationHints": [
-        "Keep one tablist per section set; expose the selected tab to assistive technology."
+        "Keep one tablist per set of sections. Expose the selected tab to assistive technology."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -2544,7 +2544,7 @@
     {
       "id": "toast",
       "name": "Toast",
-      "description": "Transient feedback panel primitive with semantic tones and a quiet action.",
+      "description": "A brief message that confirms an action or reports a result, with an optional quiet action.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -2650,7 +2650,7 @@
     {
       "id": "textarea",
       "name": "Textarea",
-      "description": "Multi-line text field with label, hint, and validation states.",
+      "description": "A multi-line text field for longer writing, with its label, hint, and validation feedback.",
       "group": "inputs",
       "platforms": [
         "web",
@@ -2684,7 +2684,7 @@
           {
             "id": "empty",
             "name": "Empty",
-            "description": "Nothing typed yet; the placeholder shows."
+            "description": "The field is empty, so the placeholder shows."
           },
           {
             "id": "value",
@@ -2777,7 +2777,7 @@
     {
       "id": "avatar",
       "name": "Avatar",
-      "description": "Person or entity mark with initials, fallback glyph, and presence status.",
+      "description": "Marks a person or entity with initials or a fallback glyph, and optionally their presence.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -2826,7 +2826,7 @@
           {
             "id": "fallback",
             "name": "Fallback",
-            "description": "No name or image; shows a generic glyph."
+            "description": "It has no name or image, so it shows a generic glyph."
           },
           {
             "id": "status",
@@ -2870,7 +2870,7 @@
       "accessibility": "An image-role mark whose accessible name is the person or entity name.",
       "notes": [],
       "implementationHints": [
-        "Map to the target avatar component; replace initials with a controlled image asset when one exists."
+        "Map it to the target avatar component. Replace the initials with a controlled image asset when one exists."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -2882,7 +2882,7 @@
     {
       "id": "progress",
       "name": "Progress",
-      "description": "Labelled determinate and indeterminate progress bar.",
+      "description": "A labelled bar that shows how much of a task is complete, or that it is under way.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -2979,7 +2979,7 @@
     {
       "id": "tooltip",
       "name": "Tooltip",
-      "description": "Short inverse label anchored to a control.",
+      "description": "A short label that appears beside a control on hover or focus.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -3055,7 +3055,7 @@
       "accessibility": "A tooltip role describing its anchor control.",
       "notes": [],
       "implementationHints": [
-        "Show on hover and keyboard focus; never put required information only in a tooltip."
+        "Show it on hover and on keyboard focus. Never put required information only in a tooltip."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -3067,7 +3067,7 @@
     {
       "id": "inline-alert",
       "name": "Inline alert",
-      "description": "Persistent in-flow message with a tone, title, and message.",
+      "description": "A persistent message in the page flow that reports information, success, a warning, or an error.",
       "group": "feedback",
       "platforms": [
         "web",
@@ -3162,7 +3162,7 @@
         "size.icon-md": "icon-size",
         "typography.body": "text"
       },
-      "accessibility": "A status message whose title and message are read together.",
+      "accessibility": "A status message. Assistive technology reads its title and message together.",
       "notes": [],
       "implementationHints": [
         "Use role=\"alert\" only for urgent messages that must interrupt assistive technology."
@@ -3177,7 +3177,7 @@
     {
       "id": "segmented-control",
       "name": "Segmented control",
-      "description": "Single-choice set of adjacent options for switching views or ranges.",
+      "description": "Switches between a few adjacent options, such as views or time ranges.",
       "group": "navigation",
       "platforms": [
         "web",
@@ -3264,7 +3264,7 @@
       "accessibility": "A radiogroup whose options are radios named by their visible labels.",
       "notes": [],
       "implementationHints": [
-        "Map to the target segmented control; use tabs instead when options switch whole panels."
+        "Map it to the target segmented control. Use tabs instead when the options switch whole panels."
       ],
       "implementationTargets": [],
       "styleRefs": [
@@ -3276,7 +3276,7 @@
     {
       "id": "table-row",
       "name": "Table row",
-      "description": "Data table row with primary, text, numeric, and status cells.",
+      "description": "One row of a data table, with primary, text, numeric, and status cells.",
       "group": "structure",
       "platforms": [
         "web",

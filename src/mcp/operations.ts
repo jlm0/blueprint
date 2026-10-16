@@ -25,7 +25,7 @@ import { canvasLocationParams } from '../core/canvas-location';
 import { collectDesignFindings, type DesignFinding } from '../core/findings';
 import { loadProjectFromFs } from '../core/load';
 import { migrateProjectFiles } from '../core/migrate';
-import { assertCurrentReusableSchema } from '../core/reusable-validate';
+import { assertCurrentReusableSchema, collectProseAdvisories, type ProseAdvisory } from '../core/reusable-validate';
 import {
   parseCanvasSelection,
   selectionReference,
@@ -221,6 +221,7 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
       ok,
       errors: baseline.errors,
       findings: advisoryDesignFindings(bundle),
+      prose: proseAdvisories(bundle),
       readiness
     });
     await writeOptionalJsonArtifact(output, input.out);
@@ -234,7 +235,8 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
     projectId: bundle.manifest.project.id,
     mode,
     ...result,
-    findings: advisoryDesignFindings(bundle)
+    findings: advisoryDesignFindings(bundle),
+    prose: proseAdvisories(bundle)
   });
   await writeOptionalJsonArtifact(output, input.out);
   return output;
@@ -867,6 +869,14 @@ async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
 function advisoryDesignFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
   try {
     return collectDesignFindings(bundle);
+  } catch {
+    return [];
+  }
+}
+
+function proseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
+  try {
+    return collectProseAdvisories(bundle);
   } catch {
     return [];
   }

@@ -1,5 +1,6 @@
 import { listUsePlacements, slotContentAccepts, sourceSlotContents } from '../prototype/compiler';
-import { basePrimitive, type BasePrimitiveContractEntry, type PrimitiveGroupId } from './base-primitives';
+import { basePrimitiveText } from './base-primitive-text';
+import { basePrimitive, type BasePrimitiveContractEntry, type BasePrimitiveText, type PrimitiveGroupId } from './base-primitives';
 import {
   humanizeId,
   PLATFORMS,
@@ -261,10 +262,66 @@ function normalizeProject(
     applyRemaps(input, remaps, reusables.map(({ kind, reusable }) => ({ kind, id: reusable.id, styles: reusable.prototype?.styles ?? [] })), writes, changes);
   }
 
+  let restored = 0;
+  let movedNotes = 0;
+  for (const primitive of primitiveFile.primitives) {
+    const text = basePrimitiveText(primitive.id);
+    if (!text) continue;
+    const result = restoreBlueprintText(primitive, text);
+    if (result.changed) restored += 1;
+    movedNotes += result.movedNotes;
+  }
+  if (restored > 0) {
+    changes.push(`primitives.json: ${restored} primitive${restored > 1 ? 's' : ''} now carry Blueprint's description, accessibility, notes, and value and slot text, and hints from earlier starters use the current wording.`);
+  }
+  if (movedNotes > 0) {
+    changes.push(`primitives.json: moved ${movedNotes} app note${movedNotes > 1 ? 's' : ''} on Blueprint primitives to implementationHints.`);
+  }
+
   if (input.files.has('AGENTS.md') && currentText('AGENTS.md') !== input.starterAgents) {
     writes.set('AGENTS.md', input.starterAgents);
     changes.push('AGENTS.md: replaced with the current starter copy.');
   }
+}
+
+/** Notes earlier starters wrote on Blueprint primitives; Blueprint's own notes replace them. */
+const RETIRED_STARTER_NOTES: ReadonlySet<string> = new Set([
+  'Apps should replace token values and variant naming only when their design system requires it; do not recreate one-off buttons per screen.',
+  'Input states are a core app behavior and should not be inferred from a single rendered form.',
+  'Roots marked data-blueprint-surface take the level after their nearest marked ancestor; a surface state sets an explicit level for its subtree.',
+  'This generalizes the reference mark into a replaceable app-owned loader.',
+  'Use the ramp roles instead of one-off font styles; screens may still set screen-local display treatments.'
+]);
+
+/** Hints earlier starters wrote on Blueprint primitives, with the wording that replaces each. */
+const REWRITTEN_STARTER_HINTS: ReadonlyMap<string, string> = new Map([
+  ['Hover: Apply on pointer hover only; touch platforms skip it.', 'Hover: Apply it on pointer hover only. Touch platforms skip it.'],
+  ['Replace geometry with the app mark if one exists; keep tone states.', "Replace the geometry with the app's mark when it has one. Keep the tone variants."],
+  ["Keep the listbox in the primitive; map options from the target app's data.", "Keep the listbox in the primitive. Map its options from the target app's data."],
+  ['Keep one tablist per section set; expose the selected tab to assistive technology.', 'Keep one tablist per set of sections. Expose the selected tab to assistive technology.'],
+  ['Map to the target avatar component; replace initials with a controlled image asset when one exists.', 'Map it to the target avatar component. Replace the initials with a controlled image asset when one exists.'],
+  ['Show on hover and keyboard focus; never put required information only in a tooltip.', 'Show it on hover and on keyboard focus. Never put required information only in a tooltip.'],
+  ['Map to the target segmented control; use tabs instead when options switch whole panels.', 'Map it to the target segmented control. Use tabs instead when the options switch whole panels.']
+]);
+
+/** Puts Blueprint's text on one of its primitives; app notes move to implementationHints so nothing is lost. */
+function restoreBlueprintText(primitive: ReusableDefinition, text: BasePrimitiveText): { changed: boolean; movedNotes: number } {
+  const before = JSON.stringify(primitive);
+  const appNotes = (primitive.notes ?? []).filter(note => !text.notes.includes(note) && !RETIRED_STARTER_NOTES.has(note));
+  const hints = (primitive.implementationHints ?? []).map(hint => REWRITTEN_STARTER_HINTS.get(hint) ?? hint);
+  primitive.implementationHints = unique([...hints, ...appNotes]);
+  primitive.notes = [...text.notes];
+  primitive.description = text.description;
+  primitive.accessibility = text.accessibility;
+  for (const key of ['variants', 'sizes', 'states'] as const) {
+    for (const value of primitive[key].values) {
+      if (Object.hasOwn(text[key], value.id)) Object.assign(value, text[key][value.id]);
+    }
+  }
+  for (const slot of primitive.slots) {
+    if (Object.hasOwn(text.slots, slot.id)) Object.assign(slot, text.slots[slot.id]);
+  }
+  return { changed: JSON.stringify(primitive) !== before, movedNotes: appNotes.length };
 }
 
 /** Moves variants and states named like sizes, such as "compact", into sizes; @returns where placements of the moved values go. */

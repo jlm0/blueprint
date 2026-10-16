@@ -1,3 +1,4 @@
+import type { BasePrimitiveText } from './base-primitives';
 import type { Platform, ReusableAxis, ReusableAxisName, ReusableDefinition } from './types';
 
 export const REUSABLE_SCHEMA_VERSION = '2.0.0';
@@ -27,7 +28,8 @@ export const REUSABLE_LIMITS = {
   accessibility: 200,
   unsupportedReason: 120,
   groupName: 24,
-  groupDescription: 120
+  groupDescription: 120,
+  note: 200
 } as const;
 
 /** Value ids that name a step on a scale; they belong in sizes, never in variants or states. */
@@ -77,6 +79,41 @@ export const SINGLE_VALUE_DESCRIPTIONS: Record<ReusableAxisName, string> = {
   size: 'The only size.',
   state: 'The only state.'
 };
+
+export interface ReusableProseField {
+  /** Path below the reusable, such as "variants.primary.description" or "notes[0]". */
+  path: string;
+  text: string;
+  /** Blueprint writes the text of its own primitives; everything else is the app's to write. */
+  owner: 'blueprint' | 'app';
+}
+
+/** Every prose field of a reusable that agents read, in document order; skips fields that are not strings. */
+export function reusableProseFields(reusable: ReusableDefinition, blueprintText?: BasePrimitiveText): ReusableProseField[] {
+  const fields: ReusableProseField[] = [];
+  const add = (path: string, text: unknown, owner: ReusableProseField['owner'] = 'app'): void => {
+    if (typeof text === 'string' && text.trim()) fields.push({ path, text, owner });
+  };
+  add('description', reusable.description, blueprintText ? 'blueprint' : 'app');
+  for (const axis of REUSABLE_AXES) {
+    for (const value of listOf(reusable[axis.key]?.values)) {
+      add(`${axis.key}.${String(value.id)}.description`, value.description, blueprintText?.[axis.key][String(value.id)] ? 'blueprint' : 'app');
+    }
+  }
+  for (const slot of listOf(reusable.slots)) {
+    add(`slots.${String(slot.id)}.description`, slot.description, blueprintText?.slots[String(slot.id)] ? 'blueprint' : 'app');
+  }
+  listOf(reusable.uses).forEach((use, index) => add(`uses[${index}].reason`, use.reason));
+  listOf(reusable.unsupported).forEach((combination, index) => add(`unsupported[${index}].reason`, combination.reason));
+  add('accessibility', reusable.accessibility, blueprintText ? 'blueprint' : 'app');
+  listOf(reusable.notes).forEach((note, index) => add(`notes[${index}]`, note, blueprintText ? 'blueprint' : 'app'));
+  listOf(reusable.implementationHints).forEach((hint, index) => add(`implementationHints[${index}]`, hint));
+  return fields;
+}
+
+function listOf<T>(value: readonly T[] | undefined): T[] {
+  return Array.isArray(value) ? value.filter(item => item !== null && item !== undefined) : [];
+}
 
 export function axisIds(axis: ReusableAxis | undefined): string[] {
   return Array.isArray(axis?.values) ? axis.values.map(value => value.id) : [];

@@ -3,9 +3,10 @@
  *
  * Primitives are the building blocks every app shares, so every project carries
  * exactly this set: none removed and none added. Blueprint owns each one's name,
- * group, platforms, axis defaults, and the floor of variants, sizes, states, and
- * slots. An app restyles them through token values and may add values above the
- * floor, but an app-specific piece is a component built from primitives.
+ * group, platforms, axis defaults, the floor of variants, sizes, states, and
+ * slots, and the text that describes them (see base-primitive-text.ts). An app
+ * restyles them through token values and may add values above the floor, but an
+ * app-specific piece is a component built from primitives.
  */
 
 import type { Platform } from './types';
@@ -40,6 +41,22 @@ export interface BasePrimitiveContractEntry {
   sizes: BasePrimitiveAxisFloor;
   states: BasePrimitiveAxisFloor;
   slots: string[];
+}
+
+export interface BasePrimitiveNamedText {
+  name: string;
+  description: string;
+}
+
+/** Text Blueprint writes for a primitive, keyed by value and slot id; values an app adds carry its own text. */
+export interface BasePrimitiveText {
+  description: string;
+  accessibility: string;
+  notes: string[];
+  variants: Record<string, BasePrimitiveNamedText>;
+  sizes: Record<string, BasePrimitiveNamedText>;
+  states: Record<string, BasePrimitiveNamedText>;
+  slots: Record<string, BasePrimitiveNamedText>;
 }
 
 const EVERY_PLATFORM: Platform[] = ['web', 'mobile', 'desktop'];
@@ -410,5 +427,8 @@ export function primitiveOutsideSetMessage(id: string): string {
 }
 
 /** Shared wording for locked-base-set validation errors. */
+export const BASE_PRIMITIVE_TEXT_REASON =
+  'Blueprint writes the text of its own primitives, so every sidecar describes them the same way.';
+
 export const BASE_PRIMITIVE_LOCK_REASON =
   'The Blueprint primitive set is closed: it is themed through tokens, and app-specific pieces are components built from primitives.';

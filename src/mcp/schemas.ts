@@ -270,6 +270,18 @@ const designFindingSchema = z
   })
   .strict();
 
+const proseAdvisorySchema = z
+  .object({
+    boundaryId: z.string(),
+    kind: z.enum(['primitive', 'component']),
+    localId: z.string(),
+    field: z.string().describe('Path below the reusable, such as "description" or "states.loading.description".'),
+    rule: z.enum(['passive-voice', 'present-perfect', 'synonym-rotation']),
+    match: z.string(),
+    message: z.string()
+  })
+  .strict();
+
 const validationOutputBaseSchema = z.object({
   command: z.literal('validate'),
   project: z.string(),
@@ -278,6 +290,9 @@ const validationOutputBaseSchema = z.object({
   errors: z.array(z.string()),
   findings: z.array(designFindingSchema).describe(
     'Design findings the canvas marks on boundaries, each fixable in the source named by location. Strict validation rejects them.'
+  ),
+  prose: z.array(proseAdvisorySchema).describe(
+    'Wording advisories on the prose an app writes for its primitives and components. They never fail validation. Rewrite each one, unless the wording is deliberate, such as "selected" used as an adjective.'
   )
 });
 

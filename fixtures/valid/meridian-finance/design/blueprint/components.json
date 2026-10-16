@@ -254,7 +254,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "Static text read in order: the label, the figure with its cents, then the change and delta; nothing in it is interactive.",
+      "accessibility": "Static text read in order: the label, the figure with its cents, then the change and delta. Nothing in it is interactive.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -382,7 +382,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A figure whose plot is one image with a text summary of the trend; the range control is a radio group and the bars are hidden from assistive technology.",
+      "accessibility": "A figure whose plot is one image with a text summary of the trend. The range control is a radio group, and assistive technology skips the bars.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -531,7 +531,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A link whose name reads the merchant, context, amount, and date or pending badge; the monogram is an image named by the merchant.",
+      "accessibility": "A link whose name reads the merchant, context, amount, and date or pending badge. The monogram is an image named by the merchant.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -679,7 +679,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A link whose name reads the type, masked number, nickname, balance, and note; the check mark is decorative, so the host must expose selection.",
+      "accessibility": "A link whose name reads the type, masked number, nickname, balance, and note. The check mark is decorative, so the host must expose selection.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -820,7 +820,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A display of the entered amount rather than a native input: the label, amount, hint, and currency badge are read as text and the caret is hidden.",
+      "accessibility": "A display of the entered amount, not a native input. The label, amount, hint, and currency badge read as text, and the caret is hidden.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [
@@ -1123,7 +1123,7 @@
         "typography"
       ],
       "tokenRoles": {},
-      "accessibility": "A complementary landmark with a description list pairing each term, such as To or Fee, with its value; nothing in it is interactive.",
+      "accessibility": "A complementary landmark with a description list that pairs each term, such as To or Fee, with its value. Nothing in it is interactive.",
       "notes": [],
       "implementationHints": [],
       "implementationTargets": [

@@ -1,5 +1,15 @@
 import { slotContentAccepts, sourceSlotContents } from '../prototype/compiler';
-import { BASE_PRIMITIVE_LOCK_REASON, basePrimitive, PRIMITIVE_GROUPS, type BasePrimitiveAxisFloor } from './base-primitives';
+import { basePrimitiveText } from './base-primitive-text';
+import {
+  BASE_PRIMITIVE_LOCK_REASON,
+  BASE_PRIMITIVE_TEXT_REASON,
+  basePrimitive,
+  PRIMITIVE_GROUPS,
+  type BasePrimitiveAxisFloor,
+  type BasePrimitiveText
+} from './base-primitives';
+import { boundaryId } from './address';
+import { lintProse, lintSynonymRotation, type ProseAdvisoryRule } from './prose-lint';
 import {
   axisIds,
   COMPONENT_FILE_FIELDS,
@@ -19,7 +29,9 @@ import {
   REUSABLE_SLOT_FIELDS,
   REUSABLE_UNSUPPORTED_FIELDS,
   REUSABLE_USE_FIELDS,
+  reusableProseFields,
   rootAxisAttributes,
+  SINGLE_VALUE_DESCRIPTIONS,
   SIZE_VALUE_IDS,
   SLOT_CONTENT_ACCEPTS,
   toSentenceCase
@@ -53,7 +65,7 @@ interface ReusableContext {
   reusables: Map<string, ReusableDefinition>;
 }
 
-/** Checks every primitive and component against the shared reusable contract in docs/reusable-contract.md. */
+/** Checks every primitive and component against the shared reusable contract. */
 export function validateReusables(
   errors: string[],
   bundle: BlueprintProjectBundle,
@@ -91,6 +103,7 @@ function validateComponentGroups(errors: string[], groups: unknown): Set<string>
     checkId(errors, label, group.id);
     checkName(errors, `${label}.name`, group.name, REUSABLE_LIMITS.groupName);
     checkText(errors, `${label}.description`, group.description, REUSABLE_LIMITS.groupDescription, 'say in one line what belongs in the group');
+    checkProse(errors, `${label}.description`, group.description);
     if (typeof group.id === 'string') {
       if (ids.has(group.id)) errors.push(`${label} is declared twice. Fix: keep one entry per group id.`);
       ids.add(group.id);
@@ -103,7 +116,7 @@ function validateReusable(context: ReusableContext, kind: ReusableKind, item: un
   const { errors } = context;
   const label = isRecord(item) && typeof item.id === 'string' && item.id ? `${kind}.${item.id}` : `${kind}s[${index}]`;
   if (!isRecord(item)) {
-    errors.push(`${label} must be an object. Fix: write it in the reusable shape from docs/reusable-contract.md.`);
+    errors.push(`${label} must be an object. Fix: write it in the reusable shape that AGENTS.md describes.`);
     return;
   }
   const reusable = item as unknown as ReusableDefinition;
@@ -126,7 +139,7 @@ function validateReusable(context: ReusableContext, kind: ReusableKind, item: un
   validateSlots(context, kind, label, reusable, contract?.slots ?? []);
   validatePrototype(context, label, reusable.prototype);
   validateTokens(context, label, reusable);
-  checkText(errors, `${label}.accessibility`, reusable.accessibility, REUSABLE_LIMITS.accessibility, 'say in one sentence what role it has and how assistive technology announces it');
+  checkText(errors, `${label}.accessibility`, reusable.accessibility, REUSABLE_LIMITS.accessibility, 'say what role it has and how assistive technology announces it');
   for (const field of ['notes', 'implementationHints', 'styleRefs'] as const) {
     if (field in item && !isStringList(reusable[field])) {
       errors.push(`${label}.${field} must be a list of strings. Fix: write it as [] or ["…"].`);
@@ -140,6 +153,99 @@ function validateReusable(context: ReusableContext, kind: ReusableKind, item: un
   if ('prototypeOnly' in item && typeof reusable.prototypeOnly !== 'boolean') {
     errors.push(`${label}.prototypeOnly must be true or false. Fix: write false unless it never ships.`);
   }
+  for (const field of ['notes', 'implementationHints'] as const) {
+    if (!isStringList(reusable[field])) continue;
+    reusable[field].forEach((entry, entryIndex) => {
+      if (entry.length > REUSABLE_LIMITS.note) {
+        errors.push(`${label}.${field}[${entryIndex}] is ${entry.length} characters. Fix: shorten it to ${REUSABLE_LIMITS.note} or fewer, or split it into two entries.`);
+      }
+    });
+  }
+  const blueprintText = kind === 'primitive' ? basePrimitiveText(reusable.id) : undefined;
+  if (blueprintText) validateBlueprintText(errors, label, reusable, blueprintText);
+  for (const field of reusableProseFields(reusable, blueprintText)) {
+    if (field.owner === 'app') checkProse(errors, `${label}.${field.path}`, field.text);
+  }
+}
+
+/** A Blueprint primitive carries the text Blueprint writes for it, word for word. */
+function validateBlueprintText(errors: string[], label: string, reusable: ReusableDefinition, text: BasePrimitiveText): void {
+  const restore = `or run the migrate tool, which restores it. ${BASE_PRIMITIVE_TEXT_REASON}`;
+  for (const field of ['description', 'accessibility'] as const) {
+    if (typeof reusable[field] === 'string' && reusable[field] !== text[field]) {
+      errors.push(`${label}.${field} is not Blueprint's text. Fix: set it to "${text[field]}", ${restore}`);
+    }
+  }
+  if (isStringList(reusable.notes) && !sameList(reusable.notes, text.notes)) {
+    errors.push(
+      `${label}.notes are not Blueprint's notes. Fix: set them to ${text.notes.length > 0 ? `[${quoteList(text.notes)}]` : '[]'} and move app guidance to implementationHints, ${restore}`
+    );
+  }
+  const entries: Array<[string, unknown, Record<string, { name: string; description: string }>]> = [
+    ...REUSABLE_AXES.map(axis => [axis.key, isRecord(reusable[axis.key]) ? reusable[axis.key].values : undefined, text[axis.key]] as [string, unknown, BasePrimitiveText['slots']]),
+    ['slots', reusable.slots, text.slots]
+  ];
+  for (const [key, values, owned] of entries) {
+    for (const value of Array.isArray(values) ? values : []) {
+      if (!isRecord(value) || typeof value.id !== 'string' || !Object.hasOwn(owned, value.id)) continue;
+      const expected = owned[value.id];
+      for (const field of ['name', 'description'] as const) {
+        if (typeof value[field] === 'string' && value[field] !== expected[field]) {
+          errors.push(`${label}.${key}.${value.id}.${field} is not Blueprint's text. Fix: set it to "${expected[field]}", ${restore}`);
+        }
+      }
+    }
+  }
+}
+
+function checkProse(errors: string[], label: string, text: unknown): void {
+  if (typeof text !== 'string') return;
+  for (const issue of lintProse(text)) {
+    if (issue.level === 'error') errors.push(`${label} ${issue.message}`);
+  }
+}
+
+export interface ProseAdvisory {
+  boundaryId: string;
+  kind: ReusableKind;
+  localId: string;
+  field: string;
+  rule: ProseAdvisoryRule;
+  match: string;
+  message: string;
+}
+
+/** Wording heuristics on the prose an app writes for its reusables; they need a judgment call, so they never fail validation. */
+export function collectProseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
+  const projectId = bundle.manifest.project.id;
+  const advisories: ProseAdvisory[] = [];
+  for (const [kind, items] of [['primitive', bundle.primitives.primitives], ['component', bundle.components.components]] as const) {
+    for (const reusable of Array.isArray(items) ? items : []) {
+      if (!isRecord(reusable) || typeof reusable.id !== 'string') continue;
+      const fields = reusableProseFields(reusable, kind === 'primitive' ? basePrimitiveText(reusable.id) : undefined)
+        .filter(field => field.owner === 'app');
+      const advise = (field: string, issue: { rule: string; match: string; message: string }): void => {
+        advisories.push({
+          boundaryId: boundaryId(projectId, kind, reusable.id),
+          kind,
+          localId: reusable.id,
+          field,
+          rule: issue.rule as ProseAdvisoryRule,
+          match: issue.match,
+          message: `${kind}.${reusable.id}.${field} ${issue.message}`
+        });
+      };
+      for (const field of fields) {
+        for (const issue of lintProse(field.text)) {
+          if (issue.level === 'advisory') advise(field.path, issue);
+        }
+      }
+      for (const issue of lintSynonymRotation(fields.map(field => field.text))) {
+        advise(fields[issue.textIndex].path, issue);
+      }
+    }
+  }
+  return advisories;
 }
 
 function validateGroup(context: ReusableContext, kind: ReusableKind, label: string, reusable: ReusableDefinition, required: string | undefined): void {
@@ -276,6 +382,8 @@ function validateAxis(
       undescribed.push(String(value.id));
     } else if (value.description.length > REUSABLE_LIMITS.valueDescription) {
       errors.push(`${valueLabel}.description is ${value.description.length} characters. Fix: shorten it to ${REUSABLE_LIMITS.valueDescription} or fewer.`);
+    } else if (values.length > 1 && Object.values(SINGLE_VALUE_DESCRIPTIONS).includes(value.description)) {
+      errors.push(`${valueLabel}.description says "${value.description}", but ${axisLabel} has ${values.length} values. Fix: say what sets this ${noun} apart from the others.`);
     }
     if (typeof value.id === 'string') {
       if (ids.has(value.id)) errors.push(`${axisLabel} lists "${value.id}" twice. Fix: keep one entry per ${noun}.`);
@@ -509,6 +617,10 @@ function safeAccepts(content: string): string[] {
   } catch {
     return [];
   }
+}
+
+function sameList(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function sameSet(left: readonly string[], right: readonly string[]): boolean {

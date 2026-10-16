@@ -19,7 +19,8 @@
     "dist/site",
     "schema",
     "starter",
-    "README.md"
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
