@@ -232,7 +232,7 @@ describe('persistent screen exploration core', () => {
     legacy.flow = 'Phone';
     assert.equal(validateProject(bundle).ok, true, validateProject(bundle).errors.join('\n'));
 
-    bundle.screens.pages.push({ id: 'app', name: 'App' });
+    bundle.screens.pages.push({ id: 'app', name: 'App', description: 'Signed-in app screens.' });
     bundle.screens.screens.find(screen => screen.id === entry.screenId)!.page = 'app';
     const inspected = inspectScreenHistory(bundle, entry.screenId, entry.version);
     const restored = restoreScreenHistory(bundle, {

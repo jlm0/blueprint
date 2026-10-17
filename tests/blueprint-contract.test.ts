@@ -31,7 +31,7 @@ describe('Blueprint schema contract', () => {
     delete (section as Partial<ScreenSection>).id;
     const invalidResult = validateProject(invalid);
     assert.equal(invalidResult.ok, false);
-    assert.match(invalidResult.errors.join('\n'), /section\.id/);
+    assert.match(invalidResult.errors.join('\n'), /sections\[0\] is missing "id"\. Fix: add it/);
   });
 
   it('rejects sidecars missing the prototype host policy or prototype sources', async () => {
@@ -183,7 +183,7 @@ describe('Blueprint schema contract', () => {
     const [component, ungrouped] = bundle.components.components;
     assert.ok(screen && other && component && ungrouped);
 
-    bundle.screens.pages.push({ id: 'landing', name: 'Landing' });
+    bundle.screens.pages.push({ id: 'landing', name: 'Landing', description: 'Marketing pages.' });
     assert.equal(validateProject(bundle).ok, true, 'A declared page may start empty');
 
     screen.page = 'onboarding';
@@ -191,16 +191,16 @@ describe('Blueprint schema contract', () => {
     Object.assign(other, { flow: 'Legacy' });
     component.group = 'charts';
     (ungrouped as { group?: string }).group = undefined;
-    bundle.screens.pages.push({ id: 'landing', name: '' });
+    bundle.screens.pages.push({ id: 'landing', name: '', description: 'Marketing pages.' });
 
     const errors = validateProject(bundle).errors.join('\n');
-    assert.match(errors, new RegExp(`screen\\.${screen.id}\\.page "onboarding" is not declared; add it to screens\\.pages`));
-    assert.match(errors, new RegExp(`screen\\.${other.id}\\.page must be a non-empty string`));
-    assert.match(errors, new RegExp(`screen\\.${other.id}\\.flow was replaced by page`));
+    assert.match(errors, new RegExp(`screen\\.${screen.id}\\.page "onboarding" is not declared\\. Fix: add it to screens\\.pages`));
+    assert.match(errors, new RegExp(`screen\\.${other.id}\\.page is missing\\. Fix: set it to the id of a page`));
+    assert.match(errors, new RegExp(`screen\\.${other.id}\\.flow was replaced by page\\. Fix: run the migrate tool`));
     assert.match(errors, new RegExp(`component\\.${component.id}\\.group "charts" is not declared\\. Fix: add`));
     assert.match(errors, new RegExp(`component\\.${ungrouped.id}\\.group is missing\\. Fix: set it to a group declared in components\\.json`));
     assert.match(errors, /Duplicate id "landing" in screens\.pages/);
-    assert.match(errors, /screens\.page\.landing\.name must be a non-empty string/);
+    assert.match(errors, /screens\.page\.landing\.name is missing\. Fix: give it a short sentence-case name/);
   });
 });
 

@@ -1,3 +1,4 @@
+import { BLUEPRINT_SCHEMA_VERSION } from './schema-version';
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
@@ -184,7 +185,7 @@ function safePrototypeRef(sourceRef: string): string[] {
 
 function emptyExplorationFile(projectId: string): ExplorationFile {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     explorations: []
   };
@@ -192,7 +193,7 @@ function emptyExplorationFile(projectId: string): ExplorationFile {
 
 function emptyScreenHistoryFile(projectId: string): ScreenHistoryFile {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     entries: []
   };

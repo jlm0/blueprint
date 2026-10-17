@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "starter-app",
   "pages": [
     {
@@ -16,15 +16,16 @@
   "screens": [
     {
       "id": "home",
-      "name": "Mobile Base",
+      "name": "Mobile base",
       "description": "Empty mobile frame for new screen composition.",
       "framePresetId": "phone",
       "page": "mobile",
       "styleRefs": [],
+      "styleEvidence": [],
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [],
-      "sections": [],
+      "implementationTargets": [],
       "prototype": {
         "source": "prototype/screens/home.html",
         "styles": [
@@ -42,19 +43,21 @@
           }
         ],
         "renderedUses": []
-      }
+      },
+      "sections": []
     },
     {
       "id": "web-home",
-      "name": "Browser Base",
+      "name": "Browser base",
       "description": "Empty desktop browser frame for new screen composition.",
       "framePresetId": "desktop-web",
       "page": "web",
       "styleRefs": [],
+      "styleEvidence": [],
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [],
-      "sections": [],
+      "implementationTargets": [],
       "prototype": {
         "source": "prototype/screens/web-home.html",
         "styles": [
@@ -72,7 +75,8 @@
           }
         ],
         "renderedUses": []
-      }
+      },
+      "sections": []
     }
   ]
 }

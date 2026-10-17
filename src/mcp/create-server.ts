@@ -64,7 +64,7 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives and components share one reusable contract, described in the AGENTS.md of each sidecar; every validation error ends with "Fix:" and the exact change to make. When a tool reports an older schema, run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
+        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives, components, screens, and tokens have fixed shapes, described in the AGENTS.md of each sidecar; contract errors end with "Fix:" and the exact change to make. Every tool except migrate refuses a sidecar with a file on an older schema: run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
   const activeServeHandles = new Map<string, BlueprintServeHandle>();

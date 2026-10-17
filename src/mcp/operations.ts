@@ -20,12 +20,14 @@ import type {
   ScreenDefinition,
   ScreenHistoryEntry
 } from '../core/types';
+import type { BlueprintOutdatedFile, BlueprintProjectLoadError } from '../core/activity';
 import { boundaryId, parseBoundarySelector } from '../core/address';
 import { canvasLocationParams } from '../core/canvas-location';
 import { collectDesignFindings, type DesignFinding } from '../core/findings';
 import { loadProjectFromFs } from '../core/load';
 import { migrateProjectFiles } from '../core/migrate';
-import { assertCurrentReusableSchema, collectProseAdvisories, type ProseAdvisory } from '../core/reusable-validate';
+import { collectProseAdvisories, type ProseAdvisory } from '../core/prose-advisories';
+import { assertCurrentSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
 import {
   parseCanvasSelection,
   selectionReference,
@@ -292,7 +294,7 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
     dryRun: input.dryRun,
     fromVersion: migration.fromVersion,
     toVersion: migration.toVersion,
-    upToDate: migration.upToDate,
+    upToDate: migration.writes.size === 0,
     changes: migration.changes,
     files: [...migration.writes.keys()].sort(),
     validation
@@ -1128,7 +1130,7 @@ async function rewriteStarterProject(destination: string, projectId: string, nam
 
 async function loadCurrentProject(projectRoot: string): Promise<BlueprintProjectBundle> {
   const bundle = await loadProjectFromFs(projectRoot);
-  assertCurrentReusableSchema(bundle);
+  assertCurrentSchema(bundle);
   return bundle;
 }
 
@@ -1207,6 +1209,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
 
   let lastGoodBundle: Awaited<ReturnType<typeof loadProjectFromFs>> | undefined;
   let lastLoadError: string | undefined;
+  let lastOutdatedFiles: BlueprintOutdatedFile[] = [];
   let publishedFingerprint: string | undefined;
   let publishedError: string | undefined;
   let publishedRevision = randomUUID();
@@ -1226,19 +1229,25 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     return { revision: publishedRevision, projectValid: publishedError === undefined };
   };
 
-  const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string }> => {
+  const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string; outdatedFiles: BlueprintOutdatedFile[] }> => {
+    let outdatedFiles: BlueprintOutdatedFile[] = [];
     try {
       const bundle = await loadProjectFromFs(projectRoot);
+      outdatedFiles = fileSchemaVersions(bundle)
+        .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
+        .map(([file, version]) => ({ file, version: String(version) }));
       const validation = validateProject(bundle);
       if (!validation.ok) {
         throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
       }
       lastGoodBundle = bundle;
       lastLoadError = undefined;
-      return { bundle };
+      lastOutdatedFiles = [];
+      return { bundle, outdatedFiles };
     } catch (error) {
       lastLoadError = error instanceof Error ? error.message : String(error);
-      return { bundle: lastGoodBundle, error: lastLoadError };
+      lastOutdatedFiles = outdatedFiles;
+      return { bundle: lastGoodBundle, error: lastLoadError, outdatedFiles };
     }
   };
 
@@ -1432,11 +1441,11 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
       const snapshot = await readBundleSnapshot();
       if (!snapshot.bundle) {
         response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-        response.end(createServeErrorHtml(lastLoadError ?? 'Unable to load Blueprint project.'));
+        response.end(createServeErrorHtml(lastLoadError ?? 'Unable to load Blueprint project.', lastOutdatedFiles));
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error, canvasToken));
+      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error === undefined ? undefined : { message: snapshot.error, outdatedFiles: snapshot.outdatedFiles }, canvasToken));
       return;
     }
 
@@ -1489,6 +1498,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
             activityHub.publish('project-error', {
               version: 1,
               message,
+              outdatedFiles: snapshot.outdatedFiles,
               changedAt: new Date().toISOString()
             });
           }
@@ -1539,7 +1549,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
 function injectProjectBundle(
   indexHtml: string,
   bundle: Awaited<ReturnType<typeof loadProjectFromFs>>,
-  loadError: string | undefined,
+  loadError: BlueprintProjectLoadError | undefined,
   canvasToken: string
 ): string {
   const injection = [
@@ -1551,7 +1561,7 @@ function injectProjectBundle(
       selectionPath: BLUEPRINT_SELECTION_PATH,
       canvasToken
     })};`,
-    loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript({ message: loadError })};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
+    loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript(loadError)};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',
     '</script>'
   ].join('');
   return indexHtml.replace('<script type="module"', () => `${injection}<script type="module"`);
@@ -1564,9 +1574,37 @@ function serializeForInlineScript(value: unknown): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
-function createServeErrorHtml(message: string): string {
-  return `<!doctype html><html><head><meta charset="UTF-8"><title>Blueprint serve error</title></head><body><main id="blueprint-serve-error"><h1>Blueprint project error</h1><pre>${escapeHtml(message)}</pre></main></body></html>`;
+/** The page serve shows while the project has never loaded; it reloads once the project validates. */
+function createServeErrorHtml(message: string, outdatedFiles: BlueprintOutdatedFile[]): string {
+  const needsMigrate = outdatedFiles.length > 0;
+  const body = needsMigrate
+    ? [
+      '<h1>This sidecar needs migrate</h1>',
+      `<p>Blueprint now reads schema ${BLUEPRINT_SCHEMA_VERSION}, and these files use an older schema. Ask your agent to run the Blueprint migrate tool on this project, then fix what validate reports.</p>`,
+      `<ul>${outdatedFiles.map(({ file, version }) => `<li><code>${escapeHtml(file)}</code> is on schema ${escapeHtml(version)}.</li>`).join('')}</ul>`
+    ].join('')
+    : [
+      '<h1>Blueprint cannot load this sidecar</h1>',
+      '<p>Fix the errors below. Each one names the change to make.</p>',
+      `<pre>${escapeHtml(message)}</pre>`
+    ].join('');
+  const reload = `<script>new EventSource(${serializeForInlineScript(BLUEPRINT_ACTIVITY_STREAM_PATH)}).addEventListener('project-changed',()=>location.reload());</script>`;
+  return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${needsMigrate ? 'Blueprint: migrate this sidecar' : 'Blueprint project error'}</title><style>${SERVE_ERROR_CSS}</style></head><body><main id="blueprint-serve-error" data-reason="${needsMigrate ? 'migrate' : 'invalid'}"><p class="eyebrow">Blueprint</p>${body}<p class="hint">This page reloads by itself when the project is valid.</p></main>${reload}</body></html>`;
 }
+
+const SERVE_ERROR_CSS = [
+  'html{color-scheme:dark;background:#1e1e1e}',
+  'body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;box-sizing:border-box;font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ededed}',
+  'main{width:min(640px,100%);padding:28px 32px;border:1px solid color-mix(in srgb,#d7a760 58%,transparent);border-radius:8px;background:#262626}',
+  '[data-reason=invalid]{border-color:color-mix(in srgb,#e66b6b 62%,transparent)}',
+  '.eyebrow{margin:0 0 6px;color:#9a9a9a;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}',
+  'h1{margin:0 0 12px;font-size:20px;line-height:1.3}',
+  'p{margin:0 0 12px}',
+  'ul{margin:0 0 12px;padding-left:20px}',
+  'code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}',
+  'pre{margin:0 0 12px;padding:12px;max-height:50vh;overflow:auto;white-space:pre-wrap;border-radius:6px;background:#1e1e1e;color:#ededed}',
+  '.hint{margin:0;color:#9a9a9a;font-size:12px}'
+].join('');
 
 function watchBlueprintProject(projectRoot: string, onChange: (changedPath: string) => void): () => void {
   const watcher = watch(projectRoot, { recursive: true }, (_eventType, fileName) => {

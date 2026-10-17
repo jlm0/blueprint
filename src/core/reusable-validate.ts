@@ -8,15 +8,12 @@ import {
   type BasePrimitiveAxisFloor,
   type BasePrimitiveText
 } from './base-primitives';
-import { boundaryId } from './address';
-import { lintProse, lintSynonymRotation, type ProseAdvisoryRule } from './prose-lint';
+import { checkClosedObject, checkId, checkName, checkProse, checkText, isRecord, isStringList, quoteList } from './contract-checks';
 import {
   axisIds,
   COMPONENT_FILE_FIELDS,
   DECLARED_GROUP_FIELDS,
   isSlotReuseAccept,
-  isTitleCase,
-  KEBAB_ID_PATTERN,
   PLATFORMS,
   PRIMITIVE_FILE_FIELDS,
   REUSABLE_AXES,
@@ -25,7 +22,6 @@ import {
   REUSABLE_FIELDS,
   REUSABLE_LIMITS,
   REUSABLE_PROTOTYPE_FIELDS,
-  REUSABLE_SCHEMA_VERSION,
   REUSABLE_SLOT_FIELDS,
   REUSABLE_UNSUPPORTED_FIELDS,
   REUSABLE_USE_FIELDS,
@@ -33,28 +29,9 @@ import {
   rootAxisAttributes,
   SINGLE_VALUE_DESCRIPTIONS,
   SIZE_VALUE_IDS,
-  SLOT_CONTENT_ACCEPTS,
-  toSentenceCase
+  SLOT_CONTENT_ACCEPTS
 } from './reusable-contract';
 import type { BlueprintProjectBundle, Platform, ReusableDefinition, ReusableKind } from './types';
-
-/** Message when a project's reusable files predate the current schema; every other tool refuses it until it is migrated. */
-export function reusableSchemaVersionErrors(bundle: Pick<BlueprintProjectBundle, 'primitives' | 'components'>): string[] {
-  return ([['primitives.json', bundle.primitives?.schemaVersion], ['components.json', bundle.components?.schemaVersion]] as const)
-    .filter(([, version]) => version !== REUSABLE_SCHEMA_VERSION)
-    .map(([file, version]) => (
-      `${file} is on schema "${String(version)}", and Blueprint now reads "${REUSABLE_SCHEMA_VERSION}". ` +
-      'Fix: run the migrate tool on this project, then fix what validate reports.'
-    ));
-}
-
-/** @throws {Error} When the project still needs `migrate`. */
-export function assertCurrentReusableSchema(bundle: Pick<BlueprintProjectBundle, 'primitives' | 'components'>): void {
-  const errors = reusableSchemaVersionErrors(bundle);
-  if (errors.length > 0) {
-    throw new Error(errors.join('\n'));
-  }
-}
 
 interface ReusableContext {
   errors: string[];
@@ -196,56 +173,6 @@ function validateBlueprintText(errors: string[], label: string, reusable: Reusab
       }
     }
   }
-}
-
-function checkProse(errors: string[], label: string, text: unknown): void {
-  if (typeof text !== 'string') return;
-  for (const issue of lintProse(text)) {
-    if (issue.level === 'error') errors.push(`${label} ${issue.message}`);
-  }
-}
-
-export interface ProseAdvisory {
-  boundaryId: string;
-  kind: ReusableKind;
-  localId: string;
-  field: string;
-  rule: ProseAdvisoryRule;
-  match: string;
-  message: string;
-}
-
-/** Wording heuristics on the prose an app writes for its reusables; they need a judgment call, so they never fail validation. */
-export function collectProseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
-  const projectId = bundle.manifest.project.id;
-  const advisories: ProseAdvisory[] = [];
-  for (const [kind, items] of [['primitive', bundle.primitives.primitives], ['component', bundle.components.components]] as const) {
-    for (const reusable of Array.isArray(items) ? items : []) {
-      if (!isRecord(reusable) || typeof reusable.id !== 'string') continue;
-      const fields = reusableProseFields(reusable, kind === 'primitive' ? basePrimitiveText(reusable.id) : undefined)
-        .filter(field => field.owner === 'app');
-      const advise = (field: string, issue: { rule: string; match: string; message: string }): void => {
-        advisories.push({
-          boundaryId: boundaryId(projectId, kind, reusable.id),
-          kind,
-          localId: reusable.id,
-          field,
-          rule: issue.rule as ProseAdvisoryRule,
-          match: issue.match,
-          message: `${kind}.${reusable.id}.${field} ${issue.message}`
-        });
-      };
-      for (const field of fields) {
-        for (const issue of lintProse(field.text)) {
-          if (issue.level === 'advisory') advise(field.path, issue);
-        }
-      }
-      for (const issue of lintSynonymRotation(fields.map(field => field.text))) {
-        advise(fields[issue.textIndex].path, issue);
-      }
-    }
-  }
-  return advisories;
 }
 
 function validateGroup(context: ReusableContext, kind: ReusableKind, label: string, reusable: ReusableDefinition, required: string | undefined): void {
@@ -570,47 +497,6 @@ function validateTokens(context: ReusableContext, label: string, reusable: Reusa
   }
 }
 
-function checkClosedObject(errors: string[], label: string, value: unknown, fields: readonly string[]): void {
-  if (!isRecord(value)) return;
-  const unknown = Object.keys(value).filter(key => !fields.includes(key));
-  const missing = fields.filter(field => !(field in value));
-  if (unknown.length > 0) {
-    errors.push(`${label} has unknown field${unknown.length > 1 ? 's' : ''} ${quoteList(unknown)}. Fix: remove ${unknown.length > 1 ? 'them' : 'it'}; it carries only ${quoteList(fields)}.`);
-  }
-  if (missing.length > 0) {
-    errors.push(`${label} is missing ${quoteList(missing)}. Fix: add ${missing.length > 1 ? 'them' : 'it'}; every field is required.`);
-  }
-}
-
-function checkId(errors: string[], label: string, id: unknown): void {
-  if (typeof id !== 'string' || !KEBAB_ID_PATTERN.test(id)) {
-    errors.push(`${label}.id ${typeof id === 'string' ? `"${id}"` : 'is missing and'} is not kebab-case. Fix: use lowercase letters, digits, and single hyphens, such as "empty-state".`);
-  }
-}
-
-function checkName(errors: string[], label: string, name: unknown, limit: number): void {
-  if (typeof name !== 'string' || !name.trim()) {
-    errors.push(`${label} is missing. Fix: give it a short sentence-case name.`);
-    return;
-  }
-  if (name.length > limit) {
-    errors.push(`${label} "${name}" is ${name.length} characters. Fix: shorten it to ${limit} or fewer.`);
-  }
-  if (isTitleCase(name)) {
-    errors.push(`${label} "${name}" is in title case. Fix: write it in sentence case, "${toSentenceCase(name)}", keeping proper nouns capitalized.`);
-  }
-}
-
-function checkText(errors: string[], label: string, text: unknown, limit: number, purpose: string): void {
-  if (typeof text !== 'string' || !text.trim()) {
-    errors.push(`${label} is missing. Fix: ${purpose}, in ${limit} characters or fewer.`);
-    return;
-  }
-  if (text.length > limit) {
-    errors.push(`${label} is ${text.length} characters. Fix: shorten it to ${limit} or fewer.`);
-  }
-}
-
 function safeAccepts(content: string): string[] {
   try {
     return slotContentAccepts(content);
@@ -627,14 +513,3 @@ function sameSet(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every(value => right.includes(value));
 }
 
-function quoteList(values: readonly string[]): string {
-  return values.map(value => `"${value}"`).join(', ');
-}
-
-function isStringList(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(item => typeof item === 'string');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

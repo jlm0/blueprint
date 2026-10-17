@@ -21,7 +21,7 @@
       "type": "object",
       "required": ["schemaVersion", "project", "defaultBoardId", "boards", "framePresets", "prototypeHost"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "handoffContractVersion": { "type": "string" },
         "project": { "$ref": "#/$defs/project" },
         "defaultBoardId": { "type": "string" },
@@ -89,9 +89,10 @@
     },
     "tokenFile": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["schemaVersion", "projectId", "tokenGroups"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "tokenGroups": {
           "type": "array",
@@ -101,6 +102,7 @@
     },
     "tokenGroup": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["id", "name", "description", "styleRefs", "notes", "tokens"],
       "properties": {
         "id": { "type": "string" },
@@ -116,6 +118,7 @@
     },
     "designToken": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["id", "name", "type", "value", "description", "styleRef"],
       "properties": {
         "id": { "type": "string" },
@@ -147,7 +150,7 @@
       "type": "object",
       "required": ["schemaVersion", "projectId", "name", "marks"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "name": { "type": "string" },
         "tagline": { "type": "string" },
@@ -240,7 +243,8 @@
     },
     "declaredGroup": {
       "type": "object",
-      "required": ["id", "name"],
+      "additionalProperties": false,
+      "required": ["id", "name", "description"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -249,9 +253,10 @@
     },
     "screenFile": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["schemaVersion", "projectId", "pages", "screens"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "pages": {
           "type": "array",
@@ -279,7 +284,7 @@
       "type": "object",
       "required": ["schemaVersion", "projectId", "exploration"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "exploration": { "$ref": "#/$defs/exploration" }
       }
@@ -371,7 +376,7 @@
       "type": "object",
       "required": ["schemaVersion", "projectId", "entry"],
       "properties": {
-        "schemaVersion": { "type": "string" },
+        "schemaVersion": { "const": "2.0.0" },
         "projectId": { "type": "string" },
         "entry": { "$ref": "#/$defs/screenHistoryEntry" }
       }
@@ -437,6 +442,7 @@
     },
     "screen": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "id",
         "name",
@@ -444,9 +450,11 @@
         "framePresetId",
         "page",
         "styleRefs",
+        "styleEvidence",
         "notes",
         "prototypeOnly",
         "implementationHints",
+        "implementationTargets",
         "prototype",
         "sections"
       ],
@@ -482,6 +490,7 @@
     },
     "screenPrototype": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["source", "styles", "states", "assetRefs", "reviewConditions"],
       "properties": {
         "source": { "type": "string" },
@@ -530,7 +539,8 @@
     },
     "screenSection": {
       "type": "object",
-      "required": ["id", "name", "description", "styleRefs", "uses", "prototypeOnly", "notes", "implementationHints"],
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "styleRefs", "styleEvidence", "uses", "prototypeOnly", "notes", "implementationHints", "implementationTargets"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -555,6 +565,7 @@
     },
     "boundaryDependency": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["kind", "id", "reason"],
       "properties": {
         "kind": { "enum": ["token-group", "primitive", "component", "screen", "section"] },
@@ -565,7 +576,8 @@
     },
     "productionRelationship": {
       "type": "object",
-      "required": ["kind"],
+      "additionalProperties": false,
+      "required": ["kind", "notes"],
       "properties": {
         "kind": {
           "enum": [

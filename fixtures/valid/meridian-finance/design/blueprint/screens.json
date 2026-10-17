@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "meridian-finance",
   "pages": [
     {
@@ -48,7 +48,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/"
+        "routePath": "/",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -217,7 +218,7 @@
         },
         {
           "id": "position",
-          "name": "Cash Position",
+          "name": "Cash position",
           "description": "Total cash, money in and out over 30 days, and runway.",
           "styleRefs": [
             "prototype/screens/overview.css"
@@ -264,7 +265,7 @@
         },
         {
           "id": "cash-flow",
-          "name": "Cash Flow",
+          "name": "Cash flow",
           "description": "Twelve months of money in and out.",
           "styleRefs": [
             "prototype/screens/overview.css"
@@ -310,7 +311,7 @@
         },
         {
           "id": "activity",
-          "name": "Recent Activity",
+          "name": "Recent activity",
           "description": "The latest posted and pending transactions.",
           "styleRefs": [
             "prototype/screens/overview.css"
@@ -406,7 +407,7 @@
       "id": "overview-v2",
       "name": "Overview",
       "version": 2,
-      "description": "Editorial treasury overview: the total cash figure leads, with account allocation and runway beside it, then cash flow, recent activity, and the next seven days of payments.",
+      "description": "Editorial treasury overview. The total cash figure leads, with account allocation and runway beside it. Cash flow, recent activity, and the next seven days of payments follow.",
       "framePresetId": "desktop-web",
       "page": "overview",
       "styleRefs": [
@@ -422,11 +423,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "The hero figure is the page title; keep it the largest element and never truncate cents."
+        "The hero figure is the page title. Keep it the largest element, and never truncate cents."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/"
+        "routePath": "/",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -543,7 +545,7 @@
         },
         {
           "id": "position",
-          "name": "Cash Position",
+          "name": "Cash position",
           "description": "Total cash, change since the month began, allocation across accounts, and runway.",
           "styleRefs": [
             "prototype/screens/overview-v2.css"
@@ -592,7 +594,7 @@
         },
         {
           "id": "cash-flow",
-          "name": "Cash Flow",
+          "name": "Cash flow",
           "description": "Twelve months of money in and out.",
           "styleRefs": [
             "prototype/screens/overview-v2.css"
@@ -638,7 +640,7 @@
         },
         {
           "id": "activity",
-          "name": "Recent Activity",
+          "name": "Recent activity",
           "description": "The latest posted and pending transactions.",
           "styleRefs": [
             "prototype/screens/overview-v2.css"
@@ -684,7 +686,7 @@
         },
         {
           "id": "upcoming",
-          "name": "Upcoming Payments",
+          "name": "Upcoming payments",
           "description": "Payments scheduled in the next seven days, flagged when they need approval.",
           "styleRefs": [
             "prototype/screens/overview-v2.css"
@@ -749,11 +751,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "Rows use the app table-row primitive with its default slot; keep amounts right-aligned in tabular figures."
+        "Rows use the app table-row primitive with its default slot. Keep amounts right-aligned in tabular figures."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/transactions"
+        "routePath": "/transactions",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -987,7 +990,7 @@
         },
         {
           "id": "detail",
-          "name": "Transaction Detail",
+          "name": "Transaction detail",
           "description": "Amount, settlement timeline, references, category, and actions for the selected transaction.",
           "styleRefs": [
             "prototype/screens/transactions.css"
@@ -1056,7 +1059,7 @@
     {
       "id": "transfer",
       "name": "Send payment",
-      "description": "Focused three-step payment flow: choose source, recipient, amount, and rail; approve with a one-time code; then confirm. The error state blocks a payment larger than the source balance.",
+      "description": "Focused three-step payment flow. Choose the source, recipient, amount, and rail. Approve with a one-time code, then confirm. The error state blocks a payment larger than the source balance.",
       "framePresetId": "desktop-web",
       "page": "send-payment",
       "styleRefs": [
@@ -1072,11 +1075,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "Keep the summary in sync with every field; block review while the amount exceeds the source balance."
+        "Keep the summary in sync with every field. Block review while the amount exceeds the source balance."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/transfer"
+        "routePath": "/transfer",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -1207,7 +1211,7 @@
       "sections": [
         {
           "id": "flow-header",
-          "name": "Flow Header",
+          "name": "Flow header",
           "description": "Wordmark, step progress, and close command.",
           "styleRefs": [
             "prototype/screens/transfer.css"
@@ -1254,7 +1258,7 @@
         },
         {
           "id": "details",
-          "name": "Payment Details",
+          "name": "Payment details",
           "description": "Source account, recipient, amount, rail, and memo, with the overdraft alert in the error state.",
           "styleRefs": [
             "prototype/screens/transfer.css"
@@ -1561,7 +1565,8 @@
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/"
+        "routePath": "/",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -1827,7 +1832,7 @@
         },
         {
           "id": "navigation",
-          "name": "Tab Bar",
+          "name": "Tab bar",
           "description": "Persistent primary navigation with Home selected.",
           "styleRefs": [
             "prototype/screens/home.css"
@@ -1882,11 +1887,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "Keypad keys are native buttons by design; keep the primary command pinned above the home indicator."
+        "Keypad keys are native buttons by design. Keep the primary command pinned above the home indicator."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/transfer"
+        "routePath": "/transfer",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -2036,7 +2042,7 @@
         },
         {
           "id": "amount",
-          "name": "Amount Entry",
+          "name": "Amount entry",
           "description": "Recipient, amount, source account, rail, keypad, and review command.",
           "styleRefs": [
             "prototype/screens/transfer-mobile.css"

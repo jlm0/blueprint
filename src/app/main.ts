@@ -8,6 +8,7 @@ import {
   boundaryDisplayName,
   type BlueprintAgentActivityEvent,
   type BlueprintAgentActivityFocus,
+  type BlueprintOutdatedFile,
   type BlueprintProjectChangedEvent,
   type BlueprintProjectErrorEvent,
   type BlueprintProjectSnapshot
@@ -17,6 +18,7 @@ import { changedBoundaries } from '../core/change';
 import { parseOpaqueColor, relativeLuminance } from '../core/color';
 import { colorRolePairs, contrastRatio } from '../core/contrast-lint';
 import { collectDesignFindings, designFindingReference, type DesignFinding } from '../core/findings';
+import { BLUEPRINT_SCHEMA_VERSION } from '../core/schema-version';
 import { screenFrameLabel, screenRoutePath } from '../core/screen-naming';
 import {
   isSelectableBoundaryKind,
@@ -252,6 +254,13 @@ for (let index = 0; index < 9; index += 1) {
 const agentStatusLabel = el('span', 'bp-chrome-agent-status-label');
 agentStatus.append(agentStatusMark, agentStatusLabel);
 stage.append(agentStatus);
+
+const migrateNotice = el('div', 'bp-chrome-migrate-notice');
+migrateNotice.hidden = true;
+migrateNotice.setAttribute('role', 'alert');
+const migrateNoticeBody = el('p', 'bp-chrome-migrate-notice-body');
+migrateNotice.append(el('strong', 'bp-chrome-migrate-notice-title', 'This sidecar needs migrate'), migrateNoticeBody);
+stage.append(migrateNotice);
 
 const selectionBar = el('div', 'bp-chrome-selection');
 selectionBar.hidden = true;
@@ -3148,6 +3157,14 @@ function setAgentStatus(state: AgentStatusState, label: string): void {
   agentStatusLabel.textContent = label;
 }
 
+function showMigrateNotice(outdatedFiles: readonly BlueprintOutdatedFile[]): void {
+  migrateNotice.hidden = outdatedFiles.length === 0;
+  const files = outdatedFiles.map(outdated => outdated.file);
+  const named = files.length > 1 ? `${files.slice(0, -1).join(', ')} and ${files.at(-1)}` : files.join('');
+  migrateNoticeBody.textContent = `Blueprint now reads schema ${BLUEPRINT_SCHEMA_VERSION}, and ${named} ${files.length > 1 ? 'use' : 'uses'} an older schema. ` +
+    'Ask your agent to run the Blueprint migrate tool on this project. Until then, the canvas shows the last valid version.';
+}
+
 function connectBlueprintLiveRuntime(): void {
   const runtime = window.__BLUEPRINT_LIVE_RUNTIME__;
   if (!runtime || typeof EventSource === 'undefined') return;
@@ -3170,6 +3187,7 @@ function connectBlueprintLiveRuntime(): void {
       .then(() => {
         announcedRevisions.splice(0, announcedRevisions.indexOf(event.revision) + 1);
         projectErrorActive = false;
+        showMigrateNotice([]);
       })
       .catch(error => {
         setAgentStatus('waiting', errorMessage(error));
@@ -3183,9 +3201,13 @@ function connectBlueprintLiveRuntime(): void {
     const event = parseLiveEvent<BlueprintProjectErrorEvent>(message);
     projectErrorActive = true;
     if (activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
-    setAgentStatus('waiting', event?.message
-      ? 'Blueprint is waiting for the current edit to become valid'
-      : 'Blueprint could not apply the latest edit');
+    const outdatedFiles = event?.outdatedFiles ?? [];
+    showMigrateNotice(outdatedFiles);
+    setAgentStatus('waiting', outdatedFiles.length > 0
+      ? 'Blueprint is waiting for migrate'
+      : event?.message
+        ? 'Blueprint is waiting for the current edit to become valid'
+        : 'Blueprint could not apply the latest edit');
   });
 }
 
@@ -4210,6 +4232,7 @@ const requestedBoard = new URLSearchParams(location.search).get('board');
 const defaultBoard = isBoardId(project.manifest.defaultBoardId) ? project.manifest.defaultBoardId : 'primitives';
 showBoard(isBoardId(requestedBoard) ? requestedBoard : defaultBoard);
 focusRequestedScreen(requestedScreen?.id);
+showMigrateNotice(window.__BLUEPRINT_PROJECT_LOAD_ERROR__?.outdatedFiles ?? []);
 connectBlueprintLiveRuntime();
 
 function focusRequestedScreen(screenId: string | undefined): void {

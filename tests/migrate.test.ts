@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { BASE_PRIMITIVE_TEXT } from '../src/core/base-primitive-text';
 import { migrateProjectFiles, type MigrationInput } from '../src/core/migrate';
-import type { ComponentFile, PrimitiveFile } from '../src/core/types';
+import type { BlueprintManifest, ComponentFile, PrimitiveFile, ScreenFile, TokenFile } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
 const fixtureRoots = ['mira-ai', 'umbra-gaming', 'meridian-finance'].map(id => `fixtures/valid/${id}/design/blueprint`);
@@ -78,6 +78,45 @@ describe('Blueprint migrate', () => {
     const tier = (JSON.parse(output.writes.get('components.json')!) as ComponentFile).components.find(component => component.id === 'tier-card')!;
     assert.equal(tier.states.default, 'card');
     assert.doesNotMatch(output.writes.get('prototype/components/tier-card.html')!, /data-blueprint-state/);
+  });
+  it('moves flows to declared pages, fills the fixed screen and token shapes, and puts every file on the current schema', async () => {
+    const input = await migrationInput(fixtureRoots[0]);
+    const screens = JSON.parse(input.files.get('screens.json')!) as ScreenFile & Record<string, unknown>;
+    const [workspace, chat] = screens.screens;
+    delete (screens as Partial<ScreenFile>).pages;
+    for (const [screen, flow] of [[workspace, 'Onboarding'], [chat, 'home']] as const) {
+      delete (screen as { page?: string }).page;
+      Object.assign(screen, { flow });
+    }
+    delete (workspace as { styleEvidence?: unknown }).styleEvidence;
+    delete (workspace.sections[0] as { implementationTargets?: unknown }).implementationTargets;
+    workspace.sections[0].name = 'Thread Library';
+    const tokens = JSON.parse(input.files.get('tokens.json')!) as TokenFile;
+    delete (tokens.tokenGroups[0] as { notes?: unknown }).notes;
+    tokens.tokenGroups[0].name = 'Color Roles';
+    const manifest = JSON.parse(input.files.get('manifest.json')!) as BlueprintManifest;
+    for (const [file, value] of [['screens.json', screens], ['tokens.json', tokens], ['manifest.json', manifest]] as const) {
+      input.files.set(file, JSON.stringify({ ...value, schemaVersion: '1.0.0' }));
+    }
+
+    const output = migrateProjectFiles(input);
+    assert.equal(output.fromVersion, '1.0.0');
+    const migratedScreens = JSON.parse(output.writes.get('screens.json')!) as ScreenFile;
+    assert.equal(migratedScreens.schemaVersion, '2.0.0');
+    assert.deepEqual(migratedScreens.pages, [{ id: 'onboarding', name: 'Onboarding' }, { id: 'home', name: 'Home' }]);
+    assert.deepEqual(migratedScreens.screens.map(screen => [screen.page, 'flow' in screen]), [['onboarding', false], ['home', false]]);
+    assert.deepEqual(migratedScreens.screens[0].styleEvidence, []);
+    assert.deepEqual(migratedScreens.screens[0].sections[0].implementationTargets, []);
+    assert.equal(migratedScreens.screens[0].sections[0].name, 'Thread library');
+    const migratedTokens = JSON.parse(output.writes.get('tokens.json')!) as TokenFile;
+    assert.deepEqual(migratedTokens.tokenGroups[0].notes, []);
+    assert.equal(migratedTokens.tokenGroups[0].name, 'Color roles');
+    assert.equal((JSON.parse(output.writes.get('manifest.json')!) as BlueprintManifest).schemaVersion, '2.0.0');
+    assert.ok(output.changes.includes('screens.json: 2 screens moved from flow to page, and 2 new pages are declared: "onboarding", "home". Give each new page a description.'), output.changes.join('\n'));
+    assert.ok(output.changes.includes('manifest.json, tokens.json, screens.json: schemaVersion is now "2.0.0".'), output.changes.join('\n'));
+
+    for (const [file, content] of output.writes) input.files.set(file, content);
+    assert.equal(migrateProjectFiles(input).upToDate, true, 'a second run has nothing left to do');
   });
 });
 

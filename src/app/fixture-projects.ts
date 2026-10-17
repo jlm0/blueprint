@@ -1,5 +1,5 @@
 import { createConfiguredProjectBundle, createProjectBundle } from '../core/bundle';
-import type { BlueprintAgentActivityEvent } from '../core/activity';
+import type { BlueprintAgentActivityEvent, BlueprintProjectLoadError } from '../core/activity';
 import type { CanvasStyleEvidenceArtifact, ReviewManifest, VisibleBoundarySyncResult } from '../core/review';
 import type {
   BlueprintManifest,
@@ -192,6 +192,7 @@ declare global {
     __BLUEPRINT_REVIEW__?: CanvasReviewRuntimeState;
     __BLUEPRINT_LIVE_RUNTIME__?: { eventsPath: string; snapshotPath: string; selectionPath?: string; canvasToken?: string };
     __BLUEPRINT_AGENT_ACTIVITY__?: BlueprintAgentActivityEvent;
+    __BLUEPRINT_PROJECT_LOAD_ERROR__?: BlueprintProjectLoadError;
   }
 }
 

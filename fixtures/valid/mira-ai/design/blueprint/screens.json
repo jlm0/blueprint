@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "mira-ai",
   "pages": [
     {
@@ -37,7 +37,8 @@
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/threads/:threadId"
+        "routePath": "/threads/:threadId",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -148,7 +149,7 @@
       "sections": [
         {
           "id": "library",
-          "name": "Thread Library",
+          "name": "Thread library",
           "description": "Brand, new thread command, search, grouped threads, research quota, and account.",
           "styleRefs": [
             "prototype/screens/workspace.css"
@@ -235,7 +236,7 @@
         },
         {
           "id": "thread-header",
-          "name": "Thread Header",
+          "name": "Thread header",
           "description": "Breadcrumb title, model picker, and share command.",
           "styleRefs": [
             "prototype/screens/workspace.css"
@@ -350,7 +351,7 @@
         },
         {
           "id": "welcome",
-          "name": "New Thread",
+          "name": "New thread",
           "description": "Empty-state greeting, large composer, and three starter prompts.",
           "styleRefs": [
             "prototype/screens/workspace.css"
@@ -407,7 +408,7 @@
         },
         {
           "id": "composer",
-          "name": "Docked Composer",
+          "name": "Docked composer",
           "description": "Follow-up composer docked over the thread with the accuracy note.",
           "styleRefs": [
             "prototype/screens/workspace.css"
@@ -543,7 +544,8 @@
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/threads/:threadId"
+        "routePath": "/threads/:threadId",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -719,7 +721,7 @@
         },
         {
           "id": "welcome",
-          "name": "New Thread",
+          "name": "New thread",
           "description": "Greeting and starter prompts for an empty thread.",
           "styleRefs": [
             "prototype/screens/chat.css"

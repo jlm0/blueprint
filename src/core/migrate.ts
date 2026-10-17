@@ -1,17 +1,18 @@
 import { listUsePlacements, slotContentAccepts, sourceSlotContents } from '../prototype/compiler';
 import { basePrimitiveText } from './base-primitive-text';
 import { basePrimitive, type BasePrimitiveContractEntry, type BasePrimitiveText, type PrimitiveGroupId } from './base-primitives';
+import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from './migrate-shapes';
 import {
   humanizeId,
   PLATFORMS,
   REUSABLE_FIELDS,
-  REUSABLE_SCHEMA_VERSION,
   rootAxisValues,
   SINGLE_VALUE_DESCRIPTIONS,
   SIZE_VALUE_IDS,
   stripRootAxisAttributes,
   toSentenceCase
 } from './reusable-contract';
+import { BLUEPRINT_SCHEMA_VERSION, MIGRATABLE_SCHEMA_VERSIONS, VERSIONED_FILES } from './schema-version';
 import type {
   ComponentFile,
   DeclaredGroup,
@@ -84,34 +85,66 @@ interface PlacementRemap {
 }
 
 /**
- * Upgrades a v1 project to the reusable contract without touching the disk.
+ * Upgrades a project to the current schema without touching the disk.
  * Applies every mechanical change; judgment calls are left for validation to report.
  *
- * @throws {Error} When primitives.json or components.json is missing or on an unknown schema version.
+ * @throws {Error} When a structured file is missing or on a schema version migrate does not know.
  */
 export function migrateProjectFiles(input: MigrationInput): MigrationOutput {
-  const primitivesFile = parseJsonFile(input.files, 'primitives.json');
-  const componentsFile = parseJsonFile(input.files, 'components.json');
-  const fromVersion = String(primitivesFile.schemaVersion ?? '');
-  const componentsVersion = String(componentsFile.schemaVersion ?? '');
-  for (const [file, version] of [['primitives.json', fromVersion], ['components.json', componentsVersion]]) {
-    if (version !== '1.0.0' && version !== REUSABLE_SCHEMA_VERSION) {
+  const versions = new Map<string, string>();
+  for (const file of VERSIONED_FILES) {
+    if (file === 'brand.json' && !input.files.has(file)) continue;
+    const version = String(parseJsonFile(input.files, file).schemaVersion ?? '');
+    if (!MIGRATABLE_SCHEMA_VERSIONS.has(version)) {
       throw new Error(`${file} is on schema "${version}", which migrate does not know how to upgrade.`);
     }
+    versions.set(file, version);
   }
+  const fromVersion = [...versions.values()].find(version => version !== BLUEPRINT_SCHEMA_VERSION) ?? BLUEPRINT_SCHEMA_VERSION;
+  const primitivesFile = parseJsonFile(input.files, 'primitives.json');
+  const componentsFile = parseJsonFile(input.files, 'components.json');
 
   const writes = new Map<string, string>();
   const changes: string[] = [];
-  const current = fromVersion === REUSABLE_SCHEMA_VERSION && componentsVersion === REUSABLE_SCHEMA_VERSION
+  const current = versions.get('primitives.json') === BLUEPRINT_SCHEMA_VERSION && versions.get('components.json') === BLUEPRINT_SCHEMA_VERSION
     ? { primitiveFile: primitivesFile as unknown as PrimitiveFile, componentFile: componentsFile as unknown as ComponentFile }
     : upgradeFromV1(input, primitivesFile, componentsFile, writes, changes);
   normalizeProject(input, current.primitiveFile, current.componentFile, writes, changes);
+  normalizeScreenShapes(input.files, writes, changes);
+  normalizeTokenShapes(input.files, writes, changes);
   for (const [file, value] of [['primitives.json', current.primitiveFile], ['components.json', current.componentFile]] as const) {
     const before = input.files.get(file);
     if (before === undefined || JSON.stringify(JSON.parse(before)) !== JSON.stringify(value)) writes.set(file, serializeJson(value));
     else writes.delete(file);
   }
-  return { fromVersion, toVersion: REUSABLE_SCHEMA_VERSION, upToDate: writes.size === 0, writes, changes };
+  setSchemaVersions(input, writes, changes);
+  return { fromVersion, toVersion: BLUEPRINT_SCHEMA_VERSION, upToDate: writes.size === 0, writes, changes };
+}
+
+/** Every structured file and saved record carries the current schema version. */
+function setSchemaVersions(input: MigrationInput, writes: Map<string, string>, changes: string[]): void {
+  const bumped: string[] = [];
+  let records = 0;
+  const files = [...new Set([...input.files.keys(), ...writes.keys()])];
+  const targets = [
+    ...VERSIONED_FILES.filter(file => files.includes(file)),
+    ...files.filter(file => /^(explorations|history)\/[^/]+\.json$/.test(file)).sort()
+  ];
+  for (const file of targets) {
+    const record = JSON.parse(writes.get(file) ?? input.files.get(file)!) as RawObject;
+    if (record.schemaVersion === BLUEPRINT_SCHEMA_VERSION) continue;
+    writes.set(file, serializeJson('schemaVersion' in record
+      ? { ...record, schemaVersion: BLUEPRINT_SCHEMA_VERSION }
+      : { schemaVersion: BLUEPRINT_SCHEMA_VERSION, ...record }));
+    if ((VERSIONED_FILES as readonly string[]).includes(file)) bumped.push(file);
+    else records += 1;
+  }
+  if (bumped.length > 0) {
+    changes.push(`${bumped.join(', ')}: schemaVersion is now "${BLUEPRINT_SCHEMA_VERSION}".`);
+  }
+  if (records > 0) {
+    changes.push(`explorations and history: ${records} saved record${records > 1 ? 's' : ''} now carry schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`);
+  }
 }
 
 function upgradeFromV1(
@@ -196,12 +229,12 @@ function upgradeFromV1(
   );
 
   const primitiveFile: PrimitiveFile = {
-    schemaVersion: REUSABLE_SCHEMA_VERSION,
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId: String(primitivesFile.projectId ?? ''),
     primitives
   };
   const componentFile: ComponentFile = {
-    schemaVersion: REUSABLE_SCHEMA_VERSION,
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId: String(componentsFile.projectId ?? ''),
     groups: asArray(componentsFile.groups ?? componentsFile.sections).map(asObject).map(migrateDeclaredGroup),
     components
@@ -277,6 +310,10 @@ function normalizeProject(
   if (movedNotes > 0) {
     changes.push(`primitives.json: moved ${movedNotes} app note${movedNotes > 1 ? 's' : ''} on Blueprint primitives to implementationHints.`);
   }
+
+  const renamed = { renamed: [] as string[] };
+  for (const item of [...componentFile.groups, ...componentFile.components]) sentenceCaseName(item as unknown as RawObject, renamed);
+  reportNames(changes, 'components.json', renamed);
 
   if (input.files.has('AGENTS.md') && currentText('AGENTS.md') !== input.starterAgents) {
     writes.set('AGENTS.md', input.starterAgents);

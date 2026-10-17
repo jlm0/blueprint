@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "meridian-finance",
   "entry": {
     "screenId": "home",
@@ -29,7 +29,8 @@
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/"
+        "routePath": "/",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -295,7 +296,7 @@
         },
         {
           "id": "navigation",
-          "name": "Tab Bar",
+          "name": "Tab bar",
           "description": "Persistent primary navigation with Home selected.",
           "styleRefs": [
             "prototype/screens/home.css"

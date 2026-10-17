@@ -86,7 +86,7 @@ const OPENERS = /^["'“‘([*_]+/;
 const ABBREVIATIONS = new Set(['vs.', 'cf.', 'approx.', 'mr.', 'mrs.', 'ms.', 'dr.', 'fig.', 'no.']);
 const DOTTED_ABBREVIATION = /^(?:[a-z]\.){2,}$/i;
 
-/** Checks one prose field; synonym rotation spans several fields, so it is checked by lintProseSet. */
+/** Checks one prose field; synonym rotation spans several fields, so lintSynonymRotation checks it. */
 export function lintProse(text: string): ProseIssue[] {
   const issues: ProseIssue[] = [];
   if (/[\r\n]/.test(text)) {
@@ -116,8 +116,8 @@ export function lintProse(text: string): ProseIssue[] {
   return issues;
 }
 
-/** Synonym rotation across the prose of one reusable: each later word of a group is flagged against the first. */
-export function lintSynonymRotation(texts: readonly string[]): Array<ProseIssue & { textIndex: number }> {
+/** Synonym rotation across the prose of one boundary, such as a reusable or a screen: each later word of a group is flagged against the first. */
+export function lintSynonymRotation(texts: readonly string[], owner = 'reusable'): Array<ProseIssue & { textIndex: number }> {
   const issues: Array<ProseIssue & { textIndex: number }> = [];
   for (const group of SYNONYM_GROUPS) {
     const present: Array<{ word: string; textIndex: number; offset: number; match: string }> = [];
@@ -139,7 +139,7 @@ export function lintSynonymRotation(texts: readonly string[]): Array<ProseIssue 
         rule: 'synonym-rotation',
         level: 'advisory',
         match: later.match,
-        message: `uses "${later.word}" where other text on this reusable uses "${first.word}" for what may be the same action. Pick one word and use it every time.`,
+        message: `uses "${later.word}" where other text on this ${owner} uses "${first.word}" for what may be the same action. Pick one word and use it every time.`,
         textIndex: later.textIndex
       });
     }
@@ -154,6 +154,10 @@ function sentenceFormMessage(text: string): string {
   const label = /^([a-z][\w-]*):\s/.exec(text);
   if (label) {
     return `starts with the id "${label[1]}" outside backticks. Fix: write it as "\`${label[1]}\`: …", start the rest with a capital letter, and end with a period.`;
+  }
+  const leadingId = /^([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\s/.exec(text);
+  if (leadingId) {
+    return `starts with the id "${leadingId[1]}" outside backticks. Fix: write it as "\`${leadingId[1]}\` …" and end it with a period.`;
   }
   return 'is not written as sentences. Fix: start with a capital letter and end with a period.';
 }

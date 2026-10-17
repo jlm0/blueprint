@@ -15,11 +15,11 @@ describe('Blueprint screen frame naming', () => {
     assert.ok(screen);
 
     assert.equal(screenRoutePath(screen), '/');
-    assert.equal(screenFrameLabel(screen), 'Root · Season Hub');
+    assert.equal(screenFrameLabel(screen), 'Root · Season hub');
 
     const versioned = structuredClone(screen);
     versioned.version = 2;
-    assert.equal(screenFrameLabel(versioned), 'Root · Season Hub · V2');
+    assert.equal(screenFrameLabel(versioned), 'Root · Season hub · V2');
 
     const savings = structuredClone(screen);
     savings.name = 'Move money';
@@ -29,7 +29,7 @@ describe('Blueprint screen frame naming', () => {
     const fallback = structuredClone(screen);
     fallback.id = 'web-home';
     delete fallback.productionRelationship;
-    assert.equal(screenFrameLabel(fallback), 'Web Home · Season Hub');
+    assert.equal(screenFrameLabel(fallback), 'Web Home · Season hub');
   });
 
   it('publishes the optional positive integer version in the screen JSON schema', async () => {

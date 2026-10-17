@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "meridian-finance",
   "exploration": {
     "id": "home-balance-treatment",
@@ -10,7 +10,7 @@
       "screenId": "home",
       "state": "default",
       "framePresetId": "phone",
-      "baseDigest": "2bdd4becd0080e30c8f45486e1d42137d1b5179310775d0ec7de7765286d78b4",
+      "baseDigest": "6156bc0a8233e67a6439ea71c877e76bf6a9e041fd00c54bd5cae18da170a387",
       "baseline": {
         "screen": {
           "id": "home",
@@ -35,7 +35,8 @@
           ],
           "productionRelationship": {
             "kind": "new-route",
-            "routePath": "/"
+            "routePath": "/",
+            "notes": []
           },
           "implementationTargets": [
             {
@@ -301,7 +302,7 @@
             },
             {
               "id": "navigation",
-              "name": "Tab Bar",
+              "name": "Tab bar",
               "description": "Persistent primary navigation with Home selected.",
               "styleRefs": [
                 "prototype/screens/home.css"

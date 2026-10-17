@@ -1,8 +1,6 @@
 import type { BasePrimitiveText } from './base-primitives';
 import type { Platform, ReusableAxis, ReusableAxisName, ReusableDefinition } from './types';
 
-export const REUSABLE_SCHEMA_VERSION = '2.0.0';
-
 export const PLATFORMS: readonly Platform[] = ['web', 'mobile', 'desktop'];
 
 export const PLATFORM_LABELS: Record<Platform, string> = {

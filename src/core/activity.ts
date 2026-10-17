@@ -33,9 +33,21 @@ export interface BlueprintProjectChangedEvent {
   changedPaths: string[];
 }
 
-export interface BlueprintProjectErrorEvent {
-  version: 1;
+/** A structured file on an older schema, which keeps the project from loading until `migrate` runs. */
+export interface BlueprintOutdatedFile {
+  file: string;
+  version: string;
+}
+
+/** Why serve could not load the project, injected into the canvas page as `__BLUEPRINT_PROJECT_LOAD_ERROR__`. */
+export interface BlueprintProjectLoadError {
   message: string;
+  /** Empty unless the project needs `migrate`. */
+  outdatedFiles: BlueprintOutdatedFile[];
+}
+
+export interface BlueprintProjectErrorEvent extends BlueprintProjectLoadError {
+  version: 1;
   changedAt: string;
 }
 

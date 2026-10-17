@@ -10,6 +10,7 @@ import {
   createProjectBundle
 } from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
+import { BLUEPRINT_SCHEMA_VERSION } from './schema-version';
 import { explorationRecordRef, historyRecordRef } from './storage-records';
 import type {
   BlueprintManifest,
@@ -106,7 +107,7 @@ async function readExplorationCollection(
     byId.set(record.exploration.id, record.exploration);
   }
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     explorations: [...byId.values()].sort((left, right) => left.id.localeCompare(right.id))
   };
@@ -137,7 +138,7 @@ async function readHistoryCollection(
     entries.push(record.entry);
   }
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     entries: entries.sort((left, right) => (
       left.screenId.localeCompare(right.screenId) || left.version - right.version

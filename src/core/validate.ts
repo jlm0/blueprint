@@ -3,7 +3,6 @@ import type {
   BoardDefinition,
   BoundaryDependency,
   BrandMark,
-  DeclaredGroup,
   ExplorationDefinition,
   ExplorationPrototypeSource,
   FramePreset,
@@ -25,7 +24,10 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
-import { reusableSchemaVersionErrors, validateReusables } from './reusable-validate';
+import { validateReusables } from './reusable-validate';
+import { validateScreenContract } from './screen-contract';
+import { schemaVersionErrors } from './schema-version';
+import { validateTokenContract } from './token-contract';
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
@@ -39,7 +41,7 @@ import { storageRecordSegment } from './storage-records';
 const supportedHandoffContractVersion = '1.0.0';
 
 export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
-  const schemaErrors = reusableSchemaVersionErrors(bundle);
+  const schemaErrors = schemaVersionErrors(bundle);
   if (schemaErrors.length > 0) {
     return { ok: false, errors: schemaErrors };
   }
@@ -81,17 +83,19 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   const framePresetIds = collectIds(errors, 'manifest.framePresets', bundle.manifest.framePresets, framePreset => validateFramePreset(errors, framePreset));
+  validateTokenContract(errors, bundle.tokens);
   const tokenGroupIds = collectIds(errors, 'tokens.tokenGroups', bundle.tokens.tokenGroups, group => validateTokenGroup(errors, group));
   const primitiveIds = collectIds(errors, 'primitives.primitives', bundle.primitives.primitives, () => {});
   const tokenIds = collectTokenIds(bundle.tokens.tokenGroups);
   const componentIds = collectIds(errors, 'components.components', bundle.components.components, () => {});
   validateReusables(errors, bundle, tokenGroupIds, tokenIds);
 
-  const pageIds = collectIds(errors, 'screens.pages', bundle.screens.pages, page => validateDeclaredGroup(errors, 'screens.page', page));
+  validateScreenContract(errors, bundle.screens);
+  const pageIds = collectIds(errors, 'screens.pages', Array.isArray(bundle.screens.pages) ? bundle.screens.pages : [], () => {});
   const screenIds = collectIds(errors, 'screens.screens', bundle.screens.screens, screen => {
     validateScreen(errors, screen, framePresetIds, primitiveIds, componentIds);
     if (screen.page && !pageIds.has(screen.page)) {
-      errors.push(`screen.${screen.id}.page "${screen.page}" is not declared; add it to screens.pages before using it.`);
+      errors.push(`screen.${screen.id}.page "${screen.page}" is not declared. Fix: add it to screens.pages, or set page to a declared id${pageIds.size ? `: ${[...pageIds].map(id => `"${id}"`).join(', ')}` : ''}.`);
     }
   });
   validateScreenVersions(errors, bundle.screens.screens);
@@ -440,20 +444,16 @@ function validateFramePreset(errors: string[], framePreset: FramePreset): void {
 }
 
 function validateTokenGroup(errors: string[], group: TokenGroup): void {
-  requireString(errors, 'tokenGroup.id', group.id);
-  requireString(errors, `tokenGroup.${group.id}.name`, group.name);
-  requireArray(errors, `tokenGroup.${group.id}.tokens`, group.tokens);
-
+  if (!Array.isArray(group.tokens)) {
+    errors.push(`tokenGroup.${group.id}.tokens must be a list. Fix: write each token as { "id", "name", "type", "value", "description", "styleRef" }.`);
+    return;
+  }
   const tokenIds = new Set<string>();
-  for (const token of group.tokens ?? []) {
-    requireString(errors, `tokenGroup.${group.id}.token.id`, token.id);
-    requireString(errors, `tokenGroup.${group.id}.token.${token.id}.type`, token.type);
-    requireString(errors, `tokenGroup.${group.id}.token.${token.id}.value`, token.value);
-    requireString(errors, `tokenGroup.${group.id}.token.${token.id}.styleRef`, token.styleRef);
-    if (tokenIds.has(token.id)) {
-      errors.push(`Duplicate token id "${group.id}.${token.id}".`);
+  for (const token of group.tokens) {
+    if (tokenIds.has(token?.id)) {
+      errors.push(`tokenGroup.${group.id}.token.${token.id} is declared twice. Fix: keep one token per id in the group.`);
     }
-    tokenIds.add(token.id);
+    tokenIds.add(token?.id);
   }
 }
 
@@ -571,14 +571,6 @@ function requireAxis(errors: string[], label: string, value: unknown): void {
   }
 }
 
-function validateDeclaredGroup(errors: string[], label: string, group: DeclaredGroup): void {
-  requireString(errors, `${label}.id`, group.id);
-  requireString(errors, `${label}.${group.id}.name`, group.name);
-  if (group.description !== undefined && typeof group.description !== 'string') {
-    errors.push(`${label}.${group.id}.description must be a string.`);
-  }
-}
-
 function validateScreen(
   errors: string[],
   screen: ScreenDefinition,
@@ -587,35 +579,40 @@ function validateScreen(
   componentIds: Set<string>,
   historySnapshot = false
 ): void {
-  requireString(errors, 'screen.id', screen.id);
-  requireString(errors, `screen.${screen.id}.name`, screen.name);
-  if (screen.version !== undefined && (!Number.isSafeInteger(screen.version) || screen.version < 1)) {
-    errors.push(`screen.${screen.id}.version must be a positive integer.`);
+  if (historySnapshot) {
+    requireString(errors, 'screen.id', screen.id);
+    requireString(errors, `screen.${screen.id}.name`, screen.name);
+    requireArray(errors, `screen.${screen.id}.sections`, screen.sections);
   }
-  requireString(errors, `screen.${screen.id}.framePresetId`, screen.framePresetId);
+  if (screen.version !== undefined && (!Number.isSafeInteger(screen.version) || screen.version < 1)) {
+    errors.push(`screen.${screen.id}.version must be a positive integer. Fix: set it to 1 or higher, or remove it when the route and name are unique.`);
+  }
   if (!historySnapshot) {
-    requireString(errors, `screen.${screen.id}.page`, screen.page);
+    if (typeof screen.page !== 'string' || !screen.page) {
+      errors.push(`screen.${screen.id}.page is missing. Fix: set it to the id of a page in screens.pages.`);
+    }
     if ('flow' in screen) {
-      errors.push(`screen.${screen.id}.flow was replaced by page; declare the page in screens.pages and reference its id.`);
+      errors.push(`screen.${screen.id}.flow was replaced by page. Fix: run the migrate tool, which declares a page for each flow, or declare the page in screens.pages and set page to its id.`);
     }
   }
-  requireArray(errors, `screen.${screen.id}.sections`, screen.sections);
 
   if (!framePresetIds.has(screen.framePresetId)) {
-    errors.push(`screen.${screen.id}.framePresetId references missing frame preset "${screen.framePresetId}".`);
+    errors.push(`screen.${screen.id}.framePresetId references missing frame preset "${String(screen.framePresetId)}". Fix: set it to a frame preset id in manifest.framePresets: ${[...framePresetIds].map(id => `"${id}"`).join(', ')}.`);
   }
 
-  collectIds(errors, `screen.${screen.id}.sections`, screen.sections, section => {
-    requireString(errors, `screen.${screen.id}.section.id`, section.id);
-    requireString(errors, `screen.${screen.id}.section.${section.id}.name`, section.name);
-    requireArray(errors, `screen.${screen.id}.section.${section.id}.uses`, section.uses);
+  collectIds(errors, `screen.${screen.id}.sections`, Array.isArray(screen.sections) ? screen.sections : [], section => {
+    if (historySnapshot) {
+      requireString(errors, `screen.${screen.id}.section.id`, section.id);
+      requireString(errors, `screen.${screen.id}.section.${section.id}.name`, section.name);
+      requireArray(errors, `screen.${screen.id}.section.${section.id}.uses`, section.uses);
+    }
 
-    for (const dependency of section.uses ?? []) {
+    for (const dependency of historySnapshot && Array.isArray(section.uses) ? section.uses : []) {
       if (dependency.kind === 'primitive' && !primitiveIds.has(dependency.id)) {
-        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing primitive "${dependency.id}".`);
+        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing primitive "${dependency.id}". Fix: use a primitive id from primitives.json, or remove the use.`);
       }
       if (dependency.kind === 'component' && !componentIds.has(dependency.id)) {
-        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing component "${dependency.id}".`);
+        errors.push(`screen.${screen.id}.section.${section.id}.uses references missing component "${dependency.id}". Fix: use a component id from components.json, or remove the use.`);
       }
     }
   });
@@ -991,10 +988,6 @@ function validateDependency(
     sectionIds: Set<string>;
   }
 ): void {
-  requireString(errors, `${path}.kind`, dependency.kind);
-  requireString(errors, `${path}.id`, dependency.id);
-  requireString(errors, `${path}.reason`, dependency.reason);
-
   const map = {
     'token-group': known.tokenGroupIds,
     primitive: known.primitiveIds,
@@ -1004,11 +997,11 @@ function validateDependency(
   } as const;
 
   if (!(dependency.kind in map)) {
-    errors.push(`${path} has unsupported dependency kind "${String(dependency.kind)}".`);
+    errors.push(`${path} has unsupported dependency kind "${String(dependency.kind)}". Fix: set kind to one of ${Object.keys(map).map(kind => `"${kind}"`).join(', ')}.`);
     return;
   }
   if (!map[dependency.kind].has(dependency.id)) {
-    errors.push(`${path} references missing ${dependency.kind} "${dependency.id}".`);
+    errors.push(`${path} references missing ${dependency.kind} "${String(dependency.id)}". Fix: use the id of a ${dependency.kind} the project declares, or remove the use.`);
   }
 }
 
@@ -1365,7 +1358,7 @@ function collectIds<T extends { id: string }>(
       continue;
     }
     if (ids.has(item.id)) {
-      errors.push(`Duplicate id "${item.id}" in ${label}.`);
+      errors.push(`Duplicate id "${item.id}" in ${label}. Fix: give each entry its own id.`);
     }
     ids.add(item.id);
   }

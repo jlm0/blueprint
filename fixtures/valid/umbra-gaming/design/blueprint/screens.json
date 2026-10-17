@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "umbra-gaming",
   "pages": [
     {
@@ -16,8 +16,8 @@
   "screens": [
     {
       "id": "launch",
-      "name": "Season Launch",
-      "description": "Season 04 launch page: cinematic eclipse hero with the season name as a giant horizon wordmark, a highlight ticker, modes bento with the trailer, editions, and patch notes.",
+      "name": "Season launch",
+      "description": "Season 04 launch page. A cinematic eclipse hero carries the season name as a giant horizon wordmark. A highlight ticker, a modes bento with the trailer, editions, and patch notes follow.",
       "framePresetId": "desktop-web-page",
       "page": "landing",
       "styleRefs": [
@@ -35,11 +35,12 @@
       ],
       "prototypeOnly": false,
       "implementationHints": [
-        "Keep the season wordmark as real text so it localizes; the fade is a background-clip gradient."
+        "Keep the season wordmark as real text so it localizes. The fade is a background-clip gradient."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/season/eclipse"
+        "routePath": "/season/eclipse",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -122,7 +123,7 @@
       "sections": [
         {
           "id": "nav",
-          "name": "Site Navigation",
+          "name": "Site navigation",
           "description": "Wordmark, section links, sign in, and play command floating over the hero.",
           "styleRefs": [
             "prototype/screens/launch.css"
@@ -169,7 +170,7 @@
         },
         {
           "id": "hero",
-          "name": "Eclipse Hero",
+          "name": "Eclipse hero",
           "description": "Key art, season pitch with commands, countdown, headline stats, and the giant season wordmark.",
           "styleRefs": [
             "prototype/screens/launch.css"
@@ -227,7 +228,7 @@
         },
         {
           "id": "ticker",
-          "name": "Highlight Ticker",
+          "name": "Highlight ticker",
           "description": "Tilted lime band of season highlights bridging the hero and content.",
           "styleRefs": [
             "prototype/screens/launch.css"
@@ -415,7 +416,7 @@
     },
     {
       "id": "hub",
-      "name": "Season Hub",
+      "name": "Season hub",
       "description": "Companion app home: player identity, the season and pass progress over key art, squad presence, the live event, and daily challenges. Loading swaps data regions for skeletons while identity stays.",
       "framePresetId": "phone",
       "page": "mobile",
@@ -432,11 +433,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "Keep the pass and challenges as the two dominant blocks; squad chips scroll horizontally."
+        "Keep the pass and challenges as the two dominant blocks. Squad chips scroll horizontally."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/"
+        "routePath": "/",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -552,7 +554,7 @@
       "sections": [
         {
           "id": "player",
-          "name": "Player Header",
+          "name": "Player header",
           "description": "Avatar, handle, level and rank, coin balance, and a sync indicator while loading.",
           "styleRefs": [
             "prototype/screens/hub.css"
@@ -702,7 +704,7 @@
         },
         {
           "id": "squad",
-          "name": "Squad Online",
+          "name": "Squad online",
           "description": "Online squadmates with presence.",
           "styleRefs": [
             "prototype/screens/hub.css"
@@ -748,7 +750,7 @@
         },
         {
           "id": "event",
-          "name": "Live Event",
+          "name": "Live event",
           "description": "Compact live event card.",
           "styleRefs": [
             "prototype/screens/hub.css"
@@ -806,7 +808,7 @@
         },
         {
           "id": "challenges",
-          "name": "Daily Challenges",
+          "name": "Daily challenges",
           "description": "Reset countdown and three daily challenges.",
           "styleRefs": [
             "prototype/screens/hub.css"
@@ -894,7 +896,7 @@
         },
         {
           "id": "tabbar",
-          "name": "Tab Bar",
+          "name": "Tab bar",
           "description": "Floating five-destination tab bar with Play selected.",
           "styleRefs": [
             "prototype/screens/hub.css"
@@ -932,7 +934,7 @@
     },
     {
       "id": "match",
-      "name": "Match Summary",
+      "name": "Match summary",
       "description": "Post-match summary: victory wordmark, placement and rank change, XP into the pass, four stat meters against the player average, the squad scoreboard, and requeue.",
       "framePresetId": "phone",
       "page": "mobile",
@@ -949,11 +951,12 @@
       "notes": [],
       "prototypeOnly": false,
       "implementationHints": [
-        "Animate the XP fill and rank change on entry; the static frame shows the settled result."
+        "Animate the XP fill and rank change on entry. The static frame shows the settled result."
       ],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/matches/:matchId"
+        "routePath": "/matches/:matchId",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -1118,7 +1121,7 @@
         },
         {
           "id": "xp",
-          "name": "XP Earned",
+          "name": "XP earned",
           "description": "XP gained and the pass tier it moved.",
           "styleRefs": [
             "prototype/screens/match.css"
@@ -1211,7 +1214,7 @@
         },
         {
           "id": "scoreboard",
-          "name": "Squad Scoreboard",
+          "name": "Squad scoreboard",
           "description": "Squad rows with eliminations and damage, MVP first.",
           "styleRefs": [
             "prototype/screens/match.css"

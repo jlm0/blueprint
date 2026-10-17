@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { BLUEPRINT_SCHEMA_VERSION } from './schema-version';
 import type {
   ExplorationDefinition,
   ExplorationRecordFile,
@@ -21,7 +22,7 @@ export function explorationRecordFile(
   exploration: ExplorationDefinition
 ): ExplorationRecordFile {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     exploration: structuredClone(exploration)
   };
@@ -32,7 +33,7 @@ export function historyRecordFile(
   entry: ScreenHistoryEntry
 ): ScreenHistoryRecordFile {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId,
     entry: structuredClone(entry)
   };

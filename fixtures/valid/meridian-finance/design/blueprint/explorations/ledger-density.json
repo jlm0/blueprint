@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "meridian-finance",
   "exploration": {
     "id": "ledger-density",
@@ -10,7 +10,7 @@
       "screenId": "transactions",
       "state": "default",
       "framePresetId": "desktop-web",
-      "baseDigest": "9947acc20b35eaa79a63fe0a36c6b2d19f253ee557b540335fbb747d33b65803",
+      "baseDigest": "80a7512bc3c9f4b6d02efbad7c9d3b54af442141733164371394f0f7279305c2",
       "baseline": {
         "screen": {
           "id": "transactions",
@@ -31,11 +31,12 @@
           "notes": [],
           "prototypeOnly": false,
           "implementationHints": [
-            "Rows use the app table-row primitive with its default slot; keep amounts right-aligned in tabular figures."
+            "Rows use the app table-row primitive with its default slot. Keep amounts right-aligned in tabular figures."
           ],
           "productionRelationship": {
             "kind": "new-route",
-            "routePath": "/transactions"
+            "routePath": "/transactions",
+            "notes": []
           },
           "implementationTargets": [
             {
@@ -269,7 +270,7 @@
             },
             {
               "id": "detail",
-              "name": "Transaction Detail",
+              "name": "Transaction detail",
               "description": "Amount, settlement timeline, references, category, and actions for the selected transaction.",
               "styleRefs": [
                 "prototype/screens/transactions.css"

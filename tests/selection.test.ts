@@ -12,7 +12,7 @@ const buttonInSection = {
   localId: 'button',
   label: 'Button',
   context: [
-    { boundaryId: 'mira-ai/section/workspace/thread-header', kind: 'section', localId: 'workspace/thread-header', label: 'Thread Header' },
+    { boundaryId: 'mira-ai/section/workspace/thread-header', kind: 'section', localId: 'workspace/thread-header', label: 'Thread header' },
     { boundaryId: 'mira-ai/screen/workspace', kind: 'screen', localId: 'workspace', label: 'Workspace' }
   ],
   screenId: 'workspace',

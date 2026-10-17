@@ -5,7 +5,7 @@ import { BASE_PRIMITIVE_TEXT } from '../src/core/base-primitive-text';
 import { loadProjectFromFs } from '../src/core/load';
 import { lintProse, lintSynonymRotation, MAX_SENTENCE_WORDS } from '../src/core/prose-lint';
 import { reusableProseFields } from '../src/core/reusable-contract';
-import { collectProseAdvisories } from '../src/core/reusable-validate';
+import { collectProseAdvisories } from '../src/core/prose-advisories';
 import type { BlueprintProjectBundle } from '../src/core/types';
 import { validateProject } from '../src/core/validate';
 

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "projectId": "broken-sidecar",
   "pages": [
     {
@@ -30,7 +30,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/undeclared-state"
+        "routePath": "/undeclared-state",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -138,7 +139,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/unknown-component"
+        "routePath": "/unknown-component",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -231,7 +233,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/remote-asset"
+        "routePath": "/remote-asset",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -324,7 +327,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/literal-color"
+        "routePath": "/literal-color",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -417,7 +421,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/hand-built-control"
+        "routePath": "/hand-built-control",
+        "notes": []
       },
       "implementationTargets": [
         {
@@ -510,7 +515,8 @@
       "implementationHints": [],
       "productionRelationship": {
         "kind": "new-route",
-        "routePath": "/unmarked-section"
+        "routePath": "/unmarked-section",
+        "notes": []
       },
       "implementationTargets": [
         {

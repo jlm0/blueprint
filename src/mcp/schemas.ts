@@ -273,9 +273,9 @@ const designFindingSchema = z
 const proseAdvisorySchema = z
   .object({
     boundaryId: z.string(),
-    kind: z.enum(['primitive', 'component']),
+    kind: z.enum(['primitive', 'component', 'token-group', 'page', 'screen', 'section']),
     localId: z.string(),
-    field: z.string().describe('Path below the reusable, such as "description" or "states.loading.description".'),
+    field: z.string().describe('Path below the boundary, such as "description", "states.loading.description", or "uses[0].reason". A page reports against the screens board.'),
     rule: z.enum(['passive-voice', 'present-perfect', 'synonym-rotation']),
     match: z.string(),
     message: z.string()
@@ -292,7 +292,7 @@ const validationOutputBaseSchema = z.object({
     'Design findings the canvas marks on boundaries, each fixable in the source named by location. Strict validation rejects them.'
   ),
   prose: z.array(proseAdvisorySchema).describe(
-    'Wording advisories on the prose an app writes for its primitives and components. They never fail validation. Rewrite each one, unless the wording is deliberate, such as "selected" used as an adjective.'
+    'Wording advisories on the prose an app writes for its primitives, components, token groups, pages, screens, and sections. They never fail validation. Rewrite each one, unless the wording is deliberate, such as "selected" used as an adjective.'
   )
 });
 

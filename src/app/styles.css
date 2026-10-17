@@ -600,6 +600,40 @@ body {
   display: none;
 }
 
+.bp-chrome-migrate-notice {
+  position: absolute;
+  top: calc(var(--bp-chrome-float-inset) + var(--bp-chrome-float-height) + var(--bp-chrome-float-gap));
+  left: 50%;
+  z-index: 25;
+  display: grid;
+  gap: 4px;
+  width: min(480px, calc(100% - 2 * var(--bp-chrome-float-inset)));
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--bp-chrome-warning) 58%, transparent);
+  border-radius: var(--bp-chrome-radius);
+  background: color-mix(in srgb, var(--bp-chrome-surface) 92%, var(--bp-chrome-warning) 8%);
+  color: var(--bp-chrome-fg);
+  font-size: 12px;
+  line-height: 1.45;
+  transform: translateX(-50%);
+  user-select: text;
+  animation: bp-chrome-fade-in 160ms ease-out both;
+}
+
+.bp-chrome-migrate-notice[hidden] {
+  display: none;
+}
+
+.bp-chrome-migrate-notice-title {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.bp-chrome-migrate-notice-body {
+  margin: 0;
+  color: var(--bp-chrome-muted-fg);
+}
+
 .bp-chrome-agent-status-mark {
   display: grid;
   width: 18px;

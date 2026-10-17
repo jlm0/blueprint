@@ -696,6 +696,39 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('refuses a sidecar on an older schema until migrate runs, and serve shows why', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      manifest.schemaVersion = '1.0.0';
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        assertToolError(await session.client.callTool({ name: 'index', arguments: { project: projectCopy } }), /manifest\.json is on schema "1\.0\.0".*Fix: run the migrate tool/);
+        const validation = structured(await session.client.callTool({ name: 'validate', arguments: { project: projectCopy } }));
+        assert.deepEqual(validation.errors, [
+          'manifest.json is on schema "1.0.0", and Blueprint now reads "2.0.0". Fix: run the migrate tool on this project, then fix what validate reports.'
+        ]);
+
+        const served = await call(session, 'serve', { project: projectCopy, port: 0 });
+        const notice = await (await fetch(served.url as string)).text();
+        assert.match(notice, /<h1>This sidecar needs migrate<\/h1>/);
+        assert.match(notice, /<code>manifest\.json<\/code> is on schema 1\.0\.0\./);
+
+        const migrated = await call(session, 'migrate', { project: projectCopy });
+        assert.deepEqual([migrated.fromVersion, migrated.toVersion, migrated.files], ['1.0.0', '2.0.0', ['manifest.json']]);
+        assert.equal((migrated.validation as { ok: boolean }).ok, true);
+        await assertEventually(async () => (await (await fetch(served.url as string)).text()).includes('__BLUEPRINT_PROJECT_BUNDLE__'));
+        await call(session, 'index', { project: projectCopy });
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
   it('shares the canvas selection with agents through the selection tool', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
@@ -751,7 +784,7 @@ describe('Blueprint MCP and template governance', () => {
           assert.deepEqual(boxes[0], boxes[1]);
           assert.deepEqual(
             await page.locator('.bp-chrome-selection-crumb').allInnerTexts(),
-            ['Workspace', 'Thread Library', 'Button']
+            ['Workspace', 'Thread library', 'Button']
           );
 
           const selected = (await call(session, 'selection', {})).selection as Record<string, unknown>;
@@ -761,7 +794,7 @@ describe('Blueprint MCP and template governance', () => {
           assert.equal(selected.screenId, 'workspace');
           assert.equal(selected.framePresetId, 'desktop-web');
 
-          await page.locator('.bp-chrome-selection-crumb', { hasText: 'Thread Library' }).click();
+          await page.locator('.bp-chrome-selection-crumb', { hasText: 'Thread library' }).click();
           await page.locator('.bp-chrome-selection-layer[data-selection-boundary-id="mira-ai/section/workspace/library"]').waitFor();
           const ancestor = (await call(session, 'selection', {})).selection as Record<string, unknown>;
           assert.equal(ancestor.reference, 'section:workspace/library in screen:workspace');
@@ -841,7 +874,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_input: firstPatch,
             tool_response: { isError: false }
           });
-          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Thread Header');
+          await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Thread header');
           const changeLayer = page.locator('.bp-chrome-change-layer[data-change-boundary-ids~="mira-ai/primitive/button"][data-change-boundary-ids~="mira-ai/section/workspace/thread-header"]');
           await changeLayer.locator('.bp-chrome-change-box').first().waitFor();
           assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
