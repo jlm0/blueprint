@@ -2,7 +2,7 @@ import { open, readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 export const BLUEPRINT_INPUT_LIMITS = {
-  fixedJsonBytes: 1 * 1024 * 1024,
+  fixedJsonBytes: 10 * 1024 * 1024,
   prototypeSourceBytes: 2 * 1024 * 1024,
   prototypeAssetBytes: 16 * 1024 * 1024,
   projectBytes: 32 * 1024 * 1024

@@ -7,7 +7,7 @@ import { loadProjectFromFs } from '../src/core/load';
 
 const fixtureRoot = path.resolve('fixtures/valid/umbra-gaming/design/blueprint');
 const mebibyte = 1024 * 1024;
-const fixedJsonByteLimit = 1 * mebibyte;
+const fixedJsonByteLimit = 10 * mebibyte;
 const prototypeSourceByteLimit = 2 * mebibyte;
 const prototypeAssetByteLimit = 16 * mebibyte;
 const projectInputByteLimit = 32 * mebibyte;

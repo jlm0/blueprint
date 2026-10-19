@@ -43,7 +43,7 @@ import {
 } from './schemas';
 
 export const BLUEPRINT_MCP_SERVER_NAME = 'blueprint';
-export const BLUEPRINT_MCP_SERVER_VERSION = '0.1.0';
+export const BLUEPRINT_MCP_SERVER_VERSION = '0.1.1';
 export const BLUEPRINT_MCP_TOOL_NAMES = [
   'init',
   'validate',
