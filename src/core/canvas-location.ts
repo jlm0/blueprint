@@ -14,7 +14,7 @@ export function canvasLocationParams(bundle: BlueprintProjectBundle, selectorInp
 
   switch (selector.kind) {
     case 'project':
-      return document('foundations', bundle.brand ? 'brand' : undefined);
+      return document('foundations', selector.id === 'inspo' && bundle.inspo ? 'inspo' : bundle.brand ? 'brand' : bundle.inspo ? 'inspo' : undefined);
     case 'board':
       return { board: selector.id };
     case 'token-group':

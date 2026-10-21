@@ -69,8 +69,12 @@ export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: Bo
 
   switch (selector.kind) {
     case 'project':
-      return packet(bundle, selector.kind, 'root', { ...bundle.manifest.project, ...(bundle.brand ? { brand: bundle.brand } : {}) }, {
-        sourceFiles: [bundle.sourceFiles.manifest, ...brandSourceFiles(bundle)],
+      return packet(bundle, selector.kind, 'root', {
+        ...bundle.manifest.project,
+        ...(bundle.brand ? { brand: bundle.brand } : {}),
+        ...(bundle.inspo ? { inspo: bundle.inspo } : {})
+      }, {
+        sourceFiles: [bundle.sourceFiles.manifest, ...brandSourceFiles(bundle), ...(bundle.sourceFiles.inspo ? [bundle.sourceFiles.inspo] : [])],
         styleRefs: [],
         styleEvidence: [],
         uses: [],

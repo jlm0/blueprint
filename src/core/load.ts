@@ -20,6 +20,7 @@ import type {
   ExplorationDefinition,
   ExplorationFile,
   ExplorationRecordFile,
+  InspoFile,
   PrimitiveFile,
   PrototypeAssetContent,
   ScreenFile,
@@ -38,6 +39,8 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const screens = await readJson<ScreenFile>(reader, 'screens.json');
   const brandText = await reader.readText('brand.json', { kind: 'fixed JSON', optional: true });
   const brand = brandText === undefined ? undefined : JSON.parse(brandText) as BrandFile;
+  const inspoText = await reader.readText('inspo.json', { kind: 'fixed JSON', optional: true });
+  const inspo = inspoText === undefined ? undefined : JSON.parse(inspoText) as InspoFile;
   const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
   const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
   const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs);
@@ -78,6 +81,7 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
     components,
     screens,
     brand,
+    inspo,
     explorations,
     history,
     explorationRecordRefs,

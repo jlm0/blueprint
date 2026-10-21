@@ -69,11 +69,12 @@ Then register the stdio server with your agent host, running from the app reposi
 }
 ```
 
-The server exposes twelve project-scoped tools:
+The server exposes thirteen project-scoped tools:
 
 | Tool | Purpose |
 | --- | --- |
-| `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. |
+| `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. With `start: "inspo"`, it skips the brand and opens an empty inspo board instead. |
+| `inspo` | Keep the inspo board for a new product. Paste image links in chat with what you like about each one; the agent downloads each image to a git-ignored `inspo/` folder, saves the link and your words in `inspo.json`, and proposes brand directions for you to approve. |
 | `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks and the wording advisories on the prose of reusables, screens, and tokens. Contract errors end with `Fix:` and the exact change to make. |
 | `migrate` | Upgrade a sidecar to the current schema, or report the changes with `dryRun`. It makes every mechanical change and returns the remaining decisions as validation errors. |
 | `index` | List every stable boundary ID, plus the declared screen pages and component groups with their members. |

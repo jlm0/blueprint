@@ -365,6 +365,37 @@ export interface BrandMarkVariant {
   accent?: string;
 }
 
+export type InspoAspect = 'mark' | 'wordmark' | 'typography' | 'color' | 'layout' | 'imagery' | 'style';
+
+/** Optional reference board a new sidecar starts from; the brand and tokens derive from its approved directions. */
+export interface InspoFile {
+  schemaVersion: string;
+  projectId: string;
+  entries: InspoEntry[];
+  directions: InspoDirection[];
+}
+
+export interface InspoEntry {
+  id: string;
+  /** The link the person pasted. */
+  sourceUrl: string;
+  /** Sidecar-relative cached copy under inspo/, kept out of git. */
+  image: string;
+  aspects: InspoAspect[];
+  stance: 'like' | 'avoid';
+  /** The person's own words, kept verbatim. */
+  note: string;
+  /** What the agent takes from the image for the aspects. */
+  reading: string;
+}
+
+export interface InspoDirection {
+  aspect: InspoAspect;
+  statement: string;
+  entryIds: string[];
+  status: 'proposed' | 'approved';
+}
+
 /** Optional fifth structured sidecar file containing reusable composite boundaries. */
 export interface ComponentFile {
   schemaVersion: string;
@@ -490,6 +521,7 @@ export interface BlueprintProjectBundle {
   components: ComponentFile;
   screens: ScreenFile;
   brand?: BrandFile;
+  inspo?: InspoFile;
   /** Saved alternatives assembled from separate exploration records. */
   explorations: ExplorationFile;
   /** Prior canonical versions assembled from separate history records. */
@@ -502,6 +534,7 @@ export interface BlueprintProjectBundle {
     components: string;
     screens: string;
     brand?: string;
+    inspo?: string;
     explorationRecords: string[];
     historyRecords: string[];
     /** Normalized absolute provenance paths for every governed prototype input. */

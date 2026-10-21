@@ -59,6 +59,8 @@ export interface BlueprintProjectSnapshot {
 
 /** Local ID of the project focus that stands for brand.json and its mark sources, matching the canvas Brand page. */
 export const BRAND_FOCUS_ID = 'brand';
+/** Local ID of the project focus that stands for inspo.json and its cached images, matching the canvas Inspo page. */
+export const INSPO_FOCUS_ID = 'inspo';
 
 interface SourceReferenceOwner {
   kind: BoundaryKind;
@@ -105,7 +107,11 @@ export function activityFocusesForChangedPaths(
 }
 
 export function boundaryDisplayName(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): string {
-  if (kind === 'project') return localId === BRAND_FOCUS_ID ? 'Brand' : bundle.manifest.project.name;
+  if (kind === 'project') {
+    if (localId === BRAND_FOCUS_ID) return 'Brand';
+    if (localId === INSPO_FOCUS_ID) return 'Inspo';
+    return bundle.manifest.project.name;
+  }
   if (kind === 'board') return localId === 'screens' ? 'Screens' : 'Primitives';
   if (kind === 'token-group') {
     return bundle.tokens.tokenGroups.find(candidate => candidate.id === localId)?.name ?? localId;
@@ -137,6 +143,7 @@ function sourceReferenceOwners(bundle: BlueprintProjectBundle): Map<string, Sour
     }
   };
   if (bundle.brand) add(['brand.json', ...bundle.brand.marks.map(mark => mark.source)], 'project', BRAND_FOCUS_ID);
+  if (bundle.inspo) add(['inspo.json', ...bundle.inspo.entries.map(entry => entry.image)], 'project', INSPO_FOCUS_ID);
   for (const primitive of bundle.primitives.primitives) {
     if (primitive.prototype) add([primitive.prototype.source, ...primitive.prototype.styles], 'primitive', primitive.id);
   }

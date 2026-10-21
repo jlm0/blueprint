@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -16,7 +16,7 @@ const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
-const toolNames = ['init', 'validate', 'migrate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
+const toolNames = ['init', 'inspo', 'validate', 'migrate', 'index', 'query', 'extract', 'capture', 'serve', 'selection', 'explore', 'promote', 'restore'];
 
 interface McpSession {
   client: Client;
@@ -1100,6 +1100,56 @@ describe('Blueprint MCP and template governance', () => {
       await session.close();
       await closeNetServer(occupied);
     }
+  });
+
+  it('starts an inspo sidecar and serves only its cached images', async () => {
+    await withTempDir(async tempDir => {
+      const session = await openSession();
+      try {
+        const out = path.join(tempDir, 'app-i', 'design', 'blueprint');
+        const output = await call(session, 'init', { projectId: 'app-i', name: 'App I', out, start: 'inspo' });
+        const files = output.files as string[];
+        assert.ok(files.includes('inspo') && files.includes('inspo.json'));
+        assert.equal(files.includes('brand.json') || files.includes('brand'), false);
+
+        const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+        await writeFile(path.join(out, 'inspo', 'ref-1.png'), png);
+        await symlink(path.join(out, 'manifest.json'), path.join(out, 'inspo', 'leak.png'));
+        await writeFile(path.join(out, 'inspo.json'), `${JSON.stringify({
+          schemaVersion: '2.0.0',
+          projectId: 'app-i',
+          entries: [{ id: 'ref-1', sourceUrl: 'https://images.example.com/a.png', image: 'inspo/ref-1.png', aspects: ['mark'], stance: 'like', note: 'this mark', reading: '' }],
+          directions: []
+        }, null, 2)}\n`);
+        assertToolError(
+          await session.client.callTool({ name: 'inspo', arguments: { project: out, operation: { type: 'add', url: 'https://dribbble.com/shots/1-brand' } } }),
+          /Dribbble page.*Fix:/
+        );
+
+        const served = await call(session, 'serve', { project: out, port: 0, focus: 'project:inspo' });
+        const url = new URL(served.url as string);
+        assert.deepEqual(Object.fromEntries(url.searchParams), { board: 'primitives', section: 'foundations', item: 'inspo' });
+        const imageUrl = new URL('/__blueprint/inspo/ref-1.png', url);
+        const got = await fetch(imageUrl);
+        assert.equal(got.status, 200);
+        assert.equal(got.headers.get('content-type'), 'image/png');
+        assert.equal(got.headers.get('x-content-type-options'), 'nosniff');
+        assert.deepEqual(Buffer.from(await got.arrayBuffer()), png);
+        const head = await fetch(imageUrl, { method: 'HEAD' });
+        assert.equal(head.status, 200);
+        assert.equal((await head.arrayBuffer()).byteLength, 0);
+        const posted = await fetch(imageUrl, { method: 'POST' });
+        assert.equal(posted.status, 405);
+        assert.equal(posted.headers.get('allow'), 'GET, HEAD');
+        for (const blocked of ['/__blueprint/inspo/leak.png', '/__blueprint/inspo/missing.png', '/__blueprint/inspo/..%2Fmanifest.json', '/__blueprint/inspo/.gitignore']) {
+          const response = await fetch(new URL(blocked, url));
+          assert.equal(response.status === 200 && (response.headers.get('content-type') ?? '').startsWith('image/'), false, blocked);
+          assert.doesNotMatch(await response.text(), /"app-i"/, blocked);
+        }
+      } finally {
+        await session.close();
+      }
+    });
   });
 
   it('ships schema, starter governance, and MCP-only documentation', async () => {

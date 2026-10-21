@@ -1,4 +1,4 @@
-import { activityFocusForBoundary, BRAND_FOCUS_ID, type BlueprintAgentActivityFocus } from './activity';
+import { activityFocusForBoundary, BRAND_FOCUS_ID, INSPO_FOCUS_ID, type BlueprintAgentActivityFocus } from './activity';
 import type { BlueprintProjectBundle, BoundaryKind } from './types';
 
 /** Boundaries whose declaration or owned prototype files differ between two snapshots; removed boundaries are omitted. */
@@ -16,6 +16,9 @@ export function changedBoundaries(previous: BlueprintProjectBundle, next: Bluepr
   compare('token-group', previous.tokens.tokenGroups, next.tokens.tokenGroups, () => []);
   if (next.brand && brandFingerprint(previous) !== brandFingerprint(next)) {
     changed.push(activityFocusForBoundary(next, 'project', BRAND_FOCUS_ID));
+  }
+  if (next.inspo && JSON.stringify(previous.inspo ?? null) !== JSON.stringify(next.inspo)) {
+    changed.push(activityFocusForBoundary(next, 'project', INSPO_FOCUS_ID));
   }
   compare('primitive', previous.primitives.primitives, next.primitives.primitives, primitive => (
     [primitive.prototype.source, ...primitive.prototype.styles]

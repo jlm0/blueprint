@@ -5,6 +5,7 @@ import type {
   BrandFile,
   ComponentFile,
   ExplorationFile,
+  InspoFile,
   PrimitiveFile,
   PrototypeSource,
   PrototypeAssetContent,
@@ -25,6 +26,7 @@ export interface RawProjectFiles {
   components: ComponentFile;
   screens: ScreenFile;
   brand?: BrandFile;
+  inspo?: InspoFile;
   explorations?: ExplorationFile;
   history?: ScreenHistoryFile;
   explorationRecordRefs?: string[];
@@ -47,6 +49,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
     components,
     screens: raw.screens,
     ...(raw.brand ? { brand: raw.brand } : {}),
+    ...(raw.inspo ? { inspo: raw.inspo } : {}),
     explorations,
     history,
     sourceRoot,
@@ -57,6 +60,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
       components: `${sourceRoot}/components.json`,
       screens: `${sourceRoot}/screens.json`,
       ...(raw.brand ? { brand: `${sourceRoot}/brand.json` } : {}),
+      ...(raw.inspo ? { inspo: `${sourceRoot}/inspo.json` } : {}),
       explorationRecords: (raw.explorationRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       historyRecords: (raw.historyRecordRefs ?? []).map(ref => `${sourceRoot}/${ref}`),
       prototypeSources: prototypeSourceRefs.map(sourceRef => `${sourceRoot}/${sourceRef}`),

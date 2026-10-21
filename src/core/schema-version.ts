@@ -6,19 +6,22 @@ export const BLUEPRINT_SCHEMA_VERSION = '2.0.0';
 /** Schema versions `migrate` knows how to upgrade from, including the current one. */
 export const MIGRATABLE_SCHEMA_VERSIONS: ReadonlySet<string> = new Set(['1.0.0', BLUEPRINT_SCHEMA_VERSION]);
 
-/** Structured files that carry `schemaVersion`; brand.json only when the project has one. */
-export const VERSIONED_FILES = ['manifest.json', 'tokens.json', 'brand.json', 'screens.json', 'primitives.json', 'components.json'] as const;
+/** Structured files that carry `schemaVersion`; brand.json and inspo.json only when the project has them. */
+export const VERSIONED_FILES = ['manifest.json', 'tokens.json', 'brand.json', 'inspo.json', 'screens.json', 'primitives.json', 'components.json'] as const;
+
+export const OPTIONAL_VERSIONED_FILES: ReadonlySet<string> = new Set(['brand.json', 'inspo.json']);
 
 export type VersionedFile = (typeof VERSIONED_FILES)[number];
 
 type VersionedBundle = Pick<BlueprintProjectBundle, 'manifest' | 'tokens' | 'screens' | 'primitives' | 'components'> &
-  Partial<Pick<BlueprintProjectBundle, 'brand'>>;
+  Partial<Pick<BlueprintProjectBundle, 'brand' | 'inspo'>>;
 
 export function fileSchemaVersions(bundle: VersionedBundle): Array<[VersionedFile, unknown]> {
   return [
     ['manifest.json', bundle.manifest?.schemaVersion],
     ['tokens.json', bundle.tokens?.schemaVersion],
     ...(bundle.brand ? [['brand.json', bundle.brand.schemaVersion] as [VersionedFile, unknown]] : []),
+    ...(bundle.inspo ? [['inspo.json', bundle.inspo.schemaVersion] as [VersionedFile, unknown]] : []),
     ['screens.json', bundle.screens?.schemaVersion],
     ['primitives.json', bundle.primitives?.schemaVersion],
     ['components.json', bundle.components?.schemaVersion]

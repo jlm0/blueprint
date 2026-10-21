@@ -28,6 +28,7 @@ import { validateReusables } from './reusable-validate';
 import { validateScreenContract } from './screen-contract';
 import { schemaVersionErrors } from './schema-version';
 import { validateTokenContract } from './token-contract';
+import { hasApprovedInspoDirection, validateInspoContract } from './inspo-contract';
 import { lintHandBuiltControls } from './control-lint';
 import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
 import { lintLocalStyleValues } from './style-lint';
@@ -120,6 +121,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   validatePrototypeHost(errors, bundle.manifest.prototypeHost);
+  validateInspo(errors, bundle);
   validateBrand(errors, bundle, options.mode ?? 'baseline');
   validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
@@ -130,6 +132,64 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+function validateInspo(errors: string[], bundle: BlueprintProjectBundle): void {
+  if (!bundle.inspo) return;
+  validateInspoContract(errors, bundle.inspo, bundle.manifest.project?.id);
+  if (bundle.brand && !hasApprovedInspoDirection(bundle.inspo)) {
+    errors.push('brand.json exists, but inspo.json has no approved direction. Fix: propose directions from the inspo notes and set status "approved" after the person agrees, or delete brand.json until then.');
+  }
+}
+
+function recordInspoReadiness(items: ReadinessItem[], bundle: BlueprintProjectBundle): void {
+  if (!bundle.inspo) return;
+  const entries = Array.isArray(bundle.inspo.entries) ? bundle.inspo.entries : [];
+  if (entries.length === 0) {
+    items.push({
+      path: 'inspo.entries',
+      severity: 'pending',
+      source: 'synthesized-missing',
+      message: 'Inspo has no entries. Fix: ask the person for image links and what they like in each, then add them with the inspo tool.'
+    });
+  }
+  const hasText = (text: unknown): boolean => typeof text === 'string' && text.trim().length > 0;
+  for (const entry of entries) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    if (typeof entry.image === 'string' && !existsSync(path.resolve(bundle.sourceRoot, entry.image))) {
+      items.push({
+        path: `inspo.entry.${entry.id}.image`,
+        severity: 'pending',
+        source: 'declared-missing-artifact',
+        message: `The cached image of inspo entry "${entry.id}" is missing. Fix: run the inspo tool with operation sync.`,
+        artifactRef: entry.image,
+        artifactExists: false
+      });
+    }
+    if (!hasText(entry.note)) {
+      items.push({
+        path: `inspo.entry.${entry.id}.note`,
+        severity: 'pending',
+        source: 'synthesized-missing',
+        message: `Inspo entry "${entry.id}" has no note. Fix: ask the person what they like or avoid in it, and save their words with the inspo tool.`
+      });
+    } else if (!hasText(entry.reading)) {
+      items.push({
+        path: `inspo.entry.${entry.id}.reading`,
+        severity: 'pending',
+        source: 'synthesized-missing',
+        message: `Inspo entry "${entry.id}" has no reading. Fix: look at the image, then save what you take from it for its aspects.`
+      });
+    }
+  }
+  if (entries.some(entry => hasText(entry?.note)) && !hasApprovedInspoDirection(bundle.inspo)) {
+    items.push({
+      path: 'inspo.directions',
+      severity: 'pending',
+      source: 'synthesized-missing',
+      message: 'Inspo has no approved direction. Fix: propose one direction for each aspect the notes name, and approve each after the person agrees.'
+    });
+  }
 }
 
 export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
@@ -147,6 +207,7 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
     }
   }
   recordPrototypeSourceGraphReadiness(items, bundle);
+  recordInspoReadiness(items, bundle);
   if (!bundle.brand) {
     items.push({
       path: 'brand',

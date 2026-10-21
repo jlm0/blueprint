@@ -13,6 +13,7 @@
     "components": { "$ref": "#/$defs/componentFile" },
     "screens": { "$ref": "#/$defs/screenFile" },
     "brand": { "$ref": "#/$defs/brandFile" },
+    "inspo": { "$ref": "#/$defs/inspoFile" },
     "explorations": { "$ref": "#/$defs/explorationFile" },
     "history": { "$ref": "#/$defs/screenHistoryFile" }
   },
@@ -239,6 +240,44 @@
             "note": { "type": "string" }
           }
         }
+      }
+    },
+    "inspoFile": {
+      "type": "object",
+      "description": "Optional reference board a new sidecar starts from. Cached images under inspo/ stay out of git.",
+      "required": ["schemaVersion", "projectId", "entries", "directions"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": "2.0.0" },
+        "projectId": { "type": "string" },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/inspoEntry" } },
+        "directions": { "type": "array", "items": { "$ref": "#/$defs/inspoDirection" } }
+      }
+    },
+    "inspoAspect": { "enum": ["mark", "wordmark", "typography", "color", "layout", "imagery", "style"] },
+    "inspoEntry": {
+      "type": "object",
+      "required": ["id", "sourceUrl", "image", "aspects", "stance", "note", "reading"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/safeId" },
+        "sourceUrl": { "type": "string", "pattern": "^https://\\S+$", "maxLength": 2048 },
+        "image": { "type": "string", "pattern": "^inspo/[a-z0-9]+(?:-[a-z0-9]+)*\\.(?:png|jpg|webp|gif)$" },
+        "aspects": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/inspoAspect" } },
+        "stance": { "enum": ["like", "avoid"] },
+        "note": { "type": "string", "maxLength": 1000 },
+        "reading": { "type": "string", "maxLength": 240 }
+      }
+    },
+    "inspoDirection": {
+      "type": "object",
+      "required": ["aspect", "statement", "entryIds", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "aspect": { "$ref": "#/$defs/inspoAspect" },
+        "statement": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "entryIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/safeId" } },
+        "status": { "enum": ["proposed", "approved"] }
       }
     },
     "declaredGroup": {

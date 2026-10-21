@@ -17,6 +17,7 @@ describe('Blueprint MCP typed contract', () => {
   it('publishes the seven parity tools plus bounded exploration and history mutations', async () => {
     assert.deepEqual(BLUEPRINT_MCP_TOOL_NAMES, [
       'init',
+      'inspo',
       'validate',
       'migrate',
       'index',

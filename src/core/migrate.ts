@@ -12,7 +12,7 @@ import {
   stripRootAxisAttributes,
   toSentenceCase
 } from './reusable-contract';
-import { BLUEPRINT_SCHEMA_VERSION, MIGRATABLE_SCHEMA_VERSIONS, VERSIONED_FILES } from './schema-version';
+import { BLUEPRINT_SCHEMA_VERSION, MIGRATABLE_SCHEMA_VERSIONS, OPTIONAL_VERSIONED_FILES, VERSIONED_FILES } from './schema-version';
 import type {
   ComponentFile,
   DeclaredGroup,
@@ -93,7 +93,7 @@ interface PlacementRemap {
 export function migrateProjectFiles(input: MigrationInput): MigrationOutput {
   const versions = new Map<string, string>();
   for (const file of VERSIONED_FILES) {
-    if (file === 'brand.json' && !input.files.has(file)) continue;
+    if (OPTIONAL_VERSIONED_FILES.has(file) && !input.files.has(file)) continue;
     const version = String(parseJsonFile(input.files, file).schemaVersion ?? '');
     if (!MIGRATABLE_SCHEMA_VERSIONS.has(version)) {
       throw new Error(`${file} is on schema "${version}", which migrate does not know how to upgrade.`);

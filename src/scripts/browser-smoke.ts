@@ -423,7 +423,7 @@ async function assertDocumentSections(page: import('playwright').Page, bundle: B
   const records: VisibleBoundaryRecord[] = [];
   const families = new Set<string>();
   const sections = [
-    { section: 'foundations', ids: [...(bundle.brand ? ['brand'] : []), ...bundle.tokens.tokenGroups.map(group => group.id)] },
+    { section: 'foundations', ids: [...(bundle.inspo ? ['inspo'] : []), ...(bundle.brand ? ['brand'] : []), ...bundle.tokens.tokenGroups.map(group => group.id)] },
     { section: 'components', ids: bundle.components.components.map(component => component.id) },
     { section: 'primitives', ids: bundle.primitives.primitives.map(primitive => primitive.id) }
   ];

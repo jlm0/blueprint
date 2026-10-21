@@ -29,7 +29,8 @@ export const initInputSchema = z
     projectId: nonEmptyString.describe('Stable project identifier written into every structured Blueprint file.'),
     name: nonEmptyString.describe('Project display name written into the Blueprint manifest.'),
     out: nonEmptyString.describe('Destination design/blueprint directory.'),
-    force: z.boolean().default(false).describe('Overwrite colliding starter files in place while preserving unrelated destination files.')
+    force: z.boolean().default(false).describe('Overwrite colliding starter files in place while preserving unrelated destination files.'),
+    start: z.enum(['inspo']).optional().describe('Pass "inspo" for a new product: the sidecar starts with an empty inspo board and no brand.json, and the brand comes from the directions the person approves.')
   })
   .strict();
 
@@ -194,6 +195,39 @@ export const exploreInputSchema = z
   })
   .strict();
 
+const inspoAspectSchema = z.enum(['mark', 'wordmark', 'typography', 'color', 'layout', 'imagery', 'style']);
+const inspoEntryIdSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).describe('Kebab-case inspo entry id.');
+const inspoEntryFieldsSchema = {
+  aspects: z.array(inspoAspectSchema).optional().describe('What the person points to in the image.'),
+  stance: z.enum(['like', 'avoid']).optional().describe('"avoid" marks an image the person shows as a direction to stay away from.'),
+  note: z.string().optional().describe('The words of the person about the image, kept exactly as they wrote them in chat.'),
+  reading: z.string().optional().describe('What you take from the image for its aspects, in Simplified Technical English.')
+};
+
+export const inspoInputSchema = z
+  .object({
+    project: projectPathSchema,
+    operation: z.union([
+      z.object({
+        type: z.literal('add'),
+        url: nonEmptyString.describe('Image link the person pasted. A cdn.dribbble.com link downloads at full size.'),
+        id: inspoEntryIdSchema.optional().describe('Kebab-case entry id. Defaults to the next free "ref-<n>".'),
+        ...inspoEntryFieldsSchema
+      }).strict(),
+      z.object({ type: z.literal('update'), id: inspoEntryIdSchema, ...inspoEntryFieldsSchema }).strict(),
+      z.object({ type: z.literal('remove'), id: inspoEntryIdSchema }).strict(),
+      z.object({ type: z.literal('sync') }).strict().describe('Download again every cached image that is missing, such as after a fresh clone.'),
+      z.object({
+        type: z.literal('direction'),
+        aspect: inspoAspectSchema,
+        statement: nonEmptyString.optional().describe('What the brand takes from the entries for the aspect, in Simplified Technical English.'),
+        entryIds: z.array(inspoEntryIdSchema).min(1).optional(),
+        status: z.enum(['proposed', 'approved']).optional().describe('Set "approved" only after the person approves the statement in chat.')
+      }).strict()
+    ])
+  })
+  .strict();
+
 const sha256DigestSchema = z
   .string()
   .regex(/^[a-f0-9]{64}$/)
@@ -256,6 +290,18 @@ export const initOutputSchema = z
     out: z.string(),
     files: z.array(z.string()),
     validation: validationResultSchema
+  })
+  .strict();
+
+export const inspoOutputSchema = z
+  .object({
+    command: z.literal('inspo'),
+    operation: z.enum(['add', 'update', 'remove', 'sync', 'direction']),
+    project: z.string(),
+    projectId: z.string(),
+    inspo: z.json(),
+    downloaded: z.array(z.string()).describe('Sidecar-relative images the call wrote.'),
+    failed: z.array(z.object({ id: z.string(), error: z.string() }).strict()).describe('Entries whose image sync could not download.')
   })
   .strict();
 
@@ -628,6 +674,7 @@ export type SelectionInput = z.infer<typeof selectionInputSchema>;
 export type ExploreInput = z.infer<typeof exploreInputSchema>;
 export type PromoteInput = z.infer<typeof promoteInputSchema>;
 export type RestoreInput = z.infer<typeof restoreInputSchema>;
+export type InspoInput = z.infer<typeof inspoInputSchema>;
 
 export type InitOutput = z.infer<typeof initOutputSchema>;
 export type ValidateOutput = z.infer<typeof validateOutputSchema>;
@@ -641,3 +688,4 @@ export type SelectionOutput = z.infer<typeof selectionOutputSchema>;
 export type ExploreOutput = z.infer<typeof exploreOutputSchema>;
 export type PromoteOutput = z.infer<typeof promoteOutputSchema>;
 export type RestoreOutput = z.infer<typeof restoreOutputSchema>;
+export type InspoOutput = z.infer<typeof inspoOutputSchema>;
