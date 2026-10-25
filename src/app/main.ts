@@ -2790,6 +2790,12 @@ function createPrototypeFrame(
     screenId: screen.id,
     captureDocument: canonicalScreen.captureDocument
   });
+  const viewerDocument = canonicalScreen.captureDocument;
+  if (viewerDocument) {
+    const view = createIconButton('frame-view bp-chrome-frame-tool bp-chrome-frame-view', 'View screen in full screen', expandIcon());
+    view.addEventListener('click', () => openFrameViewer(bundle, screen, preset, viewerDocument));
+    save.after(view);
+  }
   frame.classList.add('frame-canonical');
   mountDeviceChrome(frame, bundle, screen, preset, screenEl);
   slot.append(head, frame);
@@ -3194,6 +3200,73 @@ async function waitForCaptureReadiness(document: Document): Promise<void> {
   await new Promise<void>(resolve => view.requestAnimationFrame(() => resolve()));
 }
 
+function openFrameViewer(bundle: BlueprintProjectBundle, screen: ScreenDefinition, preset: FramePreset, html: string): void {
+  const viewer = el('div', 'bp-frame-viewer');
+  viewer.dataset.frameType = preset.type;
+  viewer.setAttribute('role', 'dialog');
+  viewer.setAttribute('aria-modal', 'true');
+  viewer.setAttribute('aria-label', `${screen.name} in full screen`);
+  viewer.tabIndex = -1;
+
+  const iframe = document.createElement('iframe');
+  iframe.className = 'bp-frame-viewer-iframe';
+  applyPrototypeIframeIsolation(iframe);
+  iframe.title = screen.name;
+  iframe.srcdoc = html;
+
+  const phone = preset.type === 'mobile' ? el('div', 'bp-frame-viewer-phone') : undefined;
+  if (phone) {
+    phone.dataset.appearance = backgroundAppearance(bundle);
+    phone.style.setProperty('--frame-width', `${preset.width}px`);
+    phone.style.setProperty('--frame-height', `${viewerPhoneHeight(preset)}px`);
+    const display = el('div', 'frame-display');
+    display.append(iframe, createStatusBar(), createHomeIndicator());
+    phone.append(display);
+    viewer.append(phone);
+  } else {
+    viewer.append(iframe);
+  }
+  const fitPhone = (): void => {
+    if (!phone) return;
+    const scale = Math.min((window.innerHeight - 32) / phone.offsetHeight, (window.innerWidth - 32) / phone.offsetWidth);
+    phone.style.scale = `${Math.max(scale, 0.1)}`;
+  };
+
+  const exit = createIconButton('bp-chrome-frame-tool bp-frame-viewer-exit', 'Exit full screen', failIcon());
+  viewer.append(exit);
+
+  const close = (): void => {
+    window.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('resize', fitPhone);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+    if (document.fullscreenElement === viewer) void document.exitFullscreen().catch(() => undefined);
+    viewer.remove();
+  };
+  const onKey = (event: KeyboardEvent): void => {
+    event.stopPropagation();
+    if (event.key === 'Escape') close();
+  };
+  const onFullscreenChange = (): void => {
+    if (!document.fullscreenElement) close();
+  };
+  exit.addEventListener('click', close);
+  window.addEventListener('keydown', onKey, true);
+  window.addEventListener('resize', fitPhone);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+
+  document.body.append(viewer);
+  fitPhone();
+  viewer.focus();
+  iframe.addEventListener('load', () => iframe.focus(), { once: true });
+  void viewer.requestFullscreen?.().catch(() => undefined);
+}
+
+/** Tall mobile presets hold a whole scrolling page, so the viewer shows them through a standard phone viewport. */
+function viewerPhoneHeight(preset: FramePreset): number {
+  const reference = defaultMobileFramePreset();
+  return Math.min(preset.height, Math.round(preset.width * reference.height / reference.width));
+}
+
 function downloadBlob(blob: Blob, id: string): void {
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
@@ -3240,6 +3313,10 @@ function cameraIcon(): string {
 
 function fitIcon(): string {
   return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+}
+
+function expandIcon(): string {
+  return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>';
 }
 
 function downloadIcon(): string {

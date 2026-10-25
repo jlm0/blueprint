@@ -79,8 +79,10 @@ async function main(): Promise<void> {
     await assertReferenceScreenBoard(page, starterBundle);
     await showScreenPage(page, starterBundle, pageWithFrameType(starterBundle, 'mobile'));
     await assertPhoneFrame(page);
+    await assertFrameViewer(page, 'mobile');
     await showScreenPage(page, starterBundle, pageWithFrameType(starterBundle, 'desktop'));
     await assertDesktopFrame(page, starterBundle);
+    await assertFrameViewer(page, 'desktop');
     await assertScreenCompositionRendered(page, starterBundle);
     await assertVisibleBoundarySynchronization(page, 'screens');
     const starterScreensScreenshot = path.join(screenshotRoot, 'blueprint-screens-desktop.png');
@@ -778,6 +780,77 @@ async function assertDesktopFrame(page: import('playwright').Page, bundle: Bluep
   const phoneChrome = await frame.locator('.status-bar, .home-indicator').count();
   if (phoneChrome !== 0) {
     throw new Error(`Desktop frame should not render phone chrome; received ${phoneChrome} phone chrome nodes.`);
+  }
+}
+
+async function assertFrameViewer(page: import('playwright').Page, frameType: 'mobile' | 'desktop'): Promise<void> {
+  const slot = page.locator(`.board-screens .frame-slot:has(.frame[data-frame-type="${frameType}"])`).first();
+  const view = slot.locator('.frame-view');
+  await view.waitFor({ timeout: 5000 });
+  if (await view.getAttribute('title') !== 'View screen in full screen') {
+    throw new Error(`Expected ${frameType} frame to expose a full-screen view control.`);
+  }
+
+  await view.click();
+  const viewer = page.locator('.bp-frame-viewer');
+  await viewer.waitFor({ state: 'visible', timeout: 5000 });
+  const iframe = viewer.locator('.bp-frame-viewer-iframe');
+  await iframe.contentFrame().locator('body').waitFor({ state: 'visible', timeout: 10000 });
+  const layout = await viewer.evaluate(element => {
+    const frame = element.querySelector<HTMLIFrameElement>('.bp-frame-viewer-iframe');
+    const phone = element.querySelector<HTMLElement>('.bp-frame-viewer-phone');
+    const box = (phone ?? frame)?.getBoundingClientRect();
+    return {
+      sandbox: frame?.getAttribute('sandbox'),
+      pointerEvents: frame ? window.getComputedStyle(frame).pointerEvents : '',
+      frameWidth: frame?.offsetWidth ?? 0,
+      frameHeight: frame?.offsetHeight ?? 0,
+      boxWidth: box?.width ?? 0,
+      boxHeight: box?.height ?? 0,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight
+    };
+  });
+  if (layout.sandbox !== '' || layout.pointerEvents === 'none') {
+    throw new Error(`Full-screen ${frameType} view should keep the sandbox and accept scrolling: ${JSON.stringify(layout)}.`);
+  }
+  if (frameType === 'mobile') {
+    const fitsHeight = Math.abs(layout.boxHeight - (layout.viewportHeight - 32)) <= 1;
+    const fitsWidth = Math.abs(layout.boxWidth - (layout.viewportWidth - 32)) <= 1;
+    if (Math.abs(layout.frameWidth - 393) > 0.5 || Math.abs(layout.frameHeight - 852) > 0.5 || !(fitsHeight || fitsWidth)) {
+      throw new Error(`Full-screen phone should keep the preset size and scale to fill the viewport: ${JSON.stringify(layout)}.`);
+    }
+  } else if (Math.abs(layout.boxWidth - layout.viewportWidth) > 1 || Math.abs(layout.boxHeight - layout.viewportHeight) > 1) {
+    throw new Error(`Full-screen desktop view should fill the viewport: ${JSON.stringify(layout)}.`);
+  }
+
+  const root = iframe.contentFrame().locator('html');
+  const scrollable = await root.evaluate(element => element.scrollHeight > element.clientHeight + 1);
+  if (scrollable) {
+    const box = await iframe.boundingBox();
+    if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(300);
+    const scrollTop = await root.evaluate(element => element.scrollTop);
+    if (scrollTop <= 0) {
+      throw new Error(`Full-screen ${frameType} view should scroll the page with the wheel.`);
+    }
+  }
+  await page.screenshot({ path: path.join(screenshotRoot, `frame-viewer-${frameType}.png`) });
+
+  const exit = viewer.locator('.bp-frame-viewer-exit');
+  const fullscreen = await page.evaluate(() => document.fullscreenElement !== null);
+  if (frameType === 'desktop' && fullscreen) {
+    if (await exit.isVisible()) {
+      throw new Error('Full-screen desktop view should hide its exit control so it does not cover the page.');
+    }
+    await page.evaluate(() => document.exitFullscreen());
+  } else {
+    await exit.click();
+  }
+  await viewer.waitFor({ state: 'detached', timeout: 5000 });
+  if (await page.evaluate(() => document.fullscreenElement !== null)) {
+    throw new Error(`Closing the full-screen ${frameType} view should exit browser full screen.`);
   }
 }
 
