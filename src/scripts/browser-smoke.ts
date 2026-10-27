@@ -83,6 +83,11 @@ async function main(): Promise<void> {
     await showScreenPage(page, starterBundle, pageWithFrameType(starterBundle, 'desktop'));
     await assertDesktopFrame(page, starterBundle);
     await assertFrameViewer(page, 'desktop');
+    const flowPage = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+    await flowPage.goto(`${url}?board=screens&state=default`);
+    await flowPage.waitForSelector('.board-screens .frame-slot .frame-view', { timeout: 10000 });
+    await assertFrameViewerSteps(flowPage);
+    await flowPage.close();
     await assertScreenCompositionRendered(page, starterBundle);
     await assertVisibleBoundarySynchronization(page, 'screens');
     const starterScreensScreenshot = path.join(screenshotRoot, 'blueprint-screens-desktop.png');
@@ -123,6 +128,7 @@ async function main(): Promise<void> {
       await configured.locator('.board-screens .frame-chip').first().focus();
       await configured.locator('.board-screens .frame-shot').first().focus();
     });
+    await assertFrameViewerSteps(configured);
     await assertCanonicalFrameExports(browser, url);
     await assertLargeMinimumFont(url);
 
@@ -851,6 +857,68 @@ async function assertFrameViewer(page: import('playwright').Page, frameType: 'mo
   await viewer.waitFor({ state: 'detached', timeout: 5000 });
   if (await page.evaluate(() => document.fullscreenElement !== null)) {
     throw new Error(`Closing the full-screen ${frameType} view should exit browser full screen.`);
+  }
+}
+
+async function assertFrameViewerSteps(page: import('playwright').Page): Promise<void> {
+  const slots = page.locator('.board-screens .frame-slot:has(.frame-view)');
+  const frames = await slots.evaluateAll(elements => elements.map(slot => ({
+    html: slot.querySelector('.canonical-prototype-iframe')?.getAttribute('srcdoc') ?? '',
+    frameType: slot.querySelector<HTMLElement>('.frame')?.dataset.frameType ?? ''
+  })));
+  if (frames.length < 2) {
+    throw new Error(`Full-screen arrow keys need at least two viewable frames on the board, found ${frames.length}.`);
+  }
+
+  await slots.first().locator('.frame-view').click();
+  const viewer = page.locator('.bp-frame-viewer');
+  await viewer.waitFor({ state: 'visible', timeout: 5000 });
+  const fullscreen = await page.evaluate(() => document.fullscreenElement !== null);
+  const expectFrame = async (index: number, after: string): Promise<void> => {
+    const shown = await viewer.evaluate(element => ({
+      html: element.querySelector('.bp-frame-viewer-iframe')?.getAttribute('srcdoc') ?? '',
+      frameType: element instanceof HTMLElement ? element.dataset.frameType ?? '' : '',
+      phone: element.querySelector('.bp-frame-viewer-phone') !== null,
+      iframes: element.querySelectorAll('iframe').length,
+      focused: document.activeElement === element,
+      fullscreen: document.fullscreenElement === element
+    }));
+    const expected = frames[index];
+    if (
+      shown.html !== expected.html
+      || shown.frameType !== expected.frameType
+      || shown.phone !== (expected.frameType === 'mobile')
+      || shown.iframes !== 1
+    ) {
+      throw new Error(`After ${after}, the full-screen view should show frame ${index + 1} of ${frames.length}.`);
+    }
+    if (!shown.focused) {
+      throw new Error(`After ${after}, focus should stay on the full-screen view so the arrow keys keep working.`);
+    }
+    if (fullscreen && !shown.fullscreen) {
+      throw new Error(`After ${after}, the view should stay in browser full screen.`);
+    }
+  };
+
+  await expectFrame(0, 'opening the first frame');
+  await page.keyboard.press('ArrowLeft');
+  await expectFrame(0, 'ArrowLeft on the first frame');
+  const box = await viewer.locator('.bp-frame-viewer-iframe').boundingBox();
+  if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => document.activeElement?.classList.contains('bp-frame-viewer'), undefined, { timeout: 2000 });
+  for (let index = 1; index < frames.length; index += 1) {
+    await page.keyboard.press('ArrowRight');
+    await expectFrame(index, `ArrowRight to frame ${index + 1}`);
+  }
+  await page.keyboard.press('ArrowRight');
+  await expectFrame(frames.length - 1, 'ArrowRight on the last frame');
+  await page.keyboard.press('ArrowLeft');
+  await expectFrame(frames.length - 2, 'ArrowLeft from the last frame');
+
+  await page.keyboard.press('Escape');
+  await viewer.waitFor({ state: 'detached', timeout: 5000 });
+  if (await page.evaluate(() => document.fullscreenElement !== null)) {
+    throw new Error('Escape should close the full-screen view and exit browser full screen.');
   }
 }
 
