@@ -229,6 +229,25 @@ describe('inspo tool', () => {
     });
   });
 
+  it('names the fix when a change fails validation, and writes nothing', async () => {
+    await withSidecar('inspo', async out => {
+      const inspoPath = path.join(out, 'inspo.json');
+      await inspoBlueprint({ project: out, operation: { type: 'direction', aspect: 'mark', statement: 'Draw the mark as one heavy shape.', entryIds: [] } }).catch(() => undefined);
+      const before = await readFile(inspoPath, 'utf8');
+      const starter = await readFile('starter/design/blueprint/brand.json', 'utf8');
+      await writeFile(path.join(out, 'brand.json'), starter.replace(/"projectId": "[^"]+"/, '"projectId": "app"'));
+      await assert.rejects(
+        inspoBlueprint({ project: out, operation: { type: 'sync' } }),
+        (error: Error) => {
+          assert.match(error.message, /failed baseline validation, so Blueprint wrote nothing\. Fix: .+/);
+          assert.doesNotMatch(error.message, /Exploration mutation/);
+          return true;
+        }
+      );
+      assert.equal(await readFile(inspoPath, 'utf8'), before);
+    });
+  });
+
   it('proposes directions, keeps approval until the statement changes, and gates the brand on approval', async () => {
     await withSidecar('inspo', async out => {
       const fetcher = fakeFetcher({ 'https://images.example.com/a.png': image(PNG), 'https://images.example.com/b.png': image(PNG) });

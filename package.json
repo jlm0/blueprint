@@ -42,11 +42,20 @@
     "html-to-image": "^1.11.13",
     "zod": "^4.4.3"
   },
+  "peerDependencies": {
+    "playwright": "^1.49.1"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
     "oxlint": "^1.79.0",
+    "playwright": "^1.49.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.6"

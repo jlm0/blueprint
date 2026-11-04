@@ -2,7 +2,7 @@ import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 
 const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map(moduleName => `node:${moduleName}`)]);
-const runtimePackages = new Set(['@modelcontextprotocol/server', '@modelcontextprotocol/server/stdio', 'zod/v4']);
+const runtimePackages = new Set(['@modelcontextprotocol/server', '@modelcontextprotocol/server/stdio', 'playwright', 'zod/v4']);
 
 export default defineConfig({
   build: {

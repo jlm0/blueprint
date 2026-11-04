@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { watch } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, unlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -142,7 +142,9 @@ import {
   type ServeInput,
   type ServeOutput,
   type ValidateInput,
-  type ValidateOutput
+  type ValidateOutput,
+  artifactSummarySchema,
+  type ArtifactSummary
 } from './schemas';
 
 const watcherDebounceMs = 120;
@@ -194,7 +196,6 @@ export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
 }
 
 const packageRoot = findPackageRoot();
-const runtimeImport = new Function('specifier', 'return import(specifier)') as <T>(specifier: string) => Promise<T>;
 
 export async function initializeBlueprint(input: InitInput, signal?: AbortSignal): Promise<InitOutput> {
   throwIfAborted(signal);
@@ -288,32 +289,7 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
   });
 
   throwIfAborted(signal);
-  const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
-  let bundle: BlueprintProjectBundle;
-  let validation: ReturnType<typeof validateProject>;
-  try {
-    await cp(projectRoot, scratch, { recursive: true });
-    await writeProjectFiles(scratch, migration.writes);
-    bundle = await loadProjectFromFs(scratch);
-    const digestWrites = new Map<string, string>();
-    for (const exploration of bundle.explorations.explorations) {
-      const baseDigest = computeExplorationBaselineDigest(bundle, exploration.id);
-      if (baseDigest === exploration.target.baseDigest) continue;
-      const recordRef = explorationRecordRef(exploration.id);
-      const record = JSON.parse(await readFile(path.join(scratch, recordRef), 'utf8'));
-      record.exploration.target.baseDigest = baseDigest;
-      digestWrites.set(recordRef, jsonFileContent(record));
-      migration.changes.push(`exploration ${exploration.id}: recomputed target.baseDigest for the migrated baseline.`);
-    }
-    if (digestWrites.size > 0) {
-      await writeProjectFiles(scratch, digestWrites);
-      for (const [fileRef, content] of digestWrites) migration.writes.set(fileRef, content);
-      bundle = await loadProjectFromFs(scratch);
-    }
-    validation = validateProject(bundle);
-  } finally {
-    await rm(scratch, { recursive: true, force: true });
-  }
+  const { bundle, validation } = await validateMigration(projectRoot, migration);
 
   throwIfAborted(signal);
   if (!input.dryRun && migration.writes.size > 0) {
@@ -1052,7 +1028,7 @@ function borrowedServeServer(
 async function preflightChromium(): Promise<(typeof import('playwright'))['chromium']> {
   let chromium: (typeof import('playwright'))['chromium'];
   try {
-    ({ chromium } = await runtimeImport<typeof import('playwright')>('playwright'));
+    ({ chromium } = await import('playwright'));
   } catch {
     throw createChromiumDependencyError();
   }
@@ -1136,7 +1112,7 @@ type ProjectValidator = (bundle: BlueprintProjectBundle) => ValidationResult;
 function assertValidMutation(bundle: BlueprintProjectBundle, validate: ProjectValidator): void {
   const validation = validate(bundle);
   if (!validation.ok) {
-    throw new Error(`Exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
+    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${validation.errors.join('\n')}`);
   }
 }
 
@@ -1427,6 +1403,42 @@ async function readProjectTextFiles(projectRoot: string): Promise<Map<string, st
   return files;
 }
 
+async function validateMigration(
+  projectRoot: string,
+  migration: ReturnType<typeof migrateProjectFiles>
+): Promise<{ bundle: BlueprintProjectBundle; validation: ValidationResult }> {
+  if (migration.writes.size === 0) {
+    const bundle = await loadProjectFromFs(projectRoot);
+    const digestsCurrent = bundle.explorations.explorations.every(exploration =>
+      computeExplorationBaselineDigest(bundle, exploration.id) === exploration.target.baseDigest);
+    if (digestsCurrent) return { bundle, validation: validateProject(bundle) };
+  }
+  const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
+  try {
+    await cp(projectRoot, scratch, { recursive: true });
+    await writeProjectFiles(scratch, migration.writes);
+    let bundle = await loadProjectFromFs(scratch);
+    const digestWrites = new Map<string, string>();
+    for (const exploration of bundle.explorations.explorations) {
+      const baseDigest = computeExplorationBaselineDigest(bundle, exploration.id);
+      if (baseDigest === exploration.target.baseDigest) continue;
+      const recordRef = explorationRecordRef(exploration.id);
+      const record = JSON.parse(await readFile(path.join(scratch, recordRef), 'utf8'));
+      record.exploration.target.baseDigest = baseDigest;
+      digestWrites.set(recordRef, jsonFileContent(record));
+      migration.changes.push(`exploration ${exploration.id}: recomputed target.baseDigest for the migrated baseline.`);
+    }
+    if (digestWrites.size > 0) {
+      await writeProjectFiles(scratch, digestWrites);
+      for (const [fileRef, content] of digestWrites) migration.writes.set(fileRef, content);
+      bundle = await loadProjectFromFs(scratch);
+    }
+    return { bundle, validation: validateProject(bundle) };
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
+
 async function writeProjectFiles(projectRoot: string, writes: Map<string, string>): Promise<void> {
   for (const [fileRef, content] of writes) {
     assertSafeProjectFileRef(fileRef);
@@ -1434,6 +1446,31 @@ async function writeProjectFiles(projectRoot: string, writes: Map<string, string
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, content, 'utf8');
   }
+}
+
+/** The response to a tool call that wrote its full JSON to `out`, so a large report does not cross the agent's context. */
+export async function artifactSummary(
+  command: ArtifactSummary['command'],
+  input: { project: string; out: string },
+  output: Record<string, unknown>
+): Promise<ArtifactSummary> {
+  const resolved = path.resolve(input.out);
+  const readiness = output.readiness as { tier?: ArtifactSummary['tier'] } | undefined;
+  const validation = output.validation as { ok?: boolean } | undefined;
+  const ok = (output.ok ?? validation?.ok) as boolean | undefined;
+  const counts: Record<string, number> = {};
+  for (const [key, value] of Object.entries({ ...output, ...readiness })) {
+    if (Array.isArray(value)) counts[key] = value.length;
+  }
+  return artifactSummarySchema.parse({
+    command,
+    project: normalize(path.resolve(input.project)),
+    out: normalize(resolved),
+    bytes: (await stat(resolved)).size,
+    ...(ok === undefined ? {} : { ok }),
+    ...(readiness?.tier ? { tier: readiness.tier } : {}),
+    counts
+  });
 }
 
 async function writeOptionalJsonArtifact(value: unknown, out?: string): Promise<void> {

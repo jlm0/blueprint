@@ -235,7 +235,10 @@ describe('canonical prototype compiler', () => {
       '<main><link rel="stylesheet" href="https://example.com/app.css"><p>Chat</p></main>',
       '<main><a href=https://example.com>Leave</a></main>',
       '<main><a href="/one" href="/two">Leave</a></main>',
-      '<main><area href="https://example.com" alt="Leave"></main>'
+      '<main><area href="https://example.com" alt="Leave"></main>',
+      '<main><a title="a>b" href="https://example.com/x">Leave</a></main>',
+      "<main><area alt='a>b' href='https://example.com/x'></main>",
+      '<main><a data-note=a"b href="https://example.com/x">Leave</a></main>'
     ]) {
       const unsafe = structuredClone(bundle);
       unsafe.prototypeSourceContents[chatSource] = unsafeSource;
@@ -244,6 +247,17 @@ describe('canonical prototype compiler', () => {
         /navigation|unsafe href|executable/
       );
     }
+  });
+
+  it('keeps a greater-than sign in another attribute of a safe link', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'chat');
+    assert.ok(screen?.prototype);
+    const source = bundle.prototypeSourceContents[screen.prototype.source];
+    bundle.prototypeSourceContents[screen.prototype.source] = source.replace(/<\/(\w+)>\s*$/, '<a title="a>b" href="/auth">Sign in</a></$1>');
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.match(compiled.html, /<a title="a>b" data-blueprint-href="\/auth"/);
+    assert.doesNotMatch(compiled.html, /<a title="a>b" href=/);
   });
 
   it('requires observed reusable uses to exactly match the declared graph without optional renderedUses', async () => {

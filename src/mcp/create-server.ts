@@ -14,7 +14,8 @@ import {
   restoreBlueprint,
   serveBlueprint,
   validateBlueprint,
-  type BlueprintServeHandle
+  type BlueprintServeHandle,
+  artifactSummary
 } from './operations';
 import {
   captureInputSchema,
@@ -22,19 +23,15 @@ import {
   exploreInputSchema,
   exploreOutputSchema,
   extractInputSchema,
-  extractOutputSchema,
   indexInputSchema,
-  indexOutputSchema,
   initInputSchema,
   initOutputSchema,
   inspoInputSchema,
   inspoOutputSchema,
   migrateInputSchema,
-  migrateOutputSchema,
   promoteInputSchema,
   promoteOutputSchema,
   queryInputSchema,
-  queryOutputSchema,
   restoreInputSchema,
   restoreOutputSchema,
   selectionInputSchema,
@@ -42,7 +39,12 @@ import {
   serveInputSchema,
   serveOutputSchema,
   validateInputSchema,
-  validateOutputSchema
+  validateToolOutputSchema,
+  migrateToolOutputSchema,
+  indexToolOutputSchema,
+  queryToolOutputSchema,
+  extractToolOutputSchema,
+  type ArtifactSummary
 } from './schemas';
 
 export const BLUEPRINT_MCP_SERVER_NAME = 'blueprint';
@@ -68,7 +70,7 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives, components, screens, and tokens have fixed shapes, described in the AGENTS.md of each sidecar; contract errors end with "Fix:" and the exact change to make. A sidecar made with init start "inspo" begins with an inspo board and no brand: save the image links and words of the person with the inspo tool, propose directions, and write brand.json only after the person approves a direction. Every tool except migrate refuses a sidecar with a file on an older schema: run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
+        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives, components, screens, and tokens have fixed shapes, described in the AGENTS.md of each sidecar; contract errors end with "Fix:" and the exact change to make. A sidecar made with init start "inspo" begins with an inspo board and no brand: save the image links and words of the person with the inspo tool, propose directions, and write brand.json only after the person approves a direction. Start with validate, then index, then focused query calls. Call serve when a person needs to see the work, and call selection to resolve what they selected in the canvas. On a sidecar with a file on an older schema, validate reports each file on an older schema and serve shows a notice, and every other tool refuses it until migrate runs: run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
   const activeServeHandles = new Map<string, BlueprintServeHandle>();
@@ -91,7 +93,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Edit Blueprint Inspo',
       description:
-        'Edit the inspo board of one Blueprint sidecar. The board is the first step of a new product. add downloads the image link that the person pastes into inspo/, which git ignores, and saves the link with the note of the person. update changes aspects, stance, note, or reading. remove deletes an entry. sync downloads each missing image again. direction proposes or approves what the brand takes from the board for one aspect. Keep each note as the person wrote it. The tool refuses a sidecar that has brand.json and no inspo.json.',
+        'Edit the inspo board of one Blueprint sidecar. The board is the first step of a new product. add downloads the image link that the person pastes into inspo/, which git ignores, and saves the link with the note of the person. update changes aspects, stance, note, or reading. remove deletes an entry. sync downloads each missing image again. direction proposes or approves what the brand takes from the board for one aspect. A changed statement or entryIds returns the direction to proposed unless the call passes status, and a sidecar with brand.json needs an approved direction. Keep each note as the person wrote it. The tool refuses a sidecar that has brand.json and no inspo.json.',
       inputSchema: inspoInputSchema,
       outputSchema: inspoOutputSchema,
       annotations: {
@@ -109,14 +111,14 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Validate Blueprint',
       description:
-        'Validate one Blueprint project in baseline, readiness, or strict mode. When out is provided, also writes the returned JSON to that path. A non-passing validation returns the complete structured report with isError=true.',
+        'Validate one Blueprint project in baseline, readiness, or strict mode. When out is provided, writes the full JSON to that path and returns only a summary with counts. A non-passing validation returns isError=true. In readiness mode ok true means no blockers, so read readiness.tier: pending and unresolved are not ready.',
       inputSchema: validateInputSchema,
-      outputSchema: validateOutputSchema
+      outputSchema: validateToolOutputSchema
     },
     async (input, context) =>
       executeTool(async () => {
         const output = await validateBlueprint(input, context.mcpReq.signal);
-        return toolResult(output, !output.ok);
+        return toolResult(await summarizeWhenWritten('validate', input, output), !output.ok);
       })
   );
 
@@ -125,11 +127,11 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Migrate Blueprint',
       description:
-        'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result; each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project already on the current schema is left unchanged.',
+        'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result; each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project already on the current schema is left unchanged. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
       inputSchema: migrateInputSchema,
-      outputSchema: migrateOutputSchema
+      outputSchema: migrateToolOutputSchema
     },
-    async (input, context) => executeTool(() => migrateBlueprint(input, context.mcpReq.signal))
+    async (input, context) => executeTool(async () => summarizeWhenWritten('migrate', input, await migrateBlueprint(input, context.mcpReq.signal)))
   );
 
   server.registerTool(
@@ -137,11 +139,11 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Index Blueprint',
       description:
-        'List every stable boundary reference in one Blueprint project. When out is provided, also writes the returned JSON to that path.',
+        'List every stable boundary reference in one Blueprint project. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
       inputSchema: indexInputSchema,
-      outputSchema: indexOutputSchema
+      outputSchema: indexToolOutputSchema
     },
-    async (input, context) => executeTool(() => indexBlueprint(input, context.mcpReq.signal))
+    async (input, context) => executeTool(async () => summarizeWhenWritten('index', input, await indexBlueprint(input, context.mcpReq.signal)))
   );
 
   server.registerTool(
@@ -149,11 +151,11 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Query Blueprint',
       description:
-        'Run exactly one typed boundary, section, prototype-only, exploration, or canonical-history query against one Blueprint project. When out is provided, also writes the returned JSON to that path.',
+        'Run exactly one typed boundary, section, prototype-only, exploration, or canonical-history query against one Blueprint project. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
       inputSchema: queryInputSchema,
-      outputSchema: queryOutputSchema
+      outputSchema: queryToolOutputSchema
     },
-    async (input, context) => executeTool(() => queryBlueprint(input, context.mcpReq.signal))
+    async (input, context) => executeTool(async () => summarizeWhenWritten('query', input, await queryBlueprint(input, context.mcpReq.signal)))
   );
 
   server.registerTool(
@@ -161,11 +163,11 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Extract Blueprint Handoff',
       description:
-        'Extract a focused boundary packet or deep transitive handoff packet from one Blueprint project. When out is provided, also writes the returned JSON to that path.',
+        'Extract a focused boundary packet or deep transitive handoff packet from one Blueprint project. The focused packet equals query show. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
       inputSchema: extractInputSchema,
-      outputSchema: extractOutputSchema
+      outputSchema: extractToolOutputSchema
     },
-    async (input, context) => executeTool(() => extractBlueprint(input, context.mcpReq.signal))
+    async (input, context) => executeTool(async () => summarizeWhenWritten('extract', input, await extractBlueprint(input, context.mcpReq.signal)))
   );
 
   server.registerTool(
@@ -327,8 +329,16 @@ async function executeTool<T extends Record<string, unknown>>(
   }
 }
 
+function summarizeWhenWritten(
+  command: ArtifactSummary['command'],
+  input: { project: string; out?: string },
+  output: Record<string, unknown>
+): Promise<Record<string, unknown>> | Record<string, unknown> {
+  return input.out ? artifactSummary(command, { project: input.project, out: input.out }, output) : output;
+}
+
 function toolResult<T extends Record<string, unknown>>(value: T, isError = false): CallToolResult {
-  const text = JSON.stringify(value, null, 2);
+  const text = JSON.stringify(value);
   const structuredContent = JSON.parse(text) as Record<string, unknown>;
   return {
     content: [{ type: 'text', text }],

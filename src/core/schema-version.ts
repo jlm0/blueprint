@@ -28,7 +28,7 @@ export function fileSchemaVersions(bundle: VersionedBundle): Array<[VersionedFil
   ];
 }
 
-/** One error per structured file that predates the current schema; every tool except `migrate` refuses such a project. */
+/** One error per structured file that predates the current schema; `validate` reports them, `serve` shows a notice, and the other tools refuse until `migrate` runs. */
 export function schemaVersionErrors(bundle: VersionedBundle): string[] {
   return fileSchemaVersions(bundle)
     .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)

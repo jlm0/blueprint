@@ -29,18 +29,20 @@ import type {
   ScreenHistoryRecordFile,
   TokenFile
 } from './types';
+import { assertStructuredShapes } from './structured-shapes';
 
 export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintProjectBundle> {
-  const reader = await ContainedBlueprintReader.create(sourceRoot);
+  const reader = await createProjectReader(sourceRoot);
   const manifest = await readJson<BlueprintManifest>(reader, 'manifest.json');
   const tokens = await readJson<TokenFile>(reader, 'tokens.json');
   const primitives = await readJson<PrimitiveFile>(reader, 'primitives.json');
   const components = await readJson<ComponentFile>(reader, 'components.json');
   const screens = await readJson<ScreenFile>(reader, 'screens.json');
   const brandText = await reader.readText('brand.json', { kind: 'fixed JSON', optional: true });
-  const brand = brandText === undefined ? undefined : JSON.parse(brandText) as BrandFile;
+  const brand = brandText === undefined ? undefined : parseJson<BrandFile>('brand.json', brandText);
   const inspoText = await reader.readText('inspo.json', { kind: 'fixed JSON', optional: true });
-  const inspo = inspoText === undefined ? undefined : JSON.parse(inspoText) as InspoFile;
+  const inspo = inspoText === undefined ? undefined : parseJson<InspoFile>('inspo.json', inspoText);
+  assertStructuredShapes({ manifest, tokens, primitives, components, screens, brand });
   const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
   const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
   const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs);
@@ -159,7 +161,24 @@ async function readJson<T>(reader: ContainedBlueprintReader, fileRef: string): P
   if (raw === undefined) {
     throw new Error(`fixed JSON "${fileRef}" does not exist.`);
   }
-  return JSON.parse(raw) as T;
+  return parseJson<T>(fileRef, raw);
+}
+
+async function createProjectReader(sourceRoot: string): Promise<ContainedBlueprintReader> {
+  try {
+    return await ContainedBlueprintReader.create(sourceRoot);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    throw new Error(`Blueprint project "${sourceRoot}" does not exist. Fix: pass the path of the design/blueprint folder of the app, or create it with the init tool.`);
+  }
+}
+
+function parseJson<T>(fileRef: string, raw: string): T {
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    throw new Error(`${fileRef} is not valid JSON: ${(error as Error).message}. Fix: correct the JSON syntax of ${fileRef}.`);
+  }
 }
 
 function assetMediaType(filePath: string): string {

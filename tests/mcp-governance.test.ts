@@ -156,7 +156,7 @@ describe('Blueprint MCP and template governance', () => {
         const validationOut = path.join(tempDir, 'validation.json');
         const validation = await call(session, 'validate', { project: miraRoot, out: validationOut });
         assert.equal(validation.ok, true);
-        assert.deepEqual(JSON.parse(await readFile(validationOut, 'utf8')), validation);
+        assert.equal(JSON.parse(await readFile(validationOut, 'utf8')).ok, true);
 
         const strict = await call(session, 'validate', { project: meridianRoot, mode: 'strict' });
         assert.equal(strict.mode, 'strict');
@@ -197,7 +197,8 @@ describe('Blueprint MCP and template governance', () => {
         assert.ok(Array.isArray(prototypeOnly.results));
 
         const focusedOut = path.join(tempDir, 'focused.json');
-        const focused = await call(session, 'extract', { project: miraRoot, boundary: 'screen:workspace', out: focusedOut });
+        await call(session, 'extract', { project: miraRoot, boundary: 'screen:workspace', out: focusedOut });
+        const focused = await call(session, 'extract', { project: miraRoot, boundary: 'screen:workspace' });
         assert.equal(focused.id, 'mira-ai/screen/workspace');
         assert.equal('boundaries' in focused, false);
         assert.deepEqual(JSON.parse(await readFile(focusedOut, 'utf8')), focused);
@@ -533,7 +534,7 @@ describe('Blueprint MCP and template governance', () => {
         const browser = await chromium.launch();
         try {
           const page = await browser.newPage();
-          await page.goto(url);
+          await page.goto(`${url}?board=screens`);
           assert.equal(await servedProjectName(page), 'Serve Copy');
           await page.evaluate(() => {
             (window as Window & { __BLUEPRINT_STABLE_DOCUMENT__?: string }).__BLUEPRINT_STABLE_DOCUMENT__ = 'same-document';
@@ -702,6 +703,100 @@ describe('Blueprint MCP and template governance', () => {
         await session.close();
       }
       await assertEventuallyUnreachable(url);
+    });
+  });
+
+  it('returns compact JSON, and only a summary when the caller gives out', async () => {
+    await withTempDir(async tempDir => {
+      const session = await openSession();
+      try {
+        const full = await session.client.callTool({ name: 'validate', arguments: { project: miraRoot } });
+        assert.equal(textContent(full).includes('\n'), false);
+
+        const validationOut = path.join(tempDir, 'validation.json');
+        const summary = await call(session, 'validate', { project: miraRoot, out: validationOut });
+        const artifact = JSON.parse(await readFile(validationOut, 'utf8')) as { prose: unknown[] };
+        assert.deepEqual(artifact, structured(full));
+        assert.equal(summary.command, 'validate');
+        assert.equal(summary.ok, true);
+        assert.equal(summary.out, validationOut);
+        assert.equal(summary.bytes, Buffer.byteLength(await readFile(validationOut, 'utf8')));
+        assert.deepEqual(summary.counts, { errors: 0, findings: 0, prose: artifact.prose.length });
+        assert.equal('errors' in summary, false);
+
+        const readinessOut = path.join(tempDir, 'readiness.json');
+        const readiness = await session.client.callTool({ name: 'validate', arguments: { project: miraRoot, mode: 'readiness', out: readinessOut } });
+        const readinessArtifact = JSON.parse(await readFile(readinessOut, 'utf8'));
+        const readinessSummary = structured(readiness);
+        assert.equal(readiness.isError, !readinessArtifact.ok);
+        assert.equal(readinessSummary.tier, readinessArtifact.readiness.tier);
+        assert.equal((readinessSummary.counts as { blockers: number }).blockers, readinessArtifact.readiness.blockers.length);
+
+        const extractOut = path.join(tempDir, 'extract.json');
+        const extractSummary = await session.client.callTool({ name: 'extract', arguments: { project: miraRoot, boundary: 'screen:workspace', mode: 'deep', out: extractOut } });
+        assert.ok(textContent(extractSummary).length < 400);
+        assert.ok((await readFile(extractOut, 'utf8')).length > 4_000);
+
+        for (const [name, args] of [
+          ['index', { project: miraRoot }],
+          ['query', { project: miraRoot, query: { type: 'show', boundary: 'screen:workspace' } }]
+        ] as const) {
+          const out = path.join(tempDir, `${name}.json`);
+          const result = await call(session, name, { ...args, out });
+          assert.equal(result.command, name);
+          assert.equal(result.out, out);
+          const direct = await call(session, name, args);
+          assert.deepEqual(JSON.parse(await readFile(out, 'utf8')), direct);
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('keeps the current board and shows no viewport glow when an agent works on another board', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0 });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(`${served.url as string}?board=screens`);
+          await page.locator('[data-board-root="screens"]').waitFor();
+          for (const [index, toolInput] of [
+            { project: 'design/blueprint', query: { type: 'show', boundary: 'token-group:color' } },
+            { project: 'design/blueprint', query: { type: 'show', boundary: 'board:primitives' } },
+            { project: 'design/blueprint', query: { type: 'show', boundary: 'primitive:tooltip' } }
+          ].entries()) {
+            await runCodexHook(tempDir, {
+              session_id: 'thread-stay',
+              turn_id: `turn-stay-${index}`,
+              cwd: tempDir,
+              hook_event_name: 'PreToolUse',
+              tool_name: 'mcp__blueprint__query',
+              tool_use_id: `tool-stay-${index}`,
+              tool_input: toolInput
+            });
+            await page.locator('.bp-chrome-agent-status:not([hidden])').waitFor();
+            await page.waitForTimeout(150);
+            const location = new URL(page.url());
+            assert.equal(location.searchParams.get('board'), 'screens');
+            assert.equal(await page.locator('.bp-chrome-viewport.bp-agent-project-focus').count(), 0);
+          }
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
     });
   });
 

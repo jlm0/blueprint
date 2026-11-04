@@ -3975,25 +3975,11 @@ function renderAgentFocus(): void {
       focusedActivityElements.push(context);
     }
   }
-  if (canvasFocuses.length > 0) renderCanvasAgentFocus(canvasFocuses, label, frameFocus.size > 0);
+  if (canvasFocuses.length > 0) renderCanvasAgentFocus(canvasFocuses, label);
   setFocusedActivityFailed(lastAgentActivity?.phase === 'failed');
 }
 
-function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], label: string, framesFocused: boolean): void {
-  if (!framesFocused && lastAgentActivity) {
-    const primary = canvasFocuses[0];
-    const section = documentSectionForKind(primary.kind);
-    const requestedBoard = primary.kind === 'board' && isBoardId(primary.localId) ? primary.localId : primary.board;
-    if (section) {
-      const itemId = primary.localId;
-      if (activeBoardId !== 'primitives' || activeSection !== section || activeItem(project, section)?.id !== itemId) {
-        openDocumentItem(section, itemId);
-      }
-    } else if (requestedBoard && activeBoardId !== requestedBoard) {
-      showBoard(requestedBoard);
-    }
-  }
-
+function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], label: string): void {
   const activeRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
   for (const focus of canvasFocuses) {
     let target = activeRoot ? findBoundaryElement(activeRoot, focus.boundaryId) : undefined;
@@ -4005,16 +3991,6 @@ function renderCanvasAgentFocus(canvasFocuses: BlueprintAgentActivityFocus[], la
     target.dataset.agentActivityLabel = label;
     if (!focusedActivityElements.includes(target)) focusedActivityElements.push(target);
   }
-  if (focusedActivityElements.length === 0) {
-    viewport.classList.add('bp-agent-project-focus');
-  }
-}
-
-function documentSectionForKind(kind: BoundaryKind): DocumentSectionId | undefined {
-  if (kind === 'token-group') return 'foundations';
-  if (kind === 'primitive') return 'primitives';
-  if (kind === 'component') return 'components';
-  return undefined;
 }
 
 function findBoundaryElement(root: HTMLElement, id: string): HTMLElement | undefined {
@@ -4039,7 +4015,6 @@ function agentActivityKey(event: BlueprintAgentActivityEvent): string {
 }
 
 function clearAgentFocus(): void {
-  viewport.classList.remove('bp-agent-project-focus');
   resetFrameOverlay(agentFocusOverlay);
   for (const element of focusedActivityElements) {
     element.classList.remove(

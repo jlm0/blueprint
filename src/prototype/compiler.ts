@@ -814,20 +814,50 @@ function rewriteHtmlAssetRefs(context: CompilerContext, html: string, sourceRef:
 }
 
 function rewriteNavigationAttributes(html: string, sourceRef: string): string {
-  return html.replace(/<(a|area)\b([^>]*)>/gi, (openingTag, _tagName: string, attributes: string) => {
-    const hrefMatches = [...attributes.matchAll(/\bhref\s*=\s*(['"])(.*?)\1/gi)];
-    if (!/\bhref\s*=/i.test(attributes)) {
-      return openingTag;
-    }
-    if (hrefMatches.length !== 1) {
-      throw new Error(`Prototype source "${sourceRef}" contains malformed or duplicate navigation href markup.`);
-    }
-    const href = hrefMatches[0];
-    if (!isSafePrototypeHref(href[2])) {
-      throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${href[2]}".`);
-    }
-    return openingTag.replace(href[0], () => `data-blueprint-href="${escapeAttribute(href[2])}"`);
-  });
+  let output = '';
+  let cursor = 0;
+  for (const start of html.matchAll(/<(?:a|area)\b/gi)) {
+    if (start.index < cursor) continue;
+    const tagEnd = findAttributeAwareTagEnd(html, start.index + start[0].length);
+    if (tagEnd === -1) break;
+    const attributes = html.slice(start.index + start[0].length, tagEnd);
+    output += html.slice(cursor, start.index) + start[0] + rewriteNavigationHref(attributes, sourceRef) + '>';
+    cursor = tagEnd + 1;
+  }
+  return output + html.slice(cursor);
+}
+
+function rewriteNavigationHref(attributes: string, sourceRef: string): string {
+  if (!/\bhref\s*=/i.test(attributes)) {
+    return attributes;
+  }
+  const hrefMatches = [...attributes.matchAll(/\bhref\s*=\s*(['"])(.*?)\1/gi)];
+  if (hrefMatches.length !== 1) {
+    throw new Error(`Prototype source "${sourceRef}" contains malformed or duplicate navigation href markup.`);
+  }
+  const href = hrefMatches[0];
+  if (!isSafePrototypeHref(href[2])) {
+    throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${href[2]}".`);
+  }
+  return attributes.replace(href[0], () => `data-blueprint-href="${escapeAttribute(href[2])}"`);
+}
+
+/** Like the browser tokenizer, this opens a quoted value only after "=", so a stray quote does not hide a later attribute. */
+function findAttributeAwareTagEnd(html: string, start: number): number {
+  let index = start;
+  while (index < html.length) {
+    const character = html[index];
+    if (character === '>') return index;
+    index += 1;
+    if (character !== '=') continue;
+    while (index < html.length && /\s/.test(html[index])) index += 1;
+    const quote = html[index];
+    if (quote !== '"' && quote !== "'") continue;
+    const close = html.indexOf(quote, index + 1);
+    if (close === -1) return -1;
+    index = close + 1;
+  }
+  return -1;
 }
 
 function assetToken(context: CompilerContext, sourceRef: string, value: string): string {

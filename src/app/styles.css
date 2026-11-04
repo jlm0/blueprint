@@ -779,12 +779,6 @@ body {
   transform-origin: 0 0;
 }
 
-.bp-chrome-viewport.bp-agent-project-focus {
-  box-shadow:
-    inset 0 0 0 3px var(--bp-chrome-agent),
-    inset 0 0 42px var(--bp-chrome-agent-glow);
-}
-
 .bp-chrome-agent-focus {
   z-index: 8;
   outline: 3px solid var(--bp-chrome-agent);

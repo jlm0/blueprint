@@ -2,7 +2,7 @@ import * as z from 'zod/v4';
 
 const nonEmptyString = z.string().min(1);
 const projectPathSchema = nonEmptyString.describe('Path to one app-owned design/blueprint project. Relative paths resolve from the MCP server process working directory.');
-const outputPathSchema = nonEmptyString.describe('Optional file path that receives the same structured JSON returned by the tool. Existing files are overwritten.');
+const outputPathSchema = nonEmptyString.describe('Optional file path that receives the full structured JSON. The tool then returns only a summary with counts. Existing files are overwritten.');
 
 export const boundaryKindSchema = z.enum([
   'project',
@@ -140,7 +140,7 @@ export const captureInputSchema = z
     boundary: capturableBoundarySelectorSchema,
     state: nonEmptyString.optional().describe('Declared state to render. Defaults to the first declared state.'),
     viewport: nonEmptyString.optional().describe(
-      'Declared frame preset. Screens render in its review condition; components and primitives take its width instead of the 1280 px default.'
+      'Declared frame preset, or a review condition id of the screen. Screens render in that review condition; components and primitives take the preset width instead of the 1280 px default.'
     ),
     variant: nonEmptyString.optional().describe('Declared primitive or component variant. Defaults to its default variant.'),
     size: nonEmptyString.optional().describe('Declared primitive or component size. Defaults to its default size.'),
@@ -347,6 +347,22 @@ export const validateOutputSchema = z.union([
   validationOutputBaseSchema.extend({ mode: z.literal('readiness'), readiness: readinessReportSchema }).strict()
 ]);
 
+export const artifactSummarySchema = z
+  .object({
+    command: z.enum(['validate', 'migrate', 'index', 'query', 'extract']),
+    project: z.string(),
+    out: z.string().describe('The file that holds the full JSON. Read it for the details.'),
+    bytes: z.number().int().nonnegative(),
+    ok: z.boolean().optional(),
+    tier: readinessReportSchema.shape.tier.optional(),
+    counts: z.record(z.string(), z.number().int().nonnegative())
+  })
+  .strict();
+
+export type ArtifactSummary = z.infer<typeof artifactSummarySchema>;
+
+export const validateToolOutputSchema = z.union([validateOutputSchema, artifactSummarySchema]);
+
 export const migrateOutputSchema = z
   .object({
     command: z.literal('migrate'),
@@ -363,6 +379,8 @@ export const migrateOutputSchema = z
     )
   })
   .strict();
+
+export const migrateToolOutputSchema = z.union([migrateOutputSchema, artifactSummarySchema]);
 
 export const boundaryReferenceSchema = z
   .object({
@@ -418,6 +436,7 @@ export const queryResultSchema = z
   .strict();
 
 export const queryOutputSchema = z.union([boundaryPacketSchema, queryResultSchema]);
+export const queryToolOutputSchema = z.union([queryOutputSchema, artifactSummarySchema]);
 
 const declaredGroupFields = {
   id: z.string(),
@@ -480,6 +499,9 @@ export const deepHandoffPacketSchema = boundaryPacketSchema.extend({
 }).strict();
 
 export const extractOutputSchema = z.union([boundaryPacketSchema, deepHandoffPacketSchema]);
+export const extractToolOutputSchema = z.union([extractOutputSchema, artifactSummarySchema]);
+
+export const indexToolOutputSchema = z.union([indexOutputSchema, artifactSummarySchema]);
 
 const captureOutputBaseSchema = z.object({
   command: z.literal('capture'),

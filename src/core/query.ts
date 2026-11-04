@@ -664,7 +664,7 @@ function findSection(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string)
 
 function requireItem<T>(item: T | undefined, label: string): T {
   if (!item) {
-    throw new Error(`Unknown Blueprint boundary "${label}".`);
+    throw new Error(`Unknown Blueprint boundary "${label}". Fix: call the index tool and use a reference that it lists.`);
   }
   return item;
 }
