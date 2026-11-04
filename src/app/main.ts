@@ -68,6 +68,16 @@ import { loadConfiguredProject } from './fixture-projects';
 import { createFrameMounter, type FrameMounter, type MountableFrame } from './frame-mounting';
 import { trackFrameLoad, waitForFrameLoads } from './frame-loads';
 import { frameNeedsRebuild, rebuildScope } from './frame-rebuild';
+import {
+  createFrameThumbnailCache,
+  createIdleQueue,
+  FRAME_THUMBNAIL_ELEMENT_LIMIT,
+  FRAME_THUMBNAIL_LIMIT,
+  FRAME_THUMBNAIL_PIXEL_RATIO,
+  frameElementCount,
+  frameThumbnailKey,
+  idleCallback
+} from './frame-thumbnails';
 import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive, PRIMITIVE_GROUPS, primitiveGroupName } from '../core/base-primitives';
 import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '../core/reusable-contract';
 import { createConfiguredProjectBundle } from '../core/bundle';
@@ -248,6 +258,16 @@ const prototypeUsesByHost = new WeakMap<HTMLElement, PrototypeFrameUses>();
 const screenFrameByHost = new WeakMap<HTMLElement, ScreenFrame>();
 const frameMounterByRoot = new WeakMap<HTMLElement, FrameMounter>();
 const frameViewBySlot = new WeakMap<HTMLElement, FrameView>();
+const frameThumbnails = createFrameThumbnailCache(FRAME_THUMBNAIL_LIMIT, url => URL.revokeObjectURL(url));
+const thumbnailKeyByBundle = new WeakMap<CanvasProjectBundle, Map<string, string>>();
+let canvasSettled = true;
+canvas.onViewChange(() => {
+  canvasSettled = false;
+});
+canvas.onViewSettled(() => {
+  canvasSettled = true;
+});
+const frameThumbnailQueue = createIdleQueue(captureFrameThumbnail, whenCanvasIdle);
 
 // Quiet chrome verb: jump back out to a fitted view of the active board.
 const fitButton = el('button', 'bp-chrome-fit') as HTMLButtonElement;
@@ -2991,6 +3011,7 @@ interface ScreenFrame extends MountableFrame {
   iframe?: HTMLIFrameElement;
   failed?: boolean;
   onFailed?: () => void;
+  thumbnailKey?: string;
 }
 
 interface PrototypeFrameUses {
@@ -3023,11 +3044,12 @@ function createCanonicalPrototypeScreen(
     mounted: false,
     bytes: undefined,
     mount: () => mountScreenFrame(frame),
-    unmount: () => unmountScreenFrame(frame)
+    unmount: () => unmountScreenFrame(frame),
+    thumbnailKey: thumbnailKeyByBundle.get(bundle)?.get(liveFrameKey(screen.id, preset.id, selection))
   };
   screenFrameByHost.set(host, frame);
   prototypeUsesByHost.set(host, declaredFrameUses(bundle, screen));
-  host.append(createFramePlaceholder(source));
+  host.append(createFramePlaceholder(source, frameThumbnail(frame)));
   return { element: host, frame };
 }
 
@@ -3075,6 +3097,7 @@ function mountScreenFrame(frame: ScreenFrame): void {
   }
   const { screen, selection, preset } = frame.source;
   const iframe = createCanonicalPrototypeIframe(compiled, `${screen.name} · ${selection.state} · ${preset.name}`);
+  iframe.addEventListener('load', () => frameThumbnailQueue.add(frame), { once: true });
   const placeholder = frame.host.querySelector(':scope > .bp-chrome-frame-placeholder');
   if (placeholder) placeholder.replaceWith(iframe);
   else frame.host.prepend(iframe);
@@ -3092,7 +3115,7 @@ function mountScreenFrame(frame: ScreenFrame): void {
 
 function unmountScreenFrame(frame: ScreenFrame): void {
   if (!frame.iframe) return;
-  frame.iframe.replaceWith(createFramePlaceholder(frame.source));
+  frame.iframe.replaceWith(createFramePlaceholder(frame.source, frameThumbnail(frame)));
   frame.iframe = undefined;
   frame.mounted = false;
   frame.requested = false;
@@ -3130,13 +3153,68 @@ function screenFrameDocument(frame: ScreenFrame): string | undefined {
   }
 }
 
-function createFramePlaceholder({ screen, selection, preset }: ScreenFrameSource): HTMLElement {
+function createFramePlaceholder({ screen, selection, preset }: ScreenFrameSource, thumbnail?: string): HTMLElement {
   const placeholder = el('div', 'bp-chrome-frame-placeholder');
   placeholder.append(
     el('strong', 'bp-chrome-frame-placeholder-title', screenFrameLabel(screen)),
     el('span', 'bp-chrome-frame-placeholder-meta', `${selection.state} · ${preset.name}`)
   );
+  if (thumbnail) showPlaceholderThumbnail(placeholder, thumbnail);
   return placeholder;
+}
+
+function showPlaceholderThumbnail(placeholder: HTMLElement, url: string): void {
+  const image = document.createElement('img');
+  image.className = 'bp-chrome-frame-placeholder-thumbnail';
+  image.alt = '';
+  image.decoding = 'async';
+  image.src = url;
+  placeholder.append(image);
+}
+
+function frameThumbnail(frame: ScreenFrame): string | undefined {
+  return frame.thumbnailKey ? frameThumbnails.get(frame.thumbnailKey) : undefined;
+}
+
+function rememberFrameThumbnail(frame: ScreenFrame): void {
+  if (!frame.thumbnailKey) return;
+  const { bundle, screen, preset, selection } = frame.source;
+  let keys = thumbnailKeyByBundle.get(bundle);
+  if (!keys) {
+    keys = new Map();
+    thumbnailKeyByBundle.set(bundle, keys);
+  }
+  keys.set(liveFrameKey(screen.id, preset.id, selection), frame.thumbnailKey);
+}
+
+async function whenCanvasIdle(): Promise<void> {
+  await idleCallback();
+  while (!canvasSettled) {
+    await new Promise<void>(resolve => {
+      const stop = canvas.onViewSettled(() => {
+        stop();
+        resolve();
+      });
+    });
+    await idleCallback();
+  }
+}
+
+async function captureFrameThumbnail(frame: ScreenFrame): Promise<void> {
+  const live = frame.iframe && frame.host.isConnected ? prototypeDocument(frame.iframe) : undefined;
+  if (!live || frameElementCount(live) > FRAME_THUMBNAIL_ELEMENT_LIMIT) return;
+  const key = frameThumbnailKey(live);
+  frame.thumbnailKey = key;
+  rememberFrameThumbnail(frame);
+  if (!frameThumbnails.get(key)) {
+    const html = await captureScreenFrameDocument(frame);
+    const blob = html ? await captureCanonicalPrototype(frame.host, html, FRAME_THUMBNAIL_PIXEL_RATIO) : null;
+    if (!blob) return;
+    frameThumbnails.set(key, URL.createObjectURL(blob));
+  }
+  const placeholder = frame.mounted ? undefined : frame.host.querySelector<HTMLElement>(':scope > .bp-chrome-frame-placeholder');
+  const url = frameThumbnails.get(key);
+  if (placeholder && url && !placeholder.querySelector('.bp-chrome-frame-placeholder-thumbnail')) showPlaceholderThumbnail(placeholder, url);
 }
 
 const reusablesByBundle = new WeakMap<CanvasProjectBundle, Map<string, ReusableDefinition>>();
@@ -3293,7 +3371,7 @@ function wireFrameCapture(options: {
  * no-script document in a short-lived readable iframe and capture its document
  * root instead. The review iframe remains fully sandboxed and unchanged.
  */
-async function captureCanonicalPrototype(screenEl: HTMLElement, html: string): Promise<Blob | null> {
+async function captureCanonicalPrototype(screenEl: HTMLElement, html: string, pixelRatio = 2): Promise<Blob | null> {
   const width = screenEl.clientWidth;
   const height = screenEl.clientHeight;
   if (width <= 0 || height <= 0) {
@@ -3328,7 +3406,7 @@ async function captureCanonicalPrototype(screenEl: HTMLElement, html: string): P
       height,
       canvasWidth: width,
       canvasHeight: height,
-      pixelRatio: 2,
+      pixelRatio,
       style: {
         width: `${width}px`,
         height: `${height}px`,
@@ -3765,6 +3843,7 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
       const replaced = slotScreenFrame(previous);
       if (replaced && !frameNeedsRebuild(scope, layout.screen.id, replaced.failed ? undefined : prototypeUsesByHost.get(replaced.host)?.usedBoundaryIds)) {
         replaced.source.bundle = project;
+        rememberFrameThumbnail(replaced);
         const view = frameViewBySlot.get(previous);
         if (view) view.bundle = project;
         continue;

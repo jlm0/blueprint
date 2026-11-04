@@ -1316,9 +1316,8 @@ describe('Blueprint MCP and template governance', () => {
           const captured = await page.evaluate(() => (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!);
           const preset = bundle.manifest.framePresets.find(candidate => candidate.id === bundle.screens.screens.find(screen => screen.id === 'hub')!.framePresetId)!;
           const expected = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'hub' }, state: 'default', framePreset: preset }).html;
-          assert.equal(captured.length, 1);
-          assert.doesNotMatch(captured[0], /\/__blueprint\/assets\//);
-          assert.equal(captured[0], expected);
+          assert.ok(captured.includes(expected), 'The saved image should capture the self-contained compile of the screen');
+          for (const document of captured) assert.doesNotMatch(document, /\/__blueprint\/assets\//);
         } finally {
           await browser.close();
         }

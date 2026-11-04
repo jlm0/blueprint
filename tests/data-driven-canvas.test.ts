@@ -7,6 +7,7 @@ import { canvasLocationParams } from '../src/core/canvas-location';
 import { loadProjectFromFs } from '../src/core/load';
 import { reusableSpecimens } from '../src/core/reusable-contract';
 import { validateVisibleBoundaryRecords, type VisibleBoundaryRecord } from '../src/core/review';
+import { FRAME_THUMBNAIL_ELEMENT_LIMIT, frameElementCount } from '../src/app/frame-thumbnails';
 import type { BlueprintProjectBundle } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
@@ -1127,6 +1128,60 @@ describe('Blueprint data-driven pages and screens canvas', () => {
       assert.equal(await page.locator('.bp-chrome-selection-layer').count(), 0, 'A click on a frame that is not mounted should not select a boundary the person cannot see');
       await page.clock.runFor(2000);
       await selected.locator('.canonical-prototype-iframe').waitFor({ state: 'attached', timeout: 5000 });
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('shows the thumbnail of a small mounted frame in its placeholder after the frame unmounts, and keeps the title for a large one', async () => {
+    const bundle = allScreensOnOnePage(await loadProjectFromFs(meridianRoot));
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', { configurable: true, value: projectBundle });
+      const thumbnailUrls: string[] = [];
+      Object.defineProperty(window, '__thumbnailUrls', { value: thumbnailUrls });
+      const createObjectURL = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = object => {
+        const url = createObjectURL(object);
+        thumbnailUrls.push(url);
+        return url;
+      };
+    }, bundle);
+    try {
+      await page.goto(`${baseUrl}?board=screens`);
+      await page.locator('.board-screens .canonical-prototype-iframe').first().waitFor({ state: 'attached', timeout: 5000 });
+      await revealScreenFrame(page, page.locator('.board-screens .frame[data-screen-id="home"]'));
+      await page.waitForFunction(() => {
+        const view = document.getElementById('viewport')!.getBoundingClientRect();
+        return [...document.querySelectorAll('.board-screens .canonical-prototype-screen')].every(screen => {
+          const box = screen.getBoundingClientRect();
+          const inView = box.right > view.left && box.left < view.right && box.bottom > view.top && box.top < view.bottom;
+          return !inView || screen.querySelector('.canonical-prototype-iframe');
+        });
+      }, undefined, { timeout: 10000 });
+      const documents = await page.locator('.board-screens .canonical-prototype-iframe').evaluateAll(frames => frames.map(frame => frame.getAttribute('srcdoc') ?? ''));
+      const small = documents.map(html => frameElementCount(html) <= FRAME_THUMBNAIL_ELEMENT_LIMIT);
+      assert.ok(small.includes(true) && small.includes(false), 'The fixture should mount frames on both sides of the element limit');
+      await page.locator('.board-screens .canonical-prototype-iframe').evaluateAll((frames, sizes) => {
+        frames.forEach((frame, index) => {
+          frame.closest<HTMLElement>('.canonical-prototype-screen')!.dataset.testThumbnail = sizes[index] ? 'small' : 'large';
+        });
+      }, small);
+      await page.waitForFunction(count => (window as unknown as { __thumbnailUrls: string[] }).__thumbnailUrls.length >= count, small.filter(Boolean).length, { timeout: 20000 });
+
+      const view = await page.locator('#viewport').boundingBox();
+      assert.ok(view);
+      await page.mouse.move(view.x + 8, view.y + 8);
+      await page.mouse.wheel(0, 40000);
+      await page.waitForFunction(() => document.querySelectorAll('.board-screens .canonical-prototype-iframe').length === 0, undefined, { timeout: 5000 });
+      const shown = await page.locator('[data-test-thumbnail="small"] .bp-chrome-frame-placeholder-thumbnail').evaluateAll(async images => Promise.all(images.map(async image => {
+        const element = image as HTMLImageElement;
+        await element.decode();
+        return element.naturalWidth > 0 && (window as unknown as { __thumbnailUrls: string[] }).__thumbnailUrls.includes(element.src);
+      })));
+      assert.deepEqual(shown, small.filter(Boolean).map(() => true), 'Each small frame should show the raster thumbnail made while it was mounted');
+      assert.equal(await page.locator('[data-test-thumbnail="large"] .bp-chrome-frame-placeholder-thumbnail').count(), 0, 'A frame over the element limit should keep the title placeholder');
+      assert.equal(await page.locator('[data-test-thumbnail="large"] .bp-chrome-frame-placeholder-title').count(), small.filter(size => !size).length);
     } finally {
       await page.close();
     }
