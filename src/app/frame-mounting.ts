@@ -48,7 +48,12 @@ export function planFrameMounts(
   const estimate = known.length > 0 ? known.reduce((sum, bytes) => sum + bytes, 0) / known.length : 0;
   const ranked = frames
     .map((frame, index) => ({ index, ...viewportDistance(frame.box, view, viewport) }))
-    .sort((left, right) => left.edge - right.edge || left.centre - right.centre);
+    .sort((left, right) => (
+      Number(left.edge > 0) - Number(right.edge > 0)
+      || (left.edge === 0 ? Number(!frames[left.index].mounted) - Number(!frames[right.index].mounted) : 0)
+      || left.edge - right.edge
+      || left.centre - right.centre
+    ));
 
   const kept = new Set<number>();
   let keptBytes = 0;

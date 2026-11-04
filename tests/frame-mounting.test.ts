@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   createFrameMounter,
+  DEFAULT_FRAME_MOUNT_POLICY,
   planFrameMounts,
   type FrameMountCandidate,
   type FrameMountPolicy,
@@ -53,6 +54,38 @@ describe('Blueprint frame mount plan', () => {
     assert.equal(plan.unmount.length, 5);
     assert.deepEqual([...plan.unmount].sort(), [0, 1, 2, 6, 7]);
     assert.equal(plan.unmount[0], 0);
+  });
+
+  it('keeps the visible frames that are mounted while a pan moves the view at the cap', () => {
+    const viewport = { width: 2240, height: 1400 };
+    const grid: FrameMountCandidate[] = [];
+    for (let row = 0; row < 12; row += 1) {
+      for (let col = 0; col < 12; col += 1) {
+        grid.push({ box: { left: 90 + col * 473, top: 160 + row * 994, width: 415, height: 874 }, mounted: false, bytes: 200_000 });
+      }
+    }
+    const apply = (plan: ReturnType<typeof planFrameMounts>): void => {
+      for (const index of plan.unmount) grid[index].mounted = false;
+      for (const index of plan.mount) grid[index].mounted = true;
+    };
+    let view = { x: 0, y: 0, s: 0.15 };
+    apply(planFrameMounts(grid, view, viewport, DEFAULT_FRAME_MOUNT_POLICY));
+    const visible = (index: number): boolean => {
+      const { left, top, width, height } = grid[index].box;
+      const x = view.x + left * view.s;
+      const y = view.y + top * view.s;
+      return x + width * view.s > 0 && x < viewport.width && y + height * view.s > 0 && y < viewport.height;
+    };
+    let visibleUnmounts = 0;
+    for (let step = 0; step < 10; step += 1) {
+      view = { ...view, x: view.x - 24 };
+      const plan = planFrameMounts(grid, view, viewport, DEFAULT_FRAME_MOUNT_POLICY);
+      visibleUnmounts += plan.unmount.filter(visible).length;
+      apply(plan);
+    }
+
+    assert.equal(grid.filter(frame => frame.mounted).length, DEFAULT_FRAME_MOUNT_POLICY.maxFrames);
+    assert.equal(visibleUnmounts, 0);
   });
 
   it('stops mounting once the next frame would pass the byte budget', () => {
