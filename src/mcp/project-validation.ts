@@ -16,7 +16,6 @@ export interface ValidProject {
   outdatedFiles: BlueprintOutdatedFile[];
   /** Content hash of the bundle, so a reload can tell whether anything changed. */
   fingerprint: string;
-  /** Lowercase hex sha256 of the raw bytes of each asset, keyed by asset ref. */
   assetHashes: Record<string, string>;
 }
 

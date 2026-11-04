@@ -558,20 +558,15 @@ export interface PrototypeAssetContent {
   base64: string;
 }
 
-/** Controlled asset that the review server serves at `/__blueprint/assets/<sha256>`. */
 export interface PrototypeAssetLink {
-  /** Browser media type of the served bytes. */
   mediaType: string;
-  /** Lowercase hex sha256 of the raw asset bytes. */
   sha256: string;
 }
 
 export type PrototypeAsset = PrototypeAssetContent | PrototypeAssetLink;
 
-/** Bundle that the review server sends to the canvas: each asset is a link, not its bytes. */
 export type LinkedProjectBundle = BlueprintProjectBundle<PrototypeAssetLink>;
 
-/** Bundle the canvas renders: a served bundle has asset links, a fixture or test bundle has asset bytes. */
 export type CanvasProjectBundle = BlueprintProjectBundle<PrototypeAsset>;
 
 export interface BoundarySelector {

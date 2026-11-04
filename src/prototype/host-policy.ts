@@ -8,7 +8,6 @@ export function applyPrototypeIframeIsolation(target: Pick<HTMLIFrameElement, 's
 
 export const LOOPBACK_HOSTNAME = '127.0.0.1';
 
-/** Review server route prefix that serves each controlled asset by the sha256 of its bytes. */
 export const PROTOTYPE_ASSET_PATH_PREFIX = '/__blueprint/assets/';
 
 export interface BlueprintResponsePolicyOptions {

@@ -58,7 +58,6 @@ export interface BlueprintProjectSnapshot {
   bundle: LinkedProjectBundle;
 }
 
-/** The snapshot route answer when the `base` query names the previously published revision. */
 export interface BlueprintProjectSnapshotDelta {
   version: 1;
   revision: string;

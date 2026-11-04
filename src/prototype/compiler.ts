@@ -41,15 +41,9 @@ export interface CompilePrototypeDocumentOptions {
   framePreset?: FramePreset;
 }
 
-/**
- * Inputs for a live canvas document that loads each linked asset from the review server.
- * Capture, handoff, and MCP documents use {@linkcode CompilePrototypeDocumentOptions} and stay self-contained.
- * @see {@linkcode compilePrototypeDocument}
- */
+/** Only the live canvas links assets, because capture, handoff, and MCP documents must stay self-contained. */
 export interface CompileLinkedPrototypeDocumentOptions extends Omit<CompilePrototypeDocumentOptions, 'bundle'> {
-  /** Loaded sidecar contract whose assets are review server links, bytes, or both. */
   bundle: CanvasProjectBundle;
-  /** Exact origin of the review server, such as `http://127.0.0.1:4173`. */
   assetOrigin: string;
 }
 
@@ -215,7 +209,6 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 type CompileInput = Omit<CompilePrototypeDocumentOptions, 'bundle'> & { bundle: CanvasProjectBundle };
 
-/** How a compiled document refers to its assets: unresolved tokens, data URLs, or review server URLs. */
 type AssetOutput =
   | { kind: 'tokens' }
   | { kind: 'inline' }
@@ -254,7 +247,6 @@ export function compilePrototypeDocument(
   return compileDocument(options, createCompileSession(), output);
 }
 
-/** URL that loads one asset in a live canvas document or the canvas page itself. */
 export function prototypeAssetUrl(asset: PrototypeAsset, assetOrigin: string): string {
   return 'sha256' in asset ? linkedAssetUrl(reviewServerAssetSource(assetOrigin), asset.sha256) : assetDataUrl(asset);
 }

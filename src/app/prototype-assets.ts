@@ -3,10 +3,6 @@ import type { BlueprintProjectBundle, CanvasProjectBundle, PrototypeAssetContent
 
 const BINARY_CHUNK = 0x8000;
 
-/**
- * Gives a self-contained compile the bytes of the named assets: a linked asset is
- * fetched from the review server, and an asset that already carries bytes is kept.
- */
 export async function withAssetBytes(
   bundle: CanvasProjectBundle,
   assetRefs: readonly string[],

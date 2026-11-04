@@ -7,7 +7,6 @@ import { loadValidatedProject, type ProjectReader, type ValidatedProject, type V
 export interface ServeProjectSnapshot {
   revision: string;
   bundle?: BlueprintProjectBundle;
-  /** The bundle the canvas receives: each asset is a review server link, not its bytes. */
   linkedBundle?: LinkedProjectBundle;
   error?: string;
   outdatedFiles: BlueprintOutdatedFile[];
@@ -46,7 +45,6 @@ export class ServeProjectSnapshots {
     return this.#current;
   }
 
-  /** The bytes of one asset in the current snapshot, by the sha256 of those bytes. */
   asset(sha256: string): PrototypeAssetContent | undefined {
     return this.#assets.get(sha256);
   }
@@ -159,7 +157,6 @@ export class ServeProjectSnapshots {
   }
 }
 
-/** Replaces the bytes of each asset with a link to its review server route. */
 export function linkProjectAssets(bundle: BlueprintProjectBundle, assetHashes: Readonly<Record<string, string>>): LinkedProjectBundle {
   return {
     ...bundle,
