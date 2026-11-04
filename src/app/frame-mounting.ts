@@ -91,8 +91,7 @@ export interface FrameMounterOptions {
   viewport: () => ViewportSize;
   state: () => FrameMounterState;
   policy?: FrameMountPolicy;
-  budgetMs?: number;
-  maxMountsPerTask?: number;
+  yieldToMain?: () => Promise<void>;
   onMounted?: () => void;
   onDisposed?: () => void;
 }
@@ -105,15 +104,21 @@ export interface FrameMounter {
   hold: () => () => void;
 }
 
+export function yieldToMain(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (typeof scheduler?.yield === 'function') return scheduler.yield();
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
 export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
   const frames: MountableFrame[] = [];
   const policy = options.policy ?? DEFAULT_FRAME_MOUNT_POLICY;
-  const budgetMs = options.budgetMs ?? 24;
-  const maxMountsPerTask = options.maxMountsPerTask ?? 4;
+  const yieldNext = options.yieldToMain ?? yieldToMain;
   let waiters: Array<() => void> = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
   let holds = 0;
   let disposed = false;
+  let pumping = false;
 
   const settle = (): void => {
     const pending = waiters;
@@ -122,39 +127,44 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
   };
 
   const schedule = (): void => {
-    if (disposed || timer !== undefined) return;
-    timer = setTimeout(pump, 0);
+    if (disposed || pumping || timer !== undefined) return;
+    timer = setTimeout(() => void pump(), 0);
   };
 
-  function pump(): void {
+  async function pump(): Promise<void> {
     timer = undefined;
-    const state = options.state();
-    if (state === 'disposed') {
-      disposed = true;
-      settle();
-      options.onDisposed?.();
-      return;
-    }
-    if (state === 'hidden') {
-      settle();
-      return;
-    }
-    if (holds > 0) return;
+    pumping = true;
+    try {
+      for (;;) {
+        const state = options.state();
+        if (state === 'disposed') {
+          disposed = true;
+          settle();
+          options.onDisposed?.();
+          return;
+        }
+        if (state === 'hidden') {
+          settle();
+          return;
+        }
+        if (holds > 0) return;
 
-    const start = performance.now();
-    const plan = planFrameMounts(frames, options.view(), options.viewport(), policy);
-    const toUnmount = plan.unmount.map(index => frames[index]);
-    const toMount = plan.mount.map(index => frames[index]);
-    for (const frame of toUnmount) frame.unmount();
-    let mounted = 0;
-    for (const frame of toMount) {
-      if (mounted >= maxMountsPerTask || (mounted > 0 && performance.now() - start >= budgetMs)) break;
-      frame.mount();
-      mounted += 1;
+        const plan = planFrameMounts(frames, options.view(), options.viewport(), policy);
+        const toUnmount = plan.unmount.map(index => frames[index]);
+        const next = plan.mount.length > 0 ? frames[plan.mount[0]] : undefined;
+        for (const frame of toUnmount) frame.unmount();
+        if (!next) {
+          settle();
+          return;
+        }
+        next.mount();
+        options.onMounted?.();
+        if (plan.visibleMount <= 1) settle();
+        await yieldNext();
+      }
+    } finally {
+      pumping = false;
     }
-    if (mounted > 0) options.onMounted?.();
-    if (plan.visibleMount <= mounted) settle();
-    if (mounted < plan.mount.length) schedule();
   }
 
   return {

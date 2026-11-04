@@ -72,7 +72,7 @@ describe('Blueprint frame mount plan', () => {
 });
 
 describe('Blueprint frame mounter', () => {
-  it('mounts frames across several tasks and settles when the visible frames are mounted', async () => {
+  it('mounts one frame per task, nearest the centre first, and settles when the visible frames are mounted', async () => {
     let mountedCount = 0;
     const tasks: number[] = [];
     let task = 0;
@@ -95,9 +95,9 @@ describe('Blueprint frame mounter', () => {
       viewport: () => viewport,
       state: () => 'active',
       policy: { ...policy, maxFrames: 6 },
-      maxMountsPerTask: 2,
-      onMounted: () => {
+      yieldToMain: async () => {
         task += 1;
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
     });
     for (const frame of frames) mounter.add(frame);
@@ -105,7 +105,75 @@ describe('Blueprint frame mounter', () => {
     await new Promise(resolve => setTimeout(resolve, 20));
 
     assert.equal(mountedCount, 6);
-    assert.deepEqual(tasks, [0, 0, 1, 1, 2, 2]);
+    assert.deepEqual(tasks, [0, 1, 2, 3, 4, 5]);
+  });
+
+  it('yields with scheduler.yield when the browser has it', async () => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+    let yields = 0;
+    Object.defineProperty(globalThis, 'scheduler', {
+      configurable: true,
+      value: {
+        yield: () => {
+          yields += 1;
+          return new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+    });
+    try {
+      let mounts = 0;
+      const mounter = createFrameMounter({
+        view: () => ({ x: 0, y: 0, s: 0.25 }),
+        viewport: () => viewport,
+        state: () => 'active',
+        policy: { ...policy, maxFrames: 4 }
+      });
+      for (const candidate of row(4)) {
+        const frame: MountableFrame = { ...candidate, mount: () => { frame.mounted = true; mounts += 1; }, unmount: () => undefined };
+        mounter.add(frame);
+      }
+      await mounter.visibleMounted();
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      assert.equal(mounts, 4);
+      assert.equal(yields, 4);
+    } finally {
+      if (previous) Object.defineProperty(globalThis, 'scheduler', previous);
+      else delete (globalThis as { scheduler?: unknown }).scheduler;
+    }
+  });
+
+  it('drops the queued mounts when the page changes', async () => {
+    let connected = true;
+    let mounts = 0;
+    let disposed = 0;
+    const mounter = createFrameMounter({
+      view: () => ({ x: 0, y: 0, s: 0.25 }),
+      viewport: () => viewport,
+      state: () => connected ? 'active' : 'disposed',
+      policy: { ...policy, maxFrames: 6 },
+      yieldToMain: () => new Promise(resolve => setTimeout(resolve, 0)),
+      onDisposed: () => {
+        disposed += 1;
+      }
+    });
+    for (const candidate of row(6)) {
+      const frame: MountableFrame = {
+        ...candidate,
+        mount: () => {
+          frame.mounted = true;
+          mounts += 1;
+          if (mounts === 2) connected = false;
+        },
+        unmount: () => undefined
+      };
+      mounter.add(frame);
+    }
+    await mounter.visibleMounted();
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.equal(mounts, 2);
+    assert.equal(disposed, 1);
   });
 
   it('settles a waiter without mounting while the board is hidden', async () => {
