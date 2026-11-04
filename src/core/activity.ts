@@ -1,5 +1,6 @@
 import { boundaryId } from './address';
-import type { BlueprintProjectBundle, BoundaryKind, LinkedProjectBundle, PrototypeAsset } from './types';
+import type { ProjectBundleDelta } from './bundle-delta';
+import type { BlueprintProjectBundle, BoundaryKind, LinkedProjectBundle, PrototypeAsset, PrototypeAssetLink } from './types';
 
 export type BlueprintAgentActivityPhase = 'started' | 'completed' | 'failed';
 
@@ -55,6 +56,14 @@ export interface BlueprintProjectSnapshot {
   version: 1;
   revision: string;
   bundle: LinkedProjectBundle;
+}
+
+/** The snapshot route answer when the `base` query names the previously published revision. */
+export interface BlueprintProjectSnapshotDelta {
+  version: 1;
+  revision: string;
+  base: string;
+  delta: ProjectBundleDelta<PrototypeAssetLink>;
 }
 
 /** Local ID of the project focus that stands for brand.json and its mark sources, matching the canvas Brand page. */

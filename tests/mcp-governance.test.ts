@@ -9,9 +9,11 @@ import path from 'node:path';
 import { before, describe, it } from 'node:test';
 import { Client, type CallToolResult, type Tool } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import type { BlueprintProjectSnapshot, BlueprintProjectSnapshotDelta } from '../src/core/activity';
+import { applyProjectBundleDelta } from '../src/core/bundle-delta';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, LinkedProjectBundle } from '../src/core/types';
-import { serveBlueprint } from '../src/mcp/operations';
+import { serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
 import { hashProjectAssets } from '../src/mcp/project-validation';
 import { linkProjectAssets } from '../src/mcp/serve-snapshot';
 import { compilePrototypeDocument } from '../src/prototype/compiler';
@@ -1323,6 +1325,89 @@ describe('Blueprint MCP and template governance', () => {
       });
     });
   });
+
+  describe('project snapshot deltas', () => {
+    it('answers with a delta only from the previous revision, and the delta rebuilds the full snapshot', async () => {
+      await withServedAssetCopy(async (url, project, served) => {
+        const snapshotUrl = (query = ''): URL => new URL(`/__blueprint/project${query}`, url);
+        const first = await (await fetch(snapshotUrl())).json() as BlueprintProjectSnapshot;
+        const sourcePath = path.join(project, 'prototype/screens/hub.html');
+        await writeFile(sourcePath, (await readFile(sourcePath, 'utf8')).replace('Season 04', 'Season 05'));
+        const second = await publishedRevisionAfter(served, first.revision);
+
+        const deltaResponse = await fetch(snapshotUrl(`?base=${first.revision}`));
+        assert.equal(deltaResponse.headers.get('cache-control'), 'no-store');
+        const deltaText = await deltaResponse.text();
+        const answer = JSON.parse(deltaText) as BlueprintProjectSnapshotDelta & { bundle?: unknown };
+        assert.equal(answer.version, 1);
+        assert.equal(answer.revision, second);
+        assert.equal(answer.base, first.revision);
+        assert.equal(answer.bundle, undefined);
+        assert.deepEqual(Object.keys(answer.delta.prototypeSourceContents.set), ['prototype/screens/hub.html']);
+
+        const fullText = await (await fetch(snapshotUrl())).text();
+        const full = JSON.parse(fullText) as BlueprintProjectSnapshot;
+        assert.equal(full.revision, second);
+        const applied = applyProjectBundleDelta(first.bundle, answer.delta);
+        assert.deepStrictEqual(applied, full.bundle);
+        assert.equal(JSON.stringify(applied), JSON.stringify(full.bundle));
+        assert.ok(deltaText.length * 20 < fullText.length, `delta ${deltaText.length} bytes, full ${fullText.length} bytes`);
+
+        for (const query of ['?base=unknown-revision', `?base=${second}`, '?base=']) {
+          const other = await (await fetch(snapshotUrl(query))).json() as BlueprintProjectSnapshot;
+          assert.equal(other.revision, second, query);
+          assert.deepStrictEqual(other.bundle, full.bundle, query);
+        }
+
+        await writeFile(sourcePath, (await readFile(sourcePath, 'utf8')).replace('Season 05', 'Season 06'));
+        const third = await publishedRevisionAfter(served, second);
+        const stale = await (await fetch(snapshotUrl(`?base=${first.revision}`))).json() as BlueprintProjectSnapshot & { delta?: unknown };
+        assert.equal(stale.revision, third);
+        assert.equal(stale.delta, undefined);
+        assert.ok(stale.bundle);
+        const next = await (await fetch(snapshotUrl(`?base=${second}`))).json() as BlueprintProjectSnapshotDelta;
+        assert.equal(next.base, second);
+        assert.equal(next.revision, third);
+      });
+    });
+
+    it('applies each change to the revision the canvas holds', async () => {
+      await withServedAssetCopy(async (url, project, served) => {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+        const snapshotRequests: Array<{ base: string | null; delta: boolean }> = [];
+        page.on('response', async response => {
+          const requestUrl = new URL(response.url());
+          if (requestUrl.pathname !== '/__blueprint/project' || response.request().method() !== 'GET') return;
+          const body = await response.json() as { delta?: unknown };
+          snapshotRequests.push({ base: requestUrl.searchParams.get('base'), delta: body.delta !== undefined });
+        });
+        try {
+          await page.goto(`${url}?board=screens&page=mobile`);
+          const iframe = page.locator('.board-screens .frame[data-screen-id="hub"] .canonical-prototype-iframe').first();
+          await iframe.waitFor({ state: 'attached', timeout: 15000 });
+          const servedRevision = await page.evaluate(() => window.__BLUEPRINT_LIVE_RUNTIME__?.revision);
+          assert.equal(servedRevision, (await served.settledProject!()).revision);
+
+          const sourcePath = path.join(project, 'prototype/screens/hub.html');
+          await writeFile(sourcePath, (await readFile(sourcePath, 'utf8')).replace('Season 04', 'Season 05'));
+          const second = await publishedRevisionAfter(served, servedRevision!);
+          await page.waitForFunction(() => document.querySelector('.board-screens .frame[data-screen-id="hub"] .canonical-prototype-iframe')?.getAttribute('srcdoc')?.includes('Season 05'), undefined, { timeout: 15000 });
+          await writeFile(sourcePath, (await readFile(sourcePath, 'utf8')).replace('Season 05', 'Season 06'));
+          await publishedRevisionAfter(served, second);
+          await page.waitForFunction(() => document.querySelector('.board-screens .frame[data-screen-id="hub"] .canonical-prototype-iframe')?.getAttribute('srcdoc')?.includes('Season 06'), undefined, { timeout: 15000 });
+
+          assert.deepEqual(snapshotRequests, [{ base: servedRevision, delta: true }, { base: second, delta: true }]);
+          const full = await (await fetch(new URL('/__blueprint/project', url))).json() as BlueprintProjectSnapshot;
+          const held = await page.evaluate(() => JSON.stringify(window.__BLUEPRINT_PROJECT_BUNDLE__));
+          assert.deepStrictEqual(JSON.parse(held), full.bundle);
+        } finally {
+          await browser.close();
+        }
+      });
+    });
+  });
 });
 
 async function openSession(cwd = projectRoot, modern = true): Promise<McpSession> {
@@ -1500,13 +1585,22 @@ async function assertEventuallyWithin(check: () => boolean, timeoutMs = 10000): 
   }
 }
 
-async function withServedAssetCopy(use: (url: string, project: string) => Promise<void>): Promise<void> {
+async function publishedRevisionAfter(served: BlueprintServeHandle, revision: string): Promise<string> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const settled = await served.settledProject!();
+    if (settled.revision !== revision) return settled.revision;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return assert.fail(`Serve did not publish a revision after ${revision}.`);
+}
+
+async function withServedAssetCopy(use: (url: string, project: string, served: BlueprintServeHandle) => Promise<void>): Promise<void> {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'blueprint-assets-'));
   const project = path.join(tempDir, 'design', 'blueprint');
   await cp(umbraRoot, project, { recursive: true });
   const served = await serveBlueprint({ project, port: 0 });
   try {
-    await use(served.url, project);
+    await use(served.url, project, served);
   } finally {
     await served.close();
     await rm(tempDir, { recursive: true, force: true });

@@ -1659,8 +1659,10 @@ async function startServeServer(
         response.end(JSON.stringify({ message: snapshot.error ?? 'Blueprint project is unavailable.' }));
         return;
       }
+      const base = requestUrl.searchParams.get('base');
+      const delta = base === null ? undefined : snapshots.deltaFrom(base, snapshot);
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
-      response.end(JSON.stringify({
+      response.end(JSON.stringify(delta ?? {
         version: 1,
         revision: snapshot.revision,
         bundle: snapshot.linkedBundle
@@ -1766,7 +1768,7 @@ async function startServeServer(
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-      response.end(injectProjectBundle(indexHtml, snapshot.linkedBundle, snapshot.error === undefined ? undefined : { message: snapshot.error, outdatedFiles: snapshot.outdatedFiles }, canvasToken));
+      response.end(injectProjectBundle(indexHtml, snapshot.linkedBundle, snapshot.revision, snapshot.error === undefined ? undefined : { message: snapshot.error, outdatedFiles: snapshot.outdatedFiles }, canvasToken));
       return;
     }
 
@@ -1831,6 +1833,7 @@ async function startServeServer(
 function injectProjectBundle(
   indexHtml: string,
   bundle: LinkedProjectBundle,
+  revision: string,
   loadError: BlueprintProjectLoadError | undefined,
   canvasToken: string
 ): string {
@@ -1841,6 +1844,7 @@ function injectProjectBundle(
       eventsPath: BLUEPRINT_ACTIVITY_STREAM_PATH,
       snapshotPath: BLUEPRINT_PROJECT_SNAPSHOT_PATH,
       selectionPath: BLUEPRINT_SELECTION_PATH,
+      revision,
       canvasToken
     })};`,
     loadError ? `window.__BLUEPRINT_PROJECT_LOAD_ERROR__=${serializeForInlineScript(loadError)};` : 'delete window.__BLUEPRINT_PROJECT_LOAD_ERROR__;',

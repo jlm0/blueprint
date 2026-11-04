@@ -11,8 +11,7 @@ import {
   type BlueprintAgentActivityFocus,
   type BlueprintOutdatedFile,
   type BlueprintProjectChangedEvent,
-  type BlueprintProjectErrorEvent,
-  type BlueprintProjectSnapshot
+  type BlueprintProjectErrorEvent
 } from '../core/activity';
 import { brandMarkSourceIssues } from '../core/brand-lint';
 import { changedBoundaries } from '../core/change';
@@ -80,6 +79,7 @@ import {
   type SelectedPrototypeReviewCondition
 } from '../prototype/compiler';
 import { applyPrototypeIframeIsolation } from '../prototype/host-policy';
+import { fetchLiveProjectSnapshot, type LiveProjectSnapshot } from './project-snapshot';
 import { withAssetBytes } from './prototype-assets';
 
 type BoardId = 'primitives' | 'screens';
@@ -3582,6 +3582,7 @@ let activeActivityKey: string | undefined;
 let activityClearTimer: number | undefined;
 let lastAgentActivity: BlueprintAgentActivityEvent | undefined;
 let lastAppliedRevision: string | undefined;
+let liveSnapshot = servedLiveSnapshot();
 let projectApplyQueue = Promise.resolve();
 
 type AgentStatusState = 'working' | 'thinking' | 'applying' | 'complete' | 'waiting' | 'failed';
@@ -3598,6 +3599,12 @@ function showMigrateNotice(outdatedFiles: readonly BlueprintOutdatedFile[]): voi
   const named = files.length > 1 ? `${files.slice(0, -1).join(', ')} and ${files.at(-1)}` : files.join('');
   migrateNoticeBody.textContent = `Blueprint now reads schema ${BLUEPRINT_SCHEMA_VERSION}, and ${named} ${files.length > 1 ? 'use' : 'uses'} an older schema. ` +
     'Ask your agent to run the Blueprint migrate tool on this project. Until then, the canvas shows the last valid version.';
+}
+
+function servedLiveSnapshot(): LiveProjectSnapshot | undefined {
+  const revision = window.__BLUEPRINT_LIVE_RUNTIME__?.revision;
+  const bundle = window.__BLUEPRINT_PROJECT_BUNDLE__;
+  return revision && bundle ? { revision, bundle } : undefined;
 }
 
 function connectBlueprintLiveRuntime(): void {
@@ -3651,12 +3658,8 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   const preservedView = activeBoardId && boardConfigs[activeBoardId].surface === 'canvas' ? canvas.snapshot() : undefined;
   setAgentStatus('applying', 'Blueprint is applying the latest changes');
   markFocusedBoundaryBusy(true);
-  const requestUrl = new URL(snapshotPath, window.location.href);
-  requestUrl.searchParams.set('revision', event.revision);
-  const response = await fetch(requestUrl, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Blueprint could not load revision ${event.revision}.`);
-  const snapshot = await response.json() as BlueprintProjectSnapshot;
-  if (snapshot.version !== 1 || !snapshot.bundle) throw new Error('Blueprint returned an invalid live project snapshot.');
+  const snapshot = await fetchLiveProjectSnapshot(new URL(snapshotPath, window.location.href), event.revision, liveSnapshot);
+  liveSnapshot = snapshot;
   if (snapshot.revision === lastAppliedRevision) return;
   const changedPaths = snapshot.revision === event.revision ? event.changedPaths : [];
   const leftChangeBaseline = viewingChangeBaseline;

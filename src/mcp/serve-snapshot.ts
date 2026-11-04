@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { BlueprintOutdatedFile } from '../core/activity';
+import type { BlueprintOutdatedFile, BlueprintProjectSnapshotDelta } from '../core/activity';
+import { diffProjectBundles } from '../core/bundle-delta';
 import type { BlueprintProjectBundle, LinkedProjectBundle, PrototypeAssetContent } from '../core/types';
 import { loadValidatedProject, type ProjectReader, type ValidatedProject, type ValidProject } from './project-validation';
 
@@ -25,6 +26,8 @@ export class ServeProjectSnapshots {
   readonly #changedPaths = new Set<string>();
   #current: ServeProjectSnapshot = { revision: randomUUID(), outdatedFiles: [] };
   #assets = new Map<string, PrototypeAssetContent>();
+  #previous: { revision: string; linkedBundle: LinkedProjectBundle; nextRevision: string } | undefined;
+  #delta: BlueprintProjectSnapshotDelta | undefined;
   #fingerprint: string | undefined;
   #announcedError: string | undefined;
   #timer: NodeJS.Timeout | undefined;
@@ -46,6 +49,15 @@ export class ServeProjectSnapshots {
   /** The bytes of one asset in the current snapshot, by the sha256 of those bytes. */
   asset(sha256: string): PrototypeAssetContent | undefined {
     return this.#assets.get(sha256);
+  }
+
+  deltaFrom(base: string, snapshot: ServeProjectSnapshot): BlueprintProjectSnapshotDelta | undefined {
+    const previous = this.#previous;
+    if (!previous || previous.revision !== base || previous.nextRevision !== snapshot.revision || !snapshot.linkedBundle) return undefined;
+    if (this.#delta?.base !== base || this.#delta.revision !== snapshot.revision) {
+      this.#delta = { version: 1, revision: snapshot.revision, base, delta: diffProjectBundles(previous.linkedBundle, snapshot.linkedBundle) };
+    }
+    return this.#delta;
   }
 
   get busy(): boolean {
@@ -124,6 +136,10 @@ export class ServeProjectSnapshots {
   }
 
   #publish(revision: string, { bundle, assetHashes, outdatedFiles }: ValidProject): void {
+    const { revision: previousRevision, linkedBundle: previousBundle } = this.#current;
+    if (previousBundle && previousRevision !== revision) {
+      this.#previous = { revision: previousRevision, linkedBundle: previousBundle, nextRevision: revision };
+    }
     this.#assets = new Map(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [assetHashes[assetRef], asset]));
     this.#current = { revision, bundle, linkedBundle: linkProjectAssets(bundle, assetHashes), outdatedFiles };
   }
