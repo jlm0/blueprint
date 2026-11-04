@@ -1,5 +1,6 @@
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { withAbort } from './operation-support';
 
 /** Names the public project, never the person, as the contact for image hosts. */
 export const INSPO_USER_AGENT = 'blueprint (+https://github.com/jlm0/blueprint)';
@@ -56,7 +57,7 @@ export async function downloadInspoImage(raw: string, fetcher: InspoFetcher, sig
   const timeout = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   for (let redirects = 0; ; redirects += 1) {
-    await assertPublicHost(url, fetcher);
+    await assertPublicHost(url, fetcher, requestSignal);
     const response = await fetcher.fetch(url, {
       redirect: 'manual',
       signal: requestSignal,
@@ -129,9 +130,9 @@ export function isPublicAddress(address: string): boolean {
   return false;
 }
 
-async function assertPublicHost(url: URL, fetcher: InspoFetcher): Promise<void> {
+async function assertPublicHost(url: URL, fetcher: InspoFetcher, signal: AbortSignal): Promise<void> {
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
-  const addresses = isIP(hostname) ? [hostname] : await fetcher.lookup(hostname);
+  const addresses = isIP(hostname) ? [hostname] : await withAbort(fetcher.lookup(hostname), signal);
   if (addresses.length === 0 || !addresses.every(isPublicAddress)) {
     throw new Error(`"${url.hostname}" is a local or private address. Fix: paste the address of an image on the public web.`);
   }

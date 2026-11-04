@@ -19,9 +19,13 @@ export function normalize(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
 }
 
+export function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.');
+}
+
 export function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
-    throw signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.');
+    throw abortError(signal);
   }
 }
 
@@ -32,7 +36,7 @@ export function withAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promi
   throwIfAborted(signal);
   return new Promise<T>((resolve, reject) => {
     const onAbort = (): void => {
-      reject(signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.'));
+      reject(abortError(signal));
     };
     signal.addEventListener('abort', onAbort, { once: true });
     operation.then(
@@ -46,4 +50,29 @@ export function withAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promi
       }
     );
   });
+}
+
+export async function runInOrder<T>(
+  queue: Map<string, Promise<void>>,
+  key: string,
+  signal: AbortSignal | undefined,
+  run: () => Promise<T>
+): Promise<T> {
+  const previous = queue.get(key) ?? Promise.resolve();
+  let release: () => void = () => undefined;
+  const finished = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const tail = previous.then(() => finished);
+  queue.set(key, tail);
+  try {
+    await withAbort(previous, signal);
+    return await run();
+  } finally {
+    release();
+    // An aborted call leaves earlier calls running, so the key stays until the whole tail ends.
+    void tail.then(() => {
+      if (queue.get(key) === tail) queue.delete(key);
+    });
+  }
 }

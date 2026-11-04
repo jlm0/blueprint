@@ -11,13 +11,10 @@ import type {
 } from '../core/types';
 import { boundaryId } from '../core/address';
 import { canvasLocationParams } from '../core/canvas-location';
-import { collectDesignFindings, type DesignFinding } from '../core/findings';
 import { INSPO_IMAGE_DIRECTORY } from '../core/inspo-contract';
 import { loadProjectFromFs } from '../core/load';
 import { migrateProjectFiles } from '../core/migrate';
-import { collectProseAdvisories, type ProseAdvisory } from '../core/prose-advisories';
-import { selectionReference, selectionSourceFiles } from '../core/selection';
-import { validateProject, validateProjectReadiness } from '../prototype/validate-project';
+import { selectionReference } from '../core/selection';
 import {
   archiveExploration,
   computeExplorationBaselineDigest,
@@ -58,15 +55,24 @@ import { normalize, packageRoot, throwIfAborted, withAbort } from './operation-s
 import {
   applyProjectFileTransaction,
   assertBlueprintProjectPath,
-  assertPersistedProjectValid,
   assertValidMutation,
+  commitProjectMutation,
   jsonFileContent,
   loadCurrentProject,
+  withProjectMutation,
   writeProjectFiles,
-  type ProjectFileWrite,
-  type ProjectValidator
+  type ProjectFileWrite
 } from './project-files';
-import { loadValidatedProject, type ProjectReader, type ValidatedProject } from './project-validation';
+import {
+  loadValidatedProject,
+  readCanvasLocation,
+  readSelectionFiles,
+  reportProjectValidation,
+  workerProjectValidator,
+  type ProjectReader,
+  type ProjectValidator,
+  type ValidatedProject
+} from './project-validation';
 import { startServeServer, type CaptureServer, type LocalServeServer, type StoredCanvasSelection } from './serve-server';
 import type { ServeProjectSnapshot } from './serve-snapshot';
 import {
@@ -115,7 +121,7 @@ export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
   baseUrl: string;
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
-  settledProject?: () => Promise<ServeProjectSnapshot>;
+  settledProject?: () => Promise<ServeProjectSnapshot | undefined>;
 }
 
 export async function initializeBlueprint(input: InitInput, signal?: AbortSignal): Promise<InitOutput> {
@@ -146,8 +152,7 @@ export async function initializeBlueprint(input: InitInput, signal?: AbortSignal
   }
 
   throwIfAborted(signal);
-  const bundle = await loadProjectFromFs(destination);
-  const validation = validateProject(bundle);
+  const validation = await validateOnWorker(await loadProjectFromFs(destination), signal);
   if (!validation.ok) {
     throw new Error(`Initialized project failed baseline validation:\n${validation.errors.join('\n')}`);
   }
@@ -165,34 +170,12 @@ export async function initializeBlueprint(input: InitInput, signal?: AbortSignal
 export async function validateBlueprint(input: ValidateInput, signal?: AbortSignal): Promise<ValidateOutput> {
   throwIfAborted(signal);
   const { project, mode } = input;
-  const bundle = await loadProjectFromFs(project);
-  if (mode === 'readiness') {
-    const { baseline, readiness } = validateProjectReadiness(bundle);
-    const ok = baseline.ok && readiness.tier !== 'blocked';
-    const output = validateOutputSchema.parse({
-      command: 'validate',
-      project: normalize(path.resolve(project)),
-      projectId: bundle.manifest.project.id,
-      mode,
-      ok,
-      errors: baseline.errors,
-      findings: advisoryDesignFindings(bundle),
-      prose: proseAdvisories(bundle),
-      readiness
-    });
-    await writeOptionalJsonArtifact(output, input.out);
-    return output;
-  }
-
-  const result = validateProject(bundle, { mode });
+  const report = await reportProjectValidation(project, mode, signal);
   const output = validateOutputSchema.parse({
     command: 'validate',
     project: normalize(path.resolve(project)),
-    projectId: bundle.manifest.project.id,
     mode,
-    ...result,
-    findings: advisoryDesignFindings(bundle),
-    prose: proseAdvisories(bundle)
+    ...report
   });
   await writeOptionalJsonArtifact(output, input.out);
   return output;
@@ -203,30 +186,32 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
   const starterRoot = path.join(packageRoot, 'starter', 'design', 'blueprint');
-  const migration = migrateProjectFiles({
-    files: await readProjectTextFiles(projectRoot),
-    starterPrimitives: JSON.parse(await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')),
-    starterAgents: await readFile(path.join(starterRoot, 'AGENTS.md'), 'utf8')
-  });
+  const output = await withProjectMutation(projectRoot, signal, async () => {
+    const migration = migrateProjectFiles({
+      files: await readProjectTextFiles(projectRoot),
+      starterPrimitives: JSON.parse(await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')),
+      starterAgents: await readFile(path.join(starterRoot, 'AGENTS.md'), 'utf8')
+    });
 
-  throwIfAborted(signal);
-  const { bundle, validation } = await validateMigration(projectRoot, migration);
+    throwIfAborted(signal);
+    const { bundle, validation } = await validateMigration(projectRoot, migration, signal);
 
-  throwIfAborted(signal);
-  if (!input.dryRun && migration.writes.size > 0) {
-    await applyProjectFileTransaction(projectRoot, [...migration.writes].map(([fileRef, content]) => ({ fileRef, content })));
-  }
-  const output = migrateOutputSchema.parse({
-    command: 'migrate',
-    project: normalize(projectRoot),
-    projectId: bundle.manifest.project.id,
-    dryRun: input.dryRun,
-    fromVersion: migration.fromVersion,
-    toVersion: migration.toVersion,
-    upToDate: migration.writes.size === 0,
-    changes: migration.changes,
-    files: [...migration.writes.keys()].sort(),
-    validation
+    throwIfAborted(signal);
+    if (!input.dryRun && migration.writes.size > 0) {
+      await applyProjectFileTransaction(projectRoot, [...migration.writes].map(([fileRef, content]) => ({ fileRef, content })));
+    }
+    return migrateOutputSchema.parse({
+      command: 'migrate',
+      project: normalize(projectRoot),
+      projectId: bundle.manifest.project.id,
+      dryRun: input.dryRun,
+      fromVersion: migration.fromVersion,
+      toVersion: migration.toVersion,
+      upToDate: migration.writes.size === 0,
+      changes: migration.changes,
+      files: [...migration.writes.keys()].sort(),
+      validation
+    });
   });
   await writeOptionalJsonArtifact(output, input.out);
   return output;
@@ -322,140 +307,122 @@ export async function extractBlueprint(input: ExtractInput, signal?: AbortSignal
 export async function exploreBlueprint(
   input: ExploreInput,
   signal?: AbortSignal,
-  validate: ProjectValidator = validateProject
+  validate: ProjectValidator = workerProjectValidator
 ): Promise<ExploreOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
-  const bundle = await loadCurrentProject(projectRoot);
-  const result = input.operation.type === 'create'
-    ? createExplorationMetadata(bundle, input.operation)
-    : archiveExploration(bundle, input.operation.explorationId);
-  const projected = {
-    ...bundle,
-    explorations: result.explorations,
-    prototypeSourceContents: result.prototypeSourceContents
-  };
-  assertValidMutation(projected, validate);
-  const output = exploreOutputSchema.parse({
-    command: 'explore',
-    operation: input.operation.type,
-    project: normalize(projectRoot),
-    projectId: bundle.manifest.project.id,
-    exploration: result.exploration
+  return withProjectMutation(projectRoot, signal, async () => {
+    const bundle = await loadCurrentProject(projectRoot);
+    const result = input.operation.type === 'create'
+      ? createExplorationMetadata(bundle, input.operation)
+      : archiveExploration(bundle, input.operation.explorationId);
+    const projected = {
+      ...bundle,
+      explorations: result.explorations,
+      prototypeSourceContents: result.prototypeSourceContents
+    };
+    const check = await assertValidMutation(projected, validate, signal);
+    const output = exploreOutputSchema.parse({
+      command: 'explore',
+      operation: input.operation.type,
+      project: normalize(projectRoot),
+      projectId: bundle.manifest.project.id,
+      exploration: result.exploration
+    });
+
+    await commitProjectMutation(projectRoot, [
+      ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+      ...explorationMetadataWrites(bundle, result.exploration)
+    ], check, validate, signal);
+    return output;
   });
-
-  const transaction = await applyProjectFileTransaction(projectRoot, [
-    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
-    ...explorationMetadataWrites(bundle, result.exploration)
-  ]);
-  try {
-    throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot, projected, validate);
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
-
-  return output;
 }
 
 export async function promoteBlueprint(
   input: PromoteInput,
   signal?: AbortSignal,
-  validate: ProjectValidator = validateProject
+  validate: ProjectValidator = workerProjectValidator
 ): Promise<PromoteOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
-  // The mutation is computed from a fresh filesystem snapshot so the core digest
-  // checks are the final read before the bounded file transaction begins.
-  const bundle = await loadCurrentProject(projectRoot);
-  const result = promoteExploration(bundle, input);
-  const projectId = bundle.manifest.project.id;
-  const projected = {
-    ...bundle,
-    screens: result.screens,
-    explorations: result.explorations,
-    history: result.history,
-    prototypeSourceContents: result.prototypeSourceContents
-  };
-  assertValidMutation(projected, validate);
-  const output = promoteOutputSchema.parse({
-    command: 'promote',
-    project: normalize(projectRoot),
-    projectId,
-    explorationId: input.explorationId,
-    candidateId: input.candidateId,
-    promotedScreen: screenMutationSummary(projectId, result.promotedScreen),
-    historicalVersion: historyVersionSummary(result.historicalVersion),
-    exploration: result.exploration
+  return withProjectMutation(projectRoot, signal, async () => {
+    // The mutation is computed from a fresh filesystem snapshot so the core digest
+    // checks are the final read before the bounded file transaction begins.
+    const bundle = await loadCurrentProject(projectRoot);
+    const result = promoteExploration(bundle, input);
+    const projectId = bundle.manifest.project.id;
+    const projected = {
+      ...bundle,
+      screens: result.screens,
+      explorations: result.explorations,
+      history: result.history,
+      prototypeSourceContents: result.prototypeSourceContents
+    };
+    const check = await assertValidMutation(projected, validate, signal);
+    const output = promoteOutputSchema.parse({
+      command: 'promote',
+      project: normalize(projectRoot),
+      projectId,
+      explorationId: input.explorationId,
+      candidateId: input.candidateId,
+      promotedScreen: screenMutationSummary(projectId, result.promotedScreen),
+      historicalVersion: historyVersionSummary(result.historicalVersion),
+      exploration: result.exploration
+    });
+
+    await commitProjectMutation(projectRoot, [
+      ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+      { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
+      ...explorationMetadataWrites(bundle, result.exploration),
+      {
+        fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
+        content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
+      }
+    ], check, validate, signal);
+    return output;
   });
-
-  const transaction = await applyProjectFileTransaction(projectRoot, [
-    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
-    { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
-    ...explorationMetadataWrites(bundle, result.exploration),
-    {
-      fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
-      content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
-    }
-  ]);
-  try {
-    throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot, projected, validate);
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
-
-  return output;
 }
 
 export async function restoreBlueprint(
   input: RestoreInput,
   signal?: AbortSignal,
-  validate: ProjectValidator = validateProject
+  validate: ProjectValidator = workerProjectValidator
 ): Promise<RestoreOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
-  const bundle = await loadCurrentProject(projectRoot);
-  const result = restoreScreenHistory(bundle, input);
-  const projectId = bundle.manifest.project.id;
-  const projected = {
-    ...bundle,
-    screens: result.screens,
-    history: result.history,
-    prototypeSourceContents: result.prototypeSourceContents
-  };
-  assertValidMutation(projected, validate);
-  const output = restoreOutputSchema.parse({
-    command: 'restore',
-    project: normalize(projectRoot),
-    projectId,
-    restoredFromVersion: input.version,
-    restoredScreen: screenMutationSummary(projectId, result.restoredScreen),
-    historicalVersion: historyVersionSummary(result.historicalVersion)
+  return withProjectMutation(projectRoot, signal, async () => {
+    const bundle = await loadCurrentProject(projectRoot);
+    const result = restoreScreenHistory(bundle, input);
+    const projectId = bundle.manifest.project.id;
+    const projected = {
+      ...bundle,
+      screens: result.screens,
+      history: result.history,
+      prototypeSourceContents: result.prototypeSourceContents
+    };
+    const check = await assertValidMutation(projected, validate, signal);
+    const output = restoreOutputSchema.parse({
+      command: 'restore',
+      project: normalize(projectRoot),
+      projectId,
+      restoredFromVersion: input.version,
+      restoredScreen: screenMutationSummary(projectId, result.restoredScreen),
+      historicalVersion: historyVersionSummary(result.historicalVersion)
+    });
+
+    await commitProjectMutation(projectRoot, [
+      ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
+      { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
+      {
+        fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
+        content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
+      }
+    ], check, validate, signal);
+    return output;
   });
-
-  const transaction = await applyProjectFileTransaction(projectRoot, [
-    ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
-    { fileRef: 'screens.json', content: jsonFileContent(result.screens) },
-    {
-      fileRef: historyRecordRef(result.historicalVersion.screenId, result.historicalVersion.version),
-      content: jsonFileContent(historyRecordFile(projectId, result.historicalVersion))
-    }
-  ]);
-  try {
-    throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot, projected, validate);
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
-
-  return output;
 }
 
 function isStarterBrandPath(starterRoot: string, source: string): boolean {
@@ -492,12 +459,12 @@ export async function serveBlueprint(
 
   let selection: ServeOutput['selection'];
   let validated: ValidatedProject | undefined;
+  const snapshotBundle = input.explorationId || input.focus ? await settledBundle(reusable, signal) : undefined;
   if (input.explorationId) {
     const explorationId = input.explorationId;
-    const settled = await reusable?.settledProject?.();
-    let bundle = settled?.error === undefined ? settled?.bundle : undefined;
+    let bundle = snapshotBundle;
     if (!bundle?.explorations.explorations.some(exploration => exploration.id === explorationId)) {
-      validated = await read(projectRoot);
+      validated = await read(projectRoot, signal);
       if (!validated.bundle || validated.error !== undefined) {
         throw new Error(validated.error ?? 'Blueprint project is unavailable.');
       }
@@ -510,7 +477,7 @@ export async function serveBlueprint(
       screenId: inspection.exploration.target.screenId
     };
   }
-  const focusParams = input.focus ? canvasLocationParams(await loadCurrentProject(projectRoot), input.focus) : undefined;
+  const focusParams = input.focus ? await focusLocation(projectRoot, input.focus, validated?.bundle ?? snapshotBundle, signal) : undefined;
 
   const acquisition = reusable
     ? { server: reusable, reused: true }
@@ -570,16 +537,41 @@ export async function readBlueprintSelection(input: SelectionInput, signal?: Abo
   if (!response.ok) {
     throw new Error(`Blueprint review runtime refused the selection request with status ${response.status}.`);
   }
-  const payload = await response.json() as { selection?: StoredCanvasSelection | null };
+  const payload = await response.json() as { selection?: StoredCanvasSelection | null; files?: string[] };
   const selection = payload.selection ?? null;
-  const bundle = selection ? await loadCurrentProject(projectRoot) : undefined;
   return selectionOutputSchema.parse({
     command: 'selection',
     project: normalize(projectRoot),
-    selection: selection && bundle
-      ? { ...selection, reference: selectionReference(selection), files: selectionSourceFiles(bundle, selection) }
+    selection: selection
+      ? {
+        ...selection,
+        reference: selectionReference(selection),
+        files: payload.files ?? await readSelectionFiles(projectRoot, selection, signal)
+      }
       : null
   });
+}
+
+async function settledBundle(server: BlueprintServeHandle | undefined, signal?: AbortSignal): Promise<BlueprintProjectBundle | undefined> {
+  const snapshot = server?.settledProject ? await withAbort(server.settledProject(), signal) : undefined;
+  return snapshot?.error === undefined ? snapshot?.bundle : undefined;
+}
+
+// A file change can arrive before the runtime hears of it, so a target that the snapshot lacks gets a read of the files.
+async function focusLocation(
+  projectRoot: string,
+  focus: string,
+  bundle: BlueprintProjectBundle | undefined,
+  signal?: AbortSignal
+): Promise<Record<string, string>> {
+  if (bundle) {
+    try {
+      return canvasLocationParams(bundle, focus);
+    } catch {
+      return readCanvasLocation(projectRoot, focus, signal);
+    }
+  }
+  return readCanvasLocation(projectRoot, focus, signal);
 }
 
 function borrowedServeServer(
@@ -602,22 +594,6 @@ function borrowedServeServer(
     },
     close: async () => undefined
   };
-}
-
-function advisoryDesignFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
-  try {
-    return collectDesignFindings(bundle);
-  } catch {
-    return [];
-  }
-}
-
-function proseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
-  try {
-    return collectProseAdvisories(bundle);
-  } catch {
-    return [];
-  }
 }
 
 function screenMutationSummary(projectId: string, screen: ScreenDefinition): {
@@ -716,15 +692,21 @@ async function readProjectTextFiles(projectRoot: string): Promise<Map<string, st
   return files;
 }
 
+async function validateOnWorker(bundle: BlueprintProjectBundle, signal?: AbortSignal): Promise<ValidationResult> {
+  const { ok, errors } = await workerProjectValidator.projected(bundle, signal);
+  return { ok, errors };
+}
+
 async function validateMigration(
   projectRoot: string,
-  migration: ReturnType<typeof migrateProjectFiles>
+  migration: ReturnType<typeof migrateProjectFiles>,
+  signal?: AbortSignal
 ): Promise<{ bundle: BlueprintProjectBundle; validation: ValidationResult }> {
   if (migration.writes.size === 0) {
     const bundle = await loadProjectFromFs(projectRoot);
     const digestsCurrent = bundle.explorations.explorations.every(exploration =>
       computeExplorationBaselineDigest(bundle, exploration.id) === exploration.target.baseDigest);
-    if (digestsCurrent) return { bundle, validation: validateProject(bundle) };
+    if (digestsCurrent) return { bundle, validation: await validateOnWorker(bundle, signal) };
   }
   const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
   try {
@@ -746,7 +728,7 @@ async function validateMigration(
       for (const [fileRef, content] of digestWrites) migration.writes.set(fileRef, content);
       bundle = await loadProjectFromFs(scratch);
     }
-    return { bundle, validation: validateProject(bundle) };
+    return { bundle, validation: await validateOnWorker(bundle, signal) };
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }

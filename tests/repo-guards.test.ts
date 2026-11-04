@@ -226,6 +226,9 @@ describe('repository guards', () => {
     ['src/core/css.ts', 'no-restricted-imports'],
     ['src/prototype/imports-mcp.ts', 'no-restricted-imports'],
     ['src/mcp/imports-app.ts', 'no-restricted-imports'],
+    ['src/mcp/imports-validate-project.ts', 'no-restricted-imports'],
+    ['src/mcp/imports-core-validate.ts', 'no-restricted-imports'],
+    ['src/mcp/imports-validation-worker.ts', 'no-restricted-imports'],
     ['src/app/imports-mcp.ts', 'no-restricted-imports'],
     ['cycle-a.ts', 'no-cycle']
   ] as const) {
@@ -249,6 +252,18 @@ describe('repository guards', () => {
     assert.equal(source.split("'Method not allowed'").length - 1, 1, 'Fix: list the methods of the route in SERVE_ROUTES.');
     assert.equal(source.split("'text/plain; charset=utf-8'").length - 1, 1, 'Fix: answer with writePlainText.');
     assert.doesNotMatch(source, /\.busy\b/, 'Fix: wait with snapshots.settled().');
+  });
+
+  it('names each file read of validation, because the validation memo must cover it', () => {
+    const reads = [...sourceFiles('src/core'), ...sourceFiles('src/prototype')]
+      .filter(file => !['browser-preflight.ts', 'load.ts', 'filesystem-containment.ts'].includes(path.basename(file)))
+      .flatMap(file => [...readFileSync(file, 'utf8').matchAll(/\b(?:existsSync|readFileSync|statSync|lstatSync|readdirSync|accessSync|readFile|stat|lstat|readdir|access|open)\((?!\))[^\n]*/g)]
+        .filter(match => /^(?:existsSync|readFileSync|statSync|lstatSync|readdirSync|accessSync)\(/.test(match[0]) || /node:fs/.test(readFileSync(file, 'utf8')))
+        .map(match => `${file.split(path.sep).join('/')}: ${match[0].slice(0, match[0].indexOf('('))}`));
+    assert.deepEqual(reads.sort(), [
+      'src/core/validate.ts: existsSync',
+      'src/core/validate.ts: existsSync'
+    ], 'Fix: add the new file input to projectFingerprint in src/mcp/project-validation-worker.ts when a baseline or strict result reads it, or keep it in the readiness rules, which run on each call.');
   });
 
   it('keeps the compiler free of clocks and random values', () => {

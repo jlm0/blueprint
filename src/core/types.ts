@@ -660,6 +660,7 @@ export type ValidationMode = 'baseline' | 'strict';
 
 export interface ValidationOptions {
   mode?: ValidationMode;
+  fileExists?: (filePath: string) => boolean;
 }
 
 export interface ValidationResult {

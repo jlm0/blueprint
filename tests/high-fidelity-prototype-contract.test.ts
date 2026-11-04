@@ -198,6 +198,8 @@ describe('Blueprint high-fidelity prototype red contract', () => {
       'src/mcp/inspo.ts',
       'src/mcp/operation-support.ts',
       'src/mcp/project-files.ts',
+      'src/mcp/project-validation.ts',
+      'src/mcp/project-validation-worker.ts',
       'src/mcp/serve-server.ts',
       'src/mcp/schemas.ts',
       'src/mcp/server.ts',

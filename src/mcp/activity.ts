@@ -27,7 +27,7 @@ export const BLUEPRINT_ACTIVITY_RUNTIME_VERSION = 1;
 const runtimeDirectory = path.join(tmpdir(), 'blueprint-agent-activity-v1');
 const runtimeLockDirectory = path.join(runtimeDirectory, 'locks');
 const terminalActivityRetentionMs = 2_000;
-// A busy runtime answers late, so this outlasts a main-thread validation and stays below the lock timeout.
+// A busy machine delays the answer, so this stays long, but below the lock timeout.
 const runtimeProbeTimeoutMs = 12_000;
 const runtimeLockTimeoutMs = 15_000;
 const incompleteLockRetentionMs = 2_000;

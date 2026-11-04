@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
 import { loadProjectFromFs } from '../core/load';
 import { assertCurrentSchema } from '../core/schema-version';
-import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
-import { normalize } from './operation-support';
+import type { BlueprintProjectBundle } from '../core/types';
+import { normalize, runInOrder, throwIfAborted } from './operation-support';
+import type { ProjectCheck, ProjectValidator } from './project-validation';
 
 export interface ProjectFileWrite {
   fileRef: string;
@@ -22,48 +22,53 @@ interface ProjectFileTransaction {
   rollback: () => Promise<void>;
 }
 
-export type ProjectValidator = (bundle: BlueprintProjectBundle) => ValidationResult;
+const projectMutations = new Map<string, Promise<void>>();
 
-export function assertValidMutation(bundle: BlueprintProjectBundle, validate: ProjectValidator): void {
-  const validation = validate(bundle);
-  if (!validation.ok) {
-    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${validation.errors.join('\n')}`);
+// A worker check leaves the event loop free, so another mutation of this project must wait until this commit ends.
+export async function withProjectMutation<T>(projectRoot: string, signal: AbortSignal | undefined, mutate: () => Promise<T>): Promise<T> {
+  return runInOrder(projectMutations, realpathSync.native(projectRoot), signal, mutate);
+}
+
+export async function assertValidMutation(
+  bundle: BlueprintProjectBundle,
+  validate: ProjectValidator,
+  signal?: AbortSignal
+): Promise<ProjectCheck> {
+  const check = await validate.projected(bundle, signal);
+  if (!check.ok) {
+    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${check.errors.join('\n')}`);
   }
+  return check;
 }
 
 export async function assertPersistedProjectValid(
   projectRoot: string,
-  projected: BlueprintProjectBundle,
-  validate: ProjectValidator
+  projected: ProjectCheck,
+  validate: ProjectValidator,
+  signal?: AbortSignal
 ): Promise<void> {
-  const persisted = await loadProjectFromFs(projectRoot);
-  if (isDeepStrictEqual(comparableMutationBundle(persisted), comparableMutationBundle(projected))) {
-    return;
-  }
-  const validation = validate(persisted);
+  const validation = await validate.persisted(projectRoot, projected.fingerprint, signal);
   if (!validation.ok) {
     throw new Error(`Persisted exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
   }
 }
 
-// Baseline validation reads neither the sourceFiles path index nor the record order, and projections keep neither as the loader does.
-function comparableMutationBundle(bundle: BlueprintProjectBundle): unknown {
-  return {
-    ...bundle,
-    sourceFiles: undefined,
-    explorations: {
-      ...bundle.explorations,
-      explorations: [...bundle.explorations.explorations].sort((left, right) => compareText(left.id, right.id))
-    },
-    history: {
-      ...bundle.history,
-      entries: [...bundle.history.entries].sort((left, right) => compareText(left.screenId, right.screenId) || left.version - right.version)
-    }
-  };
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
+export async function commitProjectMutation(
+  projectRoot: string,
+  writes: ProjectFileWrite[],
+  projected: ProjectCheck,
+  validate: ProjectValidator,
+  signal?: AbortSignal
+): Promise<void> {
+  throwIfAborted(signal);
+  const transaction = await applyProjectFileTransaction(projectRoot, writes);
+  try {
+    throwIfAborted(signal);
+    await assertPersistedProjectValid(projectRoot, projected, validate, signal);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 export function jsonFileContent(value: unknown): string {

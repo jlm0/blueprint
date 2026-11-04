@@ -8,7 +8,8 @@ import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle } from '../src/core/types';
 import { validateProject } from '../src/prototype/validate-project';
 import { exploreBlueprint, serveBlueprint } from '../src/mcp/operations';
-import { loadValidatedProject, readValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
+import { loadValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
+import { readValidatedProject } from '../src/mcp/project-validation-worker';
 import { ServeProjectSnapshots, type ServeProjectSnapshotOptions } from '../src/mcp/serve-snapshot';
 
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';

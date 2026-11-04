@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, LinkedProjectBundle } from '../src/core/types';
-import { hashProjectAssets } from '../src/mcp/project-validation';
+import { hashProjectAssets } from '../src/mcp/project-validation-worker';
 import { linkProjectAssets } from '../src/mcp/serve-snapshot';
 import { compilePrototypeDocument, PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
 

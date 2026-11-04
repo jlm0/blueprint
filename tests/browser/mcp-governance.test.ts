@@ -14,7 +14,7 @@ import { applyProjectBundleDelta } from '../../src/core/bundle-delta';
 import { loadProjectFromFs } from '../../src/core/load';
 import type { BlueprintProjectBundle, LinkedProjectBundle } from '../../src/core/types';
 import { serveBlueprint, type BlueprintServeHandle } from '../../src/mcp/operations';
-import { hashProjectAssets } from '../../src/mcp/project-validation';
+import { hashProjectAssets } from '../../src/mcp/project-validation-worker';
 import { linkProjectAssets } from '../../src/mcp/serve-snapshot';
 import { compilePrototypeDocument } from '../../src/prototype/compiler';
 
@@ -1566,7 +1566,7 @@ describe('Blueprint MCP and template governance', () => {
           const iframe = page.locator('.board-screens .frame[data-screen-id="hub"] .canonical-prototype-iframe').first();
           await iframe.waitFor({ state: 'attached', timeout: 15000 });
           const servedRevision = await page.evaluate(() => window.__BLUEPRINT_LIVE_RUNTIME__?.revision);
-          assert.equal(servedRevision, (await served.settledProject!()).revision);
+          assert.equal(servedRevision, (await served.settledProject!())?.revision);
 
           const sourcePath = path.join(project, 'prototype/screens/hub.html');
           await writeFile(sourcePath, (await readFile(sourcePath, 'utf8')).replace('Season 04', 'Season 05'));
@@ -1766,7 +1766,7 @@ async function assertEventuallyWithin(check: () => boolean, timeoutMs = 10000): 
 async function publishedRevisionAfter(served: BlueprintServeHandle, revision: string): Promise<string> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const settled = await served.settledProject!();
-    if (settled.revision !== revision) return settled.revision;
+    if (settled && settled.revision !== revision) return settled.revision;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
   return assert.fail(`Serve did not publish a revision after ${revision}.`);

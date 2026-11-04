@@ -28,7 +28,7 @@
     "lint:fix": "oxlint --ignore-pattern 'tests/lint-fixtures/**' --fix .",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:browser",
-    "test:unit": "node --import tsx --test tests/*.test.ts",
+    "test:unit": "node --import tsx --test --test-timeout=300000 tests/*.test.ts",
     "test:browser": "node --import tsx --test tests/browser/*.test.ts",
     "check:fixtures": "node --import tsx src/scripts/validate-fixtures.ts",
     "scan:scope": "node --import tsx src/scripts/scope-scan.ts",

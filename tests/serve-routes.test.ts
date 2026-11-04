@@ -9,7 +9,8 @@ import { after, before, describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { findLiveBlueprintActivityRuntime } from '../src/mcp/activity';
 import { blueprintServeRuntimeKey, serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
-import { hashProjectAssets, readValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
+import type { ProjectReader } from '../src/mcp/project-validation';
+import { hashProjectAssets, readValidatedProject } from '../src/mcp/project-validation-worker';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
 import { compilePrototypeReview, parsePrototypeReviewRequest, resolvePrototypeReviewSelection } from '../src/prototype/review';
 

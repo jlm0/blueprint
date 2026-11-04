@@ -111,6 +111,8 @@ describe('starter and high-fidelity portability contract', () => {
       'src/mcp/inspo.ts',
       'src/mcp/operation-support.ts',
       'src/mcp/project-files.ts',
+      'src/mcp/project-validation.ts',
+      'src/mcp/project-validation-worker.ts',
       'src/mcp/serve-server.ts',
       'src/mcp/schemas.ts'
     ].map(file => readFile(file, 'utf8')))).join('\n');

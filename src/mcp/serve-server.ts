@@ -13,7 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { BlueprintOutdatedFile, BlueprintProjectLoadError } from '../core/activity';
 import { INSPO_IMAGE_DIRECTORY } from '../core/inspo-contract';
 import { BLUEPRINT_SCHEMA_VERSION } from '../core/schema-version';
-import { parseCanvasSelection, type BlueprintCanvasSelection } from '../core/selection';
+import { parseCanvasSelection, selectionSourceFiles, type BlueprintCanvasSelection } from '../core/selection';
 import type { LinkedProjectBundle } from '../core/types';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
 import {
@@ -60,8 +60,8 @@ export interface LocalServeServer extends CaptureServer {
   baseUrl: string;
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
-  /** The validated project of an owned runtime, after the file changes it has seen are applied. */
-  settledProject?: () => Promise<ServeProjectSnapshot>;
+  /** The validated project of an owned runtime, after the file changes it has seen are applied. Undefined when the deadline ends first. */
+  settledProject?: () => Promise<ServeProjectSnapshot | undefined>;
 }
 
 export interface StoredCanvasSelection extends BlueprintCanvasSelection {
@@ -186,10 +186,7 @@ export async function startServeServer(
     baseUrl,
     ownership: 'owned',
     isAvailable: async () => server.listening,
-    settledProject: async () => {
-      await delay(watcherEventGraceMs);
-      return snapshots.settled();
-    },
+    settledProject: () => settledBeforeDeadline(snapshots),
     close: () => {
       closePromise ??= (async () => {
         snapshots.close();
@@ -220,9 +217,13 @@ function hasActivityToken({ runtime }: ServeState, request: IncomingMessage): bo
   return runtime !== undefined && request.headers[BLUEPRINT_ACTIVITY_TOKEN_HEADER] === runtime.descriptor.token;
 }
 
+function settledBeforeDeadline(snapshots: ServeProjectSnapshots): Promise<ServeProjectSnapshot | undefined> {
+  return Promise.race([snapshots.settled(), delay(watcherSettleTimeoutMs, undefined, { ref: false })]);
+}
+
 async function settledRevision(snapshots: ServeProjectSnapshots): Promise<{ revision: string; projectValid: boolean }> {
   await delay(watcherEventGraceMs);
-  await Promise.race([snapshots.settled(), delay(watcherSettleTimeoutMs, undefined, { ref: false })]);
+  await settledBeforeDeadline(snapshots);
   return { revision: snapshots.current.revision, projectValid: snapshots.current.error === undefined };
 }
 
@@ -272,8 +273,10 @@ async function exchangeCanvasSelection({ state, request, response }: ServeExchan
       writePlainText(response, 403, 'Forbidden');
       return;
     }
+    const selection = state.canvasSelection ?? null;
+    const files = selection ? await settledSelectionFiles(state.snapshots, selection) : undefined;
     response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
-    response.end(JSON.stringify({ version: 1, selection: state.canvasSelection ?? null }));
+    response.end(JSON.stringify({ version: 1, selection, ...(files ? { files } : {}) }));
     return;
   }
   if (request.headers[BLUEPRINT_CANVAS_TOKEN_HEADER] !== state.canvasToken) {
@@ -293,6 +296,16 @@ async function exchangeCanvasSelection({ state, request, response }: ServeExchan
     writePlainText(response, 204);
   } catch (error) {
     writePlainText(response, 400, error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function settledSelectionFiles(snapshots: ServeProjectSnapshots, selection: StoredCanvasSelection): Promise<string[] | undefined> {
+  const snapshot = await settledBeforeDeadline(snapshots);
+  if (!snapshot?.bundle || snapshot.error !== undefined) return undefined;
+  try {
+    return selectionSourceFiles(snapshot.bundle, selection);
+  } catch {
+    return undefined;
   }
 }
 

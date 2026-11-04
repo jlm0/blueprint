@@ -11,8 +11,14 @@ import type {
 } from '../core/types';
 import { inspectPrototypeSourceGraph } from './compiler';
 
-export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
-  return validateProjectWithSourceGraph(bundle, options, () => inspectPrototypeSourceGraph(bundle));
+type SourceGraphCheck = (bundle: BlueprintProjectBundle) => PrototypeSourceGraphIssue[];
+
+export function validateProject(
+  bundle: BlueprintProjectBundle,
+  options: ValidationOptions = {},
+  inspect: SourceGraphCheck = inspectPrototypeSourceGraph
+): ValidationResult {
+  return validateProjectWithSourceGraph(bundle, options, () => inspect(bundle));
 }
 
 export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
@@ -21,12 +27,13 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
 
 export function validateProjectReadiness(
   bundle: BlueprintProjectBundle,
-  inspect: (bundle: BlueprintProjectBundle) => PrototypeSourceGraphIssue[] = inspectPrototypeSourceGraph
+  inspect: SourceGraphCheck = inspectPrototypeSourceGraph,
+  knownBaseline?: ValidationResult
 ): { baseline: ValidationResult; readiness: ReadinessReport } {
   let issues: PrototypeSourceGraphIssue[] | undefined;
   const sourceGraphIssues = (): PrototypeSourceGraphIssue[] => issues ??= inspect(bundle);
   return {
-    baseline: validateProjectWithSourceGraph(bundle, {}, sourceGraphIssues),
+    baseline: knownBaseline ?? validateProjectWithSourceGraph(bundle, {}, sourceGraphIssues),
     readiness: createReadinessReportWithSourceGraph(bundle, sourceGraphIssues)
   };
 }

@@ -130,7 +130,7 @@ export function validateProjectWithSourceGraph(
   validateInspo(errors, bundle);
   validateBrand(errors, bundle, options.mode ?? 'baseline');
   validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
-  validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
+  validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds, options.fileExists ?? existsSync);
   recordPrototypeSourceGraphValidation(errors, sourceGraphIssues());
 
   if ((options.mode ?? 'baseline') === 'strict') {
@@ -1094,14 +1094,15 @@ function validatePrototypeContracts(
   errors: string[],
   bundle: BlueprintProjectBundle,
   tokenIds: Set<string>,
-  framePresetIds: Set<string>
+  framePresetIds: Set<string>,
+  fileExists: (filePath: string) => boolean
 ): void {
   for (const [kind, reusables] of [['primitive', bundle.primitives.primitives], ['component', bundle.components.components]] as const) {
     for (const reusable of reusables) {
       if (!reusable.prototype || typeof reusable.prototype !== 'object') {
         continue;
       }
-      validatePrototypeSource(errors, bundle, `${kind}.${reusable.id}.prototype`, reusable.prototype);
+      validatePrototypeSource(errors, bundle, fileExists, `${kind}.${reusable.id}.prototype`, reusable.prototype);
     }
   }
 
@@ -1110,11 +1111,11 @@ function validatePrototypeContracts(
       errors.push(`screen.${screen.id}.prototype must declare a browser-native HTML/CSS source.`);
       continue;
     }
-    validatePrototypeSource(errors, bundle, `screen.${screen.id}.prototype`, screen.prototype);
+    validatePrototypeSource(errors, bundle, fileExists, `screen.${screen.id}.prototype`, screen.prototype);
     requireArray(errors, `screen.${screen.id}.prototype.assetRefs`, screen.prototype.assetRefs);
     requireArray(errors, `screen.${screen.id}.prototype.reviewConditions`, screen.prototype.reviewConditions);
     for (const assetRef of screen.prototype.assetRefs ?? []) {
-      validatePrototypeFileRef(errors, bundle, `screen.${screen.id}.prototype.assetRef`, assetRef);
+      validatePrototypeFileRef(errors, bundle, fileExists, `screen.${screen.id}.prototype.assetRef`, assetRef);
       if (!isControlledAssetRef(bundle, assetRef)) {
         errors.push(`screen.${screen.id}.prototype asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
       }
@@ -1138,6 +1139,7 @@ function validatePrototypeContracts(
 function validatePrototypeSource(
   errors: string[],
   bundle: BlueprintProjectBundle,
+  fileExists: (filePath: string) => boolean,
   label: string,
   prototype: Pick<PrototypeSource, 'source' | 'styles' | 'localValueExceptions'> & { states?: string[] }
 ): void {
@@ -1146,9 +1148,9 @@ function validatePrototypeSource(
   if (label.startsWith('screen.')) {
     requireArray(errors, `${label}.states`, prototype.states);
   }
-  validatePrototypeFileRef(errors, bundle, `${label}.source`, prototype.source);
+  validatePrototypeFileRef(errors, bundle, fileExists, `${label}.source`, prototype.source);
   for (const styleRef of prototype.styles ?? []) {
-    validatePrototypeFileRef(errors, bundle, `${label}.style`, styleRef);
+    validatePrototypeFileRef(errors, bundle, fileExists, `${label}.style`, styleRef);
   }
   if (prototype.localValueExceptions) {
     requireArray(errors, `${label}.localValueExceptions`, prototype.localValueExceptions);
@@ -1163,6 +1165,7 @@ function validatePrototypeSource(
 function validatePrototypeFileRef(
   errors: string[],
   bundle: BlueprintProjectBundle,
+  fileExists: (filePath: string) => boolean,
   label: string,
   sourceRef: string
 ): void {
@@ -1170,7 +1173,7 @@ function validatePrototypeFileRef(
     errors.push(`${label} "${sourceRef}" escapes or points outside the Blueprint source root.`);
     return;
   }
-  if (!existsSync(path.resolve(bundle.sourceRoot, sourceRef))) {
+  if (!fileExists(path.resolve(bundle.sourceRoot, sourceRef))) {
     errors.push(`${label} "${sourceRef}" does not exist.`);
   }
 }

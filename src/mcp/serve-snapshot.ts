@@ -32,6 +32,7 @@ export class ServeProjectSnapshots {
   #timer: NodeJS.Timeout | undefined;
   #reloading: Promise<void> | undefined;
   #reloadRequested = false;
+  readonly #reads = new AbortController();
   #started = false;
   #closed = false;
   #waiters: Array<() => void> = [];
@@ -96,6 +97,7 @@ export class ServeProjectSnapshots {
     this.#closed = true;
     if (this.#timer) clearTimeout(this.#timer);
     this.#timer = undefined;
+    this.#reads.abort();
     this.#release();
   }
 
@@ -143,7 +145,7 @@ export class ServeProjectSnapshots {
   }
 
   #read(): Promise<ValidatedProject> {
-    return (this.#options.read ?? loadValidatedProject)(this.#projectRoot);
+    return (this.#options.read ?? loadValidatedProject)(this.#projectRoot, this.#reads.signal);
   }
 
   #releaseWhenIdle(): void {

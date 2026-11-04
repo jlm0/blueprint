@@ -119,6 +119,35 @@
                   "**/scripts/**"
                 ],
                 "message": "The MCP server does not import the canvas or scripts. Fix: move the shared code into core."
+              },
+              {
+                "group": [
+                  "**/validate-project",
+                  "**/core/validate",
+                  "**/project-validation-worker"
+                ],
+                "message": "Validation stalls the MCP event loop on the main thread. Fix: run it through src/mcp/project-validation.ts, which starts src/mcp/project-validation-worker.ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/src/mcp/project-validation-worker.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/app/**",
+                  "**/scripts/**"
+                ],
+                "message": "The MCP server does not import the canvas or scripts. Fix: move the shared code into core."
               }
             ]
           }

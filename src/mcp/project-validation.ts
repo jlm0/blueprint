@@ -1,12 +1,18 @@
-import { createHash } from 'node:crypto';
+import { channel } from 'node:diagnostics_channel';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { Worker } from 'node:worker_threads';
+import { Worker, type ResourceLimits } from 'node:worker_threads';
 import type { BlueprintOutdatedFile } from '../core/activity';
-import { loadProjectFromFs } from '../core/load';
-import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
-import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
-import { validateProject } from '../prototype/validate-project';
+import type { DesignFinding } from '../core/findings';
+import type { ProseAdvisory } from '../core/prose-advisories';
+import type { BlueprintCanvasSelection } from '../core/selection';
+import type {
+  BlueprintProjectBundle,
+  PrototypeSourceGraphIssue,
+  ReadinessReport,
+  ValidationResult
+} from '../core/types';
+import { abortError, runInOrder } from './operation-support';
 
 export type ValidatedProject = ValidProject | InvalidProject;
 
@@ -14,7 +20,7 @@ export interface ValidProject {
   bundle: BlueprintProjectBundle;
   error?: undefined;
   outdatedFiles: BlueprintOutdatedFile[];
-  /** Content hash of the bundle, so a reload can tell whether anything changed. */
+  /** Hash of each input of the validation result, so a reload can tell whether anything changed. */
   fingerprint: string;
   assetHashes: Record<string, string>;
 }
@@ -27,59 +33,162 @@ export interface InvalidProject {
   assetHashes?: undefined;
 }
 
-export type ProjectReader = (projectRoot: string) => Promise<ValidatedProject>;
+export type ProjectReader = (projectRoot: string, signal?: AbortSignal) => Promise<ValidatedProject>;
 
-export interface ProjectValidationSteps {
-  load?: (projectRoot: string) => Promise<BlueprintProjectBundle>;
-  validate?: (bundle: BlueprintProjectBundle) => ValidationResult;
+export interface ProjectCheck extends ValidationResult {
+  fingerprint: string;
 }
 
-/**
- * Loads and validates a project on a worker thread, so a large sidecar never
- * blocks the MCP event loop, and running out of memory ends only the worker.
- */
-export const loadValidatedProject: ProjectReader = projectRoot => {
-  return new Promise(resolve => {
-    const worker = new Worker(projectValidationWorkerUrl(), { workerData: { projectRoot } });
-    let answered = false;
-    const answer = (result: ValidatedProject): void => {
-      if (answered) return;
-      answered = true;
-      resolve(result);
-    };
-    worker.once('message', (result: ValidatedProject) => answer(result));
-    worker.once('error', error => answer({ error: `Blueprint could not validate the project: ${error.message}`, outdatedFiles: [] }));
-    worker.once('exit', code => answer({ error: `Blueprint validation stopped with exit code ${code} before it answered.`, outdatedFiles: [] }));
-  });
+export interface ProjectValidator {
+  projected: (bundle: BlueprintProjectBundle, signal?: AbortSignal) => Promise<ProjectCheck>;
+  persisted: (projectRoot: string, projectedFingerprint: string, signal?: AbortSignal) => Promise<ValidationResult>;
+}
+
+export type ValidationReportMode = 'baseline' | 'strict' | 'readiness';
+
+export interface ValidationReport extends ValidationResult {
+  projectId: string;
+  findings: DesignFinding[];
+  prose: ProseAdvisory[];
+  readiness?: ReadinessReport;
+}
+
+export type ProjectValidationTask =
+  | { kind: 'read'; projectRoot: string }
+  | { kind: 'report'; project: string; mode: ValidationReportMode }
+  | { kind: 'projected'; bundle: BlueprintProjectBundle }
+  | { kind: 'persisted'; projectRoot: string; projectedFingerprint: string }
+  | { kind: 'canvas-location'; projectRoot: string; focus: string }
+  | { kind: 'selection-files'; projectRoot: string; selection: BlueprintCanvasSelection };
+
+export interface ValidationMemoEntry {
+  fingerprint: string;
+  sourceGraphIssues?: PrototypeSourceGraphIssue[];
+  baseline?: ValidationResult;
+  strict?: ValidationResult;
+  findings?: DesignFinding[];
+  prose?: ProseAdvisory[];
+}
+
+export type ValidationRun = 'source-graph' | 'baseline' | 'strict' | 'readiness';
+
+export interface ProjectValidationWorkerData {
+  task: ProjectValidationTask;
+  memo: ValidationMemoEntry[];
+}
+
+export type ProjectValidationReply =
+  | { value: unknown; memo?: ValidationMemoEntry; runs: ValidationRun[] }
+  | { thrown: string };
+
+export interface ProjectValidationRunMessage {
+  run: ValidationRun;
+  fingerprint: string;
+}
+
+export interface ProjectWorkerOptions {
+  url?: URL;
+  deadlineMs?: number;
+  resourceLimits?: ResourceLimits;
+}
+
+const VALIDATION_MEMO_CAPACITY = 8;
+const PROJECT_TASK_DEADLINE_MS = 300_000;
+const WORKER_FAILURE_FIX = 'Fix: call the tool again. If the validation stops again, free memory on this machine or make the project smaller.';
+
+const validationMemo = new Map<string, ValidationMemoEntry>();
+const diskValidations = new Map<string, Promise<void>>();
+
+// The count guard reads this channel, because only the worker knows a real run from a memo answer.
+export const projectValidationRuns = channel('blueprint:project-validation-run');
+
+export function createWorkerValidator(options: ProjectWorkerOptions = {}): ProjectValidator {
+  return {
+    projected: (bundle, signal) => runProjectTask<ProjectCheck>({ kind: 'projected', bundle }, signal, options),
+    persisted: (projectRoot, projectedFingerprint, signal) =>
+      runProjectTask<ValidationResult>({ kind: 'persisted', projectRoot, projectedFingerprint }, signal, options)
+  };
+}
+
+export const workerProjectValidator = createWorkerValidator();
+
+export const loadValidatedProject: ProjectReader = (projectRoot, signal) => {
+  return runInOrder(diskValidations, path.resolve(projectRoot), signal, () =>
+    runProjectTask<ValidatedProject>({ kind: 'read', projectRoot }, signal)
+  ).catch(error => ({ error: errorMessage(error), outdatedFiles: [] }));
 };
 
-export async function readValidatedProject(projectRoot: string, steps: ProjectValidationSteps = {}): Promise<ValidatedProject> {
-  let outdatedFiles: BlueprintOutdatedFile[] = [];
-  try {
-    const bundle = await (steps.load ?? loadProjectFromFs)(projectRoot);
-    outdatedFiles = fileSchemaVersions(bundle)
-      .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
-      .map(([file, version]) => ({ file, version: String(version) }));
-    const validation = (steps.validate ?? validateProject)(bundle);
-    if (!validation.ok) {
-      throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+export function reportProjectValidation(project: string, mode: ValidationReportMode, signal?: AbortSignal): Promise<ValidationReport> {
+  return runInOrder(diskValidations, path.resolve(project), signal, () =>
+    runProjectTask<ValidationReport>({ kind: 'report', project, mode }, signal)
+  );
+}
+
+export function readCanvasLocation(projectRoot: string, focus: string, signal?: AbortSignal): Promise<Record<string, string>> {
+  return runProjectTask({ kind: 'canvas-location', projectRoot, focus }, signal);
+}
+
+export function readSelectionFiles(projectRoot: string, selection: BlueprintCanvasSelection, signal?: AbortSignal): Promise<string[]> {
+  return runProjectTask({ kind: 'selection-files', projectRoot, selection }, signal);
+}
+
+// A worker keeps a large sidecar from blocking the MCP event loop, and running out of memory ends only the worker.
+function runProjectTask<T>(task: ProjectValidationTask, signal: AbortSignal | undefined, options: ProjectWorkerOptions = {}): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortError(signal));
+      return;
     }
-    return {
-      bundle,
-      outdatedFiles: [],
-      fingerprint: createHash('sha256').update(JSON.stringify(bundle)).digest('hex'),
-      assetHashes: hashProjectAssets(bundle)
+    const data: ProjectValidationWorkerData = { task, memo: [...validationMemo.values()] };
+    const worker = new Worker(options.url ?? projectValidationWorkerUrl(), {
+      workerData: data,
+      ...(options.resourceLimits ? { resourceLimits: options.resourceLimits } : {})
+    });
+    const onAbort = (): void => {
+      reject(abortError(signal!));
+      void worker.terminate();
     };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error), outdatedFiles };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const deadline = setTimeout(() => {
+      reject(new Error(`Blueprint validation did not answer in time. ${WORKER_FAILURE_FIX}`));
+      void worker.terminate();
+    }, options.deadlineMs ?? PROJECT_TASK_DEADLINE_MS);
+    deadline.unref();
+    worker.once('message', (reply: ProjectValidationReply) => {
+      if ('thrown' in reply) {
+        reject(new Error(reply.thrown));
+      } else {
+        recordReply(reply);
+        resolve(reply.value as T);
+      }
+      void worker.terminate();
+    });
+    worker.once('error', error => {
+      reject(new Error(`Blueprint validation stopped before it answered: ${error.message}. ${WORKER_FAILURE_FIX}`));
+    });
+    worker.once('exit', code => {
+      clearTimeout(deadline);
+      signal?.removeEventListener('abort', onAbort);
+      reject(new Error(`Blueprint validation stopped with exit code ${code} before it answered. ${WORKER_FAILURE_FIX}`));
+    });
+  });
+}
+
+function recordReply({ memo, runs }: { memo?: ValidationMemoEntry; runs: ValidationRun[] }): void {
+  if (!memo) return;
+  validationMemo.delete(memo.fingerprint);
+  validationMemo.set(memo.fingerprint, memo);
+  for (const fingerprint of validationMemo.keys()) {
+    if (validationMemo.size <= VALIDATION_MEMO_CAPACITY) break;
+    validationMemo.delete(fingerprint);
+  }
+  for (const run of runs) {
+    projectValidationRuns.publish({ run, fingerprint: memo.fingerprint } satisfies ProjectValidationRunMessage);
   }
 }
 
-export function hashProjectAssets(bundle: BlueprintProjectBundle): Record<string, string> {
-  return Object.fromEntries(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [
-    assetRef,
-    createHash('sha256').update(Buffer.from(asset.base64, 'base64')).digest('hex')
-  ]));
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function projectValidationWorkerUrl(): URL {

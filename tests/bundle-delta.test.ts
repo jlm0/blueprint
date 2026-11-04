@@ -8,7 +8,7 @@ import { applyProjectBundleDelta, diffProjectBundles } from '../src/core/bundle-
 import type { LinkedProjectBundle } from '../src/core/types';
 import { fetchLiveProjectSnapshot } from '../src/app/project-snapshot';
 import { exploreBlueprint } from '../src/mcp/operations';
-import { readValidatedProject } from '../src/mcp/project-validation';
+import { readValidatedProject } from '../src/mcp/project-validation-worker';
 import { ServeProjectSnapshots, type ServeProjectSnapshot } from '../src/mcp/serve-snapshot';
 
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';

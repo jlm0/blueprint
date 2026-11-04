@@ -8,6 +8,8 @@ import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, ValidationResult } from '../src/core/types';
 import { createReadinessReport, validateProject, validateProjectReadiness } from '../src/prototype/validate-project';
 import type { InspoFetcher } from '../src/mcp/inspo-download';
+import type { ProjectValidator } from '../src/mcp/project-validation';
+import { inProcessValidator } from './support/in-process-validator';
 import type { QueryInput } from '../src/mcp/schemas';
 import {
   exploreBlueprint,
@@ -120,7 +122,7 @@ describe('mutation validation', () => {
         return validateProject(bundle);
       };
       await assert.rejects(
-        exploreBlueprint({ project, operation: launchExploration('launch-hero') }, undefined, validate),
+        exploreBlueprint({ project, operation: launchExploration('launch-hero') }, undefined, inProcessValidator(validate)),
         /Persisted exploration mutation failed baseline validation:[\s\S]*tokens\.projectId "someone-else"/
       );
       assert.equal(calls, 2);
@@ -134,13 +136,13 @@ async function firstQueryResult(project: string, query: QueryInput['query']): Pr
   return 'results' in output ? output.results[0] : undefined;
 }
 
-function countingValidator(): { validate: (bundle: BlueprintProjectBundle) => ValidationResult; take: () => number } {
+function countingValidator(): { validate: ProjectValidator; take: () => number } {
   let calls = 0;
   return {
-    validate: bundle => {
+    validate: inProcessValidator(bundle => {
       calls += 1;
       return validateProject(bundle);
-    },
+    }),
     take: () => {
       const taken = calls;
       calls = 0;
