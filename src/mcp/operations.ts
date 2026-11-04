@@ -31,7 +31,7 @@ import { INSPO_IMAGE_DIRECTORY, INSPO_IMAGE_PATTERN } from '../core/inspo-contra
 import { loadProjectFromFs } from '../core/load';
 import { migrateProjectFiles } from '../core/migrate';
 import { collectProseAdvisories, type ProseAdvisory } from '../core/prose-advisories';
-import { assertCurrentSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
+import { assertCurrentSchema, BLUEPRINT_SCHEMA_VERSION } from '../core/schema-version';
 import {
   parseCanvasSelection,
   selectionReference,
@@ -93,6 +93,7 @@ import {
   type RegisteredBlueprintActivityRuntime
 } from './activity';
 import { defaultInspoFetcher, downloadInspoImage, normalizeInspoUrl, type InspoFetcher } from './inspo-download';
+import { ServeProjectSnapshots } from './serve-snapshot';
 import {
   captureOutputSchema,
   exploreOutputSchema,
@@ -1417,48 +1418,33 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     throw new Error('Blueprint serve could not find the built module script in dist/site/index.html. Re-run `npm run build` and try again.');
   }
 
-  let lastGoodBundle: Awaited<ReturnType<typeof loadProjectFromFs>> | undefined;
-  let lastLoadError: string | undefined;
-  let lastOutdatedFiles: BlueprintOutdatedFile[] = [];
-  let publishedFingerprint: string | undefined;
-  let publishedError: string | undefined;
-  let publishedRevision = randomUUID();
   let runtime: RegisteredBlueprintActivityRuntime | undefined;
-  let reloadTimer: NodeJS.Timeout | undefined;
-  let reloadsInFlight = 0;
   let canvasSelection: StoredCanvasSelection | undefined;
   const canvasToken = randomUUID();
   const activityHub = new BlueprintActivityHub();
+  const snapshots = new ServeProjectSnapshots(projectRoot, {
+    debounceMs: watcherDebounceMs,
+    onChanged: ({ revision, changedPaths }) => activityHub.publish('project-changed', {
+      version: 1,
+      revision,
+      changedAt: new Date().toISOString(),
+      changedPaths
+    }),
+    onFailed: ({ message, outdatedFiles }) => activityHub.publish('project-error', {
+      version: 1,
+      message,
+      outdatedFiles,
+      changedAt: new Date().toISOString()
+    })
+  });
 
   const settledRevision = async (): Promise<{ revision: string; projectValid: boolean }> => {
     await delay(watcherEventGraceMs);
     const deadline = Date.now() + watcherSettleTimeoutMs;
-    while ((reloadTimer || reloadsInFlight > 0) && Date.now() < deadline) {
+    while (snapshots.busy && Date.now() < deadline) {
       await delay(25);
     }
-    return { revision: publishedRevision, projectValid: publishedError === undefined };
-  };
-
-  const readBundleSnapshot = async (): Promise<{ bundle?: Awaited<ReturnType<typeof loadProjectFromFs>>; error?: string; outdatedFiles: BlueprintOutdatedFile[] }> => {
-    let outdatedFiles: BlueprintOutdatedFile[] = [];
-    try {
-      const bundle = await loadProjectFromFs(projectRoot);
-      outdatedFiles = fileSchemaVersions(bundle)
-        .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
-        .map(([file, version]) => ({ file, version: String(version) }));
-      const validation = validateProject(bundle);
-      if (!validation.ok) {
-        throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
-      }
-      lastGoodBundle = bundle;
-      lastLoadError = undefined;
-      lastOutdatedFiles = [];
-      return { bundle, outdatedFiles };
-    } catch (error) {
-      lastLoadError = error instanceof Error ? error.message : String(error);
-      lastOutdatedFiles = outdatedFiles;
-      return { bundle: lastGoodBundle, error: lastLoadError, outdatedFiles };
-    }
+    return { revision: snapshots.current.revision, projectValid: snapshots.current.error === undefined };
   };
 
   const server = createHttpServer(async (request, response) => {
@@ -1514,7 +1500,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
           response.end('Invalid Blueprint activity event');
           return;
         }
-        const snapshot = await readBundleSnapshot();
+        const snapshot = snapshots.current;
         if (!snapshot.bundle) {
           response.writeHead(409, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
           response.end(snapshot.error ?? 'Blueprint project is unavailable');
@@ -1568,7 +1554,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
           return;
         }
         canvasSelection = selection
-          ? { ...selection, selectedAt: new Date().toISOString(), revision: publishedRevision }
+          ? { ...selection, selectedAt: new Date().toISOString(), revision: snapshots.current.revision }
           : undefined;
         response.writeHead(204, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
         response.end();
@@ -1588,16 +1574,24 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
         response.end('Method not allowed');
         return;
       }
-      const snapshot = await readBundleSnapshot();
+      if (request.method === 'HEAD') {
+        const available = snapshots.current.bundle !== undefined;
+        response.writeHead(available ? 200 : 503, createBlueprintResponseHeaders({
+          contentType: available ? 'application/json; charset=utf-8' : 'application/problem+json; charset=utf-8'
+        }));
+        response.end();
+        return;
+      }
+      const snapshot = await snapshots.settled();
       if (!snapshot.bundle) {
         response.writeHead(503, createBlueprintResponseHeaders({ contentType: 'application/problem+json; charset=utf-8' }));
         response.end(JSON.stringify({ message: snapshot.error ?? 'Blueprint project is unavailable.' }));
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
-      response.end(request.method === 'HEAD' ? undefined : JSON.stringify({
+      response.end(JSON.stringify({
         version: 1,
-        revision: publishedRevision,
+        revision: snapshot.revision,
         bundle: snapshot.bundle
       }));
       return;
@@ -1622,13 +1616,12 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
       }
 
       try {
-        const bundle = await loadProjectFromFs(projectRoot);
-        const validation = validateProject(bundle);
-        if (!validation.ok) {
-          throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+        const snapshot = await snapshots.settled();
+        if (!snapshot.bundle || snapshot.error !== undefined) {
+          throw new Error(snapshot.error ?? 'Blueprint project is unavailable.');
         }
-        const selection = resolvePrototypeReviewSelection(bundle, reviewRequest);
-        const compiled = compilePrototypeReview(bundle, selection);
+        const selection = resolvePrototypeReviewSelection(snapshot.bundle, reviewRequest);
+        const compiled = compilePrototypeReview(snapshot.bundle, selection);
         response.writeHead(200, createBlueprintResponseHeaders({
           contentType: 'text/html; charset=utf-8',
           contentSecurityPolicy: PROTOTYPE_CONTENT_SECURITY_POLICY,
@@ -1674,10 +1667,10 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     }
 
     if (pathname === '/index.html') {
-      const snapshot = await readBundleSnapshot();
+      const snapshot = await snapshots.settled();
       if (!snapshot.bundle) {
         response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-        response.end(createServeErrorHtml(lastLoadError ?? 'Unable to load Blueprint project.', lastOutdatedFiles));
+        response.end(createServeErrorHtml(snapshot.error ?? 'Unable to load Blueprint project.', snapshot.outdatedFiles));
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
@@ -1705,62 +1698,19 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   await listenForBlueprintServe(server, requestedPort);
   const address = server.address() as AddressInfo;
   try {
-    const initial = await readBundleSnapshot();
-    if (initial.bundle && !initial.error) {
-      publishedFingerprint = JSON.stringify(initial.bundle);
-    }
+    await snapshots.start();
     runtime = await registerBlueprintActivityRuntime(
       projectRoot,
       `http://127.0.0.1:${address.port}${BLUEPRINT_ACTIVITY_POST_PATH}`
     );
   } catch (error) {
+    snapshots.close();
     activityHub.close();
     await closeHttpServer(server);
     throw error;
   }
 
-  const changedPaths = new Set<string>();
-  const stopWatching = watchBlueprintProject(projectRoot, changedPath => {
-    changedPaths.add(changedPath);
-    if (reloadTimer) clearTimeout(reloadTimer);
-    reloadTimer = setTimeout(() => {
-      reloadTimer = undefined;
-      reloadsInFlight += 1;
-      void readBundleSnapshot().then(snapshot => {
-        if (!snapshot.bundle || snapshot.error) {
-          const message = snapshot.error ?? 'Blueprint project is unavailable.';
-          if (message !== publishedError) {
-            publishedError = message;
-            activityHub.publish('project-error', {
-              version: 1,
-              message,
-              outdatedFiles: snapshot.outdatedFiles,
-              changedAt: new Date().toISOString()
-            });
-          }
-          return;
-        }
-        const nextFingerprint = JSON.stringify(snapshot.bundle);
-        if (nextFingerprint === publishedFingerprint && publishedError === undefined) {
-          changedPaths.clear();
-          return;
-        }
-        publishedFingerprint = nextFingerprint;
-        publishedError = undefined;
-        publishedRevision = randomUUID();
-        activityHub.publish('project-changed', {
-          version: 1,
-          revision: publishedRevision,
-          changedAt: new Date().toISOString(),
-          changedPaths: [...changedPaths].sort()
-        });
-        changedPaths.clear();
-      }).finally(() => {
-        reloadsInFlight -= 1;
-      });
-    }, watcherDebounceMs);
-    reloadTimer.unref();
-  });
+  const stopWatching = watchBlueprintProject(projectRoot, changedPath => snapshots.schedule(changedPath));
 
   const baseUrl = `http://127.0.0.1:${address.port}/`;
   let closePromise: Promise<void> | undefined;
@@ -1772,7 +1722,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     isAvailable: async () => server.listening,
     close: () => {
       closePromise ??= (async () => {
-        if (reloadTimer) clearTimeout(reloadTimer);
+        snapshots.close();
         stopWatching();
         activityHub.close();
         await Promise.all([runtime?.close(), closeHttpServer(server)]);

@@ -717,11 +717,21 @@ describe('Blueprint MCP and template governance', () => {
         const notice = await (await fetch(served.url as string)).text();
         assert.match(notice, /<h1>This sidecar needs migrate<\/h1>/);
         assert.match(notice, /<code>manifest\.json<\/code> is on schema 1\.0\.0\./);
+        const snapshotUrl = new URL('/__blueprint/project', served.url as string);
+        const prototypeUrl = new URL('/__blueprint/prototype?screen=workspace', served.url as string);
+        assert.equal((await fetch(snapshotUrl, { method: 'HEAD', signal: AbortSignal.timeout(750) })).status, 503);
+        const refusedPrototype = await fetch(prototypeUrl);
+        assert.equal(refusedPrototype.status, 422);
+        assert.match((await refusedPrototype.json() as { detail: string }).detail, /manifest\.json is on schema "1\.0\.0"/);
 
         const migrated = await call(session, 'migrate', { project: projectCopy });
         assert.deepEqual([migrated.fromVersion, migrated.toVersion, migrated.files], ['1.0.0', '2.0.0', ['manifest.json']]);
         assert.equal((migrated.validation as { ok: boolean }).ok, true);
         await assertEventually(async () => (await (await fetch(served.url as string)).text()).includes('__BLUEPRINT_PROJECT_BUNDLE__'));
+        assert.equal((await fetch(snapshotUrl, { method: 'HEAD', signal: AbortSignal.timeout(750) })).status, 200);
+        const prototype = await fetch(prototypeUrl);
+        assert.equal(prototype.status, 200);
+        assert.equal(prototype.headers.get('x-blueprint-screen'), 'workspace');
         await call(session, 'index', { project: projectCopy });
       } finally {
         await session.close();
