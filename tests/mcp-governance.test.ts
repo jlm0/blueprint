@@ -1273,6 +1273,8 @@ describe('Blueprint MCP and template governance', () => {
           if (request.url().includes('/__blueprint/assets/')) failedAssets.push(request.url());
         });
         await page.addInitScript(() => {
+          // Thumbnail captures start in an idle callback, so without one only the save button captures the self-contained compile.
+          window.requestIdleCallback = () => 0;
           const captured: string[] = [];
           (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__ = captured;
           const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc')!;
@@ -1316,8 +1318,9 @@ describe('Blueprint MCP and template governance', () => {
           const captured = await page.evaluate(() => (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!);
           const preset = bundle.manifest.framePresets.find(candidate => candidate.id === bundle.screens.screens.find(screen => screen.id === 'hub')!.framePresetId)!;
           const expected = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'hub' }, state: 'default', framePreset: preset }).html;
-          assert.ok(captured.includes(expected), 'The saved image should capture the self-contained compile of the screen');
-          for (const document of captured) assert.doesNotMatch(document, /\/__blueprint\/assets\//);
+          const savedCaptures = captured.filter(document => document === expected);
+          assert.equal(savedCaptures.length, 1, 'The save button should capture the self-contained compile of the screen once');
+          assert.doesNotMatch(savedCaptures[0], /\/__blueprint\/assets\//);
         } finally {
           await browser.close();
         }
