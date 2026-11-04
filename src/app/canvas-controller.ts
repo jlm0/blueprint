@@ -14,7 +14,10 @@ export interface CanvasController {
   snapshot: () => CanvasView;
   setView: (nextView: CanvasView) => void;
   onViewChange: (listener: (view: Readonly<CanvasView>) => void) => () => void;
+  onViewSettled: (listener: (view: Readonly<CanvasView>) => void) => () => void;
 }
+
+export const GESTURE_IDLE_MS = 120;
 
 export interface CanvasOptions {
   minScale: number;
@@ -50,26 +53,54 @@ export function createCanvasController({
   };
   const view: CanvasView = { x: 0, y: 0, s: 1 };
   const viewListeners = new Set<(view: Readonly<CanvasView>) => void>();
+  const settledListeners = new Set<(view: Readonly<CanvasView>) => void>();
+  let settleTimer: ReturnType<typeof setTimeout> | undefined;
   let spaceHeld = false;
 
   function apply(): void {
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.s})`;
     for (const listener of viewListeners) listener(view);
+    settle();
   }
 
-  function onViewChange(listener: (view: Readonly<CanvasView>) => void): () => void {
-    viewListeners.add(listener);
+  function applyGesture(): void {
+    world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.s})`;
+    for (const listener of viewListeners) listener(view);
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(settle, GESTURE_IDLE_MS);
+  }
+
+  function settle(): void {
+    clearTimeout(settleTimer);
+    settleTimer = undefined;
+    for (const listener of settledListeners) listener(view);
+  }
+
+  function subscribe(listeners: Set<(view: Readonly<CanvasView>) => void>, listener: (view: Readonly<CanvasView>) => void): () => void {
+    listeners.add(listener);
     return () => {
-      viewListeners.delete(listener);
+      listeners.delete(listener);
     };
   }
 
-  function zoomAt(cx: number, cy: number, factor: number): void {
+  const onViewChange = (listener: (view: Readonly<CanvasView>) => void): (() => void) => subscribe(viewListeners, listener);
+  const onViewSettled = (listener: (view: Readonly<CanvasView>) => void): (() => void) => subscribe(settledListeners, listener);
+
+  function zoomGesture(cx: number, cy: number, factor: number): void {
+    scaleAround(cx, cy, factor);
+    applyGesture();
+  }
+
+  function scaleAround(cx: number, cy: number, factor: number): void {
     const scale = Math.min(options.maxScale, Math.max(options.minScale, view.s * factor));
     const ratio = scale / view.s;
     view.x = cx - (cx - view.x) * ratio;
     view.y = cy - (cy - view.y) * ratio;
     view.s = scale;
+  }
+
+  function zoomAt(cx: number, cy: number, factor: number): void {
+    scaleAround(cx, cy, factor);
     apply();
   }
 
@@ -83,11 +114,11 @@ export function createCanvasController({
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) {
         const bounds = viewport.getBoundingClientRect();
-        zoomAt(event.clientX - bounds.left, event.clientY - bounds.top, Math.exp(-event.deltaY * 0.01));
+        zoomGesture(event.clientX - bounds.left, event.clientY - bounds.top, Math.exp(-event.deltaY * 0.01));
       } else {
         view.x -= event.deltaX;
         view.y -= event.deltaY;
-        apply();
+        applyGesture();
       }
     },
     { passive: false }
@@ -109,7 +140,7 @@ export function createCanvasController({
     const move = (moveEvent: PointerEvent): void => {
       view.x = originX + moveEvent.clientX - startX;
       view.y = originY + moveEvent.clientY - startY;
-      apply();
+      applyGesture();
     };
 
     const up = (): void => {
@@ -222,6 +253,6 @@ export function createCanvasController({
     apply();
   }
 
-  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView, onViewChange };
+  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView, onViewChange, onViewSettled };
   return api;
 }

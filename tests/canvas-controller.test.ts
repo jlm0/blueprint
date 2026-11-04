@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
-import { before, describe, it } from 'node:test';
-import { createCanvasController } from '../src/app/canvas-controller';
+import { before, describe, it, mock } from 'node:test';
+import { createCanvasController, GESTURE_IDLE_MS } from '../src/app/canvas-controller';
 
 const viewportWidth = 1200;
 const viewportHeight = 800;
 
-function controller() {
-  const viewport = { clientWidth: viewportWidth, clientHeight: viewportHeight, addEventListener() {} };
+function controller(listeners: Record<string, (event: unknown) => void> = {}) {
+  const viewport = {
+    clientWidth: viewportWidth,
+    clientHeight: viewportHeight,
+    addEventListener(type: string, listener: (event: unknown) => void) {
+      listeners[type] = listener;
+    },
+    getBoundingClientRect: () => ({ left: 0, top: 0 })
+  };
   const world = { style: { transform: '', setProperty() {} } };
   return createCanvasController({
     viewport: viewport as unknown as HTMLElement,
@@ -52,5 +59,34 @@ describe('Blueprint canvas fit', () => {
     canvas.setView({ x: 0, y: 0, s: 0.9 });
 
     assert.deepEqual(scales, [0.4]);
+  });
+
+  it('settles a wheel zoom once, after the gesture is idle, and a set view at once', () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      const listeners: Record<string, (event: unknown) => void> = {};
+      const canvas = controller(listeners);
+      const changed: number[] = [];
+      const settled: number[] = [];
+      canvas.onViewChange(view => changed.push(view.s));
+      canvas.onViewSettled(view => settled.push(view.s));
+      const wheel = { ctrlKey: true, deltaY: -10, deltaX: 0, clientX: 600, clientY: 400, preventDefault() {} };
+      listeners.wheel(wheel);
+      mock.timers.tick(GESTURE_IDLE_MS - 1);
+      listeners.wheel(wheel);
+      mock.timers.tick(GESTURE_IDLE_MS - 1);
+
+      assert.equal(changed.length, 2);
+      assert.deepEqual(settled, []);
+      mock.timers.tick(1);
+      assert.deepEqual(settled, [canvas.view.s]);
+
+      canvas.setView({ x: 0, y: 0, s: 0.5 });
+      assert.deepEqual(settled, [changed[1], 0.5]);
+      mock.timers.tick(GESTURE_IDLE_MS);
+      assert.equal(settled.length, 2);
+    } finally {
+      mock.timers.reset();
+    }
   });
 });

@@ -237,7 +237,7 @@ const canvas = createCanvasController({
 const chromeScaleStyle = document.head.appendChild(document.createElement('style'));
 let chromeScale = Number.NaN;
 // Setting the scale on the world would restyle every frame on each zoom step, so only the heads that read it get it.
-canvas.onViewChange(view => {
+canvas.onViewSettled(view => {
   if (view.s === chromeScale) return;
   chromeScale = view.s;
   chromeScaleStyle.textContent = `.bp-chrome-frame-head, .bp-chrome-world-label { --bp-chrome-canvas-scale: ${view.s}; }`;
@@ -2053,7 +2053,7 @@ function createScreenFrameMounter(root: HTMLElement): FrameMounter {
       window.removeEventListener('resize', schedule);
     }
   });
-  stopViewChanges = canvas.onViewChange(schedule);
+  stopViewChanges = canvas.onViewSettled(schedule);
   window.addEventListener('resize', schedule);
   // A new board fits its view in the next animation frame, so the first batch waits for that view.
   const release = mounter.hold();
