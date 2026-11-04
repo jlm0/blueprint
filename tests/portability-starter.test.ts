@@ -107,6 +107,11 @@ describe('starter and high-fidelity portability contract', () => {
       'src/core/validate.ts',
       'src/mcp/create-server.ts',
       'src/mcp/operations.ts',
+      'src/mcp/capture.ts',
+      'src/mcp/inspo.ts',
+      'src/mcp/operation-support.ts',
+      'src/mcp/project-files.ts',
+      'src/mcp/serve-server.ts',
       'src/mcp/schemas.ts'
     ].map(file => readFile(file, 'utf8')))).join('\n');
     assert.doesNotMatch(runtime, /meridian-finance|mira-ai|umbra-gaming|transfer-summary|insight-chart|rank-emblem/i);

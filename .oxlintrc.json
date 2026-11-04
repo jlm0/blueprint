@@ -146,6 +146,19 @@
           }
         ]
       }
+    },
+    {
+      "files": [
+        "**/src/mcp/operations.ts"
+      ],
+      "rules": {
+        "eslint/max-lines": [
+          "error",
+          {
+            "max": 800
+          }
+        ]
+      }
     }
   ],
   "ignorePatterns": [

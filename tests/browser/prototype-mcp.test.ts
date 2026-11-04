@@ -115,10 +115,11 @@ describe('source-focused prototype MCP contract', () => {
       out: '.blueprint-artifacts/chat.png'
     }).success, true);
 
-    const operationsSource = await readFile('src/mcp/operations.ts', 'utf8');
-    assert.match(operationsSource, /\/__blueprint\/prototype/);
-    assert.match(operationsSource, /capturePrototypeDocument\(\s*compiled\.html/);
-    assert.match(operationsSource, /page\.setContent\(html,/);
-    assert.match(operationsSource, /editorChrome:\s*false/);
+    const serveSource = await readFile('src/mcp/serve-server.ts', 'utf8');
+    const captureSource = await readFile('src/mcp/capture.ts', 'utf8');
+    assert.match(serveSource, /\/__blueprint\/prototype/);
+    assert.match(captureSource, /capturePrototypeDocument\(\s*compiled\.html/);
+    assert.match(captureSource, /page\.setContent\(html,/);
+    assert.match(captureSource, /editorChrome:\s*false/);
   });
 });

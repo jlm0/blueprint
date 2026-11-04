@@ -236,6 +236,21 @@ describe('repository guards', () => {
     });
   }
 
+  it('fails lint when src/mcp/operations.ts grows past its line limit', () => {
+    const fixture = 'tests/lint-fixtures/src/mcp/operations.ts';
+    assert.equal(readFileSync(fixture, 'utf8').split('\n').length - 1, 801, 'The fixture has one line more than the limit in .oxlintrc.json.');
+    const result = spawnSync('node_modules/.bin/oxlint', [fixture], { encoding: 'utf8' });
+    assert.notEqual(result.status, 0, result.stdout);
+    assert.match(result.stdout, /max-lines/);
+  });
+
+  it('keeps one method check and one plain-text header in the serve server, and no poll of the snapshots', () => {
+    const source = readFileSync('src/mcp/serve-server.ts', 'utf8');
+    assert.equal(source.split("'Method not allowed'").length - 1, 1, 'Fix: list the methods of the route in SERVE_ROUTES.');
+    assert.equal(source.split("'text/plain; charset=utf-8'").length - 1, 1, 'Fix: answer with writePlainText.');
+    assert.doesNotMatch(source, /\.busy\b/, 'Fix: wait with snapshots.settled().');
+  });
+
   it('keeps the compiler free of clocks and random values', () => {
     const impure = sourceFiles('src/prototype')
       .filter(file => /Math\.random|Date\.now|new Date\(|randomUUID|performance\.now/.test(readFileSync(file, 'utf8')));
