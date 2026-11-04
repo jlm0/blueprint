@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { collectProseAdvisories } from '../src/core/prose-advisories';
 import { assertCurrentSchema, BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
-import type { BlueprintProjectBundle } from '../src/core/types';
+import type { BlueprintProjectBundle, ScreenDefinition } from '../src/core/types';
 import { validateProject } from '../src/prototype/validate-project';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
@@ -15,8 +15,8 @@ async function mira(): Promise<BlueprintProjectBundle> {
 describe('project schema version', () => {
   it('refuses a project while any structured file is on an older schema, naming each file', async () => {
     const bundle = await mira();
-    bundle.manifest.schemaVersion = '1.0.0';
-    bundle.screens.schemaVersion = '1.0.0';
+    (bundle.manifest as { schemaVersion: string }).schemaVersion = '1.0.0';
+    (bundle.screens as { schemaVersion: string }).schemaVersion = '1.0.0';
 
     const fix = `and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". Fix: run the migrate tool on this project, then fix what validate reports.`;
     assert.deepEqual(validateProject(bundle).errors, [
@@ -36,7 +36,7 @@ describe('screen and token contract', () => {
     delete (page as { description?: string }).description;
     Object.assign(screen, { layout: 'split' });
     delete (screen as { styleEvidence?: unknown }).styleEvidence;
-    screen.productionRelationship = { kind: 'route' as 'new-route', routePath: '/threads/:threadId' };
+    screen.productionRelationship = { kind: 'route', routePath: '/threads/:threadId' } as unknown as ScreenDefinition['productionRelationship'];
     Object.assign(section, { emphasis: 'high' });
     delete (section as { implementationTargets?: unknown }).implementationTargets;
     Object.assign(section.uses[0]!, { weight: 2 });

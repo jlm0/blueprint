@@ -4,11 +4,12 @@ import type { InspoAspect, InspoDirection, InspoEntry, InspoFile } from './types
 export const INSPO_FILE_FIELDS = ['schemaVersion', 'projectId', 'entries', 'directions'] as const satisfies ReadonlyArray<keyof InspoFile>;
 export const INSPO_ENTRY_FIELDS = ['id', 'sourceUrl', 'image', 'aspects', 'stance', 'note', 'reading'] as const satisfies ReadonlyArray<keyof InspoEntry>;
 export const INSPO_DIRECTION_FIELDS = ['aspect', 'statement', 'entryIds', 'status'] as const satisfies ReadonlyArray<keyof InspoDirection>;
-export const INSPO_ASPECTS: readonly InspoAspect[] = ['mark', 'wordmark', 'typography', 'color', 'layout', 'imagery', 'style'];
-export const INSPO_STANCES: ReadonlyArray<InspoEntry['stance']> = ['like', 'avoid'];
-export const INSPO_DIRECTION_STATUSES: ReadonlyArray<InspoDirection['status']> = ['proposed', 'approved'];
+export const INSPO_ASPECTS = ['mark', 'wordmark', 'typography', 'color', 'layout', 'imagery', 'style'] as const;
+export const INSPO_STANCES = ['like', 'avoid'] as const;
+export const INSPO_DIRECTION_STATUSES = ['proposed', 'approved'] as const;
 export const INSPO_IMAGE_DIRECTORY = 'inspo';
 export const INSPO_IMAGE_PATTERN = /^inspo\/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:png|jpg|webp|gif)$/;
+export const INSPO_SOURCE_URL_PATTERN = /^https:\/\/\S+$/;
 
 export const INSPO_LIMITS = {
   sourceUrl: 2048,
@@ -60,7 +61,7 @@ function validateEntry(errors: string[], entry: unknown, index: number): void {
   }
   checkClosedObject(errors, label, entry, INSPO_ENTRY_FIELDS);
   checkId(errors, label, entry.id);
-  if (typeof entry.sourceUrl !== 'string' || !/^https:\/\/\S+$/.test(entry.sourceUrl) || entry.sourceUrl.length > INSPO_LIMITS.sourceUrl) {
+  if (typeof entry.sourceUrl !== 'string' || !INSPO_SOURCE_URL_PATTERN.test(entry.sourceUrl) || entry.sourceUrl.length > INSPO_LIMITS.sourceUrl) {
     errors.push(`${label}.sourceUrl is not an https link. Fix: set it to the image link the person pasted.`);
   }
   if (typeof entry.image !== 'string' || !INSPO_IMAGE_PATTERN.test(entry.image) || !entry.image.startsWith(`${INSPO_IMAGE_DIRECTORY}/${String(entry.id)}.`)) {

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type * as z from 'zod/v4';
 import {
   collectBrandSourceRefs,
   collectExplorationAssetRefs,
@@ -7,10 +8,15 @@ import {
   collectHistoryTextSourceRefs,
   collectPrototypeAssetRefs,
   collectPrototypeTextSourceRefs,
-  createProjectBundle
+  createProjectBundle,
+  type RawProjectFiles
 } from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
-import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from './schema-version';
+import { isObject } from './raw-json';
+import { structuredFileErrors } from './schemas/issues';
+import { STRUCTURED_FILE_SCHEMAS } from './schemas/project';
+import { explorationRecordFileSchema, screenHistoryRecordFileSchema } from './schemas/records';
+import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions, schemaVersionErrors } from './schema-version';
 import { explorationRecordRef, historyRecordRef } from './storage-records';
 import type {
   BlueprintManifest,
@@ -29,24 +35,58 @@ import type {
   ScreenHistoryRecordFile,
   TokenFile
 } from './types';
-import { assertStructuredShapes } from './structured-shapes';
+
+type StructuredFiles = Pick<RawProjectFiles, 'manifest' | 'tokens' | 'primitives' | 'components' | 'screens' | 'brand' | 'inspo'>;
+
+class RecordIdentityError extends Error {}
 
 export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintProjectBundle> {
   const reader = await createProjectReader(sourceRoot);
-  const manifest = await readJson<BlueprintManifest>(reader, 'manifest.json');
-  const tokens = await readJson<TokenFile>(reader, 'tokens.json');
-  const primitives = await readJson<PrimitiveFile>(reader, 'primitives.json');
-  const components = await readJson<ComponentFile>(reader, 'components.json');
-  const screens = await readJson<ScreenFile>(reader, 'screens.json');
-  const brandText = await reader.readText('brand.json', { kind: 'fixed JSON', optional: true });
-  const brand = brandText === undefined ? undefined : parseJson<BrandFile>('brand.json', brandText);
-  const inspoText = await reader.readText('inspo.json', { kind: 'fixed JSON', optional: true });
-  const inspo = inspoText === undefined ? undefined : parseJson<InspoFile>('inspo.json', inspoText);
-  assertNoNewerSchema(fileSchemaVersions({ manifest, tokens, primitives, components, screens, brand, inspo }));
-  assertStructuredShapes({ manifest, tokens, primitives, components, screens, brand });
+  const files: StructuredFiles = {
+    manifest: await readJson<BlueprintManifest>(reader, 'manifest.json'),
+    tokens: await readJson<TokenFile>(reader, 'tokens.json'),
+    primitives: await readJson<PrimitiveFile>(reader, 'primitives.json'),
+    components: await readJson<ComponentFile>(reader, 'components.json'),
+    screens: await readJson<ScreenFile>(reader, 'screens.json'),
+    brand: await readOptionalJson<BrandFile>(reader, 'brand.json'),
+    inspo: await readOptionalJson<InspoFile>(reader, 'inspo.json')
+  };
+  assertNoNewerSchema(fileSchemaVersions(files));
+  assertCurrentFilesMatchSchemas(files);
+  const recordSchemaVersions: Record<string, string> = {};
+  try {
+    return await readBundle(reader, sourceRoot, files, recordSchemaVersions);
+  } catch (error) {
+    const readerFailed = error instanceof TypeError || error instanceof RecordIdentityError;
+    const refusals = readerFailed ? schemaVersionErrors({ ...files, recordSchemaVersions }) : [];
+    if (refusals.length === 0) throw error;
+    // A file on an older schema has no known shape, so a reader can fail on it, and the agent needs the migrate refusal.
+    throw new Error(refusals.join('\n'));
+  }
+}
+
+/** A file on another schema skips the check, because the current schema does not describe it and `migrate` owns it. */
+function isOnOtherSchema(content: unknown): boolean {
+  return isObject(content) && content.schemaVersion !== BLUEPRINT_SCHEMA_VERSION;
+}
+
+function assertCurrentFilesMatchSchemas(files: StructuredFiles): void {
+  const errors = STRUCTURED_FILE_SCHEMAS.flatMap(({ file, key, schema }) => {
+    const content = files[key];
+    return content === undefined || isOnOtherSchema(content) ? [] : structuredFileErrors(file, schema, content);
+  });
+  if (errors.length > 0) throw new Error(errors.join('\n'));
+}
+
+async function readBundle(
+  reader: ContainedBlueprintReader,
+  sourceRoot: string,
+  files: StructuredFiles,
+  recordSchemaVersions: Record<string, string>
+): Promise<BlueprintProjectBundle> {
+  const { manifest, primitives, components, screens, brand } = files;
   const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
   const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
-  const recordSchemaVersions: Record<string, string> = {};
   const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs, recordSchemaVersions);
   const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs, recordSchemaVersions);
   const sourceRefs = [
@@ -79,13 +119,7 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   }
 
   return createProjectBundle(normalizePath(sourceRoot), {
-    manifest,
-    tokens,
-    primitives,
-    components,
-    screens,
-    brand,
-    inspo,
+    ...files,
     explorations,
     history,
     recordSchemaVersions,
@@ -104,15 +138,15 @@ async function readExplorationCollection(
 ): Promise<ExplorationFile> {
   const byId = new Map<string, ExplorationDefinition>();
   for (const recordRef of recordRefs) {
-    const record = await readRecord<ExplorationRecordFile>(reader, recordRef, recordSchemaVersions);
+    const record = await readRecord<ExplorationRecordFile>(reader, recordRef, explorationRecordFileSchema, recordSchemaVersions);
     if (record.projectId !== projectId) {
-      throw new Error(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+      throw new RecordIdentityError(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}".`);
     }
     if (recordRef !== explorationRecordRef(record.exploration.id)) {
-      throw new Error(`Exploration record "${recordRef}" does not match exploration id "${record.exploration.id}".`);
+      throw new RecordIdentityError(`Exploration record "${recordRef}" does not match exploration id "${record.exploration.id}".`);
     }
     if (byId.has(record.exploration.id)) {
-      throw new Error(`Exploration record id "${record.exploration.id}" is duplicated.`);
+      throw new RecordIdentityError(`Exploration record id "${record.exploration.id}" is duplicated.`);
     }
     byId.set(record.exploration.id, record.exploration);
   }
@@ -132,18 +166,18 @@ async function readHistoryCollection(
   const entries: ScreenHistoryEntry[] = [];
   const keys = new Set<string>();
   for (const recordRef of recordRefs) {
-    const record = await readRecord<ScreenHistoryRecordFile>(reader, recordRef, recordSchemaVersions);
+    const record = await readRecord<ScreenHistoryRecordFile>(reader, recordRef, screenHistoryRecordFileSchema, recordSchemaVersions);
     if (record.projectId !== projectId) {
-      throw new Error(`History record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+      throw new RecordIdentityError(`History record "${recordRef}" projectId must match manifest project id "${projectId}".`);
     }
     if (recordRef !== historyRecordRef(record.entry.screenId, record.entry.version)) {
-      throw new Error(
+      throw new RecordIdentityError(
         `History record "${recordRef}" does not match screen "${record.entry.screenId}" V${record.entry.version}.`
       );
     }
     const key = `${record.entry.screenId}\u0000${record.entry.version}`;
     if (keys.has(key)) {
-      throw new Error(`History record for screen "${record.entry.screenId}" V${record.entry.version} is duplicated.`);
+      throw new RecordIdentityError(`History record for screen "${record.entry.screenId}" V${record.entry.version} is duplicated.`);
     }
     keys.add(key);
     entries.push(record.entry);
@@ -164,12 +198,16 @@ export function normalizePath(filePath: string): string {
 async function readRecord<T extends { schemaVersion: string }>(
   reader: ContainedBlueprintReader,
   recordRef: string,
+  schema: z.ZodType<T>,
   recordSchemaVersions: Record<string, string>
 ): Promise<T> {
   const record = await readJson<T>(reader, recordRef);
   const version = record?.schemaVersion;
   assertNoNewerSchema([[recordRef, version]]);
   if (version !== BLUEPRINT_SCHEMA_VERSION) recordSchemaVersions[recordRef] = String(version);
+  if (isOnOtherSchema(record)) return record;
+  const errors = structuredFileErrors(recordRef, schema, record);
+  if (errors.length > 0) throw new Error(errors.join('\n'));
   return record;
 }
 
@@ -188,6 +226,11 @@ async function createProjectReader(sourceRoot: string): Promise<ContainedBluepri
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     throw new Error(`Blueprint project "${sourceRoot}" does not exist. Fix: pass the path of the design/blueprint folder of the app, or create it with the init tool.`);
   }
+}
+
+async function readOptionalJson<T>(reader: ContainedBlueprintReader, fileRef: string): Promise<T | undefined> {
+  const raw = await reader.readText(fileRef, { kind: 'fixed JSON', optional: true });
+  return raw === undefined ? undefined : parseJson<T>(fileRef, raw);
 }
 
 function parseJson<T>(fileRef: string, raw: string): T {

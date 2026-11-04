@@ -8,7 +8,7 @@ import { validateProject } from '../src/prototype/validate-project';
 
 const starterRoot = 'starter/design/blueprint';
 const structuredFiles = ['manifest.json', 'tokens.json', 'primitives.json', 'components.json', 'screens.json', 'brand.json'];
-const wrongValues: unknown[] = ['fun', {}, 1, null];
+const wrongValues: unknown[] = ['fun', {}, 1, null, undefined];
 
 type Mutation = (file: Record<string, unknown>, value: unknown) => void;
 

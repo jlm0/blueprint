@@ -7,7 +7,7 @@ import type {
   ScreenHistoryRecordFile
 } from './types';
 
-const SAFE_SEGMENT = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+export const SAFE_SEGMENT = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 
 export function explorationRecordRef(explorationId: string): string {
   return `explorations/${storageRecordSegment(explorationId)}.json`;

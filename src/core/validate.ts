@@ -11,6 +11,7 @@ import type {
   ReadinessItem,
   ReadinessReport,
   ProductionRelationship,
+  SavedScreen,
   ScreenDefinition,
   ScreenHistoryEntry,
   ScreenSection,
@@ -643,7 +644,7 @@ function requireAxis(errors: string[], label: string, value: unknown): void {
 
 function validateScreen(
   errors: string[],
-  screen: ScreenDefinition,
+  screen: SavedScreen,
   framePresetIds: Set<string>,
   primitiveIds: Set<string>,
   componentIds: Set<string>,

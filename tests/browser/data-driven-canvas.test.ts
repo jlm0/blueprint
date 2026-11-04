@@ -1491,7 +1491,7 @@ async function primitiveSignature(locator: Locator): Promise<{ boundaryId: strin
 
 function allScreensOnOnePage(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
   const clone = cloneBundle(bundle);
-  clone.screens.pages = [{ id: 'all', name: 'All screens' }];
+  clone.screens.pages = [{ id: 'all', name: 'All screens', description: 'Every screen of the fixture.' }];
   for (const screen of clone.screens.screens) {
     screen.page = 'all';
   }

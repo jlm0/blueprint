@@ -1,3 +1,4 @@
+import * as z from 'zod/v4';
 import { asArray, asObject, isObject, serializeJson, type RawObject } from './raw-json';
 import { humanizeId, isTitleCase, toSentenceCase } from './reusable-contract';
 import {
@@ -10,30 +11,25 @@ import {
   SECTION_USE_FIELDS,
   SECTION_USE_OPTIONAL_FIELDS
 } from './screen-contract';
+import { productionRelationshipSchema, screenSchema, screenSectionSchema } from './schemas/screens';
+import { tokenGroupSchema } from './schemas/tokens';
 import { isSavedRecordFile } from './storage-records';
 import { TOKEN_FIELDS, TOKEN_FILE_FIELDS, TOKEN_GROUP_FIELDS } from './token-contract';
 
-/** Values migrate adds for fields the fixed shapes require, when an older file left them out. */
-const SCREEN_DEFAULTS: Record<string, () => unknown> = {
-  styleRefs: () => [],
-  styleEvidence: () => [],
-  notes: () => [],
-  prototypeOnly: () => false,
-  implementationHints: () => [],
-  implementationTargets: () => [],
-  sections: () => []
-};
-const SECTION_DEFAULTS: Record<string, () => unknown> = {
-  styleRefs: () => [],
-  styleEvidence: () => [],
-  uses: () => [],
-  prototypeOnly: () => false,
-  notes: () => [],
-  implementationHints: () => [],
-  implementationTargets: () => []
-};
-const RELATIONSHIP_DEFAULTS: Record<string, () => unknown> = { notes: () => [] };
-const TOKEN_GROUP_DEFAULTS: Record<string, () => unknown> = { styleRefs: () => [], notes: () => [] };
+/** The empty value of each required list and flag in a shape; migrate adds them when an older file left them out. */
+export function emptyRequiredFields(shape: Readonly<Record<string, z.ZodType>>): Record<string, () => unknown> {
+  const defaults: Record<string, () => unknown> = {};
+  for (const [field, schema] of Object.entries(shape)) {
+    if (schema instanceof z.ZodArray) defaults[field] = () => [];
+    else if (schema instanceof z.ZodBoolean) defaults[field] = () => false;
+  }
+  return defaults;
+}
+
+const SCREEN_DEFAULTS = emptyRequiredFields(screenSchema.shape);
+const SECTION_DEFAULTS = emptyRequiredFields(screenSectionSchema.shape);
+const RELATIONSHIP_DEFAULTS = emptyRequiredFields(productionRelationshipSchema.shape);
+const { tokens: _tokens, ...TOKEN_GROUP_DEFAULTS } = emptyRequiredFields(tokenGroupSchema.shape);
 /** Token types older sidecars wrote under another name. */
 const TOKEN_TYPE_NAMES: Readonly<Record<string, string>> = { spacing: 'space', colour: 'color', sizing: 'size' };
 

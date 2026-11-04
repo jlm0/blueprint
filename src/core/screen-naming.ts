@@ -1,7 +1,7 @@
-import type { ScreenDefinition } from './types';
+import type { SavedScreen } from './types';
 
 /** Returns the canonical route used to group and name one screen frame. */
-export function screenRoutePath(screen: ScreenDefinition): string {
+export function screenRoutePath(screen: SavedScreen): string {
   const declared = screen.productionRelationship?.routePath?.trim();
   const route = declared && declared.length > 0 ? declared : `/${screen.id}`;
   const withLeadingSlash = route.startsWith('/') ? route : `/${route}`;
@@ -10,7 +10,7 @@ export function screenRoutePath(screen: ScreenDefinition): string {
 }
 
 /** Formats the human-facing Route · Frame name · optional Vn canvas label. */
-export function screenFrameLabel(screen: ScreenDefinition): string {
+export function screenFrameLabel(screen: SavedScreen): string {
   const segments = [humanizeRoute(screenRoutePath(screen)), screen.name.trim()];
   if (screen.version !== undefined) {
     segments.push(`V${screen.version}`);
@@ -19,7 +19,7 @@ export function screenFrameLabel(screen: ScreenDefinition): string {
 }
 
 /** Groups screens that need explicit versions to keep their frame names unique. */
-export function screenVersionGroupKey(screen: ScreenDefinition): string {
+export function screenVersionGroupKey(screen: SavedScreen): string {
   return `${screenRoutePath(screen).toLowerCase()}\u0000${screen.name.trim().toLowerCase()}`;
 }
 

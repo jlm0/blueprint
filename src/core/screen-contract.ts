@@ -10,7 +10,7 @@ import {
   quoteList
 } from './contract-checks';
 import { DECLARED_GROUP_FIELDS } from './reusable-contract';
-import type { DeclaredGroup, ProductionRelationshipKind, ScreenDefinition, ScreenFile, ScreenSection } from './types';
+import type { ProductionRelationshipKind, ScreenDefinition, ScreenFile, ScreenSection } from './types';
 
 export const SCREEN_FILE_FIELDS = ['schemaVersion', 'projectId', 'pages', 'screens'] as const;
 export const PAGE_FIELDS = DECLARED_GROUP_FIELDS;
@@ -56,14 +56,14 @@ export const PRODUCTION_RELATIONSHIP_OPTIONAL_FIELDS = ['routePath', 'targetScre
 export const SCREEN_PROTOTYPE_FIELDS = ['source', 'styles', 'states', 'assetRefs', 'reviewConditions'] as const;
 export const SCREEN_PROTOTYPE_OPTIONAL_FIELDS = ['renderedUses', 'localValueExceptions'] as const;
 
-export const PRODUCTION_RELATIONSHIP_KINDS: readonly ProductionRelationshipKind[] = [
+export const PRODUCTION_RELATIONSHIP_KINDS = [
   'new-route',
   'existing-route',
   'state-of-existing-screen',
   'variant-of-existing-screen',
   'section-replacement',
   'embedded-flow'
-];
+] as const;
 
 export const SCREEN_LIMITS = {
   pageName: 24,
@@ -81,7 +81,7 @@ export interface ProseField {
 }
 
 /** Prose a screen carries itself; each section's prose is listed by {@linkcode sectionProseFields}. */
-export function screenProseFields(screen: ScreenDefinition): ProseField[] {
+export function screenProseFields(screen: Record<string, unknown>): ProseField[] {
   const fields: ProseField[] = [];
   addProse(fields, 'description', screen.description);
   addEntries(fields, 'notes', screen.notes);
@@ -90,7 +90,7 @@ export function screenProseFields(screen: ScreenDefinition): ProseField[] {
   return fields;
 }
 
-export function sectionProseFields(section: ScreenSection): ProseField[] {
+export function sectionProseFields(section: Record<string, unknown>): ProseField[] {
   const fields: ProseField[] = [];
   addProse(fields, 'description', section.description);
   (Array.isArray(section.uses) ? section.uses : []).forEach((use, index) => addProse(fields, `uses[${index}].reason`, use?.reason));
@@ -99,7 +99,7 @@ export function sectionProseFields(section: ScreenSection): ProseField[] {
   return fields;
 }
 
-export function pageProseFields(page: DeclaredGroup): ProseField[] {
+export function pageProseFields(page: Record<string, unknown>): ProseField[] {
   const fields: ProseField[] = [];
   addProse(fields, 'description', page.description);
   return fields;
@@ -128,7 +128,7 @@ function validatePage(errors: string[], page: unknown, index: number): void {
   checkId(errors, label, page.id);
   checkName(errors, `${label}.name`, page.name, SCREEN_LIMITS.pageName);
   checkText(errors, `${label}.description`, page.description, SCREEN_LIMITS.pageDescription, 'say which screens the page holds');
-  for (const field of pageProseFields(page as unknown as DeclaredGroup)) checkProse(errors, `${label}.${field.path}`, field.text);
+  for (const field of pageProseFields(page)) checkProse(errors, `${label}.${field.path}`, field.text);
 }
 
 function validateScreenShape(errors: string[], item: unknown, index: number): void {
@@ -137,18 +137,17 @@ function validateScreenShape(errors: string[], item: unknown, index: number): vo
     errors.push(`${label} must be an object. Fix: write it in the screen shape that AGENTS.md describes.`);
     return;
   }
-  const screen = item as unknown as ScreenDefinition;
   const withoutFlow = Object.fromEntries(Object.entries(item).filter(([key]) => key !== 'flow'));
   checkClosedObject(errors, label, withoutFlow, SCREEN_FIELDS, SCREEN_OPTIONAL_FIELDS);
-  checkId(errors, label, screen.id);
-  checkName(errors, `${label}.name`, screen.name, SCREEN_LIMITS.name);
-  checkText(errors, `${label}.description`, screen.description, SCREEN_LIMITS.description, 'say what the screen shows and when it appears');
+  checkId(errors, label, item.id);
+  checkName(errors, `${label}.name`, item.name, SCREEN_LIMITS.name);
+  checkText(errors, `${label}.description`, item.description, SCREEN_LIMITS.description, 'say what the screen shows and when it appears');
   checkLists(errors, label, item);
   if ('productionRelationship' in item) validateProductionRelationshipShape(errors, `${label}.productionRelationship`, item.productionRelationship);
   if (isRecord(item.prototype)) {
     checkClosedObject(errors, `${label}.prototype`, item.prototype, SCREEN_PROTOTYPE_FIELDS, SCREEN_PROTOTYPE_OPTIONAL_FIELDS);
   }
-  for (const field of screenProseFields(screen)) checkProse(errors, `${label}.${field.path}`, field.text);
+  for (const field of screenProseFields(item)) checkProse(errors, `${label}.${field.path}`, field.text);
   if (!Array.isArray(item.sections)) return;
   item.sections.forEach((section, sectionIndex) => validateSectionShape(errors, label, section, sectionIndex));
 }
@@ -159,11 +158,10 @@ function validateSectionShape(errors: string[], screenLabel: string, item: unkno
     errors.push(`${label} must be an object. Fix: write it in the section shape that AGENTS.md describes.`);
     return;
   }
-  const section = item as unknown as ScreenSection;
   checkClosedObject(errors, label, item, SECTION_FIELDS);
-  checkId(errors, label, section.id);
-  checkName(errors, `${label}.name`, section.name, SCREEN_LIMITS.name);
-  checkText(errors, `${label}.description`, section.description, SCREEN_LIMITS.description, 'say what the section holds');
+  checkId(errors, label, item.id);
+  checkName(errors, `${label}.name`, item.name, SCREEN_LIMITS.name);
+  checkText(errors, `${label}.description`, item.description, SCREEN_LIMITS.description, 'say what the section holds');
   checkLists(errors, label, item);
   if (Array.isArray(item.uses)) {
     item.uses.forEach((use, useIndex) => {
@@ -176,7 +174,7 @@ function validateSectionShape(errors: string[], screenLabel: string, item: unkno
       checkText(errors, `${useLabel}.reason`, use.reason, SCREEN_LIMITS.reason, 'say what the piece does in this section');
     });
   }
-  for (const field of sectionProseFields(section)) checkProse(errors, `${label}.${field.path}`, field.text);
+  for (const field of sectionProseFields(item)) checkProse(errors, `${label}.${field.path}`, field.text);
 }
 
 function checkLists(errors: string[], label: string, item: Record<string, unknown>): void {

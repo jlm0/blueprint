@@ -206,7 +206,7 @@ async function bundleWithExploration(): Promise<BlueprintProjectBundle> {
   if (!screen?.prototype || !other) {
     throw new Error('Expected the Mira screen fixture.');
   }
-  bundle.screens.pages = [{ id: 'marketing', name: 'Marketing' }, { id: 'ops', name: 'Ops' }];
+  bundle.screens.pages = [{ id: 'marketing', name: 'Marketing', description: 'Marketing screens.' }, { id: 'ops', name: 'Ops', description: 'Ops screens.' }];
   screen.page = 'marketing';
   other.page = 'ops';
   const baselineScreen = structuredClone(screen) as ScreenDefinition;

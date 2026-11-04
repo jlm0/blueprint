@@ -45,7 +45,7 @@ interface PrimitiveAtTo {
   slots: Slot[];
 }
 
-const PRIMITIVES_AT_TO = new Map((primitivesAtTo as unknown as PrimitiveAtTo[]).map(primitive => [primitive.id, primitive]));
+const PRIMITIVES_AT_TO = new Map((primitivesAtTo as PrimitiveAtTo[]).map(primitive => [primitive.id, primitive]));
 
 const PLATFORMS = ['web', 'mobile', 'desktop'];
 

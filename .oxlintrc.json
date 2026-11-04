@@ -41,6 +41,39 @@
     },
     {
       "files": [
+        "**/src/core/migrations/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/prototype/**",
+                  "**/mcp/**",
+                  "**/app/**",
+                  "**/hooks/**",
+                  "**/scripts/**",
+                  "**/design/**"
+                ],
+                "message": "core is the bottom layer, so it imports only core. Fix: move the shared code into core, or pass it in as a parameter."
+              },
+              {
+                "group": [
+                  "**/schemas/**",
+                  "zod",
+                  "zod/*"
+                ],
+                "message": "A migration step is frozen, so it does not read a live schema. Fix: copy the values into the step."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
         "**/src/core/markup.ts"
       ],
       "rules": {
@@ -98,6 +131,14 @@
                   "**/scripts/**"
                 ],
                 "message": "prototype sits under the MCP server and the canvas. Fix: move the shared code into prototype or core."
+              },
+              {
+                "group": [
+                  "**/core/schemas/**",
+                  "zod",
+                  "zod/*"
+                ],
+                "message": "The site bundle does not load zod. Fix: import the type from core/types with import type, or move the code to the MCP server."
               }
             ]
           }
@@ -170,6 +211,14 @@
                   "**/scripts/**"
                 ],
                 "message": "The canvas does not import the MCP server. Fix: move the shared code into core."
+              },
+              {
+                "group": [
+                  "**/core/schemas/**",
+                  "zod",
+                  "zod/*"
+                ],
+                "message": "The site bundle does not load zod. Fix: import the type from core/types with import type."
               }
             ]
           }

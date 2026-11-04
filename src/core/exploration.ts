@@ -7,6 +7,7 @@ import type {
   ExplorationDefinition,
   ExplorationFile,
   ExplorationPrototypeSource,
+  SavedScreen,
   ScreenDefinition,
   ScreenFile,
   ScreenHistoryEntry,
@@ -468,10 +469,9 @@ export function restoreScreenHistory(
     styles: canonicalStyleTargets(currentPrototype, selectedPrototype.styles),
     assetRefs: [...selectedPrototype.assetRefs]
   };
-  const restoredScreen = withPrototypeRefs(structuredClone(selectedVersion.screen), canonicalPrototype);
-  restoredScreen.id = current.id;
-  restoredScreen.page = current.page;
-  delete (restoredScreen as ScreenDefinition & { flow?: unknown }).flow;
+  const snapshot = withPrototypeRefs(structuredClone(selectedVersion.screen), canonicalPrototype);
+  delete snapshot.flow;
+  const restoredScreen: ScreenDefinition = { ...snapshot, id: current.id, page: current.page };
   if (current.version === undefined) {
     delete restoredScreen.version;
   } else {
@@ -528,7 +528,7 @@ function computeCandidateDigest(
 
 function computeScreenDigest(
   bundle: BlueprintProjectBundle,
-  screen: ScreenDefinition,
+  screen: SavedScreen,
   prototype: ExplorationPrototypeSource
 ): string {
   return digest({
@@ -584,7 +584,7 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function screenPrototype(screen: ScreenDefinition): ScreenPrototypeSource {
+function screenPrototype(screen: SavedScreen): ScreenPrototypeSource {
   if (!screen.prototype) {
     throw new Error(`Canonical screen "${screen.id}" does not have a governed prototype source.`);
   }
@@ -658,7 +658,7 @@ function canonicalStyleTargets(current: ExplorationPrototypeSource, candidateSty
   return candidateStyles.map((_, index) => current.styles[index] ?? insertFileSuffix(current.source, `style-${index + 1}`));
 }
 
-function withPrototypeRefs(screen: ScreenDefinition, prototype: ExplorationPrototypeSource): ScreenDefinition {
+function withPrototypeRefs<T extends SavedScreen>(screen: T, prototype: ExplorationPrototypeSource): T {
   const current = screenPrototype(screen);
   screen.prototype = {
     ...screen.prototype!,

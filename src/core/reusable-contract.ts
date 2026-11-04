@@ -2,7 +2,7 @@ import type { BasePrimitiveText } from './base-primitives';
 import { applyMarkupEdits, attributeRemovalStart, firstOpenTag, type MarkupAttribute } from './markup';
 import type { Platform, ReusableAxis, ReusableAxisName, ReusableDefinition } from './types';
 
-export const PLATFORMS: readonly Platform[] = ['web', 'mobile', 'desktop'];
+export const PLATFORMS = ['web', 'mobile', 'desktop'] as const;
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
   web: 'Web',

@@ -53,6 +53,7 @@ import type {
   ReusableAxisValue,
   ReusableDefinition,
   ReusableKind,
+  SavedScreen,
   ScreenDefinition,
   TokenGroup
 } from '../core/types';
@@ -2257,7 +2258,7 @@ function historyLifecycleLabel(lifecycle: ExplorationDefinition['lifecycle']): s
   return lifecycle === 'active' ? 'Active' : lifecycle === 'promoted' ? 'Promoted' : 'Archived';
 }
 
-function screenPrototypeForComparison(screen: ScreenDefinition): ExplorationPrototypeSource {
+function screenPrototypeForComparison(screen: SavedScreen): ExplorationPrototypeSource {
   if (!screen.prototype) {
     throw new Error(`Screen "${screen.id}" does not retain a prototype source.`);
   }
@@ -2378,13 +2379,13 @@ function mountExplorationScreens(
 
 function createExplorationCompileBundle(
   bundle: CanvasProjectBundle,
-  screen: ScreenDefinition,
+  screen: SavedScreen,
   prototype: ExplorationPrototypeSource
 ): CanvasProjectBundle {
   if (!screen.prototype) {
     return bundle;
   }
-  const shadowScreen: ScreenDefinition = {
+  const shadowScreen = {
     ...screen,
     prototype: {
       ...screen.prototype,
@@ -2392,7 +2393,7 @@ function createExplorationCompileBundle(
       styles: prototype.styles,
       assetRefs: prototype.assetRefs
     }
-  };
+  } as ScreenDefinition;
   return {
     ...bundle,
     screens: {

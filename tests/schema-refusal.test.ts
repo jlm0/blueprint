@@ -188,7 +188,7 @@ describe('a file or record on a newer schema', () => {
 
   it('reports a newer version in a bundle that did not come from the disk', async () => {
     const bundle = structuredClone(await loadProjectFromFs(meridianRoot));
-    bundle.manifest.schemaVersion = '9.9.9';
+    (bundle.manifest as { schemaVersion: string }).schemaVersion = '9.9.9';
     bundle.recordSchemaVersions = { [historyRecord]: '10.0.0', [explorationRecord]: '1.0.0' };
 
     const errors = schemaVersionErrors(bundle);

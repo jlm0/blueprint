@@ -22,8 +22,8 @@ export function normalizeCurrentFiles(input: NormalizeInput, writes: Map<string,
 
 function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, changes: string[]): void {
   const currentText = (file: string): string | undefined => writes.get(file) ?? input.files.get(file);
-  const primitiveFile = parseJsonFile(input.files, 'primitives.json') as unknown as PrimitiveFile;
-  const componentFile = parseJsonFile(input.files, 'components.json') as unknown as ComponentFile;
+  const primitiveFile = parseJsonFile(input.files, 'primitives.json') as PrimitiveFile;
+  const componentFile = parseJsonFile(input.files, 'components.json') as ComponentFile;
 
   restoreMissingBasePrimitives(primitiveFile, input.starterFiles, currentText, writes, changes);
 
@@ -73,7 +73,7 @@ function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, 
   }
 
   const renamed = { renamed: [] as string[] };
-  for (const item of [...componentFile.groups, ...componentFile.components]) sentenceCaseName(item as unknown as RawObject, renamed);
+  for (const item of [...componentFile.groups, ...componentFile.components]) sentenceCaseName(item, renamed);
   reportNames(changes, 'components.json', renamed);
 
   const starterAgents = input.starterFiles.get('AGENTS.md');
@@ -98,7 +98,7 @@ function restoreMissingBasePrimitives(
   const declared = new Set(primitiveFile.primitives.map(primitive => primitive.id));
   const missing = BASE_PRIMITIVE_CONTRACT.filter(entry => !declared.has(entry.id));
   if (missing.length === 0) return;
-  const starter = parseJsonFile(starterFiles, 'primitives.json') as unknown as PrimitiveFile;
+  const starter = parseJsonFile(starterFiles, 'primitives.json') as PrimitiveFile;
   const tokenRefs = declaredTokenRefs(currentText('tokens.json'));
   const restored: string[] = [];
   for (const { id } of missing) {

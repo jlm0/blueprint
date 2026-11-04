@@ -4,652 +4,135 @@
   "title": "Blueprint Project Structured Files",
   "description": "Machine-readable artifact aligned with the current TypeScript structured-file contract. This schema exposes the current fields for editors, agents, and package consumers.",
   "type": "object",
-  "required": ["manifest", "tokens", "primitives", "components", "screens"],
-  "additionalProperties": false,
   "properties": {
-    "manifest": { "$ref": "#/$defs/manifest" },
-    "tokens": { "$ref": "#/$defs/tokenFile" },
-    "primitives": { "$ref": "#/$defs/primitiveFile" },
-    "components": { "$ref": "#/$defs/componentFile" },
-    "screens": { "$ref": "#/$defs/screenFile" },
-    "brand": { "$ref": "#/$defs/brandFile" },
-    "inspo": { "$ref": "#/$defs/inspoFile" },
-    "explorations": { "$ref": "#/$defs/explorationFile" },
-    "history": { "$ref": "#/$defs/screenHistoryFile" }
-  },
-  "$defs": {
     "manifest": {
-      "type": "object",
-      "required": ["schemaVersion", "project", "defaultBoardId", "boards", "framePresets", "prototypeHost"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "handoffContractVersion": { "type": "string" },
-        "project": { "$ref": "#/$defs/project" },
-        "defaultBoardId": { "type": "string" },
-        "boards": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/board" }
-        },
-        "framePresets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/framePreset" }
-        },
-        "prototypeHost": { "$ref": "#/$defs/prototypeHost" }
-      }
+      "$ref": "#/$defs/manifest"
     },
-    "prototypeHost": {
-      "type": "object",
-      "required": ["assetRoots", "network", "scripts"],
-      "properties": {
-        "assetRoots": { "$ref": "#/$defs/stringArray" },
-        "network": { "const": "deny" },
-        "scripts": { "const": "none" }
-      }
+    "tokens": {
+      "$ref": "#/$defs/tokenFile"
     },
-    "project": {
-      "type": "object",
-      "required": ["id", "name", "description", "owner", "sourceRoot"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "owner": { "type": "string" },
-        "sourceRoot": { "type": "string" }
-      }
+    "primitives": {
+      "$ref": "#/$defs/primitiveFile"
     },
-    "board": {
-      "type": "object",
-      "required": ["id", "kind", "name", "description"],
-      "properties": {
-        "id": { "type": "string" },
-        "kind": { "enum": ["primitives", "screens"] },
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      }
+    "components": {
+      "$ref": "#/$defs/componentFile"
     },
-    "framePreset": {
-      "type": "object",
-      "required": ["id", "name", "type", "width", "height", "safeArea"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "enum": ["mobile", "desktop"] },
-        "width": { "type": "number" },
-        "height": { "type": "number" },
-        "safeArea": {
-          "type": "object",
-          "required": ["top", "right", "bottom", "left"],
-          "properties": {
-            "top": { "type": "number" },
-            "right": { "type": "number" },
-            "bottom": { "type": "number" },
-            "left": { "type": "number" }
-          }
-        }
-      }
+    "screens": {
+      "$ref": "#/$defs/screenFile"
     },
-    "tokenFile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "projectId", "tokenGroups"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "tokenGroups": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/tokenGroup" }
-        }
-      }
+    "brand": {
+      "$ref": "#/$defs/brandFile"
     },
-    "tokenGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description", "styleRefs", "notes", "tokens"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "tokens": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/designToken" }
-        }
-      }
+    "inspo": {
+      "$ref": "#/$defs/inspoFile"
     },
-    "designToken": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "type", "value", "description", "styleRef"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "enum": ["color", "space", "size", "radius", "typography", "shadow", "motion"] },
-        "value": { "type": "string" },
-        "description": { "type": "string" },
-        "styleRef": { "type": "string" }
-      }
+    "explorations": {
+      "$ref": "#/$defs/explorationFile"
     },
-    "primitiveFile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "projectId", "primitives"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "primitives": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/primitive" }
-        }
-      }
-    },
-    "primitive": {
-      "description": "One of the closed set of Blueprint primitives, in the shared reusable shape.",
-      "$ref": "#/$defs/reusable"
-    },
-    "brandFile": {
-      "type": "object",
-      "required": ["schemaVersion", "projectId", "name", "marks"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "name": { "type": "string" },
-        "tagline": { "type": "string" },
-        "personality": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["name", "description"],
-            "properties": {
-              "name": { "type": "string" },
-              "description": { "type": "string" }
-            }
-          }
-        },
-        "voice": {
-          "type": "object",
-          "required": ["summary", "do", "dont"],
-          "properties": {
-            "summary": { "type": "string" },
-            "do": { "$ref": "#/$defs/stringArray" },
-            "dont": { "$ref": "#/$defs/stringArray" }
-          }
-        },
-        "marks": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/brandMark" }
-        },
-        "usage": {
-          "type": "object",
-          "required": ["do", "dont"],
-          "properties": {
-            "do": { "$ref": "#/$defs/stringArray" },
-            "dont": { "$ref": "#/$defs/stringArray" }
-          }
-        }
-      }
-    },
-    "brandMark": {
-      "type": "object",
-      "required": ["id", "name", "role", "description", "source", "variants", "clearSpace", "minimumSize"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "role": { "enum": ["mark", "wordmark", "lockup", "app-icon"] },
-        "description": { "type": "string" },
-        "source": {
-          "type": "string",
-          "pattern": "\\.svg$"
-        },
-        "variants": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["id", "name", "background", "foreground"],
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "background": { "type": "string" },
-              "foreground": { "type": "string" },
-              "accent": { "type": "string" }
-            }
-          }
-        },
-        "clearSpace": {
-          "type": "object",
-          "required": ["ratio", "basis"],
-          "properties": {
-            "ratio": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "basis": { "enum": ["height", "width"] },
-            "note": { "type": "string" }
-          }
-        },
-        "minimumSize": {
-          "type": "object",
-          "required": ["px", "axis"],
-          "properties": {
-            "px": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "axis": { "enum": ["height", "width"] },
-            "note": { "type": "string" }
-          }
-        }
-      }
-    },
-    "inspoFile": {
-      "type": "object",
-      "description": "Optional reference board a new sidecar starts from. Cached images under inspo/ stay out of git.",
-      "required": ["schemaVersion", "projectId", "entries", "directions"],
-      "additionalProperties": false,
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "entries": { "type": "array", "items": { "$ref": "#/$defs/inspoEntry" } },
-        "directions": { "type": "array", "items": { "$ref": "#/$defs/inspoDirection" } }
-      }
-    },
-    "inspoAspect": { "enum": ["mark", "wordmark", "typography", "color", "layout", "imagery", "style"] },
-    "inspoEntry": {
-      "type": "object",
-      "required": ["id", "sourceUrl", "image", "aspects", "stance", "note", "reading"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "$ref": "#/$defs/safeId" },
-        "sourceUrl": { "type": "string", "pattern": "^https://\\S+$", "maxLength": 2048 },
-        "image": { "type": "string", "pattern": "^inspo/[a-z0-9]+(?:-[a-z0-9]+)*\\.(?:png|jpg|webp|gif)$" },
-        "aspects": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/inspoAspect" } },
-        "stance": { "enum": ["like", "avoid"] },
-        "note": { "type": "string", "maxLength": 1000 },
-        "reading": { "type": "string", "maxLength": 240 }
-      }
-    },
-    "inspoDirection": {
-      "type": "object",
-      "required": ["aspect", "statement", "entryIds", "status"],
-      "additionalProperties": false,
-      "properties": {
-        "aspect": { "$ref": "#/$defs/inspoAspect" },
-        "statement": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "entryIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/safeId" } },
-        "status": { "enum": ["proposed", "approved"] }
-      }
-    },
-    "declaredGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description"],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      }
-    },
-    "screenFile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "projectId", "pages", "screens"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "pages": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/declaredGroup" }
-        },
-        "screens": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/screen" }
-        }
-      }
-    },
-    "explorationFile": {
-      "type": "object",
-      "required": ["schemaVersion", "projectId", "explorations"],
-      "properties": {
-        "schemaVersion": { "type": "string" },
-        "projectId": { "type": "string" },
-        "explorations": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/exploration" }
-        }
-      }
-    },
-    "explorationRecordFile": {
-      "type": "object",
-      "required": ["schemaVersion", "projectId", "exploration"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "exploration": { "$ref": "#/$defs/exploration" }
-      }
-    },
-    "exploration": {
-      "type": "object",
-      "required": ["id", "title", "intent", "lifecycle", "target", "candidates"],
-      "properties": {
-        "id": { "$ref": "#/$defs/safeId" },
-        "title": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 160
-        },
-        "intent": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 160
-        },
-        "lifecycle": { "enum": ["active", "archived", "promoted"] },
-        "target": { "$ref": "#/$defs/explorationTarget" },
-        "candidates": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 5,
-          "items": { "$ref": "#/$defs/explorationCandidate" }
-        },
-        "selectedCandidateId": { "$ref": "#/$defs/safeId" },
-        "promotedScreenId": { "type": "string" }
-      }
-    },
-    "explorationTarget": {
-      "type": "object",
-      "required": ["screenId", "state", "framePresetId", "baseDigest", "baseline"],
-      "properties": {
-        "screenId": { "type": "string" },
-        "state": { "type": "string" },
-        "framePresetId": { "type": "string" },
-        "baseDigest": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
-        },
-        "baseline": { "$ref": "#/$defs/explorationBaseline" }
-      }
-    },
-    "explorationBaseline": {
-      "type": "object",
-      "required": ["screen", "prototype"],
-      "properties": {
-        "screen": { "$ref": "#/$defs/screen" },
-        "prototype": { "$ref": "#/$defs/explorationPrototype" }
-      }
-    },
-    "explorationCandidate": {
-      "type": "object",
-      "required": ["id", "label", "prototype"],
-      "properties": {
-        "id": { "$ref": "#/$defs/safeId" },
-        "label": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 160
-        },
-        "prototype": { "$ref": "#/$defs/explorationPrototype" }
-      }
-    },
-    "explorationPrototype": {
-      "type": "object",
-      "required": ["source", "styles", "assetRefs"],
-      "properties": {
-        "source": { "type": "string" },
-        "styles": { "$ref": "#/$defs/stringArray" },
-        "assetRefs": { "$ref": "#/$defs/stringArray" }
-      }
-    },
-    "screenHistoryFile": {
-      "type": "object",
-      "required": ["schemaVersion", "projectId", "entries"],
-      "properties": {
-        "schemaVersion": { "type": "string" },
-        "projectId": { "type": "string" },
-        "entries": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/screenHistoryEntry" }
-        }
-      }
-    },
-    "screenHistoryRecordFile": {
-      "type": "object",
-      "required": ["schemaVersion", "projectId", "entry"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "entry": { "$ref": "#/$defs/screenHistoryEntry" }
-      }
-    },
-    "screenHistoryEntry": {
-      "type": "object",
-      "required": ["screenId", "version", "state", "framePresetId", "screen", "replacedBy"],
-      "properties": {
-        "screenId": { "type": "string" },
-        "version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "state": { "type": "string" },
-        "framePresetId": { "type": "string" },
-        "screen": { "$ref": "#/$defs/screen" },
-        "replacedBy": {
-          "oneOf": [
-            {
-              "type": "object",
-              "required": ["type", "explorationId", "candidateId"],
-              "properties": {
-                "type": { "const": "exploration-candidate" },
-                "explorationId": { "type": "string" },
-                "candidateId": { "type": "string" }
-              }
-            },
-            {
-              "type": "object",
-              "required": ["type", "version"],
-              "properties": {
-                "type": { "const": "history-restore" },
-                "version": {
-                  "type": "integer",
-                  "minimum": 1
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    "componentFile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schemaVersion", "projectId", "groups", "components"],
-      "properties": {
-        "schemaVersion": { "const": "2.0.0" },
-        "projectId": { "type": "string" },
-        "groups": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/componentGroup" }
-        },
-        "components": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/component" }
-        }
-      }
-    },
-    "component": {
-      "description": "An app-owned component, in the shared reusable shape.",
-      "$ref": "#/$defs/reusable"
-    },
-    "screen": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "description",
-        "framePresetId",
-        "page",
-        "styleRefs",
-        "styleEvidence",
-        "notes",
-        "prototypeOnly",
-        "implementationHints",
-        "implementationTargets",
-        "prototype",
-        "sections"
-      ],
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "version": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "description": { "type": "string" },
-        "framePresetId": { "type": "string" },
-        "page": { "type": "string" },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/styleEvidence" }
-        },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "prototypeOnly": { "type": "boolean" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" },
-        "productionRelationship": { "$ref": "#/$defs/productionRelationship" },
-        "implementationTargets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/implementationTarget" }
-        },
-        "prototype": { "$ref": "#/$defs/screenPrototype" },
-        "sections": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/screenSection" }
-        }
-      }
-    },
-    "screenPrototype": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["source", "styles", "states", "assetRefs", "reviewConditions"],
-      "properties": {
-        "source": { "type": "string" },
-        "styles": { "$ref": "#/$defs/stringArray" },
-        "states": { "$ref": "#/$defs/stringArray" },
-        "assetRefs": { "$ref": "#/$defs/stringArray" },
-        "reviewConditions": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/reviewCondition" }
-        },
-        "renderedUses": { "$ref": "#/$defs/prototypeUses" },
-        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
-      }
-    },
-    "reviewCondition": {
-      "type": "object",
-      "required": ["id", "framePresetId", "state"],
-      "properties": {
-        "id": { "type": "string" },
-        "framePresetId": { "type": "string" },
-        "state": { "type": "string" }
-      }
-    },
-    "prototypeUses": {
+    "history": {
+      "$ref": "#/$defs/screenHistoryFile"
+    }
+  },
+  "required": [
+    "manifest",
+    "tokens",
+    "primitives",
+    "components",
+    "screens"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "stringArray": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": ["kind", "id"],
-        "properties": {
-          "kind": { "enum": ["primitive", "component"] },
-          "id": { "type": "string" }
-        }
+        "type": "string"
       }
     },
-    "localValueExceptions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["property", "value", "reason"],
-        "properties": {
-          "property": { "type": "string" },
-          "value": { "type": "string" },
-          "reason": { "type": "string" }
-        }
-      }
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
     },
-    "screenSection": {
+    "styleEvidence": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description", "styleRefs", "styleEvidence", "uses", "prototypeOnly", "notes", "implementationHints", "implementationTargets"],
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/styleEvidence" }
+        "styleRef": {
+          "type": "string"
         },
-        "uses": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/boundaryDependency" }
-        },
-        "prototypeOnly": { "type": "boolean" },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" },
-        "implementationTargets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/implementationTarget" }
-        }
-      }
-    },
-    "boundaryDependency": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind", "id", "reason"],
-      "properties": {
-        "kind": { "enum": ["token-group", "primitive", "component", "screen", "section"] },
-        "id": { "type": "string" },
-        "reason": { "type": "string" },
-        "binding": { "$ref": "#/$defs/compositionBinding" }
-      }
-    },
-    "productionRelationship": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind", "notes"],
-      "properties": {
-        "kind": {
+        "status": {
+          "type": "string",
           "enum": [
-            "new-route",
-            "existing-route",
-            "state-of-existing-screen",
-            "variant-of-existing-screen",
-            "section-replacement",
-            "embedded-flow"
+            "source",
+            "linked-artifact-pending",
+            "unresolved"
           ]
         },
-        "routePath": { "type": "string" },
-        "targetScreenId": { "type": "string" },
-        "replacedSectionId": { "type": "string" },
-        "notes": { "$ref": "#/$defs/stringArray" }
-      }
-    },
-    "compositionBinding": {
-      "type": "object",
-      "properties": {
-        "slot": { "type": "string" },
-        "state": { "type": "string" },
-        "variant": { "type": "string" },
-        "prop": { "type": "string" },
-        "copy": { "type": "string" },
-        "data": { "type": "string" },
-        "layout": { "type": "string" },
-        "accessibility": { "type": "string" },
-        "size": { "type": "string" }
-      }
+        "sourceAnchor": {
+          "type": "string"
+        },
+        "artifactRef": {
+          "type": "string"
+        },
+        "renderedSnippet": {
+          "type": "string"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "styleRef",
+        "status"
+      ]
     },
     "implementationTarget": {
       "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "framework": {
+          "type": "string"
+        },
+        "candidatePath": {
+          "type": "string"
+        },
+        "symbolName": {
+          "type": "string"
+        },
+        "operationIntent": {
+          "type": "string"
+        },
+        "propMapping": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "stateMapping": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tokenAdapter": {
+          "type": "string"
+        },
+        "testPaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "storyPaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "unresolvedDecisions": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
       "required": [
         "platform",
         "framework",
@@ -662,103 +145,320 @@
         "testPaths",
         "storyPaths",
         "unresolvedDecisions"
-      ],
-      "properties": {
-        "platform": { "type": "string" },
-        "framework": { "type": "string" },
-        "candidatePath": { "type": "string" },
-        "symbolName": { "type": "string" },
-        "operationIntent": { "type": "string" },
-        "propMapping": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        "stateMapping": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        "tokenAdapter": { "type": "string" },
-        "testPaths": { "$ref": "#/$defs/stringArray" },
-        "storyPaths": { "$ref": "#/$defs/stringArray" },
-        "unresolvedDecisions": { "$ref": "#/$defs/stringArray" }
-      }
+      ]
     },
-    "styleEvidence": {
-      "type": "object",
-      "required": ["styleRef", "status"],
-      "properties": {
-        "styleRef": { "type": "string" },
-        "status": { "enum": ["source", "linked-artifact-pending", "unresolved"] },
-        "sourceAnchor": { "type": "string" },
-        "artifactRef": { "type": "string" },
-        "renderedSnippet": { "type": "string" },
-        "notes": { "$ref": "#/$defs/stringArray" }
-      }
-    },
-    "readinessReport": {
-      "type": "object",
-      "required": ["projectId", "prototypeSources", "tier", "items", "blockers"],
-      "properties": {
-        "projectId": { "type": "string" },
-        "prototypeSources": { "$ref": "#/$defs/stringArray" },
-        "tier": { "enum": ["ready", "pending", "unresolved", "blocked"] },
-        "items": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/readinessItem" }
-        },
-        "blockers": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/readinessItem" }
-        }
-      }
-    },
-    "readinessItem": {
-      "type": "object",
-      "required": ["path", "severity", "source", "message"],
-      "properties": {
-        "path": { "type": "string" },
-        "severity": { "enum": ["ready", "pending", "unresolved", "blocker"] },
-        "source": { "enum": ["resolved", "declared", "declared-missing-artifact", "synthesized-missing"] },
-        "message": { "type": "string" },
-        "artifactRef": { "type": "string" },
-        "artifactExists": { "type": "boolean" }
-      }
-    },
-    "deepHandoffPacket": {
-      "type": "object",
-      "required": ["extraction", "boundaries", "resolvedTokens", "tokenUsage"],
-      "properties": {
-        "extraction": { "type": "object" },
-        "boundaries": { "type": "array" },
-        "resolvedTokens": { "type": "array" },
-        "tokenUsage": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/tokenUsage" }
-        }
-      }
-    },
-    "tokenUsage": {
-      "type": "object",
-      "required": ["tokenId", "role", "boundaryId", "boundaryKind", "styleRef"],
-      "properties": {
-        "tokenId": { "type": "string" },
-        "role": { "type": "string" },
-        "boundaryId": { "type": "string" },
-        "boundaryKind": { "enum": ["project", "board", "token-group", "primitive", "state-set", "component", "screen", "section"] },
-        "styleRef": { "type": "string" }
-      }
-    },
-    "stringArray": {
+    "localValueExceptions": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "object",
+        "properties": {
+          "property": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "property",
+          "value",
+          "reason"
+        ]
+      }
     },
-    "safeId": {
+    "declaredGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "platform": {
       "type": "string",
-      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+      "enum": [
+        "web",
+        "mobile",
+        "desktop"
+      ]
+    },
+    "reusableAxisValue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "reusableAxis": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "string"
+        },
+        "values": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reusableAxisValue"
+          }
+        }
+      },
+      "required": [
+        "default",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "reusableUnsupported": {
+      "type": "object",
+      "properties": {
+        "axis": {
+          "type": "string",
+          "enum": [
+            "variant",
+            "size"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "axis",
+        "value",
+        "state",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "reusableSlot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "accepts": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(text|graphic|brand-mark|(primitive|component):[a-z0-9]+(?:-[a-z0-9]+)*)$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "accepts"
+      ],
+      "additionalProperties": false
+    },
+    "reusableUse": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "primitive",
+            "component"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "reusablePrototype": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "styles": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "localValueExceptions": {
+          "$ref": "#/$defs/localValueExceptions"
+        }
+      },
+      "required": [
+        "source",
+        "styles",
+        "localValueExceptions"
+      ],
+      "additionalProperties": false
     },
     "reusable": {
       "type": "object",
-      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "group": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "platforms": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platform"
+          },
+          "uniqueItems": true
+        },
+        "uses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reusableUse"
+          }
+        },
+        "variants": {
+          "$ref": "#/$defs/reusableAxis"
+        },
+        "sizes": {
+          "$ref": "#/$defs/reusableAxis"
+        },
+        "states": {
+          "$ref": "#/$defs/reusableAxis"
+        },
+        "unsupported": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reusableUnsupported"
+          }
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reusableSlot"
+          }
+        },
+        "prototype": {
+          "$ref": "#/$defs/reusablePrototype"
+        },
+        "tokenGroupIds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tokenRoles": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "accessibility": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "implementationHints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "implementationTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/implementationTarget"
+          }
+        },
+        "styleRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "styleEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/styleEvidence"
+          }
+        },
+        "prototypeOnly": {
+          "type": "boolean"
+        }
+      },
       "required": [
         "id",
         "name",
@@ -782,186 +482,14 @@
         "styleEvidence",
         "prototypeOnly"
       ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 32
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "group": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "platforms": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "$ref": "#/$defs/platform" }
-        },
-        "uses": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/reusableUse" }
-        },
-        "variants": { "$ref": "#/$defs/reusableAxis" },
-        "sizes": { "$ref": "#/$defs/reusableAxis" },
-        "states": { "$ref": "#/$defs/reusableAxis" },
-        "unsupported": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/reusableUnsupported" }
-        },
-        "slots": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/reusableSlot" }
-        },
-        "prototype": { "$ref": "#/$defs/reusablePrototype" },
-        "tokenGroupIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "type": "string" }
-        },
-        "tokenRoles": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "accessibility": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "notes": { "$ref": "#/$defs/stringArray" },
-        "implementationHints": { "$ref": "#/$defs/stringArray" },
-        "implementationTargets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/implementationTarget" }
-        },
-        "styleRefs": { "$ref": "#/$defs/stringArray" },
-        "styleEvidence": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/styleEvidence" }
-        },
-        "prototypeOnly": { "type": "boolean" }
-      }
+      "additionalProperties": false
     },
-    "platform": { "enum": ["web", "mobile", "desktop"] },
-    "reusableUse": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind", "id", "reason"],
-      "properties": {
-        "kind": { "enum": ["primitive", "component"] },
-        "id": { "type": "string" },
-        "reason": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        }
-      }
-    },
-    "reusableAxis": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["default", "values"],
-      "properties": {
-        "default": { "type": "string" },
-        "values": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/reusableAxisValue" }
-        }
-      }
-    },
-    "reusableAxisValue": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description"],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 24
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        }
-      }
-    },
-    "reusableUnsupported": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["axis", "value", "state", "reason"],
-      "properties": {
-        "axis": { "enum": ["variant", "size"] },
-        "value": { "type": "string" },
-        "state": { "type": "string" },
-        "reason": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        }
-      }
-    },
-    "reusableSlot": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description", "accepts"],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 24
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "accepts": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "pattern": "^(text|graphic|brand-mark|(primitive|component):[a-z0-9]+(?:-[a-z0-9]+)*)$"
-          }
-        }
-      }
-    },
-    "reusablePrototype": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["source", "styles", "localValueExceptions"],
-      "properties": {
-        "source": { "type": "string" },
-        "styles": { "$ref": "#/$defs/stringArray" },
-        "localValueExceptions": { "$ref": "#/$defs/localValueExceptions" }
-      }
+    "component": {
+      "description": "An app-owned component, in the shared reusable shape.",
+      "$ref": "#/$defs/reusable"
     },
     "componentGroup": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "name", "description"],
       "properties": {
         "id": {
           "type": "string",
@@ -977,7 +505,1515 @@
           "minLength": 1,
           "maxLength": 120
         }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "additionalProperties": false
+    },
+    "componentFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/componentGroup"
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/component"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "groups",
+        "components"
+      ],
+      "additionalProperties": false
+    },
+    "brandMark": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "mark",
+            "wordmark",
+            "lockup",
+            "app-icon"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "\\.svg$"
+        },
+        "variants": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "background": {
+                "type": "string"
+              },
+              "foreground": {
+                "type": "string"
+              },
+              "accent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "background",
+              "foreground"
+            ]
+          }
+        },
+        "clearSpace": {
+          "type": "object",
+          "properties": {
+            "ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "basis": {
+              "type": "string",
+              "enum": [
+                "height",
+                "width"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ratio",
+            "basis"
+          ]
+        },
+        "minimumSize": {
+          "type": "object",
+          "properties": {
+            "px": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "axis": {
+              "type": "string",
+              "enum": [
+                "height",
+                "width"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "px",
+            "axis"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role",
+        "description",
+        "source",
+        "variants",
+        "clearSpace",
+        "minimumSize"
+      ]
+    },
+    "brandFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tagline": {
+          "type": "string"
+        },
+        "personality": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ]
+          }
+        },
+        "voice": {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "do": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "dont": {
+              "$ref": "#/$defs/stringArray"
+            }
+          },
+          "required": [
+            "summary",
+            "do",
+            "dont"
+          ]
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/brandMark"
+          }
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "do": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "dont": {
+              "$ref": "#/$defs/stringArray"
+            }
+          },
+          "required": [
+            "do",
+            "dont"
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "name",
+        "marks"
+      ]
+    },
+    "readinessItem": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "pending",
+            "unresolved",
+            "blocker"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "resolved",
+            "declared",
+            "declared-missing-artifact",
+            "synthesized-missing"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "artifactRef": {
+          "type": "string"
+        },
+        "artifactExists": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "severity",
+        "source",
+        "message"
+      ]
+    },
+    "readinessReport": {
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string"
+        },
+        "prototypeSources": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "pending",
+            "unresolved",
+            "blocked"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/readinessItem"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/readinessItem"
+          }
+        }
+      },
+      "required": [
+        "projectId",
+        "prototypeSources",
+        "tier",
+        "items",
+        "blockers"
+      ]
+    },
+    "tokenUsage": {
+      "type": "object",
+      "properties": {
+        "tokenId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "boundaryId": {
+          "type": "string"
+        },
+        "boundaryKind": {
+          "type": "string",
+          "enum": [
+            "project",
+            "board",
+            "token-group",
+            "primitive",
+            "component",
+            "screen",
+            "section"
+          ]
+        },
+        "styleRef": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tokenId",
+        "role",
+        "boundaryId",
+        "boundaryKind",
+        "styleRef"
+      ]
+    },
+    "deepHandoffPacket": {
+      "type": "object",
+      "properties": {
+        "extraction": {
+          "type": "object",
+          "properties": {}
+        },
+        "boundaries": {
+          "type": "array",
+          "items": {}
+        },
+        "resolvedTokens": {
+          "type": "array",
+          "items": {}
+        },
+        "tokenUsage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tokenUsage"
+          }
+        }
+      },
+      "required": [
+        "extraction",
+        "boundaries",
+        "resolvedTokens",
+        "tokenUsage"
+      ]
+    },
+    "inspoAspect": {
+      "type": "string",
+      "enum": [
+        "mark",
+        "wordmark",
+        "typography",
+        "color",
+        "layout",
+        "imagery",
+        "style"
+      ]
+    },
+    "inspoEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/safeId"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://\\S+$"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^inspo/[a-z0-9]+(?:-[a-z0-9]+)*\\.(?:png|jpg|webp|gif)$"
+        },
+        "aspects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspoAspect"
+          },
+          "uniqueItems": true
+        },
+        "stance": {
+          "type": "string",
+          "enum": [
+            "like",
+            "avoid"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "reading": {
+          "type": "string",
+          "maxLength": 240
+        }
+      },
+      "required": [
+        "id",
+        "sourceUrl",
+        "image",
+        "aspects",
+        "stance",
+        "note",
+        "reading"
+      ],
+      "additionalProperties": false
+    },
+    "inspoDirection": {
+      "type": "object",
+      "properties": {
+        "aspect": {
+          "$ref": "#/$defs/inspoAspect"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "entryIds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/safeId"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "approved"
+          ]
+        }
+      },
+      "required": [
+        "aspect",
+        "statement",
+        "entryIds",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "inspoFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspoEntry"
+          }
+        },
+        "directions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inspoDirection"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "entries",
+        "directions"
+      ],
+      "additionalProperties": false,
+      "description": "Optional reference board a new sidecar starts from. Cached images under inspo/ stay out of git."
+    },
+    "prototypeHost": {
+      "type": "object",
+      "properties": {
+        "assetRoots": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "network": {
+          "type": "string",
+          "const": "deny"
+        },
+        "scripts": {
+          "type": "string",
+          "const": "none"
+        }
+      },
+      "required": [
+        "assetRoots",
+        "network",
+        "scripts"
+      ]
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "sourceRoot": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "owner",
+        "sourceRoot"
+      ]
+    },
+    "board": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "primitives",
+            "screens"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "description"
+      ]
+    },
+    "framePreset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "mobile",
+            "desktop"
+          ]
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "safeArea": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "number"
+            },
+            "right": {
+              "type": "number"
+            },
+            "bottom": {
+              "type": "number"
+            },
+            "left": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "width",
+        "height",
+        "safeArea"
+      ]
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "handoffContractVersion": {
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/project"
+        },
+        "defaultBoardId": {
+          "type": "string"
+        },
+        "boards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/board"
+          }
+        },
+        "framePresets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/framePreset"
+          }
+        },
+        "prototypeHost": {
+          "$ref": "#/$defs/prototypeHost"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "project",
+        "defaultBoardId",
+        "boards",
+        "framePresets",
+        "prototypeHost"
+      ]
+    },
+    "primitive": {
+      "description": "One of the closed set of Blueprint primitives, in the shared reusable shape.",
+      "$ref": "#/$defs/reusable"
+    },
+    "primitiveFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "primitives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/primitive"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "primitives"
+      ],
+      "additionalProperties": false
+    },
+    "compositionBinding": {
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "prop": {
+          "type": "string"
+        },
+        "copy": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        },
+        "layout": {
+          "type": "string"
+        },
+        "accessibility": {
+          "type": "string"
+        }
       }
+    },
+    "boundaryDependency": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "token-group",
+            "primitive",
+            "component",
+            "screen",
+            "section"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "binding": {
+          "$ref": "#/$defs/compositionBinding"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "screenSection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "styleRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "styleEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/styleEvidence"
+          }
+        },
+        "uses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundaryDependency"
+          }
+        },
+        "prototypeOnly": {
+          "type": "boolean"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "implementationHints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "implementationTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/implementationTarget"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "styleRefs",
+        "styleEvidence",
+        "uses",
+        "prototypeOnly",
+        "notes",
+        "implementationHints",
+        "implementationTargets"
+      ],
+      "additionalProperties": false
+    },
+    "productionRelationship": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "new-route",
+            "existing-route",
+            "state-of-existing-screen",
+            "variant-of-existing-screen",
+            "section-replacement",
+            "embedded-flow"
+          ]
+        },
+        "routePath": {
+          "type": "string"
+        },
+        "targetScreenId": {
+          "type": "string"
+        },
+        "replacedSectionId": {
+          "type": "string"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "kind",
+        "notes"
+      ],
+      "additionalProperties": false
+    },
+    "reviewCondition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "framePresetId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "framePresetId",
+        "state"
+      ]
+    },
+    "prototypeUses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "primitive",
+              "component"
+            ]
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      }
+    },
+    "screenPrototype": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "styles": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "states": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "assetRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "reviewConditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reviewCondition"
+          }
+        },
+        "renderedUses": {
+          "$ref": "#/$defs/prototypeUses"
+        },
+        "localValueExceptions": {
+          "$ref": "#/$defs/localValueExceptions"
+        }
+      },
+      "required": [
+        "source",
+        "styles",
+        "states",
+        "assetRefs",
+        "reviewConditions"
+      ],
+      "additionalProperties": false
+    },
+    "screen": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "framePresetId": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "styleRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "styleEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/styleEvidence"
+          }
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "prototypeOnly": {
+          "type": "boolean"
+        },
+        "implementationHints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "productionRelationship": {
+          "$ref": "#/$defs/productionRelationship"
+        },
+        "implementationTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/implementationTarget"
+          }
+        },
+        "prototype": {
+          "$ref": "#/$defs/screenPrototype"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/screenSection"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "framePresetId",
+        "page",
+        "styleRefs",
+        "styleEvidence",
+        "notes",
+        "prototypeOnly",
+        "implementationHints",
+        "implementationTargets",
+        "prototype",
+        "sections"
+      ],
+      "additionalProperties": false
+    },
+    "savedScreen": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "framePresetId": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "styleRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "styleEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/styleEvidence"
+          }
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "prototypeOnly": {
+          "type": "boolean"
+        },
+        "implementationHints": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "productionRelationship": {
+          "$ref": "#/$defs/productionRelationship"
+        },
+        "implementationTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/implementationTarget"
+          }
+        },
+        "prototype": {
+          "$ref": "#/$defs/screenPrototype"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/screenSection"
+          }
+        },
+        "flow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "framePresetId",
+        "styleRefs",
+        "styleEvidence",
+        "notes",
+        "prototypeOnly",
+        "implementationHints",
+        "implementationTargets",
+        "prototype",
+        "sections"
+      ],
+      "additionalProperties": false
+    },
+    "screenFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/declaredGroup"
+          }
+        },
+        "screens": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/screen"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "pages",
+        "screens"
+      ],
+      "additionalProperties": false
+    },
+    "explorationPrototype": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "styles": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "assetRefs": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "source",
+        "styles",
+        "assetRefs"
+      ]
+    },
+    "explorationCandidate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/safeId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "prototype": {
+          "$ref": "#/$defs/explorationPrototype"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "prototype"
+      ]
+    },
+    "explorationBaseline": {
+      "type": "object",
+      "properties": {
+        "screen": {
+          "$ref": "#/$defs/savedScreen"
+        },
+        "prototype": {
+          "$ref": "#/$defs/explorationPrototype"
+        }
+      },
+      "required": [
+        "screen",
+        "prototype"
+      ]
+    },
+    "explorationTarget": {
+      "type": "object",
+      "properties": {
+        "screenId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "framePresetId": {
+          "type": "string"
+        },
+        "baseDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "baseline": {
+          "$ref": "#/$defs/explorationBaseline"
+        }
+      },
+      "required": [
+        "screenId",
+        "state",
+        "framePresetId",
+        "baseDigest",
+        "baseline"
+      ]
+    },
+    "exploration": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/safeId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "active",
+            "archived",
+            "promoted"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/explorationTarget"
+        },
+        "candidates": {
+          "minItems": 2,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/explorationCandidate"
+          }
+        },
+        "selectedCandidateId": {
+          "$ref": "#/$defs/safeId"
+        },
+        "promotedScreenId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "intent",
+        "lifecycle",
+        "target",
+        "candidates"
+      ]
+    },
+    "explorationFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "explorations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/exploration"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "explorations"
+      ]
+    },
+    "explorationRecordFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "exploration": {
+          "$ref": "#/$defs/exploration"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "exploration"
+      ]
+    },
+    "screenHistoryEntry": {
+      "type": "object",
+      "properties": {
+        "screenId": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string"
+        },
+        "framePresetId": {
+          "type": "string"
+        },
+        "screen": {
+          "$ref": "#/$defs/savedScreen"
+        },
+        "replacedBy": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "exploration-candidate"
+                },
+                "explorationId": {
+                  "type": "string"
+                },
+                "candidateId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "explorationId",
+                "candidateId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "history-restore"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "type",
+                "version"
+              ]
+            }
+          ]
+        }
+      },
+      "required": [
+        "screenId",
+        "version",
+        "state",
+        "framePresetId",
+        "screen",
+        "replacedBy"
+      ]
+    },
+    "screenHistoryFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/screenHistoryEntry"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "entries"
+      ]
+    },
+    "screenHistoryRecordFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/$defs/screenHistoryEntry"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "entry"
+      ]
+    },
+    "designToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "color",
+            "space",
+            "size",
+            "radius",
+            "typography",
+            "shadow",
+            "motion"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "styleRef": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "value",
+        "description",
+        "styleRef"
+      ],
+      "additionalProperties": false
+    },
+    "tokenGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "styleRefs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/designToken"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "styleRefs",
+        "notes",
+        "tokens"
+      ],
+      "additionalProperties": false
+    },
+    "tokenFile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "tokenGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tokenGroup"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "tokenGroups"
+      ],
+      "additionalProperties": false
     }
   }
 }

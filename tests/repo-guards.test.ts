@@ -230,6 +230,10 @@ describe('repository guards', () => {
     ['src/mcp/imports-core-validate.ts', 'no-restricted-imports'],
     ['src/mcp/imports-validation-worker.ts', 'no-restricted-imports'],
     ['src/app/imports-mcp.ts', 'no-restricted-imports'],
+    ['src/app/imports-schemas.ts', 'no-restricted-imports'],
+    ['src/app/imports-zod.ts', 'no-restricted-imports'],
+    ['src/prototype/imports-schemas.ts', 'no-restricted-imports'],
+    ['src/core/migrations/imports-schema.ts', 'no-restricted-imports'],
     ['cycle-a.ts', 'no-cycle']
   ] as const) {
     it(`fails lint on the wrong import in ${fixture}`, () => {
@@ -238,6 +242,16 @@ describe('repository guards', () => {
       assert.match(result.stdout, new RegExp(rule));
     });
   }
+
+  it('keeps the schemas and zod out of the site bundle', () => {
+    assert.deepEqual(siteBundleSchemaImports('src/app/main.ts'), []);
+  });
+
+  it('reports schemas that the site bundle reaches through core', () => {
+    const reached = siteBundleSchemaImports('tests/lint-fixtures/src/app/reaches-schemas-through-core.ts');
+    assert.ok(reached.includes('zod/v4'), reached.join('\n'));
+    assert.ok(reached.includes('src/core/schemas/screens.ts'), reached.join('\n'));
+  });
 
   it('fails lint when src/mcp/operations.ts grows past its line limit', () => {
     const fixture = 'tests/lint-fixtures/src/mcp/operations.ts';
@@ -287,6 +301,36 @@ describe('repository guards', () => {
     assert.match(instructions, /Call serve when a person needs to see/);
   });
 });
+
+/** Each schema module and zod import that a browser entry reaches through imports that survive the build. */
+function siteBundleSchemaImports(entry: string): string[] {
+  const reached = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (file: string): void => {
+    if (visited.has(file)) return;
+    visited.add(file);
+    const relative = path.relative(process.cwd(), file).split(path.sep).join('/');
+    if (relative.startsWith('src/core/schemas/')) reached.add(relative);
+    const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+    const follow = (specifier: string): void => {
+      if (specifier === 'zod' || specifier.startsWith('zod/')) reached.add(specifier);
+      if (!specifier.startsWith('.')) return;
+      const target = path.resolve(path.dirname(file), specifier);
+      for (const candidate of [`${target}.ts`, path.join(target, 'index.ts')]) {
+        if (existsSync(candidate)) visit(candidate);
+      }
+    };
+    const walk = (node: ts.Node): void => {
+      if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly && ts.isStringLiteral(node.moduleSpecifier)) follow(node.moduleSpecifier.text);
+      if (ts.isExportDeclaration(node) && !node.isTypeOnly && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) follow(node.moduleSpecifier.text);
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) follow(node.arguments[0].text);
+      ts.forEachChild(node, walk);
+    };
+    walk(source);
+  };
+  visit(path.resolve(entry));
+  return [...reached].sort();
+}
 
 function listFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {

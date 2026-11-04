@@ -1,7 +1,6 @@
 import { attributeWithValue, listOpenTags, listPossibleOpenTags, quotedAttribute } from './markup';
-import type { BrandMarkRole } from './types';
 
-export const BRAND_MARK_ROLES: readonly BrandMarkRole[] = ['mark', 'wordmark', 'lockup', 'app-icon'];
+export const BRAND_MARK_ROLES = ['mark', 'wordmark', 'lockup', 'app-icon'] as const;
 
 const UNSAFE_ELEMENTS: ReadonlyArray<[readonly string[], string]> = [
   [['script'], 'contains a script'],

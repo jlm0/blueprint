@@ -5,7 +5,7 @@ import type { DesignToken, TokenFile, TokenGroup } from './types';
 export const TOKEN_FILE_FIELDS = ['schemaVersion', 'projectId', 'tokenGroups'] as const;
 export const TOKEN_GROUP_FIELDS = ['id', 'name', 'description', 'styleRefs', 'notes', 'tokens'] as const satisfies ReadonlyArray<keyof TokenGroup>;
 export const TOKEN_FIELDS = ['id', 'name', 'type', 'value', 'description', 'styleRef'] as const satisfies ReadonlyArray<keyof DesignToken>;
-export const TOKEN_TYPES: ReadonlyArray<DesignToken['type']> = ['color', 'space', 'size', 'radius', 'typography', 'shadow', 'motion'];
+export const TOKEN_TYPES = ['color', 'space', 'size', 'radius', 'typography', 'shadow', 'motion'] as const;
 
 export const TOKEN_LIMITS = {
   groupName: 24,
@@ -48,7 +48,7 @@ export function validateTokenContract(errors: string[], tokens: TokenFile): void
     }
     if ('notes' in group) checkEntries(errors, `${label}.notes`, group.notes, TOKEN_LIMITS.note);
     (Array.isArray(group.tokens) ? group.tokens : []).forEach((token, tokenIndex) => validateToken(errors, label, token, tokenIndex));
-    for (const field of tokenGroupProseFields(group as unknown as TokenGroup)) checkProse(errors, `${label}.${field.path}`, field.text);
+    for (const field of tokenGroupProseFields(group)) checkProse(errors, `${label}.${field.path}`, field.text);
   });
 }
 

@@ -96,7 +96,7 @@ function validateReusable(context: ReusableContext, kind: ReusableKind, item: un
     errors.push(`${label} must be an object. Fix: write it in the reusable shape that AGENTS.md describes.`);
     return;
   }
-  const reusable = item as unknown as ReusableDefinition;
+  const reusable = item as ReusableDefinition;
   checkClosedObject(errors, label, item, REUSABLE_FIELDS);
   const contract = kind === 'primitive' ? basePrimitive(reusable.id) : undefined;
 

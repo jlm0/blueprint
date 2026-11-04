@@ -23,7 +23,7 @@ describe('Blueprint screen frame naming', () => {
 
     const savings = structuredClone(screen);
     savings.name = 'Move money';
-    savings.productionRelationship = { kind: 'existing-route', routePath: '/SAVINGS' };
+    savings.productionRelationship = { kind: 'existing-route', routePath: '/SAVINGS', notes: [] };
     assert.equal(screenFrameLabel(savings), 'Savings · Move money');
 
     const fallback = structuredClone(screen);
