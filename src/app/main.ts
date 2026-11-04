@@ -3732,23 +3732,31 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
   const tokenIndex = createTokenIndex(project);
   const release = mounter.hold();
   try {
-    await Promise.all(layouts.map(async layout => {
-      const key = liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection);
-      const previous = oldFrames.get(key);
-      if (!previous) return;
+    const swaps: Promise<void>[] = [];
+    for (const layout of layouts) {
+      const previous = oldFrames.get(liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection));
+      if (!previous) continue;
+      const replaced = slotScreenFrame(previous);
+      const next = createPrototypeFrame(project, tokenIndex, layout, mounter);
+      if (!replaced?.mounted) {
+        if (replaced) mounter.remove(replaced);
+        previous.replaceWith(next);
+        continue;
+      }
       previous.classList.add('bp-chrome-live-frame-updating');
       previous.setAttribute('aria-busy', 'true');
-      const next = createPrototypeFrame(project, tokenIndex, layout, mounter);
       next.style.visibility = 'hidden';
       state.root.append(next);
       slotScreenFrame(next)?.mount();
-      await waitForPrototypeFrames(next);
-      next.style.removeProperty('visibility');
-      next.classList.add('bp-chrome-live-frame-enter');
-      const replaced = slotScreenFrame(previous);
-      if (replaced) mounter.remove(replaced);
-      previous.replaceWith(next);
-    }));
+      swaps.push(waitForPrototypeFrames(next).then(() => {
+        next.style.removeProperty('visibility');
+        next.classList.add('bp-chrome-live-frame-enter');
+        mounter.remove(replaced);
+        previous.replaceWith(next);
+      }));
+      await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+    }
+    await Promise.all(swaps);
   } finally {
     release();
   }
