@@ -8,6 +8,7 @@ import type {
   InspoFile,
   PrimitiveFile,
   PrototypeSource,
+  PrototypeAsset,
   PrototypeAssetContent,
   ScreenFile,
   ScreenHistoryFile,
@@ -15,7 +16,7 @@ import type {
 } from './types';
 
 /** Preserves one caller-supplied app-owned project without introducing project-manager state. */
-export function createConfiguredProjectBundle(bundle: BlueprintProjectBundle): BlueprintProjectBundle {
+export function createConfiguredProjectBundle<TAsset extends PrototypeAsset>(bundle: BlueprintProjectBundle<TAsset>): BlueprintProjectBundle<TAsset> {
   return bundle;
 }
 

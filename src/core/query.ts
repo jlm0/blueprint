@@ -2,18 +2,19 @@ import { boundaryId, parseBoundarySelector, reference } from './address';
 import { placedBrandMarkIds } from './brand-lint';
 import type {
   BlueprintProjectBundle,
-  DeclaredGroup,
   BoundaryDependency,
   BoundaryKind,
   BoundaryPacket,
   BoundaryReference,
   BoundarySelector,
   ComponentDefinition,
+  DeclaredGroup,
   DeepHandoffPacket,
   DesignToken,
   ExtractionOptions,
   ExtractionPacket,
   PrimitiveDefinition,
+  PrototypeAsset,
   PrototypeRenderDecision,
   PrototypeSource,
   QueryResult,
@@ -24,12 +25,12 @@ import type {
   ScreenDefinition,
   ScreenSection,
   StyleEvidence,
-  TokenUsage,
   TokenGroup,
+  TokenUsage,
   TraversalCycle
 } from './types';
 
-export function listBoundaryReferences(bundle: BlueprintProjectBundle): BoundaryReference[] {
+export function listBoundaryReferences(bundle: BlueprintProjectBundle<PrototypeAsset>): BoundaryReference[] {
   const projectId = bundle.manifest.project.id;
 
   return [
@@ -51,7 +52,7 @@ export interface DeclaredGroupIndex {
 }
 
 /** Declared screen pages and component groups with their members, so an agent can place new work without reading the JSON. */
-export function listDeclaredGroups(bundle: BlueprintProjectBundle): DeclaredGroupIndex {
+export function listDeclaredGroups(bundle: BlueprintProjectBundle<PrototypeAsset>): DeclaredGroupIndex {
   return {
     pages: (bundle.screens.pages ?? []).map(page => ({
       ...page,
@@ -64,7 +65,7 @@ export function listDeclaredGroups(bundle: BlueprintProjectBundle): DeclaredGrou
   };
 }
 
-export function showBoundary(bundle: BlueprintProjectBundle, selectorOrInput: BoundarySelector | string): BoundaryPacket {
+export function showBoundary(bundle: BlueprintProjectBundle<PrototypeAsset>, selectorOrInput: BoundarySelector | string): BoundaryPacket {
   const selector = typeof selectorOrInput === 'string' ? parseQueryBoundarySelector(selectorOrInput) : selectorOrInput;
 
   switch (selector.kind) {
@@ -132,7 +133,7 @@ function parseQueryBoundarySelector(input: string): BoundarySelector {
   return parseBoundarySelector(input);
 }
 
-export function queryUses(bundle: BlueprintProjectBundle, selectorInput: string): QueryResult {
+export function queryUses(bundle: BlueprintProjectBundle<PrototypeAsset>, selectorInput: string): QueryResult {
   const packet = showBoundary(bundle, selectorInput);
   return {
     query: `uses:${selectorInput}`,
@@ -141,7 +142,7 @@ export function queryUses(bundle: BlueprintProjectBundle, selectorInput: string)
   };
 }
 
-export function queryUsedBy(bundle: BlueprintProjectBundle, selectorInput: string): QueryResult {
+export function queryUsedBy(bundle: BlueprintProjectBundle<PrototypeAsset>, selectorInput: string): QueryResult {
   const packet = showBoundary(bundle, selectorInput);
   return {
     query: `used-by:${selectorInput}`,
@@ -150,7 +151,7 @@ export function queryUsedBy(bundle: BlueprintProjectBundle, selectorInput: strin
   };
 }
 
-export function querySections(bundle: BlueprintProjectBundle, screenId: string): QueryResult {
+export function querySections(bundle: BlueprintProjectBundle<PrototypeAsset>, screenId: string): QueryResult {
   const screen = findScreen(bundle, screenId);
   return {
     query: `sections:screen:${screenId}`,
@@ -159,7 +160,7 @@ export function querySections(bundle: BlueprintProjectBundle, screenId: string):
   };
 }
 
-export function queryPrototypeOnly(bundle: BlueprintProjectBundle): QueryResult {
+export function queryPrototypeOnly(bundle: BlueprintProjectBundle<PrototypeAsset>): QueryResult {
   const projectId = bundle.manifest.project.id;
   const primitives = bundle.primitives.primitives
     .filter(primitive => primitive.prototypeOnly)
@@ -179,7 +180,7 @@ export function queryPrototypeOnly(bundle: BlueprintProjectBundle): QueryResult 
 }
 
 export function createExtractionPacket(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   selectorInput: string,
   options: ExtractionOptions = {}
 ): ExtractionPacket {
@@ -191,7 +192,7 @@ export function createExtractionPacket(
   return packet;
 }
 
-function createDeepHandoffPacket(bundle: BlueprintProjectBundle, selectorInput: string): DeepHandoffPacket {
+function createDeepHandoffPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, selectorInput: string): DeepHandoffPacket {
   const selectedPacket = showBoundary(bundle, selectorInput);
   const selected = referenceForPacket(bundle, selectedPacket);
   const boundaries: BoundaryPacket[] = [];
@@ -266,14 +267,14 @@ function createDeepHandoffPacket(bundle: BlueprintProjectBundle, selectorInput: 
 const BRAND_IMPLEMENTATION_HINT =
   'Write interface copy in brand.voice, and render logos from brand.marks sources with an approved variant at or above its minimum size and clear space.';
 
-function brandSourceFiles(bundle: BlueprintProjectBundle): string[] {
+function brandSourceFiles(bundle: BlueprintProjectBundle<PrototypeAsset>): string[] {
   if (!bundle.sourceFiles.brand || !bundle.brand) {
     return [];
   }
   return [bundle.sourceFiles.brand, ...new Set(bundle.brand.marks.map(mark => sidecarPath(bundle, mark.source)))];
 }
 
-function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: BoundaryPacket): BoundaryReference[] {
+function deepDependencyReferences(bundle: BlueprintProjectBundle<PrototypeAsset>, packet: BoundaryPacket): BoundaryReference[] {
   const refs = [...packet.dependencies.uses];
   const localId = localIdFromPacket(packet);
   const projectId = bundle.manifest.project.id;
@@ -289,7 +290,7 @@ function deepDependencyReferences(bundle: BlueprintProjectBundle, packet: Bounda
   return dedupeReferences(refs).sort(compareReferences);
 }
 
-function resolveTokensForPackets(bundle: BlueprintProjectBundle, packets: BoundaryPacket[]): ResolvedToken[] {
+function resolveTokensForPackets(bundle: BlueprintProjectBundle<PrototypeAsset>, packets: BoundaryPacket[]): ResolvedToken[] {
   const tokenRefs = new Set<string>();
   for (const packet of packets) {
     const reusable = reusableForPacket(bundle, packet);
@@ -314,7 +315,7 @@ function resolveTokensForPackets(bundle: BlueprintProjectBundle, packets: Bounda
   });
 }
 
-function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: BoundaryPacket[]): TokenUsage[] {
+function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle<PrototypeAsset>, packets: BoundaryPacket[]): TokenUsage[] {
   const includedBoundaryIds = new Set(packets.map(packet => packet.id));
   const projectId = bundle.manifest.project.id;
   const tokenIndex = createTokenIndex(bundle);
@@ -351,7 +352,7 @@ function resolveTokenUsageForPackets(bundle: BlueprintProjectBundle, packets: Bo
   });
 }
 
-function reusableForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): ReusableDefinition | undefined {
+function reusableForPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, packet: BoundaryPacket): ReusableDefinition | undefined {
   const localId = localIdFromPacket(packet);
   if (packet.kind === 'primitive') {
     return findPrimitive(bundle, localId);
@@ -362,7 +363,7 @@ function reusableForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacke
   return undefined;
 }
 
-function createTokenIndex(bundle: BlueprintProjectBundle): Map<string, ResolvedToken> {
+function createTokenIndex(bundle: BlueprintProjectBundle<PrototypeAsset>): Map<string, ResolvedToken> {
   const tokenIndex = new Map<string, ResolvedToken>();
   for (const group of bundle.tokens.tokenGroups) {
     for (const token of group.tokens) {
@@ -385,7 +386,7 @@ function resolvedToken(groupId: string, token: DesignToken): ResolvedToken {
   };
 }
 
-function tokenGroupPacket(bundle: BlueprintProjectBundle, group: TokenGroup): BoundaryPacket<TokenGroup> {
+function tokenGroupPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, group: TokenGroup): BoundaryPacket<TokenGroup> {
   return packet(bundle, 'token-group', group.id, group, {
     sourceFiles: [bundle.sourceFiles.tokens],
     styleRefs: group.styleRefs,
@@ -398,7 +399,7 @@ function tokenGroupPacket(bundle: BlueprintProjectBundle, group: TokenGroup): Bo
   });
 }
 
-function reusablePacket(bundle: BlueprintProjectBundle, kind: ReusableKind, reusable: ReusableDefinition): BoundaryPacket<ReusableDefinition> {
+function reusablePacket(bundle: BlueprintProjectBundle<PrototypeAsset>, kind: ReusableKind, reusable: ReusableDefinition): BoundaryPacket<ReusableDefinition> {
   return packet(bundle, kind, reusable.id, reusable, {
     sourceFiles: [
       kind === 'primitive' ? bundle.sourceFiles.primitives : bundle.sourceFiles.components,
@@ -424,7 +425,7 @@ function reusablePacket(bundle: BlueprintProjectBundle, kind: ReusableKind, reus
   });
 }
 
-function screenPacket(bundle: BlueprintProjectBundle, screen: ScreenDefinition): BoundaryPacket<ScreenDefinition> {
+function screenPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, screen: ScreenDefinition): BoundaryPacket<ScreenDefinition> {
   return packet(bundle, 'screen', screen.id, screen, {
     sourceFiles: [
       bundle.sourceFiles.manifest,
@@ -449,7 +450,7 @@ function screenPacket(bundle: BlueprintProjectBundle, screen: ScreenDefinition):
 }
 
 function sectionPacket(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   screen: ScreenDefinition,
   section: ScreenSection
 ): BoundaryPacket<ScreenSection> {
@@ -469,7 +470,7 @@ function sectionPacket(
 }
 
 function packet<TData>(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   kind: BoundaryKind,
   localId: string,
   data: TData,
@@ -505,7 +506,7 @@ function packet<TData>(
 }
 
 function prototypeSourceFiles(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   prototype: Pick<PrototypeSource, 'source' | 'styles'>,
   extraRefs: string[] = []
 ): string[] {
@@ -515,7 +516,7 @@ function prototypeSourceFiles(
   return [...new Set(refs.map(sourceRef => sidecarPath(bundle, sourceRef)))];
 }
 
-function sidecarPath(bundle: BlueprintProjectBundle, sourceRef: string): string {
+function sidecarPath(bundle: BlueprintProjectBundle<PrototypeAsset>, sourceRef: string): string {
   return `${bundle.sourceRoot}/${sourceRef.replace(/\\/g, '/').replace(/^\.\//, '')}`;
 }
 
@@ -528,7 +529,7 @@ function styleEvidenceFor(styleRefs: string[], evidence: StyleEvidence[] = []): 
   });
 }
 
-function referenceForPacket(bundle: BlueprintProjectBundle, packet: BoundaryPacket): BoundaryReference {
+function referenceForPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, packet: BoundaryPacket): BoundaryReference {
   const ref = listBoundaryReferences(bundle).find(item => item.id === packet.id);
   if (!ref) {
     throw new Error(`No boundary reference found for packet "${packet.id}".`);
@@ -548,7 +549,7 @@ function compareReferences(left: BoundaryReference, right: BoundaryReference): n
   return left.id.localeCompare(right.id);
 }
 
-function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: Array<BoundaryDependency | ReusableDependency>): BoundaryReference[] {
+function dependenciesToReferences(bundle: BlueprintProjectBundle<PrototypeAsset>, dependencies: Array<BoundaryDependency | ReusableDependency>): BoundaryReference[] {
   return dependencies.map(dependency => {
     if (dependency.kind === 'token-group') {
       const group = findTokenGroup(bundle, dependency.id);
@@ -579,7 +580,7 @@ function dependenciesToReferences(bundle: BlueprintProjectBundle, dependencies: 
   });
 }
 
-function usedBy(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): BoundaryReference[] {
+function usedBy(bundle: BlueprintProjectBundle<PrototypeAsset>, kind: BoundaryKind, localId: string): BoundaryReference[] {
   const projectId = bundle.manifest.project.id;
   const refs: BoundaryReference[] = [];
 
@@ -634,23 +635,23 @@ function dedupeReferences(refs: BoundaryReference[]): BoundaryReference[] {
   });
 }
 
-function findTokenGroup(bundle: BlueprintProjectBundle, id: string): TokenGroup {
+function findTokenGroup(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): TokenGroup {
   return requireItem(bundle.tokens.tokenGroups.find(group => group.id === id), `token-group:${id}`);
 }
 
-function findPrimitive(bundle: BlueprintProjectBundle, id: string): PrimitiveDefinition {
+function findPrimitive(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): PrimitiveDefinition {
   return requireItem(bundle.primitives.primitives.find(primitive => primitive.id === id), `primitive:${id}`);
 }
 
-function findComponent(bundle: BlueprintProjectBundle, id: string): ComponentDefinition {
+function findComponent(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): ComponentDefinition {
   return requireItem(bundle.components.components.find(component => component.id === id), `component:${id}`);
 }
 
-function findScreen(bundle: BlueprintProjectBundle, id: string): ScreenDefinition {
+function findScreen(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): ScreenDefinition {
   return requireItem(bundle.screens.screens.find(screen => screen.id === id), `screen:${id}`);
 }
 
-function findSection(bundle: BlueprintProjectBundle, id: string): { screen: ScreenDefinition; section: ScreenSection } {
+function findSection(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): { screen: ScreenDefinition; section: ScreenSection } {
   const [screenId, sectionId] = id.split('/');
   if (!screenId || !sectionId) {
     throw new Error(`Section selector "${id}" must use screenId/sectionId.`);

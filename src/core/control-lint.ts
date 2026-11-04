@@ -1,4 +1,4 @@
-import type { BlueprintProjectBundle } from './types';
+import type { BlueprintProjectBundle, PrototypeAsset } from './types';
 
 export interface HandBuiltControlIssue {
   boundary: string;
@@ -16,7 +16,7 @@ const ignoredInputTypes = new Set(['hidden', 'file', 'color', 'image']);
  * instead of hand-building the native element, unless the element opts out with
  * `data-blueprint-native="<reason>"`.
  */
-export function lintHandBuiltControls(bundle: BlueprintProjectBundle): HandBuiltControlIssue[] {
+export function lintHandBuiltControls(bundle: BlueprintProjectBundle<PrototypeAsset>): HandBuiltControlIssue[] {
   const primitiveIds = new Set(
     bundle.primitives.primitives.map(primitive => primitive.id)
   );

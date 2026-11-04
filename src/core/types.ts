@@ -514,7 +514,7 @@ export interface StyleEvidence {
   notes?: string[];
 }
 
-export interface BlueprintProjectBundle {
+export interface BlueprintProjectBundle<TAsset extends PrototypeAsset = PrototypeAssetContent> {
   manifest: BlueprintManifest;
   tokens: TokenFile;
   primitives: PrimitiveFile;
@@ -547,7 +547,7 @@ export interface BlueprintProjectBundle {
   /** Serializable source text keyed by sidecar-relative path, including brand mark SVGs, for browser compilation. */
   prototypeSourceContents: Record<string, string>;
   /** Serializable controlled asset data keyed by sidecar-relative path for browser URL rewriting. */
-  prototypeAssetContents: Record<string, PrototypeAssetContent>;
+  prototypeAssetContents: Record<string, TAsset>;
 }
 
 /** Binary-safe controlled asset payload injected into the browser compiler. */
@@ -557,6 +557,22 @@ export interface PrototypeAssetContent {
   /** Base64-encoded bytes; binary assets are never decoded as UTF-8 source text. */
   base64: string;
 }
+
+/** Controlled asset that the review server serves at `/__blueprint/assets/<sha256>`. */
+export interface PrototypeAssetLink {
+  /** Browser media type of the served bytes. */
+  mediaType: string;
+  /** Lowercase hex sha256 of the raw asset bytes. */
+  sha256: string;
+}
+
+export type PrototypeAsset = PrototypeAssetContent | PrototypeAssetLink;
+
+/** Bundle that the review server sends to the canvas: each asset is a link, not its bytes. */
+export type LinkedProjectBundle = BlueprintProjectBundle<PrototypeAssetLink>;
+
+/** Bundle the canvas renders: a served bundle has asset links, a fixture or test bundle has asset bytes. */
+export type CanvasProjectBundle = BlueprintProjectBundle<PrototypeAsset>;
 
 export interface BoundarySelector {
   kind: BoundaryKind;

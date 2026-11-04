@@ -1,6 +1,6 @@
 import { boundaryId } from './address';
 import { listBoundaryReferences } from './query';
-import type { BlueprintProjectBundle, BoardKind, BoundaryKind, BoundaryReference, ScreenSection } from './types';
+import type { BlueprintProjectBundle, BoardKind, BoundaryKind, BoundaryReference, PrototypeAsset, ScreenSection } from './types';
 
 export interface SectionProjectionSummary {
   boundaryId: string;
@@ -119,7 +119,7 @@ export interface CanvasStyleEvidenceArtifact {
   boundaries: CanvasStyleEvidenceEntry[];
 }
 
-export function summarizeScreenSections(bundle: BlueprintProjectBundle, screenId: string): SectionProjectionSummary[] {
+export function summarizeScreenSections(bundle: BlueprintProjectBundle<PrototypeAsset>, screenId: string): SectionProjectionSummary[] {
   const screen = bundle.screens.screens.find(candidate => candidate.id === screenId);
   if (!screen) {
     throw new Error(`Unknown screen "${screenId}".`);
@@ -130,7 +130,7 @@ export function summarizeScreenSections(bundle: BlueprintProjectBundle, screenId
 }
 
 export function validateVisibleBoundaryRecords(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   records: VisibleBoundaryRecord[]
 ): VisibleBoundarySyncResult {
   const references = new Map<string, BoundaryReference>();
@@ -158,7 +158,7 @@ export function validateVisibleBoundaryRecords(
 }
 
 export function createReviewManifest(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   records: VisibleBoundaryRecord[],
   options: ReviewManifestOptions
 ): ReviewManifest {
@@ -195,7 +195,7 @@ export function createReviewManifest(
 }
 
 export function createCanvasStyleEvidence(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   records: VisibleBoundaryRecord[],
   options: CanvasStyleEvidenceOptions = {}
 ): CanvasStyleEvidenceArtifact {
@@ -256,7 +256,7 @@ function createCaptureRecord(options: ReviewManifestOptions): ReviewCaptureRecor
 }
 
 function createPacketLink(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   kind: BoundaryKind,
   localId: string,
   packetToolName: 'extract' | undefined

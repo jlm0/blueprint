@@ -8,12 +8,24 @@ import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-ver
 import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
 import { validateProject } from '../core/validate';
 
-export interface ValidatedProject {
-  bundle?: BlueprintProjectBundle;
-  error?: string;
+export type ValidatedProject = ValidProject | InvalidProject;
+
+export interface ValidProject {
+  bundle: BlueprintProjectBundle;
+  error?: undefined;
   outdatedFiles: BlueprintOutdatedFile[];
-  /** Content hash of a valid bundle, so a reload can tell whether anything changed. */
-  fingerprint?: string;
+  /** Content hash of the bundle, so a reload can tell whether anything changed. */
+  fingerprint: string;
+  /** Lowercase hex sha256 of the raw bytes of each asset, keyed by asset ref. */
+  assetHashes: Record<string, string>;
+}
+
+export interface InvalidProject {
+  bundle?: undefined;
+  error: string;
+  outdatedFiles: BlueprintOutdatedFile[];
+  fingerprint?: undefined;
+  assetHashes?: undefined;
 }
 
 export type ProjectReader = (projectRoot: string) => Promise<ValidatedProject>;
@@ -56,11 +68,19 @@ export async function readValidatedProject(projectRoot: string, steps: ProjectVa
     return {
       bundle,
       outdatedFiles: [],
-      fingerprint: createHash('sha256').update(JSON.stringify(bundle)).digest('hex')
+      fingerprint: createHash('sha256').update(JSON.stringify(bundle)).digest('hex'),
+      assetHashes: hashProjectAssets(bundle)
     };
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error), outdatedFiles };
   }
+}
+
+export function hashProjectAssets(bundle: BlueprintProjectBundle): Record<string, string> {
+  return Object.fromEntries(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [
+    assetRef,
+    createHash('sha256').update(Buffer.from(asset.base64, 'base64')).digest('hex')
+  ]));
 }
 
 function projectValidationWorkerUrl(): URL {

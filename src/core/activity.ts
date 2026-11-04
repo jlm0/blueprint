@@ -1,5 +1,5 @@
 import { boundaryId } from './address';
-import type { BlueprintProjectBundle, BoundaryKind } from './types';
+import type { BlueprintProjectBundle, BoundaryKind, LinkedProjectBundle, PrototypeAsset } from './types';
 
 export type BlueprintAgentActivityPhase = 'started' | 'completed' | 'failed';
 
@@ -54,7 +54,7 @@ export interface BlueprintProjectErrorEvent extends BlueprintProjectLoadError {
 export interface BlueprintProjectSnapshot {
   version: 1;
   revision: string;
-  bundle: BlueprintProjectBundle;
+  bundle: LinkedProjectBundle;
 }
 
 /** Local ID of the project focus that stands for brand.json and its mark sources, matching the canvas Brand page. */
@@ -68,7 +68,7 @@ interface SourceReferenceOwner {
 }
 
 export function activityFocusForBoundary(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   kind: BoundaryKind,
   localId: string
 ): BlueprintAgentActivityFocus {
@@ -86,7 +86,7 @@ export function activityFocusForBoundary(
  * Every boundary whose governed source path appears in free-form tool input.
  * Longer paths are consumed first so a path is never also credited to a shorter one it contains.
  */
-export function activityFocusesForSourceText(bundle: BlueprintProjectBundle, text: string): BlueprintAgentActivityFocus[] {
+export function activityFocusesForSourceText(bundle: BlueprintProjectBundle<PrototypeAsset>, text: string): BlueprintAgentActivityFocus[] {
   let remaining = text.replaceAll('\\', '/');
   const owners: SourceReferenceOwner[] = [];
   const references = [...sourceReferenceOwners(bundle)].sort(([left], [right]) => right.length - left.length);
@@ -99,14 +99,14 @@ export function activityFocusesForSourceText(bundle: BlueprintProjectBundle, tex
 }
 
 export function activityFocusesForChangedPaths(
-  bundle: BlueprintProjectBundle,
+  bundle: BlueprintProjectBundle<PrototypeAsset>,
   changedPaths: string[]
 ): BlueprintAgentActivityFocus[] {
   const references = sourceReferenceOwners(bundle);
   return uniqueFocuses(bundle, changedPaths.flatMap(changedPath => references.get(changedPath.replaceAll('\\', '/')) ?? []));
 }
 
-export function boundaryDisplayName(bundle: BlueprintProjectBundle, kind: BoundaryKind, localId: string): string {
+export function boundaryDisplayName(bundle: BlueprintProjectBundle<PrototypeAsset>, kind: BoundaryKind, localId: string): string {
   if (kind === 'project') {
     if (localId === BRAND_FOCUS_ID) return 'Brand';
     if (localId === INSPO_FOCUS_ID) return 'Inspo';
@@ -134,7 +134,7 @@ export function boundaryDisplayName(bundle: BlueprintProjectBundle, kind: Bounda
   return localId;
 }
 
-function sourceReferenceOwners(bundle: BlueprintProjectBundle): Map<string, SourceReferenceOwner[]> {
+function sourceReferenceOwners(bundle: BlueprintProjectBundle<PrototypeAsset>): Map<string, SourceReferenceOwner[]> {
   const references = new Map<string, SourceReferenceOwner[]>();
   const add = (refs: string[], kind: BoundaryKind, id: string): void => {
     for (const ref of refs) {
@@ -168,7 +168,7 @@ function sourceReferenceOwners(bundle: BlueprintProjectBundle): Map<string, Sour
   return references;
 }
 
-function uniqueFocuses(bundle: BlueprintProjectBundle, owners: SourceReferenceOwner[]): BlueprintAgentActivityFocus[] {
+function uniqueFocuses(bundle: BlueprintProjectBundle<PrototypeAsset>, owners: SourceReferenceOwner[]): BlueprintAgentActivityFocus[] {
   const focuses = new Map<string, BlueprintAgentActivityFocus>();
   for (const owner of owners) {
     const focus = activityFocusForBoundary(bundle, owner.kind, owner.id);

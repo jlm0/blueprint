@@ -4,6 +4,7 @@ import type { CanvasStyleEvidenceArtifact, ReviewManifest, VisibleBoundarySyncRe
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
+  CanvasProjectBundle,
   BrandFile,
   ComponentFile,
   PrimitiveFile,
@@ -188,7 +189,7 @@ export interface CanvasReviewRuntimeState {
 
 declare global {
   interface Window {
-    __BLUEPRINT_PROJECT_BUNDLE__?: BlueprintProjectBundle;
+    __BLUEPRINT_PROJECT_BUNDLE__?: CanvasProjectBundle;
     __BLUEPRINT_REVIEW__?: CanvasReviewRuntimeState;
     __BLUEPRINT_LIVE_RUNTIME__?: { eventsPath: string; snapshotPath: string; selectionPath?: string; canvasToken?: string };
     __BLUEPRINT_AGENT_ACTIVITY__?: BlueprintAgentActivityEvent;
@@ -196,7 +197,7 @@ declare global {
   }
 }
 
-export function loadConfiguredProject(): BlueprintProjectBundle {
+export function loadConfiguredProject(): CanvasProjectBundle {
   if (typeof window !== 'undefined' && window.__BLUEPRINT_PROJECT_BUNDLE__) {
     return createConfiguredProjectBundle(window.__BLUEPRINT_PROJECT_BUNDLE__);
   }

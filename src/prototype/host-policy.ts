@@ -8,6 +8,9 @@ export function applyPrototypeIframeIsolation(target: Pick<HTMLIFrameElement, 's
 
 export const LOOPBACK_HOSTNAME = '127.0.0.1';
 
+/** Review server route prefix that serves each controlled asset by the sha256 of its bytes. */
+export const PROTOTYPE_ASSET_PATH_PREFIX = '/__blueprint/assets/';
+
 export interface BlueprintResponsePolicyOptions {
   contentType: string;
   contentSecurityPolicy?: string;
@@ -40,6 +43,22 @@ export function createBlueprintResponseHeaders(options: BlueprintResponsePolicyO
     ...DEFENSIVE_RESPONSE_HEADERS,
     'Content-Type': options.contentType,
     ...(options.contentSecurityPolicy ? { 'Content-Security-Policy': options.contentSecurityPolicy } : {})
+  };
+}
+
+/**
+ * Headers for one content-addressed asset. Opaque-origin canvas frames load it as an
+ * image (which needs a cross-origin resource policy) or a font (which needs CORS).
+ * The sandbox policy keeps a directly opened SVG asset from running script on the review origin.
+ */
+export function createPrototypeAssetResponseHeaders(mediaType: string): Record<string, string> {
+  return {
+    'Content-Type': mediaType,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': 'cross-origin',
+    'Access-Control-Allow-Origin': '*',
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox"
   };
 }
 

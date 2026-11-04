@@ -1,5 +1,5 @@
 import { parseOpaqueColor, relativeLuminance } from './color';
-import type { BlueprintProjectBundle } from './types';
+import type { BlueprintProjectBundle, PrototypeAsset } from './types';
 
 export interface ContrastIssue {
   groupId: string;
@@ -23,7 +23,7 @@ export const colorRolePairs: ReadonlyArray<{ foreground: string; background: str
  * Checks the declared text-on-fill color role pairs against WCAG 2 contrast minimums.
  * Pairs with a missing, translucent, or non-literal color are skipped.
  */
-export function lintColorContrast(bundle: BlueprintProjectBundle): ContrastIssue[] {
+export function lintColorContrast(bundle: BlueprintProjectBundle<PrototypeAsset>): ContrastIssue[] {
   const colors = new Map<string, { groupId: string; value: string; rgb: [number, number, number] }>();
   for (const group of bundle.tokens.tokenGroups) {
     for (const token of group.tokens) {

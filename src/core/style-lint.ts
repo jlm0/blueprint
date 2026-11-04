@@ -1,4 +1,4 @@
-import type { BlueprintProjectBundle, DesignToken, LocalValueException } from './types';
+import type { BlueprintProjectBundle, DesignToken, LocalValueException, PrototypeAsset } from './types';
 
 export interface LocalStyleValueIssue {
   boundary: string;
@@ -28,7 +28,7 @@ const lengthLiteral = /(?<![\w.#-])-?(?:\d*\.)?\d+(?:px|rem|em)\b/gi;
  * restate a token's length as a literal, unless the literal is declared in `localValueExceptions`.
  * Unique composition lengths stay valid.
  */
-export function lintLocalStyleValues(bundle: BlueprintProjectBundle): LocalStyleValueIssue[] {
+export function lintLocalStyleValues(bundle: BlueprintProjectBundle<PrototypeAsset>): LocalStyleValueIssue[] {
   const issues: LocalStyleValueIssue[] = [];
   const lengthTokens = new Map<string, string>();
   for (const group of bundle.tokens.tokenGroups) {

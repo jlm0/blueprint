@@ -1,6 +1,8 @@
 import type {
   BlueprintProjectBundle,
+  CanvasProjectBundle,
   FramePreset,
+  PrototypeAsset,
   PrototypeUseDeclaration,
   ReusableDefinition,
   ReusableKind,
@@ -9,6 +11,7 @@ import type {
 } from '../core/types';
 import { brandMarkSourceIssues } from '../core/brand-lint';
 import { axisIds } from '../core/reusable-contract';
+import { PROTOTYPE_ASSET_PATH_PREFIX } from './host-policy';
 
 /**
  * Identifies the canonical source boundary to compile.
@@ -36,6 +39,18 @@ export interface CompilePrototypeDocumentOptions {
   size?: string;
   /** Frame preset the screen renders in; exposes its safe-area insets as `--blueprint-safe-area-*`. */
   framePreset?: FramePreset;
+}
+
+/**
+ * Inputs for a live canvas document that loads each linked asset from the review server.
+ * Capture, handoff, and MCP documents use {@linkcode CompilePrototypeDocumentOptions} and stay self-contained.
+ * @see {@linkcode compilePrototypeDocument}
+ */
+export interface CompileLinkedPrototypeDocumentOptions extends Omit<CompilePrototypeDocumentOptions, 'bundle'> {
+  /** Loaded sidecar contract whose assets are review server links, bytes, or both. */
+  bundle: CanvasProjectBundle;
+  /** Exact origin of the review server, such as `http://127.0.0.1:4173`. */
+  assetOrigin: string;
 }
 
 /**
@@ -134,7 +149,7 @@ interface SourceBoundary {
 }
 
 interface CompilerContext {
-  bundle: BlueprintProjectBundle;
+  bundle: CanvasProjectBundle;
   session: CompileSession;
   allowedAssetRefs: Set<string>;
   recorders: FragmentRecord[];
@@ -196,25 +211,76 @@ interface ForwardedInvocationAttributes {
 const SLOT_AUTHOR_ATTRIBUTE = 'data-blueprint-slot-author';
 const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
 
-export const PROTOTYPE_CONTENT_SECURITY_POLICY = [
-  "default-src 'none'",
-  "script-src 'none'",
-  "connect-src 'none'",
-  "img-src data:",
-  "font-src data:",
-  "style-src 'unsafe-inline'",
-  "form-action 'none'",
-  "base-uri 'none'",
-  "object-src 'none'"
-].join('; ');
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+
+type CompileInput = Omit<CompilePrototypeDocumentOptions, 'bundle'> & { bundle: CanvasProjectBundle };
+
+/** How a compiled document refers to its assets: unresolved tokens, data URLs, or review server URLs. */
+type AssetOutput =
+  | { kind: 'tokens' }
+  | { kind: 'inline' }
+  | { kind: 'linked'; assetSource: string };
+
+function prototypeContentSecurityPolicy(assetSource?: string): string {
+  const assets = assetSource ? `data: ${assetSource}` : 'data:';
+  return [
+    "default-src 'none'",
+    "script-src 'none'",
+    "connect-src 'none'",
+    `img-src ${assets}`,
+    `font-src ${assets}`,
+    "style-src 'unsafe-inline'",
+    "form-action 'none'",
+    "base-uri 'none'",
+    "object-src 'none'"
+  ].join('; ');
+}
+
+export const PROTOTYPE_CONTENT_SECURITY_POLICY = prototypeContentSecurityPolicy();
 
 /**
  * Compiles a governed app-owned source graph into a complete no-script document.
+ * With `assetOrigin`, each linked asset resolves to its review server URL and the
+ * document policy admits that asset route; without it, every asset is a data URL.
  *
- * @throws {Error} When a source, state, reusable use, slot, asset, or host policy is invalid.
+ * @throws {Error} When a source, state, reusable use, slot, asset, asset origin, or host policy is invalid.
  */
-export function compilePrototypeDocument(options: CompilePrototypeDocumentOptions): CompiledPrototypeDocument {
-  return compileDocument(options, createCompileSession(), true);
+export function compilePrototypeDocument(
+  options: CompilePrototypeDocumentOptions | CompileLinkedPrototypeDocumentOptions
+): CompiledPrototypeDocument {
+  const output: AssetOutput = 'assetOrigin' in options
+    ? { kind: 'linked', assetSource: reviewServerAssetSource(options.assetOrigin) }
+    : { kind: 'inline' };
+  return compileDocument(options, createCompileSession(), output);
+}
+
+/** URL that loads one asset in a live canvas document or the canvas page itself. */
+export function prototypeAssetUrl(asset: PrototypeAsset, assetOrigin: string): string {
+  return 'sha256' in asset ? linkedAssetUrl(reviewServerAssetSource(assetOrigin), asset.sha256) : assetDataUrl(asset);
+}
+
+function reviewServerAssetSource(origin: string): string {
+  let parsed: URL | undefined;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    parsed = undefined;
+  }
+  if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.origin !== origin) {
+    throw new Error(`Prototype asset origin "${origin}" must be an exact http or https origin, such as http://127.0.0.1:4173.`);
+  }
+  return `${origin}${PROTOTYPE_ASSET_PATH_PREFIX}`;
+}
+
+function linkedAssetUrl(assetSource: string, sha256: string): string {
+  if (!SHA256_PATTERN.test(sha256)) {
+    throw new Error(`Prototype asset hash "${sha256}" must be 64 lowercase hex characters.`);
+  }
+  return `${assetSource}${sha256}`;
+}
+
+function assetDataUrl(asset: { mediaType: string; base64: string }): string {
+  return `data:${asset.mediaType};base64,${asset.base64}`;
 }
 
 function createCompileSession(): CompileSession {
@@ -224,7 +290,7 @@ function createCompileSession(): CompileSession {
   };
 }
 
-function compileDocument(options: CompilePrototypeDocumentOptions, session: CompileSession, inlineAssets: boolean): CompiledPrototypeDocument {
+function compileDocument(options: CompileInput, session: CompileSession, output: AssetOutput): CompiledPrototypeDocument {
   assertIsolatedHostPolicy(options.bundle);
   const boundary = resolveBoundary(options.bundle, options.target);
   const state = resolveState(boundary, options.state);
@@ -255,7 +321,7 @@ function compileDocument(options: CompilePrototypeDocumentOptions, session: Comp
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(PROTOTYPE_CONTENT_SECURITY_POLICY)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(output.kind === 'linked' ? prototypeContentSecurityPolicy(output.assetSource) : PROTOTYPE_CONTENT_SECURITY_POLICY)}">`,
     `<title>${escapeHtml(title)}</title>`,
     `<style data-blueprint-app-styles>${safeStyleText(baseDocumentCss())}\n${safeStyleText(safeAreaCss(options.framePreset))}\n${safeStyleText(specimenCanvasCss(options.bundle, boundary))}\n${safeStyleText(appCss)}</style>`,
     `<style data-blueprint-token-overrides>${safeStyleText(tokenCss)}</style>`,
@@ -265,7 +331,7 @@ function compileDocument(options: CompilePrototypeDocumentOptions, session: Comp
   ].join('');
 
   return {
-    html: inlineAssets ? inlineAssetTokens(context, html) : html,
+    html: resolveAssetTokens(context, html, output),
     targetBoundaryId,
     state,
     observedUses: context.observedUses,
@@ -277,7 +343,7 @@ function compileDocument(options: CompilePrototypeDocumentOptions, session: Comp
  * Compiles every declared canonical boundary/state without a browser so validation,
  * readiness, the canvas, and MCP share one governed-source contract.
  */
-export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): PrototypeSourceGraphIssue[] {
+export function inspectPrototypeSourceGraph(bundle: CanvasProjectBundle): PrototypeSourceGraphIssue[] {
   const targets: Array<{ target: PrototypeCompileTarget; state: string }> = [];
   for (const primitive of bundle.primitives.primitives) {
     if (primitive.prototype) {
@@ -304,7 +370,7 @@ export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): Pro
   const session = createCompileSession();
   for (const candidate of targets) {
     try {
-      compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, false);
+      compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, { kind: 'tokens' });
     } catch (error) {
       const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
       issues.push({
@@ -590,7 +656,7 @@ function markSlotAuthor(markup: string, author: string, nested = false): string 
  * credit; otherwise the reusable belongs to the boundary that wrote the slot content.
  */
 function creditedBoundary(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   container: SourceBoundary,
   slotAuthor: string | undefined,
   use: PrototypeUseDeclaration
@@ -625,7 +691,7 @@ function sectionMarkerPattern(): RegExp {
   return /<([a-zA-Z][\w:-]*)(\s[^>]*?\bdata-blueprint-section\s*=\s*(['"])(.*?)\3[^>]*)>/g;
 }
 
-function applySectionMetadata(bundle: BlueprintProjectBundle, boundary: SourceBoundary, fragment: string): string {
+function applySectionMetadata(bundle: CanvasProjectBundle, boundary: SourceBoundary, fragment: string): string {
   const sectionIds = new Set(bundle.screens.screens.find(screen => screen.id === boundary.id)?.sections.map(section => section.id) ?? []);
   const marked = new Set<string>();
   return fragment.replace(sectionMarkerPattern(), (_tag, tagName: string, attributes: string, _quote: string, sectionId: string) => {
@@ -641,7 +707,7 @@ function applySectionMetadata(bundle: BlueprintProjectBundle, boundary: SourceBo
   });
 }
 
-function resolveBoundary(bundle: BlueprintProjectBundle, target: PrototypeCompileTarget): SourceBoundary {
+function resolveBoundary(bundle: CanvasProjectBundle, target: PrototypeCompileTarget): SourceBoundary {
   if (target.kind === 'primitive') {
     const primitive = bundle.primitives.primitives.find(candidate => candidate.id === target.id);
     if (!primitive) {
@@ -723,7 +789,7 @@ function resolveState(boundary: SourceBoundary, requestedState: string | undefin
   return declared;
 }
 
-function assertIsolatedHostPolicy(bundle: BlueprintProjectBundle): void {
+function assertIsolatedHostPolicy(bundle: CanvasProjectBundle): void {
   const policy = bundle.manifest.prototypeHost;
   if (!policy || policy.network !== 'deny' || policy.scripts !== 'none') {
     throw new Error('Canonical prototype compilation requires prototypeHost.network="deny" and prototypeHost.scripts="none".');
@@ -792,11 +858,15 @@ function assetToken(context: CompilerContext, sourceRef: string, value: string):
   return `${tokens.prefix}${index}-`;
 }
 
-function inlineAssetTokens(context: CompilerContext, html: string): string {
+function resolveAssetTokens(context: CompilerContext, html: string, output: AssetOutput): string {
+  if (output.kind === 'tokens') return html;
   const { prefix, refs } = context.session.assetTokens;
   return html.replace(new RegExp(`${escapeRegExp(prefix)}(\\d+)-`, 'g'), (_token, index: string) => {
-    const asset = context.bundle.prototypeAssetContents[refs[Number(index)]];
-    return `data:${asset.mediaType};base64,${asset.base64}`;
+    const assetRef = refs[Number(index)];
+    const asset = context.bundle.prototypeAssetContents[assetRef];
+    if ('base64' in asset) return assetDataUrl(asset);
+    if (output.kind === 'linked') return linkedAssetUrl(output.assetSource, asset.sha256);
+    throw new Error(`Prototype asset "${assetRef}" is a review server link, so a self-contained document cannot inline it.`);
   });
 }
 
@@ -837,7 +907,7 @@ function resolveRelativeRef(sourceRef: string, value: string): string {
   return parts.join('/');
 }
 
-function createTokenCss(bundle: BlueprintProjectBundle): string {
+function createTokenCss(bundle: CanvasProjectBundle): string {
   const declarations: string[] = [];
   const seen = new Set<string>();
   for (const group of bundle.tokens.tokenGroups) {
@@ -1263,7 +1333,7 @@ function renderBrandMark(
   return `<svg${rootAttributes}>${svg.slice(rootEnd + 1)}`;
 }
 
-function colorTokenStyleRef(bundle: BlueprintProjectBundle, ref: string, markId: string): string {
+function colorTokenStyleRef(bundle: CanvasProjectBundle, ref: string, markId: string): string {
   const separator = ref.indexOf('.');
   const token = bundle.tokens.tokenGroups
     .find(group => group.id === ref.slice(0, separator))
@@ -1420,7 +1490,7 @@ function assertNoExecutableMarkup(source: string, sourceRef: string): void {
   }
 }
 
-function requireSource(bundle: BlueprintProjectBundle, sourceRef: string, label: string): string {
+function requireSource(bundle: CanvasProjectBundle, sourceRef: string, label: string): string {
   const source = bundle.prototypeSourceContents[sourceRef];
   if (source === undefined) {
     throw new Error(`${label} "${sourceRef}" is missing from the loaded bundle.`);
@@ -1428,7 +1498,7 @@ function requireSource(bundle: BlueprintProjectBundle, sourceRef: string, label:
   return source;
 }
 
-function boundaryId(bundle: BlueprintProjectBundle, boundary: Pick<SourceBoundary, 'kind' | 'id'>): string {
+function boundaryId(bundle: CanvasProjectBundle, boundary: Pick<SourceBoundary, 'kind' | 'id'>): string {
   return `${bundle.manifest.project.id}/${boundary.kind}/${boundary.id}`;
 }
 
@@ -1452,7 +1522,7 @@ function baseDocumentCss(): string {
  * Primitive specimens review on the app's own canvas color so the board stage
  * and the compiled document paint one seamless surface; screens paint their own.
  */
-function specimenCanvasCss(bundle: BlueprintProjectBundle, boundary: SourceBoundary): string {
+function specimenCanvasCss(bundle: CanvasProjectBundle, boundary: SourceBoundary): string {
   if (boundary.kind !== 'primitive' && boundary.kind !== 'component') {
     return '';
   }

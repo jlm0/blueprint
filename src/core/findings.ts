@@ -4,7 +4,7 @@ import { primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primiti
 import { contrastMessage, lintColorContrast } from './contrast-lint';
 import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
 import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
-import type { BlueprintProjectBundle, BoundaryKind, ScreenDefinition } from './types';
+import type { BlueprintProjectBundle, BoundaryKind, PrototypeAsset, ScreenDefinition } from './types';
 
 export interface DesignFinding {
   boundaryId: string;
@@ -16,7 +16,7 @@ export interface DesignFinding {
 }
 
 /** Governance findings that point at a specific boundary and can be fixed in its own source. */
-export function collectDesignFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
+export function collectDesignFindings(bundle: BlueprintProjectBundle<PrototypeAsset>): DesignFinding[] {
   const projectId = bundle.manifest.project.id;
   const finding = (label: string, rule: DesignFinding['rule'], location: string, message: string): DesignFinding => {
     const divider = label.indexOf('.');
@@ -57,7 +57,7 @@ export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
   return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>".`;
 }
 
-export function unmarkedSectionIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition): string[] {
+export function unmarkedSectionIds(bundle: BlueprintProjectBundle<PrototypeAsset>, screen: ScreenDefinition): string[] {
   const source = bundle.prototypeSourceContents[screen.prototype.source];
   if (source === undefined) return [];
   const marked = new Set(findSectionMarkers(source));

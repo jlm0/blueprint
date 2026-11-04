@@ -21,6 +21,7 @@ import type {
   InspoDirection,
   InspoEntry,
   InspoFile,
+  LinkedProjectBundle,
   ScreenDefinition,
   ScreenHistoryEntry,
   ValidationResult
@@ -75,7 +76,12 @@ import {
 } from '../prototype/review';
 import { assertChromiumExecutableAvailable, createChromiumDependencyError } from '../prototype/browser-preflight';
 import { installPrototypeNetworkGuard } from '../prototype/network-guard';
-import { createBlueprintResponseHeaders, evaluateLoopbackHost } from '../prototype/host-policy';
+import {
+  createBlueprintResponseHeaders,
+  createPrototypeAssetResponseHeaders,
+  evaluateLoopbackHost,
+  PROTOTYPE_ASSET_PATH_PREFIX
+} from '../prototype/host-policy';
 import { compilePrototypeDocument, PROTOTYPE_CONTENT_SECURITY_POLICY } from '../prototype/compiler';
 import {
   BLUEPRINT_ACTIVITY_POST_PATH,
@@ -142,6 +148,7 @@ import {
 const watcherDebounceMs = 120;
 const INSPO_GITIGNORE = '*\n!.gitignore\n';
 const INSPO_IMAGE_ROUTE = /^\/__blueprint\/inspo\/([a-z0-9]+(?:-[a-z0-9]+)*\.(?:png|jpg|webp|gif))$/;
+const PROTOTYPE_ASSET_HASH = /^[0-9a-f]{64}$/;
 const watcherEventGraceMs = 200;
 const watcherSettleTimeoutMs = 5_000;
 
@@ -1647,7 +1654,7 @@ async function startServeServer(
         return;
       }
       const snapshot = await snapshots.settled();
-      if (!snapshot.bundle) {
+      if (!snapshot.linkedBundle) {
         response.writeHead(503, createBlueprintResponseHeaders({ contentType: 'application/problem+json; charset=utf-8' }));
         response.end(JSON.stringify({ message: snapshot.error ?? 'Blueprint project is unavailable.' }));
         return;
@@ -1656,8 +1663,29 @@ async function startServeServer(
       response.end(JSON.stringify({
         version: 1,
         revision: snapshot.revision,
-        bundle: snapshot.bundle
+        bundle: snapshot.linkedBundle
       }));
+      return;
+    }
+
+    if (pathname.startsWith(PROTOTYPE_ASSET_PATH_PREFIX)) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.writeHead(405, createBlueprintResponseHeaders({
+          contentType: 'text/plain; charset=utf-8',
+          additionalHeaders: { Allow: 'GET, HEAD' }
+        }));
+        response.end('Method not allowed');
+        return;
+      }
+      const sha256 = pathname.slice(PROTOTYPE_ASSET_PATH_PREFIX.length);
+      const asset = PROTOTYPE_ASSET_HASH.test(sha256) ? snapshots.asset(sha256) : undefined;
+      if (!asset) {
+        response.writeHead(404, createBlueprintResponseHeaders({ contentType: 'text/plain; charset=utf-8' }));
+        response.end('Not found');
+        return;
+      }
+      response.writeHead(200, createPrototypeAssetResponseHeaders(asset.mediaType));
+      response.end(request.method === 'HEAD' ? undefined : Buffer.from(asset.base64, 'base64'));
       return;
     }
 
@@ -1732,13 +1760,13 @@ async function startServeServer(
 
     if (pathname === '/index.html') {
       const snapshot = await snapshots.settled();
-      if (!snapshot.bundle) {
+      if (!snapshot.linkedBundle) {
         response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
         response.end(createServeErrorHtml(snapshot.error ?? 'Unable to load Blueprint project.', snapshot.outdatedFiles));
         return;
       }
       response.writeHead(200, createBlueprintResponseHeaders({ contentType: 'text/html; charset=utf-8' }));
-      response.end(injectProjectBundle(indexHtml, snapshot.bundle, snapshot.error === undefined ? undefined : { message: snapshot.error, outdatedFiles: snapshot.outdatedFiles }, canvasToken));
+      response.end(injectProjectBundle(indexHtml, snapshot.linkedBundle, snapshot.error === undefined ? undefined : { message: snapshot.error, outdatedFiles: snapshot.outdatedFiles }, canvasToken));
       return;
     }
 
@@ -1802,7 +1830,7 @@ async function startServeServer(
 
 function injectProjectBundle(
   indexHtml: string,
-  bundle: Awaited<ReturnType<typeof loadProjectFromFs>>,
+  bundle: LinkedProjectBundle,
   loadError: BlueprintProjectLoadError | undefined,
   canvasToken: string
 ): string {

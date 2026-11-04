@@ -1,8 +1,8 @@
 import { activityFocusForBoundary, BRAND_FOCUS_ID, INSPO_FOCUS_ID, type BlueprintAgentActivityFocus } from './activity';
-import type { BlueprintProjectBundle, BoundaryKind } from './types';
+import type { BlueprintProjectBundle, BoundaryKind, PrototypeAsset } from './types';
 
 /** Boundaries whose declaration or owned prototype files differ between two snapshots; removed boundaries are omitted. */
-export function changedBoundaries(previous: BlueprintProjectBundle, next: BlueprintProjectBundle): BlueprintAgentActivityFocus[] {
+export function changedBoundaries(previous: BlueprintProjectBundle<PrototypeAsset>, next: BlueprintProjectBundle<PrototypeAsset>): BlueprintAgentActivityFocus[] {
   const changed: BlueprintAgentActivityFocus[] = [];
   const compare = <T extends { id: string }>(kind: BoundaryKind, before: T[], after: T[], files: (item: T) => string[]): void => {
     const priorById = new Map(before.map(item => [item.id, item]));
@@ -32,11 +32,11 @@ export function changedBoundaries(previous: BlueprintProjectBundle, next: Bluepr
   return changed;
 }
 
-function brandFingerprint(bundle: BlueprintProjectBundle): string {
+function brandFingerprint(bundle: BlueprintProjectBundle<PrototypeAsset>): string {
   const marks = bundle.brand?.marks ?? [];
   return JSON.stringify([bundle.brand ?? null, marks.map(mark => bundle.prototypeSourceContents[mark.source] ?? null)]);
 }
 
-function boundaryFingerprint(bundle: BlueprintProjectBundle, declaration: unknown, files: string[]): string {
+function boundaryFingerprint(bundle: BlueprintProjectBundle<PrototypeAsset>, declaration: unknown, files: string[]): string {
   return JSON.stringify([declaration, files.map(file => bundle.prototypeSourceContents[file] ?? null)]);
 }

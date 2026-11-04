@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { BlueprintOutdatedFile } from '../core/activity';
-import type { BlueprintProjectBundle } from '../core/types';
-import { loadValidatedProject, type ProjectReader, type ValidatedProject } from './project-validation';
+import type { BlueprintProjectBundle, LinkedProjectBundle, PrototypeAssetContent } from '../core/types';
+import { loadValidatedProject, type ProjectReader, type ValidatedProject, type ValidProject } from './project-validation';
 
 export interface ServeProjectSnapshot {
   revision: string;
   bundle?: BlueprintProjectBundle;
+  /** The bundle the canvas receives: each asset is a review server link, not its bytes. */
+  linkedBundle?: LinkedProjectBundle;
   error?: string;
   outdatedFiles: BlueprintOutdatedFile[];
 }
@@ -22,6 +24,7 @@ export class ServeProjectSnapshots {
   readonly #options: ServeProjectSnapshotOptions;
   readonly #changedPaths = new Set<string>();
   #current: ServeProjectSnapshot = { revision: randomUUID(), outdatedFiles: [] };
+  #assets = new Map<string, PrototypeAssetContent>();
   #fingerprint: string | undefined;
   #announcedError: string | undefined;
   #timer: NodeJS.Timeout | undefined;
@@ -40,14 +43,23 @@ export class ServeProjectSnapshots {
     return this.#current;
   }
 
+  /** The bytes of one asset in the current snapshot, by the sha256 of those bytes. */
+  asset(sha256: string): PrototypeAssetContent | undefined {
+    return this.#assets.get(sha256);
+  }
+
   get busy(): boolean {
     return !this.#started || this.#timer !== undefined || this.#reloading !== undefined;
   }
 
   async start(validated?: ValidatedProject): Promise<ServeProjectSnapshot> {
-    const { fingerprint, ...initial } = validated ?? await this.#read();
-    this.#current = { revision: this.#current.revision, ...initial };
-    if (initial.error === undefined) this.#fingerprint = fingerprint;
+    const initial = validated ?? await this.#read();
+    if (initial.error === undefined) {
+      this.#publish(this.#current.revision, initial);
+      this.#fingerprint = initial.fingerprint;
+    } else {
+      this.#current = { revision: this.#current.revision, error: initial.error, outdatedFiles: initial.outdatedFiles };
+    }
     this.#started = true;
     this.#releaseWhenIdle();
     return this.#current;
@@ -91,23 +103,29 @@ export class ServeProjectSnapshots {
 
   async #reload(): Promise<void> {
     const covered = [...this.#changedPaths];
-    const { fingerprint, ...next } = await this.#read();
+    const next = await this.#read();
     if (this.#closed) return;
     if (next.error !== undefined) {
-      this.#current = { ...next, revision: this.#current.revision, bundle: this.#current.bundle };
+      const { bundle, linkedBundle, revision } = this.#current;
+      this.#current = { revision, bundle, linkedBundle, error: next.error, outdatedFiles: next.outdatedFiles };
       if (next.error !== this.#announcedError) {
         this.#announcedError = next.error;
         this.#options.onFailed({ message: next.error, outdatedFiles: next.outdatedFiles });
       }
       return;
     }
-    const changed = fingerprint !== this.#fingerprint || this.#announcedError !== undefined;
+    const changed = next.fingerprint !== this.#fingerprint || this.#announcedError !== undefined;
     const changedPaths = [...this.#changedPaths].sort();
     for (const changedPath of covered) this.#changedPaths.delete(changedPath);
-    this.#fingerprint = fingerprint;
+    this.#fingerprint = next.fingerprint;
     this.#announcedError = undefined;
-    this.#current = { revision: changed ? randomUUID() : this.#current.revision, ...next };
+    this.#publish(changed ? randomUUID() : this.#current.revision, next);
     if (changed) this.#options.onChanged({ revision: this.#current.revision, changedPaths });
+  }
+
+  #publish(revision: string, { bundle, assetHashes, outdatedFiles }: ValidProject): void {
+    this.#assets = new Map(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [assetHashes[assetRef], asset]));
+    this.#current = { revision, bundle, linkedBundle: linkProjectAssets(bundle, assetHashes), outdatedFiles };
   }
 
   #read(): Promise<ValidatedProject> {
@@ -123,4 +141,15 @@ export class ServeProjectSnapshots {
     this.#waiters = [];
     for (const resolve of waiters) resolve();
   }
+}
+
+/** Replaces the bytes of each asset with a link to its review server route. */
+export function linkProjectAssets(bundle: BlueprintProjectBundle, assetHashes: Readonly<Record<string, string>>): LinkedProjectBundle {
+  return {
+    ...bundle,
+    prototypeAssetContents: Object.fromEntries(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [
+      assetRef,
+      { mediaType: asset.mediaType, sha256: assetHashes[assetRef] }
+    ]))
+  };
 }

@@ -33,7 +33,7 @@ import {
   validateVisibleBoundaryRecords
 } from '../core/review';
 import type {
-  BlueprintProjectBundle,
+  CanvasProjectBundle,
   BoardDefinition,
   BoundaryKind,
   BrandFile,
@@ -73,12 +73,14 @@ import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
   findSectionMarkers,
+  prototypeAssetUrl,
   selectPrototypeReviewCondition,
   type CompiledPrototypeDocument,
   type PrototypeReviewSelectionRequest,
   type SelectedPrototypeReviewCondition
 } from '../prototype/compiler';
 import { applyPrototypeIframeIsolation } from '../prototype/host-policy';
+import { withAssetBytes } from './prototype-assets';
 
 type BoardId = 'primitives' | 'screens';
 
@@ -104,7 +106,7 @@ interface BoardConfig {
 interface BoardContext {
   root: HTMLElement;
   canvas: CanvasController;
-  project: BlueprintProjectBundle;
+  project: CanvasProjectBundle;
 }
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -136,7 +138,7 @@ const CHROME_THEME_PROPERTIES = [
   '--bp-chrome-font-mono'
 ];
 
-let changeBaseline: { bundle: BlueprintProjectBundle; activityKey: string | undefined } | undefined;
+let changeBaseline: { bundle: CanvasProjectBundle; activityKey: string | undefined } | undefined;
 let latestChanges: BlueprintAgentActivityFocus[] = [];
 
 let project = loadConfiguredProject();
@@ -371,7 +373,7 @@ const activeItemBySection = new Map<DocumentSectionId, string>();
 const requestedItem = new URLSearchParams(location.search).get('item');
 if (requestedItem) activeItemBySection.set(activeSection, requestedItem);
 
-function declaredScreenPages(bundle: BlueprintProjectBundle): DeclaredGroup[] {
+function declaredScreenPages(bundle: CanvasProjectBundle): DeclaredGroup[] {
   return bundle.screens.pages ?? [];
 }
 
@@ -384,7 +386,7 @@ function requestedDocumentSection(): DocumentSectionId | undefined {
   return DOCUMENT_SECTIONS.find(candidate => candidate === section);
 }
 
-function sectionItems(bundle: BlueprintProjectBundle, section: DocumentSectionId): SectionItem[] {
+function sectionItems(bundle: CanvasProjectBundle, section: DocumentSectionId): SectionItem[] {
   if (section === 'foundations') {
     return [
       ...(bundle.inspo ? [{ id: INSPO_ITEM_ID, label: 'Inspo', boundaryKind: 'project' as const }] : []),
@@ -416,7 +418,7 @@ function sectionItems(bundle: BlueprintProjectBundle, section: DocumentSectionId
   }));
 }
 
-function activeItem(bundle: BlueprintProjectBundle, section: DocumentSectionId): SectionItem | undefined {
+function activeItem(bundle: CanvasProjectBundle, section: DocumentSectionId): SectionItem | undefined {
   const items = sectionItems(bundle, section);
   const remembered = activeItemBySection.get(section);
   return items.find(item => item.id === remembered) ?? items[0];
@@ -904,7 +906,7 @@ function mountDocumentBoard({ root, project: bundle }: BoardContext): BoardMount
 }
 
 function createDocumentItemPage(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   tokenIndex: TokenIndex,
   section: DocumentSectionId,
   itemId: string
@@ -1086,7 +1088,7 @@ const BRAND_ROLE_LABELS: Record<BrandMark['role'], string> = {
   'app-icon': 'App icon'
 };
 
-function createBrandPage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, brand: BrandFile): HTMLElement {
+function createBrandPage(bundle: CanvasProjectBundle, tokenIndex: TokenIndex, brand: BrandFile): HTMLElement {
   const marks = brand.marks ?? [];
   const badges = [el('span', 'bp-chrome-doc-fact', `${marks.length} ${marks.length === 1 ? 'mark' : 'marks'}`)];
   const { page, body } = createDocumentPage('Foundations', brand.name, brand.tagline ?? '', badges);
@@ -1124,7 +1126,7 @@ function createBrandPage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex,
   return page;
 }
 
-function createBrandMarkSpecimen(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, mark: BrandMark): HTMLElement {
+function createBrandMarkSpecimen(bundle: CanvasProjectBundle, tokenIndex: TokenIndex, mark: BrandMark): HTMLElement {
   const specimen = el('div', 'bp-chrome-brand-mark');
   specimen.dataset.brandMark = mark.id;
   const head = el('div', 'bp-chrome-brand-mark-head');
@@ -1227,7 +1229,7 @@ function createBrandExamples(doItems: string[], dontItems: string[], quoted: boo
   return examples;
 }
 
-function createFoundationPage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, group: TokenGroup): HTMLElement {
+function createFoundationPage(bundle: CanvasProjectBundle, tokenIndex: TokenIndex, group: TokenGroup): HTMLElement {
   const { page, body } = createDocumentPage('Foundations', group.name, group.description);
   setBoundary(page, 'token-group', group.id, bundle.manifest.project.id, group.name);
   page.dataset.boundarySummary = group.description;
@@ -1365,7 +1367,7 @@ function singleLength(value: string): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-function createReusablePage(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, kind: ReusableKind, reusable: ReusableDefinition): HTMLElement {
+function createReusablePage(bundle: CanvasProjectBundle, tokenIndex: TokenIndex, kind: ReusableKind, reusable: ReusableDefinition): HTMLElement {
   const groupName = kind === 'primitive'
     ? primitiveGroupName(reusable.group) ?? 'Other'
     : bundle.components.groups.find(group => group.id === reusable.group)?.name ?? reusable.group;
@@ -1444,7 +1446,7 @@ function createPlatformBadge(platforms: readonly Platform[]): HTMLElement {
   return badge;
 }
 
-function createBuiltFromSection(bundle: BlueprintProjectBundle, tokenIndex: TokenIndex, reusable: ReusableDefinition): HTMLElement {
+function createBuiltFromSection(bundle: CanvasProjectBundle, tokenIndex: TokenIndex, reusable: ReusableDefinition): HTMLElement {
   const rows: Array<[string, HTMLElement[]]> = [
     ['Primitives', reusable.uses.filter(use => use.kind === 'primitive').map(use => createDocumentLink(
       bundle.primitives.primitives.find(candidate => candidate.id === use.id)?.name ?? use.id, use.reason, 'primitives', use.id
@@ -1479,7 +1481,7 @@ const SLOT_ACCEPT_LABELS: Record<(typeof SLOT_CONTENT_ACCEPTS)[number], string> 
   'brand-mark': 'Brand mark'
 };
 
-function createSlotAccepts(bundle: BlueprintProjectBundle, accepts: string[]): HTMLElement {
+function createSlotAccepts(bundle: CanvasProjectBundle, accepts: string[]): HTMLElement {
   const list = el('div', 'bp-chrome-doc-chips');
   for (const accept of accepts) {
     const [kind, id] = accept.split(':');
@@ -1533,7 +1535,7 @@ function createReusableCell(context: SpecimenContext, variant: string, size: str
     return item;
   }
   try {
-    const compiled = compilePrototypeDocument({ bundle, target: { kind, id: reusable.id }, state: state.id, variant, size });
+    const compiled = compilePrototypeDocument({ bundle, target: { kind, id: reusable.id }, state: state.id, variant, size, assetOrigin: location.origin });
     const iframe = document.createElement('iframe');
     iframe.className = kind === 'primitive' ? 'canonical-primitive-iframe' : 'canonical-primitive-iframe component-preview-iframe';
     applyPrototypeIframeIsolation(iframe);
@@ -1616,7 +1618,7 @@ function measureComponentPreview(html: string, width: number, done: (size: { wid
   document.body.append(probe);
 }
 
-function componentPreviewWidth(bundle: BlueprintProjectBundle, componentId: string): number {
+function componentPreviewWidth(bundle: CanvasProjectBundle, componentId: string): number {
   const users = new Set([componentId]);
   for (const component of bundle.components.components) {
     if (component.uses.some(use => use.kind === 'component' && use.id === componentId)) users.add(component.id);
@@ -1654,7 +1656,7 @@ interface FamilyGroup {
 }
 
 interface SpecimenContext {
-  bundle: BlueprintProjectBundle;
+  bundle: CanvasProjectBundle;
   kind: ReusableKind;
   reusable: ReusableDefinition;
   width: number;
@@ -1700,7 +1702,7 @@ function groupPrimitivesForNavigation(primitives: PrimitiveDefinition[]): Array<
   });
 }
 
-function createTokenIndex(bundle: BlueprintProjectBundle): TokenIndex {
+function createTokenIndex(bundle: CanvasProjectBundle): TokenIndex {
   const byRef = new Map<string, TokenRecord>();
   const byStyleRef = new Map<string, TokenRecord>();
   const byGroup = new Map<string, TokenGroup>();
@@ -1805,7 +1807,7 @@ function createContrastPairs(tokenIndex: TokenIndex): HTMLElement | undefined {
   return section;
 }
 
-function findTokenValue(bundle: BlueprintProjectBundle, tokenIds: string[]): string | undefined {
+function findTokenValue(bundle: CanvasProjectBundle, tokenIds: string[]): string | undefined {
   const colorGroup = bundle.tokens.tokenGroups.find(group => group.id === 'color');
   for (const id of tokenIds) {
     const token = colorGroup?.tokens.find(candidate => candidate.id === id);
@@ -2064,7 +2066,7 @@ function createScreenFrameMounter(root: HTMLElement): FrameMounter {
 function mountHistoryScreens(
   root: HTMLElement,
   boardCanvas: CanvasController,
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screenId: string,
   request: PrototypeReviewSelectionRequest
 ): BoardMount {
@@ -2251,7 +2253,7 @@ function screenPrototypeForComparison(screen: ScreenDefinition): ExplorationProt
 function mountExplorationScreens(
   root: HTMLElement,
   boardCanvas: CanvasController,
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   explorationId: string
 ): BoardMount {
   root.dataset.canvasMode = 'exploration';
@@ -2361,10 +2363,10 @@ function mountExplorationScreens(
 }
 
 function createExplorationCompileBundle(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   prototype: ExplorationPrototypeSource
-): BlueprintProjectBundle {
+): CanvasProjectBundle {
   if (!screen.prototype) {
     return bundle;
   }
@@ -2387,7 +2389,7 @@ function createExplorationCompileBundle(
 }
 
 interface ExplorationFrameOptions {
-  bundle: BlueprintProjectBundle;
+  bundle: CanvasProjectBundle;
   screen: ScreenDefinition;
   preset: FramePreset;
   selection: SelectedPrototypeReviewCondition;
@@ -2473,7 +2475,7 @@ function createExplorationPrototypeFrame(options: ExplorationFrameOptions): HTML
 }
 
 function createExplorationPrototypeScreen(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   preset: FramePreset,
   selection: SelectedPrototypeReviewCondition,
@@ -2545,7 +2547,7 @@ function routeGroupOf(screen: ScreenDefinition): string {
 }
 
 function layoutScreenFrames(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   request: PrototypeReviewSelectionRequest,
   pageFilter?: string
 ): ScreenFrameLayout[] {
@@ -2617,7 +2619,7 @@ const PHONE_BEZEL = 11;
 const BROWSER_BAR_HEIGHT = 48;
 
 function resolveScreenFrameVariants(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   request: PrototypeReviewSelectionRequest
 ): Array<{
@@ -2649,7 +2651,7 @@ function resolveScreenFrameVariants(
 }
 
 function resolveScreenFrame(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   request: PrototypeReviewSelectionRequest
 ): {
@@ -2673,7 +2675,7 @@ function resolveScreenFrame(
   }
 }
 
-function resolveFramePreset(bundle: BlueprintProjectBundle, screen: ScreenDefinition): FramePreset {
+function resolveFramePreset(bundle: CanvasProjectBundle, screen: ScreenDefinition): FramePreset {
   return (
     bundle.manifest.framePresets.find(preset => preset.id === screen.framePresetId) ??
     bundle.manifest.framePresets.find(preset => preset.type === 'mobile') ??
@@ -2699,7 +2701,7 @@ function defaultMobileFramePreset(): FramePreset {
 }
 
 function createPrototypeFrame(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   tokenIndex: TokenIndex,
   layout: ScreenFrameLayout,
   mounter: FrameMounter
@@ -2814,7 +2816,7 @@ function createPrototypeFrame(
     shot,
     save,
     screenId: screen.id,
-    captureDocument: screenFrame ? () => screenFrameDocument(screenFrame) : undefined
+    captureDocument: screenFrame ? () => captureScreenFrameDocument(screenFrame) : undefined
   });
   if (screenFrame) {
     frameViewBySlot.set(slot, { bundle, screen, preset, document: () => screenFrameDocument(screenFrame) });
@@ -2842,7 +2844,7 @@ function createPrototypeFrame(
  */
 function mountDeviceChrome(
   frame: HTMLElement,
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   preset: FramePreset,
   screenEl: HTMLElement
@@ -2868,7 +2870,7 @@ function refreshSurround(): void {
   installProjectFonts(project);
 }
 
-function chromeThemeFromTokens(bundle: BlueprintProjectBundle): { colors?: Record<string, string>; shape: Record<string, string> } {
+function chromeThemeFromTokens(bundle: CanvasProjectBundle): { colors?: Record<string, string>; shape: Record<string, string> } {
   const tokenIndex = createTokenIndex(bundle);
   const color = (role: string): { value: string; rgb: [number, number, number] } | undefined => {
     const value = resolvedColor(tokenIndex, `--app-color-${role}`);
@@ -2927,7 +2929,7 @@ function chromeThemeFromTokens(bundle: BlueprintProjectBundle): { colors?: Recor
   };
 }
 
-function installProjectFonts(bundle: BlueprintProjectBundle): void {
+function installProjectFonts(bundle: CanvasProjectBundle): void {
   let style = document.getElementById('bp-project-fonts');
   if (!style) {
     style = document.createElement('style');
@@ -2938,28 +2940,28 @@ function installProjectFonts(bundle: BlueprintProjectBundle): void {
   for (const [sourceRef, css] of Object.entries(bundle.prototypeSourceContents)) {
     if (!sourceRef.endsWith('.css')) continue;
     for (const match of css.matchAll(/@font-face\s*\{[^{}]*\}/g)) {
-      const rule = inlineFontFaceUrls(bundle, sourceRef, match[0]);
+      const rule = resolveFontFaceUrls(bundle, sourceRef, match[0]);
       if (rule) rules.add(rule);
     }
   }
   style.textContent = [...rules].join('\n');
 }
 
-function inlineFontFaceUrls(bundle: BlueprintProjectBundle, sourceRef: string, rule: string): string | undefined {
+function resolveFontFaceUrls(bundle: CanvasProjectBundle, sourceRef: string, rule: string): string | undefined {
   let resolved = true;
-  const inlined = rule.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (_match, _quote: string, value: string) => {
+  const rewritten = rule.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (_match, _quote: string, value: string) => {
     const assetRef = decodeURIComponent(new URL(value.trim(), `https://sidecar.invalid/${sourceRef}`).pathname.slice(1));
     const asset = bundle.prototypeAssetContents[assetRef];
     if (!asset) {
       resolved = false;
       return 'none';
     }
-    return `url("data:${asset.mediaType};base64,${asset.base64}")`;
+    return `url("${prototypeAssetUrl(asset, location.origin)}")`;
   });
-  return resolved ? inlined : undefined;
+  return resolved ? rewritten : undefined;
 }
 
-function backgroundAppearance(bundle: BlueprintProjectBundle): 'light' | 'dark' {
+function backgroundAppearance(bundle: CanvasProjectBundle): 'light' | 'dark' {
   const background = findTokenValue(bundle, ['background']);
   const rgb = background ? parseOpaqueColor(background) : undefined;
   return rgb && relativeLuminance(rgb) < 0.4 ? 'dark' : 'light';
@@ -2980,7 +2982,7 @@ function createHomeIndicator(): HTMLElement {
 }
 
 interface ScreenFrameSource {
-  bundle: BlueprintProjectBundle;
+  bundle: CanvasProjectBundle;
   screen: ScreenDefinition;
   preset: FramePreset;
   selection: SelectedPrototypeReviewCondition;
@@ -3001,7 +3003,7 @@ interface PrototypeFrameUses {
 }
 
 function createCanonicalPrototypeScreen(
-  bundle: BlueprintProjectBundle,
+  bundle: CanvasProjectBundle,
   screen: ScreenDefinition,
   preset: FramePreset,
   selection: SelectedPrototypeReviewCondition | undefined,
@@ -3037,8 +3039,20 @@ function compileScreenFrame({ bundle, screen, preset, selection }: ScreenFrameSo
     bundle,
     target: { kind: 'screen', id: screen.id },
     state: selection.state,
-    framePreset: preset
+    framePreset: preset,
+    assetOrigin: location.origin
   });
+}
+
+async function captureScreenFrameDocument(frame: ScreenFrame): Promise<string | undefined> {
+  if (frame.failed) return undefined;
+  const { bundle, screen, preset, selection } = frame.source;
+  return compilePrototypeDocument({
+    bundle: await withAssetBytes(bundle, screen.prototype.assetRefs ?? [], location.origin),
+    target: { kind: 'screen', id: screen.id },
+    state: selection.state,
+    framePreset: preset
+  }).html;
 }
 
 function createCanonicalPrototypeIframe(compiled: CompiledPrototypeDocument, title: string): HTMLIFrameElement {
@@ -3118,9 +3132,9 @@ function createFramePlaceholder({ screen, selection, preset }: ScreenFrameSource
   return placeholder;
 }
 
-const reusablesByBundle = new WeakMap<BlueprintProjectBundle, Map<string, ReusableDefinition>>();
+const reusablesByBundle = new WeakMap<CanvasProjectBundle, Map<string, ReusableDefinition>>();
 
-function declaredFrameUses(bundle: BlueprintProjectBundle, screen: ScreenDefinition): PrototypeFrameUses {
+function declaredFrameUses(bundle: CanvasProjectBundle, screen: ScreenDefinition): PrototypeFrameUses {
   const projectId = bundle.manifest.project.id;
   let reusables = reusablesByBundle.get(bundle);
   if (!reusables) {
@@ -3215,10 +3229,10 @@ function wireFrameCapture(options: {
   shot: HTMLButtonElement;
   save: HTMLButtonElement;
   screenId: string;
-  captureDocument?: () => string | undefined;
+  captureDocument?: () => Promise<string | undefined>;
 }): void {
   const capture = async (): Promise<Blob> => {
-    const html = options.captureDocument?.();
+    const html = await options.captureDocument?.();
     const blob = html
       ? await captureCanonicalPrototype(options.screenEl, html)
       : await toBlob(options.screenEl, {
@@ -3369,7 +3383,7 @@ async function waitForCaptureReadiness(document: Document): Promise<void> {
 }
 
 interface FrameView {
-  bundle: BlueprintProjectBundle;
+  bundle: CanvasProjectBundle;
   screen: ScreenDefinition;
   preset: FramePreset;
   document: () => string | undefined;
@@ -4129,10 +4143,10 @@ function renderCanvasAnnotations(): void {
   renderFindingAnnotations();
 }
 
-const designFindingsByBundle = new WeakMap<BlueprintProjectBundle, DesignFinding[]>();
+const designFindingsByBundle = new WeakMap<CanvasProjectBundle, DesignFinding[]>();
 let findingsPanelState: { title: string; boundaryIds: string[] } | undefined;
 
-function designFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
+function designFindings(bundle: CanvasProjectBundle): DesignFinding[] {
   let findings = designFindingsByBundle.get(bundle);
   if (!findings) {
     findings = collectDesignFindings(bundle);
@@ -4141,7 +4155,7 @@ function designFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
   return findings;
 }
 
-function frameFindingBoundaryIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition, usedBoundaryIds: Iterable<string>): string[] {
+function frameFindingBoundaryIds(bundle: CanvasProjectBundle, screen: ScreenDefinition, usedBoundaryIds: Iterable<string>): string[] {
   return [...new Set([
     boundaryId(bundle.manifest.project.id, 'screen', screen.id),
     ...usedBoundaryIds,
@@ -4225,11 +4239,11 @@ function flashCopied(button: HTMLButtonElement): void {
 }
 
 let viewingChangeBaseline = false;
-let liveProjectDuringBaselineView: BlueprintProjectBundle | undefined;
+let liveProjectDuringBaselineView: CanvasProjectBundle | undefined;
 
 function narrowScreenChangesToSections(
-  previous: BlueprintProjectBundle,
-  next: BlueprintProjectBundle,
+  previous: CanvasProjectBundle,
+  next: CanvasProjectBundle,
   focuses: BlueprintAgentActivityFocus[]
 ): BlueprintAgentActivityFocus[] {
   return focuses.flatMap(focus => {
@@ -4310,7 +4324,7 @@ function queueChangeBaselineView(show: boolean): void {
   });
 }
 
-function exitChangeBaselineView(): BlueprintProjectBundle {
+function exitChangeBaselineView(): CanvasProjectBundle {
   const liveProject = liveProjectDuringBaselineView ?? project;
   liveProjectDuringBaselineView = undefined;
   viewingChangeBaseline = false;

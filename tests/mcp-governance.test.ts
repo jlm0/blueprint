@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { cp, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
@@ -8,6 +9,12 @@ import path from 'node:path';
 import { before, describe, it } from 'node:test';
 import { Client, type CallToolResult, type Tool } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { loadProjectFromFs } from '../src/core/load';
+import type { BlueprintProjectBundle, LinkedProjectBundle } from '../src/core/types';
+import { serveBlueprint } from '../src/mcp/operations';
+import { hashProjectAssets } from '../src/mcp/project-validation';
+import { linkProjectAssets } from '../src/mcp/serve-snapshot';
+import { compilePrototypeDocument } from '../src/prototype/compiler';
 
 const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
@@ -1192,6 +1199,130 @@ describe('Blueprint MCP and template governance', () => {
     assert.doesNotMatch(docs, /Local CLI|blueprint (?:init|validate|index|query|extract|capture|serve)/i);
     assert.doesNotMatch(docs, /hosted registry|cloud dashboard/i);
   });
+
+  describe('review server assets', () => {
+    it('serves each asset of the current snapshot by hash and sends the canvas links, not bytes', async () => {
+      await withServedAssetCopy(async (url, project) => {
+        const bundle = await loadProjectFromFs(project);
+        const hashes = hashProjectAssets(bundle);
+
+        const html = await (await fetch(url)).text();
+        assert.doesNotMatch(html, /"base64":/);
+        const injected = JSON.parse(html.match(/window\.__BLUEPRINT_PROJECT_BUNDLE__=(.*?);window\.__BLUEPRINT_LIVE_RUNTIME__=/s)![1]) as LinkedProjectBundle;
+        assert.deepEqual(injected.prototypeAssetContents, linkProjectAssets(bundle, hashes).prototypeAssetContents);
+        const snapshot = await (await fetch(new URL('/__blueprint/project', url))).json() as { bundle: LinkedProjectBundle };
+        assert.deepEqual(snapshot.bundle.prototypeAssetContents, injected.prototypeAssetContents);
+
+        for (const [assetRef, asset] of Object.entries(bundle.prototypeAssetContents)) {
+          const response = await fetch(new URL(`/__blueprint/assets/${hashes[assetRef]}`, url));
+          assert.equal(response.status, 200, assetRef);
+          assert.equal(response.headers.get('content-type'), asset.mediaType);
+          assert.equal(response.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+          assert.equal(response.headers.get('cross-origin-resource-policy'), 'cross-origin');
+          assert.equal(response.headers.get('access-control-allow-origin'), '*');
+          assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+          const bytes = Buffer.from(await response.arrayBuffer());
+          assert.equal(createHash('sha256').update(bytes).digest('hex'), hashes[assetRef]);
+          assert.equal(bytes.toString('base64'), asset.base64);
+        }
+
+        const [someHash] = Object.values(hashes);
+        const head = await fetch(new URL(`/__blueprint/assets/${someHash}`, url), { method: 'HEAD' });
+        assert.equal(head.status, 200);
+        assert.equal((await head.arrayBuffer()).byteLength, 0);
+        const post = await fetch(new URL(`/__blueprint/assets/${someHash}`, url), { method: 'POST' });
+        assert.equal(post.status, 405);
+
+        const unknown = createHash('sha256').update('not an asset').digest('hex');
+        for (const pathname of [
+          `/__blueprint/assets/${unknown}`,
+          `/__blueprint/assets/${someHash.toUpperCase()}`,
+          `/__blueprint/assets/${someHash.slice(1)}`,
+          `/__blueprint/assets/${someHash}0`,
+          `/__blueprint/assets/${someHash}/`,
+          '/__blueprint/assets/',
+          '/__blueprint/assets/..%2Findex.html',
+          '/__blueprint/assets/%2E%2E/index.html'
+        ]) {
+          const response = await fetch(new URL(pathname, url));
+          assert.equal(response.status, 404, pathname);
+          assert.equal(response.headers.get('cache-control'), 'no-store', pathname);
+          assert.equal(response.headers.get('access-control-allow-origin'), null, pathname);
+          assert.equal(await response.text(), 'Not found', pathname);
+        }
+      });
+    });
+
+    it('loads frame images and fonts from the asset route and captures a self-contained document', async () => {
+      await withServedAssetCopy(async (url, project) => {
+        const bundle = await loadProjectFromFs(project);
+        const hashes = hashProjectAssets(bundle);
+        const origin = new URL(url).origin;
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+        const assetResponses = new Map<string, number>();
+        page.on('response', response => {
+          const match = /\/__blueprint\/assets\/([0-9a-f]{64})$/.exec(response.url());
+          if (match) assetResponses.set(match[1], response.status());
+        });
+        const failedAssets: string[] = [];
+        page.on('requestfailed', request => {
+          if (request.url().includes('/__blueprint/assets/')) failedAssets.push(request.url());
+        });
+        await page.addInitScript(() => {
+          const captured: string[] = [];
+          (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__ = captured;
+          const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc')!;
+          Object.defineProperty(HTMLIFrameElement.prototype, 'srcdoc', {
+            ...descriptor,
+            set(this: HTMLIFrameElement, value: string) {
+              if (this.getAttribute('sandbox') === 'allow-same-origin') captured.push(value);
+              descriptor.set!.call(this, value);
+            }
+          });
+        });
+        try {
+          await page.goto(`${url}?board=screens&page=mobile`);
+          const frame = page.locator('.board-screens .frame[data-screen-id="hub"]').first();
+          const iframe = frame.locator('.canonical-prototype-iframe').first();
+          await iframe.waitFor({ state: 'attached', timeout: 15000 });
+          const live = await iframe.getAttribute('srcdoc') ?? '';
+          assert.ok(live.includes(`${origin}/__blueprint/assets/${hashes['prototype/assets/art/eclipse.svg']}`));
+          assert.doesNotMatch(live, /;base64,/);
+          const art = iframe.contentFrame().locator('img.hub__art');
+          await art.waitFor({ state: 'attached', timeout: 15000 });
+          await page.waitForFunction(() => document.fonts.status === 'loaded');
+          await assertEventuallyWithin(() => screenAssetRefs(bundle, 'hub').every(assetRef => assetResponses.get(hashes[assetRef]) === 200));
+          assert.deepEqual(failedAssets, []);
+          assert.ok(await art.evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0));
+          const faces = await iframe.contentFrame().locator('body').evaluate(async () => {
+            await document.fonts.ready;
+            return [...document.fonts].map(face => `${face.family.replaceAll('"', '')}:${face.status}`).sort();
+          });
+          assert.ok(faces.includes('Unbounded:loaded'), faces.join(', '));
+          assert.ok(faces.includes('Geist:loaded'), faces.join(', '));
+          assert.deepEqual(faces.filter(face => face.endsWith(':error')), []);
+
+          await page.evaluate(() => {
+            (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!.length = 0;
+          });
+          const download = page.waitForEvent('download', { timeout: 15000 });
+          await frame.locator('xpath=..').locator('.frame-save').first().click();
+          const saved = await download;
+          assert.equal(saved.suggestedFilename(), 'hub.png');
+          const captured = await page.evaluate(() => (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!);
+          const preset = bundle.manifest.framePresets.find(candidate => candidate.id === bundle.screens.screens.find(screen => screen.id === 'hub')!.framePresetId)!;
+          const expected = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'hub' }, state: 'default', framePreset: preset }).html;
+          assert.equal(captured.length, 1);
+          assert.doesNotMatch(captured[0], /\/__blueprint\/assets\//);
+          assert.equal(captured[0], expected);
+        } finally {
+          await browser.close();
+        }
+      });
+    });
+  });
 });
 
 async function openSession(cwd = projectRoot, modern = true): Promise<McpSession> {
@@ -1355,4 +1486,29 @@ function run(command: string, args: string[]): { status: number | null; stdout: 
 
 function normalize(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
+}
+
+function screenAssetRefs(bundle: BlueprintProjectBundle, screenId: string): string[] {
+  return bundle.screens.screens.find(screen => screen.id === screenId)?.prototype.assetRefs ?? [];
+}
+
+async function assertEventuallyWithin(check: () => boolean, timeoutMs = 10000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!check()) {
+    if (Date.now() > deadline) assert.fail('Condition did not hold in time.');
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
+
+async function withServedAssetCopy(use: (url: string, project: string) => Promise<void>): Promise<void> {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'blueprint-assets-'));
+  const project = path.join(tempDir, 'design', 'blueprint');
+  await cp(umbraRoot, project, { recursive: true });
+  const served = await serveBlueprint({ project, port: 0 });
+  try {
+    await use(served.url, project);
+  } finally {
+    await served.close();
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }
