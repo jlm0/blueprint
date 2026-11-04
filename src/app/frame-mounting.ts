@@ -95,7 +95,7 @@ export interface MountableFrame extends FrameMountCandidate {
   unmount: () => void;
 }
 
-export type FrameMounterState = 'active' | 'hidden' | 'disposed';
+export type FrameMounterState = 'active' | 'paused' | 'hidden' | 'disposed';
 
 export interface FrameMounterOptions {
   view: () => CanvasView;
@@ -158,7 +158,7 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
           settle();
           return;
         }
-        if (holds > 0) return;
+        if (holds > 0 || state === 'paused') return;
 
         const plan = planFrameMounts(frames, options.view(), options.viewport(), policy);
         const toUnmount = plan.unmount.map(index => frames[index]);

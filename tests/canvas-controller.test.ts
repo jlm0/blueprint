@@ -61,6 +61,23 @@ describe('Blueprint canvas fit', () => {
     assert.deepEqual(scales, [0.4]);
   });
 
+  it('reports a wheel gesture as active until it settles', () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      const listeners: Record<string, (event: unknown) => void> = {};
+      const canvas = controller(listeners);
+      assert.equal(canvas.gesturing(), false);
+      listeners.wheel({ ctrlKey: false, deltaY: 40, deltaX: 0, clientX: 600, clientY: 400, preventDefault() {} });
+      assert.equal(canvas.gesturing(), true);
+      mock.timers.tick(GESTURE_IDLE_MS);
+      assert.equal(canvas.gesturing(), false);
+      canvas.setView({ x: 0, y: 0, s: 0.5 });
+      assert.equal(canvas.gesturing(), false);
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
   it('settles a wheel zoom once, after the gesture is idle, and a set view at once', () => {
     mock.timers.enable({ apis: ['setTimeout'] });
     try {

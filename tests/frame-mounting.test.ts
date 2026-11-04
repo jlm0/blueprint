@@ -284,6 +284,40 @@ describe('Blueprint frame mounter', () => {
     assert.equal(frames[3].requested, false);
   });
 
+  it('pauses mounting while a gesture is active and resumes on the next settle', async () => {
+    let gesture = false;
+    let mounts = 0;
+    const mounter = createFrameMounter({
+      view: () => ({ x: 0, y: 0, s: 0.25 }),
+      viewport: () => viewport,
+      state: () => gesture ? 'paused' : 'active',
+      policy: { ...policy, maxFrames: 6 },
+      yieldToMain: () => new Promise(resolve => setTimeout(resolve, 0))
+    });
+    for (const candidate of row(6)) {
+      const frame: MountableFrame = {
+        ...candidate,
+        mount() {
+          frame.mounted = true;
+          mounts += 1;
+          if (mounts === 2) gesture = true;
+        },
+        unmount() {
+          frame.mounted = false;
+        }
+      };
+      mounter.add(frame);
+    }
+    await nextTasks();
+    assert.equal(mounts, 2, 'A gesture that starts during the pump should stop it');
+
+    gesture = false;
+    mounter.schedule();
+    await mounter.visibleMounted();
+    await nextTasks();
+    assert.equal(mounts, 6);
+  });
+
   it('settles a waiter without mounting while the board is hidden', async () => {
     let mounts = 0;
     const mounter = createFrameMounter({

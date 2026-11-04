@@ -2064,7 +2064,7 @@ function createScreenFrameMounter(root: HTMLElement): FrameMounter {
   const mounter = createFrameMounter({
     view: () => canvas.view,
     viewport: () => ({ width: viewport.clientWidth || window.innerWidth, height: viewport.clientHeight || window.innerHeight }),
-    state: () => !root.isConnected ? 'disposed' : root.hidden || viewport.hidden ? 'hidden' : 'active',
+    state: () => !root.isConnected ? 'disposed' : root.hidden || viewport.hidden ? 'hidden' : canvas.gesturing() ? 'paused' : 'active',
     onDisposed: () => {
       stopViewChanges();
       window.removeEventListener('resize', schedule);

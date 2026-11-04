@@ -15,6 +15,7 @@ export interface CanvasController {
   setView: (nextView: CanvasView) => void;
   onViewChange: (listener: (view: Readonly<CanvasView>) => void) => () => void;
   onViewSettled: (listener: (view: Readonly<CanvasView>) => void) => () => void;
+  gesturing: () => boolean;
 }
 
 export const GESTURE_IDLE_MS = 120;
@@ -85,6 +86,7 @@ export function createCanvasController({
 
   const onViewChange = (listener: (view: Readonly<CanvasView>) => void): (() => void) => subscribe(viewListeners, listener);
   const onViewSettled = (listener: (view: Readonly<CanvasView>) => void): (() => void) => subscribe(settledListeners, listener);
+  const gesturing = (): boolean => settleTimer !== undefined;
 
   function zoomGesture(cx: number, cy: number, factor: number): void {
     scaleAround(cx, cy, factor);
@@ -253,6 +255,6 @@ export function createCanvasController({
     apply();
   }
 
-  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView, onViewChange, onViewSettled };
+  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView, onViewChange, onViewSettled, gesturing };
   return api;
 }
