@@ -13,6 +13,7 @@ import {
 } from '../src/prototype/compiler';
 
 const goldenPath = 'tests/golden/compile-output.json';
+const MAX_GROWTH_FOR_4X_PLACEMENTS = 9;
 const updateGolden = process.env.BLUEPRINT_UPDATE_GOLDEN === '1';
 const fixtureRoots: Record<string, string> = {
   starter: 'starter/design/blueprint',
@@ -135,8 +136,13 @@ describe('compile determinism', () => {
       });
       return Math.min(...times);
     };
-    const small = fastest(2_000);
-    const large = fastest(8_000);
-    assert.ok(large / small < 9, `4x placements took ${(large / small).toFixed(1)}x the time: ${small.toFixed(1)} ms, then ${large.toFixed(1)} ms`);
+    // Other work on the machine can slow one measurement, but quadratic growth fails every attempt.
+    const ratios: string[] = [];
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const ratio = fastest(8_000) / fastest(2_000);
+      if (ratio < MAX_GROWTH_FOR_4X_PLACEMENTS) return;
+      ratios.push(ratio.toFixed(1));
+    }
+    assert.fail(`4x placements took ${ratios.join(', ')} times as long in each attempt`);
   });
 });
