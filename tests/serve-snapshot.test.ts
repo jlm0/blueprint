@@ -7,9 +7,12 @@ import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle } from '../src/core/types';
 import { validateProject } from '../src/core/validate';
+import { exploreBlueprint, serveBlueprint } from '../src/mcp/operations';
+import { loadValidatedProject, readValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
 import { ServeProjectSnapshots, type ServeProjectSnapshotOptions } from '../src/mcp/serve-snapshot';
 
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 
 interface Counts {
   loads: number;
@@ -63,20 +66,22 @@ describe('serve project snapshots', () => {
         debounceMs: 5,
         onChanged: () => undefined,
         onFailed: () => undefined,
-        load: async root => {
-          counts.loads += 1;
-          if (counts.loads === 2) {
-            await new Promise<void>(resolve => {
-              releaseLoad = resolve;
-              reportBlocked?.();
-            });
+        read: root => readValidatedProject(root, {
+          load: async loadRoot => {
+            counts.loads += 1;
+            if (counts.loads === 2) {
+              await new Promise<void>(resolve => {
+                releaseLoad = resolve;
+                reportBlocked?.();
+              });
+            }
+            return loadProjectFromFs(loadRoot);
+          },
+          validate: bundle => {
+            counts.validations += 1;
+            return validateProject(bundle);
           }
-          return loadProjectFromFs(root);
-        },
-        validate: bundle => {
-          counts.validations += 1;
-          return validateProject(bundle);
-        }
+        })
       });
       try {
         const initial = await snapshots.start();
@@ -148,6 +153,71 @@ describe('serve project snapshots', () => {
   });
 });
 
+describe('project validation worker', () => {
+  it('answers with the same result as the in-process load and validate', async () => {
+    for (const root of [umbraRoot, brokenRoot, 'fixtures/valid/missing-project/design/blueprint']) {
+      const local = await readValidatedProject(root);
+      assert.deepStrictEqual(await loadValidatedProject(root), local, root);
+    }
+    const valid = await loadValidatedProject(umbraRoot);
+    assert.equal(valid.error, undefined);
+    assert.match(valid.fingerprint ?? '', /^[0-9a-f]{64}$/);
+    const broken = await loadValidatedProject(brokenRoot);
+    assert.equal(broken.bundle, undefined);
+    assert.match(broken.error ?? '', /\S/);
+  });
+});
+
+describe('serve with an exploration', () => {
+  it('reads the project once on a fresh start and not again when it reuses the runtime', async () => {
+    await withProjectCopy(async project => {
+      await exploreBlueprint({ project, operation: launchExploration('launch-hero') });
+      let reads = 0;
+      const read: ProjectReader = root => {
+        reads += 1;
+        return readValidatedProject(root);
+      };
+      const started = await serveBlueprint({ project, port: 0, explorationId: 'launch-hero' }, undefined, undefined, read);
+      try {
+        assert.equal(started.runtime, 'started');
+        assert.equal(started.selection?.explorationId, 'launch-hero');
+        assert.equal(reads, 1);
+
+        const reused = await serveBlueprint({ project, port: 0, explorationId: 'launch-hero' }, undefined, started, read);
+        assert.equal(reused.runtime, 'reused');
+        assert.equal(reused.selection?.explorationId, 'launch-hero');
+        assert.equal(reads, 1);
+
+        await exploreBlueprint({ project, operation: { type: 'archive', explorationId: 'launch-hero' } });
+        await exploreBlueprint({ project, operation: launchExploration('launch-copy') });
+        const added = await serveBlueprint({ project, port: 0, explorationId: 'launch-copy' }, undefined, started, read);
+        assert.equal(added.runtime, 'reused');
+        assert.equal(added.selection?.explorationId, 'launch-copy');
+
+        await assert.rejects(
+          serveBlueprint({ project, port: 0, explorationId: 'missing-exploration' }, undefined, started, read),
+          /missing-exploration/
+        );
+      } finally {
+        await started.close();
+      }
+    });
+  });
+});
+
+function launchExploration(id: string) {
+  return {
+    type: 'create' as const,
+    id,
+    screenId: 'launch',
+    state: 'default',
+    framePresetId: 'desktop-web-page',
+    title: 'Launch hero',
+    intent: 'Compare hero directions without changing the canonical canvas.',
+    candidateLabels: ['A', 'B', 'C']
+  };
+}
+
 function countingSnapshots(
   project: string,
   counts: Counts,
@@ -157,14 +227,16 @@ function countingSnapshots(
     debounceMs: 5,
     onChanged: events.onChanged ?? (() => undefined),
     onFailed: events.onFailed ?? (() => undefined),
-    load: (root): Promise<BlueprintProjectBundle> => {
-      counts.loads += 1;
-      return loadProjectFromFs(root);
-    },
-    validate: bundle => {
-      counts.validations += 1;
-      return validateProject(bundle);
-    }
+    read: root => readValidatedProject(root, {
+      load: (loadRoot): Promise<BlueprintProjectBundle> => {
+        counts.loads += 1;
+        return loadProjectFromFs(loadRoot);
+      },
+      validate: bundle => {
+        counts.validations += 1;
+        return validateProject(bundle);
+      }
+    })
   });
 }
 

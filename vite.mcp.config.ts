@@ -17,7 +17,8 @@ export default defineConfig({
       input: {
         server: 'src/mcp/server.ts',
         index: 'src/index.ts',
-        'codex-activity-hook': 'src/hooks/codex-activity-hook.ts'
+        'codex-activity-hook': 'src/hooks/codex-activity-hook.ts',
+        'project-validation-worker': 'src/mcp/project-validation-worker.ts'
       },
       output: {
         format: 'es',

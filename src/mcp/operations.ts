@@ -95,7 +95,8 @@ import {
   type RegisteredBlueprintActivityRuntime
 } from './activity';
 import { defaultInspoFetcher, downloadInspoImage, normalizeInspoUrl, type InspoFetcher } from './inspo-download';
-import { ServeProjectSnapshots } from './serve-snapshot';
+import { loadValidatedProject, type ProjectReader, type ValidatedProject } from './project-validation';
+import { ServeProjectSnapshots, type ServeProjectSnapshot } from './serve-snapshot';
 import {
   captureOutputSchema,
   exploreOutputSchema,
@@ -154,6 +155,8 @@ interface LocalServeServer extends CaptureServer {
   baseUrl: string;
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
+  /** The validated project of an owned runtime, after the file changes it has seen are applied. */
+  settledProject?: () => Promise<ServeProjectSnapshot>;
 }
 
 interface StoredCanvasSelection extends BlueprintCanvasSelection {
@@ -180,6 +183,7 @@ export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
   baseUrl: string;
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
+  settledProject?: () => Promise<ServeProjectSnapshot>;
 }
 
 const packageRoot = findPackageRoot();
@@ -906,7 +910,8 @@ export async function blueprintServeRuntimeKey(project: string): Promise<string>
 export async function serveBlueprint(
   input: ServeInput,
   signal?: AbortSignal,
-  existing?: BlueprintServeHandle
+  existing?: BlueprintServeHandle,
+  read: ProjectReader = loadValidatedProject
 ): Promise<BlueprintServeHandle> {
   throwIfAborted(signal);
   const project = input.project;
@@ -924,13 +929,19 @@ export async function serveBlueprint(
   }
 
   let selection: ServeOutput['selection'];
+  let validated: ValidatedProject | undefined;
   if (input.explorationId) {
-    const bundle = await loadProjectFromFs(projectRoot);
-    const validation = validateProject(bundle);
-    if (!validation.ok) {
-      throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+    const explorationId = input.explorationId;
+    const settled = await reusable?.settledProject?.();
+    let bundle = settled?.error === undefined ? settled?.bundle : undefined;
+    if (!bundle?.explorations.explorations.some(exploration => exploration.id === explorationId)) {
+      validated = await read(projectRoot);
+      if (!validated.bundle || validated.error !== undefined) {
+        throw new Error(validated.error ?? 'Blueprint project is unavailable.');
+      }
+      bundle = validated.bundle;
     }
-    const inspection = inspectExploration(bundle, input.explorationId);
+    const inspection = inspectExploration(bundle, explorationId);
     selection = {
       kind: 'exploration',
       explorationId: inspection.exploration.id,
@@ -946,7 +957,7 @@ export async function serveBlueprint(
       if (discovered) {
         return { server: borrowedServeServer(projectKey, discovered), reused: true };
       }
-      return { server: await startServeServer(projectRoot, input.port), reused: false };
+      return { server: await startServeServer(projectRoot, input.port, validated, read), reused: false };
     });
   const server = acquisition.server;
   const baseUrl = server.baseUrl;
@@ -973,7 +984,8 @@ export async function serveBlueprint(
       baseUrl,
       close: server.close,
       ownership: server.ownership,
-      isAvailable: server.isAvailable
+      isAvailable: server.isAvailable,
+      ...(server.settledProject ? { settledProject: server.settledProject } : {})
     };
   } catch (error) {
     if (!acquisition.reused) await server.close();
@@ -1453,7 +1465,12 @@ function findPackageRoot(): string {
   return process.cwd();
 }
 
-async function startServeServer(projectRoot: string, requestedPort?: number): Promise<LocalServeServer> {
+async function startServeServer(
+  projectRoot: string,
+  requestedPort: number | undefined,
+  validated: ValidatedProject | undefined,
+  read: ProjectReader
+): Promise<LocalServeServer> {
   const siteRoot = path.join(packageRoot, 'dist', 'site');
   const indexPath = path.join(siteRoot, 'index.html');
   if (!existsSync(indexPath)) {
@@ -1469,6 +1486,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   const canvasToken = randomUUID();
   const activityHub = new BlueprintActivityHub();
   const snapshots = new ServeProjectSnapshots(projectRoot, {
+    read,
     debounceMs: watcherDebounceMs,
     onChanged: ({ revision, changedPaths }) => activityHub.publish('project-changed', {
       version: 1,
@@ -1744,7 +1762,7 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
   await listenForBlueprintServe(server, requestedPort);
   const address = server.address() as AddressInfo;
   try {
-    await snapshots.start();
+    await snapshots.start(validated);
     runtime = await registerBlueprintActivityRuntime(
       projectRoot,
       `http://127.0.0.1:${address.port}${BLUEPRINT_ACTIVITY_POST_PATH}`
@@ -1766,6 +1784,10 @@ async function startServeServer(projectRoot: string, requestedPort?: number): Pr
     baseUrl,
     ownership: 'owned',
     isAvailable: async () => server.listening,
+    settledProject: async () => {
+      await delay(watcherEventGraceMs);
+      return snapshots.settled();
+    },
     close: () => {
       closePromise ??= (async () => {
         snapshots.close();

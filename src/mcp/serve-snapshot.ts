@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BlueprintOutdatedFile } from '../core/activity';
-import { loadProjectFromFs } from '../core/load';
-import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
-import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
-import { validateProject } from '../core/validate';
+import type { BlueprintProjectBundle } from '../core/types';
+import { loadValidatedProject, type ProjectReader, type ValidatedProject } from './project-validation';
 
 export interface ServeProjectSnapshot {
   revision: string;
@@ -16,8 +14,7 @@ export interface ServeProjectSnapshotOptions {
   debounceMs: number;
   onChanged: (change: { revision: string; changedPaths: string[] }) => void;
   onFailed: (failure: { message: string; outdatedFiles: BlueprintOutdatedFile[] }) => void;
-  load?: (projectRoot: string) => Promise<BlueprintProjectBundle>;
-  validate?: (bundle: BlueprintProjectBundle) => ValidationResult;
+  read?: ProjectReader;
 }
 
 export class ServeProjectSnapshots {
@@ -47,10 +44,10 @@ export class ServeProjectSnapshots {
     return !this.#started || this.#timer !== undefined || this.#reloading !== undefined;
   }
 
-  async start(): Promise<ServeProjectSnapshot> {
-    const initial = await this.#read();
+  async start(validated?: ValidatedProject): Promise<ServeProjectSnapshot> {
+    const { fingerprint, ...initial } = validated ?? await this.#read();
     this.#current = { revision: this.#current.revision, ...initial };
-    if (initial.error === undefined) this.#fingerprint = JSON.stringify(initial.bundle);
+    if (initial.error === undefined) this.#fingerprint = fingerprint;
     this.#started = true;
     this.#releaseWhenIdle();
     return this.#current;
@@ -94,7 +91,7 @@ export class ServeProjectSnapshots {
 
   async #reload(): Promise<void> {
     const covered = [...this.#changedPaths];
-    const next = await this.#read();
+    const { fingerprint, ...next } = await this.#read();
     if (this.#closed) return;
     if (next.error !== undefined) {
       this.#current = { ...next, revision: this.#current.revision, bundle: this.#current.bundle };
@@ -104,7 +101,6 @@ export class ServeProjectSnapshots {
       }
       return;
     }
-    const fingerprint = JSON.stringify(next.bundle);
     const changed = fingerprint !== this.#fingerprint || this.#announcedError !== undefined;
     const changedPaths = [...this.#changedPaths].sort();
     for (const changedPath of covered) this.#changedPaths.delete(changedPath);
@@ -114,21 +110,8 @@ export class ServeProjectSnapshots {
     if (changed) this.#options.onChanged({ revision: this.#current.revision, changedPaths });
   }
 
-  async #read(): Promise<Omit<ServeProjectSnapshot, 'revision'>> {
-    let outdatedFiles: BlueprintOutdatedFile[] = [];
-    try {
-      const bundle = await (this.#options.load ?? loadProjectFromFs)(this.#projectRoot);
-      outdatedFiles = fileSchemaVersions(bundle)
-        .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
-        .map(([file, version]) => ({ file, version: String(version) }));
-      const validation = (this.#options.validate ?? validateProject)(bundle);
-      if (!validation.ok) {
-        throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
-      }
-      return { bundle, outdatedFiles: [] };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : String(error), outdatedFiles };
-    }
+  #read(): Promise<ValidatedProject> {
+    return (this.#options.read ?? loadValidatedProject)(this.#projectRoot);
   }
 
   #releaseWhenIdle(): void {
