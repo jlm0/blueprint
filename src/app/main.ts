@@ -3095,6 +3095,15 @@ function unmountScreenFrame(frame: ScreenFrame): void {
   frame.iframe.replaceWith(createFramePlaceholder(frame.source));
   frame.iframe = undefined;
   frame.mounted = false;
+  frame.requested = false;
+}
+
+function requestFrameMount(frame: ScreenFrame): void {
+  const root = frame.host.closest<HTMLElement>('[data-board-root]');
+  const mounter = root ? frameMounterByRoot.get(root) : undefined;
+  if (!mounter) return;
+  frame.requested = true;
+  mounter.schedule();
 }
 
 function failScreenFrame(frame: ScreenFrame, error: unknown): void {
@@ -4378,19 +4387,19 @@ async function selectAtPointer(event: MouseEvent): Promise<void> {
     return;
   }
   const host = target.closest<HTMLElement>('.canonical-prototype-screen');
-  const screenFrame = host ? screenFrameByHost.get(host) : undefined;
-  if (host && (mountedPrototypeIframe(host) || (screenFrame && !screenFrame.failed))) {
+  if (host && mountedPrototypeIframe(host)) {
     await selectInPrototypeFrame(host, event.clientX, event.clientY);
     return;
   }
+  const screenFrame = host ? screenFrameByHost.get(host) : undefined;
+  if (screenFrame && !screenFrame.failed) requestFrameMount(screenFrame);
   const element = target.closest<HTMLElement>('[data-boundary-id]');
   setCanvasSelection(element ? domSelectionState(element) : undefined, element !== null);
 }
 
 async function selectInPrototypeFrame(host: HTMLElement, clientX: number, clientY: number): Promise<void> {
   const iframe = mountedPrototypeIframe(host);
-  const screenFrame = screenFrameByHost.get(host);
-  const html = iframe ? prototypeDocument(iframe) : screenFrame ? screenFrameDocument(screenFrame) : undefined;
+  const html = iframe ? prototypeDocument(iframe) : undefined;
   const frameElement = host.closest<HTMLElement>('.frame');
   if (!frameElement) return;
   if (!html) {

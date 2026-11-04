@@ -11,6 +11,7 @@ export interface FrameMountCandidate {
   box: FrameBox;
   mounted: boolean;
   bytes: number | undefined;
+  requested?: boolean;
 }
 
 export interface FrameMountPolicy {
@@ -49,7 +50,8 @@ export function planFrameMounts(
   const ranked = frames
     .map((frame, index) => ({ index, ...viewportDistance(frame.box, view, viewport) }))
     .sort((left, right) => (
-      Number(left.edge > 0) - Number(right.edge > 0)
+      Number(Boolean(frames[right.index].requested)) - Number(Boolean(frames[left.index].requested))
+      || Number(left.edge > 0) - Number(right.edge > 0)
       || (left.edge === 0 ? Number(!frames[left.index].mounted) - Number(!frames[right.index].mounted) : 0)
       || left.edge - right.edge
       || left.centre - right.centre

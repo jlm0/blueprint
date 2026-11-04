@@ -1099,6 +1099,39 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     }
   });
 
+  it('selects the screen and mounts the frame when a click lands on a frame that is not mounted', async () => {
+    const bundle = allScreensOnOnePage(await loadProjectFromFs(meridianRoot));
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.clock.install();
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', { configurable: true, value: projectBundle });
+    }, bundle);
+    try {
+      await page.goto(`${baseUrl}?board=screens`);
+      await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 5000 });
+      await page.clock.runFor(2000);
+      const frame = page.locator('.board-screens .frame:has(.bp-chrome-frame-placeholder)').first();
+      const boundary = await frame.getAttribute('data-boundary-id');
+      const pan = await frame.evaluate(element => {
+        const view = document.getElementById('viewport')!.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        return { x: view.left + 8, y: view.top + 8, dx: box.left + box.width / 2 - (view.left + view.width / 2), dy: box.top + box.height / 2 - (view.top + view.height / 2) };
+      });
+      await page.mouse.move(pan.x, pan.y);
+      await page.mouse.wheel(pan.dx, pan.dy);
+      const target = page.locator(`.board-screens .frame[data-boundary-id="${boundary}"] .bp-chrome-frame-placeholder`).first();
+      await target.click();
+
+      const selected = page.locator(`.board-screens .frame[data-boundary-id="${boundary}"]`).first();
+      assert.match(await selected.getAttribute('class') ?? '', /bp-chrome-selected/);
+      assert.equal(await page.locator('.bp-chrome-selection-layer').count(), 0, 'A click on a frame that is not mounted should not select a boundary the person cannot see');
+      await page.clock.runFor(2000);
+      await selected.locator('.canonical-prototype-iframe').waitFor({ state: 'attached', timeout: 5000 });
+    } finally {
+      await page.close();
+    }
+  });
+
   it('opens the page a serve focus link names and centers a linked screen', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     assert.deepEqual(canvasLocationParams(bundle, 'project:root'), { board: 'primitives', section: 'foundations', item: 'brand' });

@@ -88,6 +88,16 @@ describe('Blueprint frame mount plan', () => {
     assert.equal(visibleUnmounts, 0);
   });
 
+  it('mounts a requested frame first, even past the cap', () => {
+    const frames = row(5, { mounted: true });
+    frames[4] = { ...frames[4], mounted: false, requested: true };
+    const plan = planFrameMounts(frames, { x: 0, y: 0, s: 0.25 }, viewport, { ...policy, maxFrames: 4 });
+
+    assert.deepEqual(plan.mount, [4]);
+    assert.equal(plan.unmount.length, 1);
+    assert.notEqual(plan.unmount[0], 4);
+  });
+
   it('stops mounting once the next frame would pass the byte budget', () => {
     const frames = row(4, { bytes: 400 });
     const plan = planFrameMounts(frames, { x: 0, y: 0, s: 0.25 }, viewport, policy);
