@@ -805,6 +805,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
         for (const condition of screen.prototype.reviewConditions) {
           const label = `${screen.id} ${condition.state}`;
           const frame = page.locator(screenFrameSelector(boundaryId(projectId, 'screen', screen.id), condition.state));
+          await revealScreenFrame(page, frame);
           assert.equal(
             await frame.locator('.canonical-prototype-screen[data-prototype-render-mode="canonical-app-owned"] .canonical-prototype-iframe').count(),
             1,
@@ -1209,7 +1210,34 @@ async function openScreensBoard(bundle: BlueprintProjectBundle): Promise<Page> {
   await page.goto(`${baseUrl}?board=screens`);
   await page.waitForSelector('[data-board-root="screens"]:not([hidden])', { timeout: 5000 });
   await page.waitForSelector('.board-screens .frame[data-boundary-kind="screen"]', { timeout: 5000 });
+  await page.waitForFunction(() => {
+    const view = document.getElementById('viewport')!.getBoundingClientRect();
+    return [...document.querySelectorAll('.board-screens .canonical-prototype-screen')].every(screen => {
+      const box = screen.getBoundingClientRect();
+      const inView = box.right > view.left && box.left < view.right && box.bottom > view.top && box.top < view.bottom;
+      return !inView || screen.querySelector('.canonical-prototype-iframe, .prototype-compile-error');
+    });
+  }, undefined, { timeout: 10000 });
   return page;
+}
+
+async function revealScreenFrame(page: Page, frame: Locator): Promise<void> {
+  const pan = await frame.first().evaluate(element => {
+    const view = document.getElementById('viewport')!.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    if (box.right > view.left && box.left < view.right && box.bottom > view.top && box.top < view.bottom) return undefined;
+    return {
+      x: view.left + 8,
+      y: view.top + 8,
+      dx: box.left + box.width / 2 - (view.left + view.width / 2),
+      dy: box.top + box.height / 2 - (view.top + view.height / 2)
+    };
+  });
+  if (pan) {
+    await page.mouse.move(pan.x, pan.y);
+    await page.mouse.wheel(pan.dx, pan.dy);
+  }
+  await frame.locator('.canonical-prototype-iframe, .prototype-compile-error').first().waitFor({ state: 'attached', timeout: 5000 });
 }
 
 async function collectPrimitiveRecords(page: Page): Promise<VisibleBoundaryRecord[]> {
@@ -1305,6 +1333,7 @@ function mutatePrototypeSource(bundle: BlueprintProjectBundle, sourcePath: strin
 }
 
 async function screenPrototype(page: Page, screenBoundaryId: string, state = 'default'): Promise<FrameLocator> {
+  await revealScreenFrame(page, page.locator(screenFrameSelector(screenBoundaryId, state)).first());
   const prototype = page.frameLocator(`${screenFrameSelector(screenBoundaryId, state)} .canonical-prototype-iframe`);
   await prototype.locator('[data-blueprint-screen]').waitFor({ state: 'attached', timeout: 5000 });
   return prototype;

@@ -862,6 +862,8 @@ async function assertFrameViewer(page: import('playwright').Page, frameType: 'mo
 
 async function assertFrameViewerSteps(page: import('playwright').Page): Promise<void> {
   const slots = page.locator('.board-screens .frame-slot:has(.frame-view)');
+  await page.waitForFunction(() => [...document.querySelectorAll('.board-screens .frame-slot:has(.frame-view)')]
+    .every(slot => slot.querySelector('.canonical-prototype-iframe')), undefined, { timeout: 10000 });
   const frames = await slots.evaluateAll(elements => elements.map(slot => ({
     html: slot.querySelector('.canonical-prototype-iframe')?.getAttribute('srcdoc') ?? '',
     frameType: slot.querySelector<HTMLElement>('.frame')?.dataset.frameType ?? ''

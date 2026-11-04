@@ -66,12 +66,15 @@ import {
   type BoundaryExtent
 } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
+import { createFrameMounter, type FrameMounter, type MountableFrame } from './frame-mounting';
 import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive, PRIMITIVE_GROUPS, primitiveGroupName } from '../core/base-primitives';
 import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '../core/reusable-contract';
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
+  findSectionMarkers,
   selectPrototypeReviewCondition,
+  type CompiledPrototypeDocument,
   type PrototypeReviewSelectionRequest,
   type SelectedPrototypeReviewCondition
 } from '../prototype/compiler';
@@ -237,7 +240,9 @@ canvas.onViewChange(view => {
   chromeScale = view.s;
   chromeScaleStyle.textContent = `.bp-chrome-frame-head, .bp-chrome-world-label { --bp-chrome-canvas-scale: ${view.s}; }`;
 });
-const prototypeDocumentByFrame = new WeakMap<HTMLIFrameElement, string>();
+const prototypeUsesByHost = new WeakMap<HTMLElement, PrototypeFrameUses>();
+const screenFrameByHost = new WeakMap<HTMLElement, ScreenFrame>();
+const frameMounterByRoot = new WeakMap<HTMLElement, FrameMounter>();
 const frameViewBySlot = new WeakMap<HTMLElement, FrameView>();
 
 // Quiet chrome verb: jump back out to a fitted view of the active board.
@@ -848,7 +853,7 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
   if (!onCanvas) nextRoot.style.position = 'absolute';
   boardContainer(id).append(nextRoot);
   const mounted = config.mount({ root: nextRoot, canvas, project });
-  if (isActive) await waitForPrototypeFrames(nextRoot);
+  if (isActive) await waitForBoardFrames(nextRoot);
 
   current.root.remove();
   nextRoot.style.removeProperty('visibility');
@@ -866,6 +871,11 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
     refreshCanvasReviewState(id);
     renderCanvasAnnotations();
   }
+}
+
+async function waitForBoardFrames(root: HTMLElement): Promise<void> {
+  await frameMounterByRoot.get(root)?.visibleMounted();
+  await waitForPrototypeFrames(root);
 }
 
 async function waitForPrototypeFrames(root: HTMLElement): Promise<void> {
@@ -1529,7 +1539,6 @@ function createReusableCell(context: SpecimenContext, variant: string, size: str
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${reusable.name} · ${variant} · ${size} · ${state.id}`;
     iframe.srcdoc = compiled.html;
-    prototypeDocumentByFrame.set(iframe, compiled.html);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     item.append(createPreviewFit(iframe));
@@ -2013,6 +2022,7 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
     });
   const controller = configure();
   const tokenIndex = createTokenIndex(bundle);
+  const mounter = createScreenFrameMounter(root);
   frameLayouts.forEach(layout => {
     if (layout.pageLabel) {
       const label = el('div', 'screen-page-label bp-chrome-world-label', layout.pageLabel.text);
@@ -2020,22 +2030,35 @@ function mountScreens({ root, canvas: boardCanvas, project: bundle }: BoardConte
       label.style.top = `${layout.pageLabel.y}px`;
       root.append(label);
     }
-    root.append(createPrototypeFrame(
-      bundle,
-      tokenIndex,
-      layout.screen,
-      layout.preset,
-      layout.x,
-      layout.y,
-      layout.prototypeSelection,
-      layout.selectionError
-    ));
+    root.append(createPrototypeFrame(bundle, tokenIndex, layout, mounter));
   });
 
   return {
     configure,
     fit: () => controller.fitTo([...root.querySelectorAll<HTMLElement>('.frame-slot')])
   };
+}
+
+function createScreenFrameMounter(root: HTMLElement): FrameMounter {
+  const schedule = (): void => mounter.schedule();
+  let stopViewChanges = (): void => undefined;
+  const mounter = createFrameMounter({
+    view: () => canvas.view,
+    viewport: () => ({ width: viewport.clientWidth || window.innerWidth, height: viewport.clientHeight || window.innerHeight }),
+    state: () => !root.isConnected ? 'disposed' : root.hidden || viewport.hidden ? 'hidden' : 'active',
+    onDisposed: () => {
+      stopViewChanges();
+      window.removeEventListener('resize', schedule);
+    }
+  });
+  stopViewChanges = canvas.onViewChange(schedule);
+  window.addEventListener('resize', schedule);
+  // A new board fits its view in the next animation frame, so the first batch waits for that view.
+  const release = mounter.hold();
+  requestAnimationFrame(() => window.setTimeout(release));
+  window.setTimeout(release, 100);
+  frameMounterByRoot.set(root, mounter);
+  return mounter;
 }
 
 function mountHistoryScreens(
@@ -2461,21 +2484,13 @@ function createExplorationPrototypeScreen(
   host.dataset.frameType = preset.type;
   host.dataset.prototypeRenderMode = 'canonical-app-owned';
   try {
-    const compiled = compilePrototypeDocument({
-      bundle,
-      target: { kind: 'screen', id: screen.id },
-      state: selection.state,
-      framePreset: preset
+    const compiled = compileScreenFrame({ bundle, screen, preset, selection });
+    host.append(createCanonicalPrototypeIframe(compiled, `${label} · ${screen.name} · ${selection.state} · ${preset.name}`));
+    prototypeUsesByHost.set(host, {
+      ...declaredFrameUses(bundle, screen),
+      targetBoundaryId: compiled.targetBoundaryId,
+      usedBoundaryIds: new Set(compiled.observedUses.map(use => use.targetBoundaryId))
     });
-    const iframe = document.createElement('iframe');
-    iframe.className = 'canonical-prototype-iframe';
-    applyPrototypeIframeIsolation(iframe);
-    iframe.title = `${label} · ${screen.name} · ${selection.state} · ${preset.name}`;
-    iframe.srcdoc = compiled.html;
-    prototypeDocumentByFrame.set(iframe, compiled.html);
-    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
-    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
-    host.append(iframe);
     return { element: host, available: true };
   } catch {
     host.dataset.explorationStatus = 'unavailable';
@@ -2686,13 +2701,10 @@ function defaultMobileFramePreset(): FramePreset {
 function createPrototypeFrame(
   bundle: BlueprintProjectBundle,
   tokenIndex: TokenIndex,
-  screen: ScreenDefinition,
-  preset: FramePreset,
-  x: number,
-  y: number,
-  prototypeSelection?: SelectedPrototypeReviewCondition,
-  selectionError?: string
+  layout: ScreenFrameLayout,
+  mounter: FrameMounter
 ): HTMLElement {
+  const { screen, preset, x, y, prototypeSelection, selectionError } = layout;
   // The frame lives inside an unclipped slot: the canonical frame clips its own
   // rounded chrome (overflow: hidden), so the floating head must hang from the slot
   // to stay visible above the frame.
@@ -2780,35 +2792,46 @@ function createPrototypeFrame(
 
   // Canonical screens render inside device/browser chrome that lives OUTSIDE the
   // captured screen host, keeping MCP/canvas captures at exact preset content pixels.
-  const canonicalScreen = createCanonicalPrototypeScreen(bundle, screen, preset, prototypeSelection, selectionError);
+  const canonicalScreen = createCanonicalPrototypeScreen(bundle, screen, preset, prototypeSelection, selectionError, x, y);
   const screenEl = canonicalScreen.element;
-  const findingBoundaryIds = frameFindingBoundaryIds(bundle, screen, screenEl);
-  const findingCount = designFindings(bundle).filter(finding => findingBoundaryIds.includes(finding.boundaryId)).length;
-  if (findingCount > 0) {
-    const findingsButton = el('button', 'bp-chrome-frame-findings', findingCount === 1 ? '1 finding' : `${findingCount} findings`) as HTMLButtonElement;
-    findingsButton.type = 'button';
-    findingsButton.title = `Show design findings for ${screen.name}`;
-    findingsButton.dataset.findingsScreenId = screen.id;
-    findingsButton.addEventListener('click', () => openFindingsPanel({ title: screen.name, boundaryIds: findingBoundaryIds }));
-    head.append(findingsButton);
-  }
+  const screenFrame = canonicalScreen.frame;
+  const findingsButton = el('button', 'bp-chrome-frame-findings') as HTMLButtonElement;
+  findingsButton.type = 'button';
+  findingsButton.title = `Show design findings for ${screen.name}`;
+  findingsButton.dataset.findingsScreenId = screen.id;
+  let findingBoundaryIds: string[] = [];
+  findingsButton.addEventListener('click', () => openFindingsPanel({ title: screen.name, boundaryIds: findingBoundaryIds }));
+  const showFindings = (usedBoundaryIds: Iterable<string>): void => {
+    findingBoundaryIds = frameFindingBoundaryIds(bundle, screen, usedBoundaryIds);
+    const findingCount = designFindings(bundle).filter(finding => findingBoundaryIds.includes(finding.boundaryId)).length;
+    findingsButton.textContent = findingCount === 1 ? '1 finding' : `${findingCount} findings`;
+    if (findingCount === 0) findingsButton.remove();
+    else if (!findingsButton.isConnected) head.append(findingsButton);
+  };
+  showFindings(prototypeUsesByHost.get(screenEl)?.usedBoundaryIds ?? []);
   wireFrameCapture({
     screenEl,
     shot,
     save,
     screenId: screen.id,
-    captureDocument: canonicalScreen.captureDocument
+    captureDocument: screenFrame ? () => screenFrameDocument(screenFrame) : undefined
   });
-  const viewerDocument = canonicalScreen.captureDocument;
-  if (viewerDocument) {
-    frameViewBySlot.set(slot, { bundle, screen, preset, html: viewerDocument });
+  if (screenFrame) {
+    frameViewBySlot.set(slot, { bundle, screen, preset, document: () => screenFrameDocument(screenFrame) });
     const view = createIconButton('frame-view bp-chrome-frame-tool bp-chrome-frame-view', 'View screen in full screen', expandIcon());
     view.addEventListener('click', () => openFrameViewer(slot));
     save.after(view);
+    screenFrame.onFailed = () => {
+      frameViewBySlot.delete(slot);
+      view.remove();
+      showFindings([]);
+      mounter.remove(screenFrame);
+    };
   }
   frame.classList.add('frame-canonical');
   mountDeviceChrome(frame, bundle, screen, preset, screenEl);
   slot.append(head, frame);
+  if (screenFrame) mounter.add(screenFrame);
   return slot;
 }
 
@@ -2956,13 +2979,36 @@ function createHomeIndicator(): HTMLElement {
   return indicator;
 }
 
+interface ScreenFrameSource {
+  bundle: BlueprintProjectBundle;
+  screen: ScreenDefinition;
+  preset: FramePreset;
+  selection: SelectedPrototypeReviewCondition;
+}
+
+interface ScreenFrame extends MountableFrame {
+  host: HTMLElement;
+  source: ScreenFrameSource;
+  iframe?: HTMLIFrameElement;
+  failed?: boolean;
+  onFailed?: () => void;
+}
+
+interface PrototypeFrameUses {
+  targetBoundaryId: string;
+  usedBoundaryIds: ReadonlySet<string>;
+  sectionBoundaryIds: ReadonlySet<string>;
+}
+
 function createCanonicalPrototypeScreen(
   bundle: BlueprintProjectBundle,
   screen: ScreenDefinition,
   preset: FramePreset,
   selection: SelectedPrototypeReviewCondition | undefined,
-  selectionError: string | undefined
-): { element: HTMLElement; captureDocument?: string } {
+  selectionError: string | undefined,
+  x: number,
+  y: number
+): { element: HTMLElement; frame?: ScreenFrame } {
   const host = el('div', `screen canonical-prototype-screen canonical-prototype-screen-${preset.type}`);
   host.dataset.frameType = preset.type;
   host.dataset.prototypeRenderMode = 'canonical-app-owned';
@@ -2970,27 +3016,138 @@ function createCanonicalPrototypeScreen(
     host.append(createPrototypeCompileError(selectionError ?? `Screen "${screen.id}" has no selected review condition.`));
     return { element: host };
   }
+  const source: ScreenFrameSource = { bundle, screen, preset, selection };
+  const frame: ScreenFrame = {
+    host,
+    source,
+    box: { left: x, top: y, width: preset.width + (preset.type === 'mobile' ? 2 * PHONE_BEZEL : 0), height: frameExtentHeight(preset) },
+    mounted: false,
+    bytes: undefined,
+    mount: () => mountScreenFrame(frame),
+    unmount: () => unmountScreenFrame(frame)
+  };
+  screenFrameByHost.set(host, frame);
+  prototypeUsesByHost.set(host, declaredFrameUses(bundle, screen));
+  host.append(createFramePlaceholder(source));
+  return { element: host, frame };
+}
+
+function compileScreenFrame({ bundle, screen, preset, selection }: ScreenFrameSource): CompiledPrototypeDocument {
+  return compilePrototypeDocument({
+    bundle,
+    target: { kind: 'screen', id: screen.id },
+    state: selection.state,
+    framePreset: preset
+  });
+}
+
+function createCanonicalPrototypeIframe(compiled: CompiledPrototypeDocument, title: string): HTMLIFrameElement {
+  const iframe = document.createElement('iframe');
+  iframe.className = 'canonical-prototype-iframe';
+  applyPrototypeIframeIsolation(iframe);
+  iframe.title = title;
+  iframe.srcdoc = compiled.html;
+  iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
+  iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
+  return iframe;
+}
+
+function mountScreenFrame(frame: ScreenFrame): void {
+  if (frame.mounted || frame.failed) return;
+  let compiled: CompiledPrototypeDocument;
   try {
-    const compiled = compilePrototypeDocument({
-      bundle,
-      target: { kind: 'screen', id: screen.id },
-      state: selection.state,
-      framePreset: preset
-    });
-    const iframe = document.createElement('iframe');
-    iframe.className = 'canonical-prototype-iframe';
-    applyPrototypeIframeIsolation(iframe);
-    iframe.title = `${screen.name} · ${selection.state} · ${preset.name}`;
-    iframe.srcdoc = compiled.html;
-    prototypeDocumentByFrame.set(iframe, compiled.html);
-    iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
-    iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
-    host.append(iframe);
-    return { element: host, captureDocument: compiled.html };
+    compiled = compileScreenFrame(frame.source);
   } catch (error) {
-    host.append(createPrototypeCompileError(error));
-    return { element: host };
+    failScreenFrame(frame, error);
+    return;
   }
+  const { screen, selection, preset } = frame.source;
+  const iframe = createCanonicalPrototypeIframe(compiled, `${screen.name} · ${selection.state} · ${preset.name}`);
+  const placeholder = frame.host.querySelector(':scope > .bp-chrome-frame-placeholder');
+  if (placeholder) placeholder.replaceWith(iframe);
+  else frame.host.prepend(iframe);
+  frame.iframe = iframe;
+  frame.mounted = true;
+  frame.bytes = compiled.html.length;
+  const declared = prototypeUsesByHost.get(frame.host);
+  prototypeUsesByHost.set(frame.host, {
+    targetBoundaryId: compiled.targetBoundaryId,
+    usedBoundaryIds: new Set(compiled.observedUses.map(use => use.targetBoundaryId)),
+    sectionBoundaryIds: declared?.sectionBoundaryIds ?? new Set()
+  });
+  annotateMountedHost(frame.host);
+}
+
+function unmountScreenFrame(frame: ScreenFrame): void {
+  if (!frame.iframe) return;
+  frame.iframe.replaceWith(createFramePlaceholder(frame.source));
+  frame.iframe = undefined;
+  frame.mounted = false;
+}
+
+function failScreenFrame(frame: ScreenFrame, error: unknown): void {
+  frame.host.replaceChildren(createPrototypeCompileError(error));
+  frame.iframe = undefined;
+  frame.mounted = false;
+  frame.failed = true;
+  prototypeUsesByHost.delete(frame.host);
+  frame.onFailed?.();
+}
+
+function prototypeDocument(iframe: HTMLIFrameElement): string | undefined {
+  return iframe.srcdoc || undefined;
+}
+
+function screenFrameDocument(frame: ScreenFrame): string | undefined {
+  if (frame.iframe) return prototypeDocument(frame.iframe);
+  if (frame.failed) return undefined;
+  try {
+    return compileScreenFrame(frame.source).html;
+  } catch (error) {
+    failScreenFrame(frame, error);
+    return undefined;
+  }
+}
+
+function createFramePlaceholder({ screen, selection, preset }: ScreenFrameSource): HTMLElement {
+  const placeholder = el('div', 'bp-chrome-frame-placeholder');
+  placeholder.append(
+    el('strong', 'bp-chrome-frame-placeholder-title', screenFrameLabel(screen)),
+    el('span', 'bp-chrome-frame-placeholder-meta', `${selection.state} · ${preset.name}`)
+  );
+  return placeholder;
+}
+
+const reusablesByBundle = new WeakMap<BlueprintProjectBundle, Map<string, ReusableDefinition>>();
+
+function declaredFrameUses(bundle: BlueprintProjectBundle, screen: ScreenDefinition): PrototypeFrameUses {
+  const projectId = bundle.manifest.project.id;
+  let reusables = reusablesByBundle.get(bundle);
+  if (!reusables) {
+    reusables = new Map([
+      ...bundle.primitives.primitives.map(primitive => [`primitive:${primitive.id}`, primitive] as const),
+      ...bundle.components.components.map(component => [`component:${component.id}`, component] as const)
+    ]);
+    reusablesByBundle.set(bundle, reusables);
+  }
+  const pending: Array<{ kind: string; id: string }> = [...screen.prototype.renderedUses
+    ?? screen.sections.flatMap(section => section.uses.filter(use => use.kind === 'primitive' || use.kind === 'component'))];
+  const usedBoundaryIds = new Set<string>();
+  for (let use = pending.pop(); use; use = pending.pop()) {
+    const id = boundaryId(projectId, use.kind as BoundaryKind, use.id);
+    if (usedBoundaryIds.has(id)) continue;
+    usedBoundaryIds.add(id);
+    pending.push(...reusables.get(`${use.kind}:${use.id}`)?.uses ?? []);
+  }
+  const declaredSections = new Set(screen.sections.map(section => section.id));
+  const markedSections = findSectionMarkers(bundle.prototypeSourceContents[screen.prototype.source] ?? '')
+    .filter(sectionId => declaredSections.has(sectionId))
+    .map(sectionId => boundaryId(projectId, 'section', `${screen.id}/${sectionId}`));
+  return {
+    targetBoundaryId: boundaryId(projectId, 'screen', screen.id),
+    usedBoundaryIds,
+    sectionBoundaryIds: new Set(markedSections)
+  };
 }
 
 function createPrototypeCompileError(error: unknown): HTMLElement {
@@ -3058,11 +3215,12 @@ function wireFrameCapture(options: {
   shot: HTMLButtonElement;
   save: HTMLButtonElement;
   screenId: string;
-  captureDocument?: string;
+  captureDocument?: () => string | undefined;
 }): void {
   const capture = async (): Promise<Blob> => {
-    const blob = options.captureDocument
-      ? await captureCanonicalPrototype(options.screenEl, options.captureDocument)
+    const html = options.captureDocument?.();
+    const blob = html
+      ? await captureCanonicalPrototype(options.screenEl, html)
       : await toBlob(options.screenEl, {
           pixelRatio: 2,
           style: {
@@ -3214,7 +3372,7 @@ interface FrameView {
   bundle: BlueprintProjectBundle;
   screen: ScreenDefinition;
   preset: FramePreset;
-  html: string;
+  document: () => string | undefined;
 }
 
 const frameViewerSteps: Partial<Record<string, number>> = { ArrowLeft: -1, ArrowRight: 1 };
@@ -3234,23 +3392,27 @@ function openFrameViewer(origin: HTMLElement): void {
     const scale = Math.min((window.innerHeight - 32) / content.offsetHeight, (window.innerWidth - 32) / content.offsetWidth);
     content.style.scale = `${Math.max(scale, 0.1)}`;
   };
-  const show = (slot: HTMLElement): void => {
+  const show = (slot: HTMLElement): boolean => {
     const view = frameViewBySlot.get(slot);
-    if (!view) return;
+    const html = view?.document();
+    if (!view || !html) return false;
     shown = slot;
     viewer.dataset.frameType = view.preset.type;
     viewer.setAttribute('aria-label', `${view.screen.name} in full screen`);
-    const next = createFrameViewerContent(view);
+    const next = createFrameViewerContent(view, html);
     if (content) content.replaceWith(next);
     else exit.before(next);
     content = next;
     fitPhone();
+    return true;
   };
   const step = (offset: number): void => {
     const slots = [...document.querySelectorAll<HTMLElement>('.frame-slot')].filter(slot => frameViewBySlot.has(slot));
     const index = slots.findIndex(slot => slot === shown || slot.dataset.liveFrameKey === shown.dataset.liveFrameKey);
-    const target = index >= 0 ? slots[index + offset] : undefined;
-    if (target) show(target);
+    if (index < 0) return;
+    for (let next = index + offset; next >= 0 && next < slots.length; next += offset) {
+      if (show(slots[next])) return;
+    }
   };
 
   const close = (): void => {
@@ -3285,12 +3447,15 @@ function openFrameViewer(origin: HTMLElement): void {
   document.addEventListener('fullscreenchange', onFullscreenChange);
 
   document.body.append(viewer);
-  show(origin);
+  if (!show(origin)) {
+    close();
+    return;
+  }
   viewer.focus();
   void viewer.requestFullscreen?.().catch(() => undefined);
 }
 
-function createFrameViewerContent({ bundle, screen, preset, html }: FrameView): HTMLElement {
+function createFrameViewerContent({ bundle, screen, preset }: FrameView, html: string): HTMLElement {
   const iframe = document.createElement('iframe');
   iframe.className = 'bp-frame-viewer-iframe';
   applyPrototypeIframeIsolation(iframe);
@@ -3404,8 +3569,6 @@ let activityClearTimer: number | undefined;
 let lastAgentActivity: BlueprintAgentActivityEvent | undefined;
 let lastAppliedRevision: string | undefined;
 let projectApplyQueue = Promise.resolve();
-const focusedPrototypeFrames = new Set<HTMLIFrameElement>();
-let agentFrameFocusGeneration = 0;
 
 type AgentStatusState = 'working' | 'thinking' | 'applying' | 'complete' | 'waiting' | 'failed';
 
@@ -3564,35 +3727,41 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
     .map(([key]) => key);
   if (currentKeys.length !== nextKeys.length) return false;
 
+  const mounter = frameMounterByRoot.get(state.root);
+  if (!mounter) return false;
   const tokenIndex = createTokenIndex(project);
-  await Promise.all(layouts.map(async layout => {
-    const key = liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection);
-    const previous = oldFrames.get(key);
-    if (!previous) return;
-    previous.classList.add('bp-chrome-live-frame-updating');
-    previous.setAttribute('aria-busy', 'true');
-    const next = createPrototypeFrame(
-      project,
-      tokenIndex,
-      layout.screen,
-      layout.preset,
-      layout.x,
-      layout.y,
-      layout.prototypeSelection,
-      layout.selectionError
-    );
-    next.style.visibility = 'hidden';
-    state.root.append(next);
-    await waitForPrototypeFrames(next);
-    next.style.removeProperty('visibility');
-    next.classList.add('bp-chrome-live-frame-enter');
-    previous.replaceWith(next);
-  }));
+  const release = mounter.hold();
+  try {
+    await Promise.all(layouts.map(async layout => {
+      const key = liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection);
+      const previous = oldFrames.get(key);
+      if (!previous) return;
+      previous.classList.add('bp-chrome-live-frame-updating');
+      previous.setAttribute('aria-busy', 'true');
+      const next = createPrototypeFrame(project, tokenIndex, layout, mounter);
+      next.style.visibility = 'hidden';
+      state.root.append(next);
+      slotScreenFrame(next)?.mount();
+      await waitForPrototypeFrames(next);
+      next.style.removeProperty('visibility');
+      next.classList.add('bp-chrome-live-frame-enter');
+      const replaced = slotScreenFrame(previous);
+      if (replaced) mounter.remove(replaced);
+      previous.replaceWith(next);
+    }));
+  } finally {
+    release();
+  }
   if (activeBoardId === 'screens') {
     refreshCanvasReviewState('screens');
     renderCanvasAnnotations();
   }
   return true;
+}
+
+function slotScreenFrame(slot: HTMLElement): ScreenFrame | undefined {
+  const host = slot.querySelector<HTMLElement>('.canonical-prototype-screen');
+  return host ? screenFrameByHost.get(host) : undefined;
 }
 
 function affectedScreenIds(changedPaths: string[]): Set<string> | undefined {
@@ -3695,20 +3864,20 @@ function renderAgentFocus(): void {
   if (focuses.length === 0) return;
   const label = lastAgentActivity?.label ?? 'Changes are live';
   const visibleRoot = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
-  const frameFocus = new Map<HTMLIFrameElement, Set<string>>();
+  const frameFocus = new Map<HTMLElement, Set<string>>();
   const canvasFocuses: BlueprintAgentActivityFocus[] = [];
   for (const focus of focuses) {
     const consumers = visibleRoot && activeBoardId === 'screens' &&
       (focus.kind === 'primitive' || focus.kind === 'component' || focus.kind === 'section')
-      ? prototypeFramesUsingBoundary(visibleRoot, focus)
+      ? prototypeHostsUsingBoundary(visibleRoot, focus)
       : [];
     if (consumers.length === 0) canvasFocuses.push(focus);
-    for (const frame of consumers) frameFocus.set(frame, new Set([...frameFocus.get(frame) ?? [], focus.boundaryId]));
+    for (const host of consumers) frameFocus.set(host, new Set([...frameFocus.get(host) ?? [], focus.boundaryId]));
   }
 
-  for (const [frame, boundaryIds] of frameFocus) {
-    applyPrototypeFrameFocus(frame, boundaryIds);
-    const context = frame.closest<HTMLElement>('.frame');
+  for (const [host, boundaryIds] of frameFocus) {
+    showFrameOverlay(agentFocusOverlay, host, boundaryIds);
+    const context = host.closest<HTMLElement>('.frame');
     if (context && !focusedActivityElements.includes(context)) {
       context.classList.add('bp-chrome-agent-focus-context');
       context.dataset.agentActivityLabel = label;
@@ -3780,9 +3949,7 @@ function agentActivityKey(event: BlueprintAgentActivityEvent): string {
 
 function clearAgentFocus(): void {
   viewport.classList.remove('bp-agent-project-focus');
-  agentFrameFocusGeneration += 1;
-  for (const layer of document.querySelectorAll('.bp-chrome-agent-frame-focus')) layer.remove();
-  focusedPrototypeFrames.clear();
+  resetFrameOverlay(agentFocusOverlay);
   for (const element of focusedActivityElements) {
     element.classList.remove(
       'bp-chrome-agent-focus',
@@ -3795,37 +3962,67 @@ function clearAgentFocus(): void {
   focusedActivityElements = [];
 }
 
-function prototypeFramesUsingBoundary(root: HTMLElement, focus: BlueprintAgentActivityFocus): HTMLIFrameElement[] {
-  const focusBoundaryId = focus.boundaryId;
-  return [...root.querySelectorAll<HTMLIFrameElement>('iframe[data-prototype-target-boundary]')].filter(frame => {
-    if (focus.kind === 'section') {
-      return prototypeDocumentByFrame.get(frame)?.includes(`data-blueprint-section-boundary-id="${focusBoundaryId}"`) ?? false;
-    }
-    if (frame.dataset.prototypeTargetBoundary === focusBoundaryId) return true;
-    try {
-      const uses = JSON.parse(frame.dataset.prototypeObservedUses ?? '[]') as Array<{ targetBoundaryId?: string }>;
-      return uses.some(use => use.targetBoundaryId === focusBoundaryId);
-    } catch {
-      return false;
-    }
+function prototypeHostsUsingBoundary(root: HTMLElement, focus: BlueprintAgentActivityFocus): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>('.canonical-prototype-screen')].filter(host => {
+    const uses = prototypeUsesByHost.get(host);
+    if (!uses) return false;
+    if (focus.kind === 'section') return uses.sectionBoundaryIds.has(focus.boundaryId);
+    return uses.targetBoundaryId === focus.boundaryId || uses.usedBoundaryIds.has(focus.boundaryId);
   });
 }
 
-function applyPrototypeFrameFocus(frame: HTMLIFrameElement, boundaryIds: ReadonlySet<string>): void {
-  const html = prototypeDocumentByFrame.get(frame);
-  const host = frame.parentElement;
-  if (!html || !host) return;
-  focusedPrototypeFrames.add(frame);
-  const generation = agentFrameFocusGeneration;
-  void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, boundaryIds).then(extents => {
-    if (generation !== agentFrameFocusGeneration || !frame.isConnected) return;
-    host.querySelector(':scope > .bp-chrome-agent-frame-focus')?.remove();
-    const layer = el('div', 'bp-chrome-agent-frame-focus');
+function mountedPrototypeIframe(host: HTMLElement): HTMLIFrameElement | undefined {
+  return host.querySelector<HTMLIFrameElement>(':scope > iframe.canonical-prototype-iframe') ?? undefined;
+}
+
+interface FrameOverlay {
+  layerClass: string;
+  boxClass: string;
+  datasetKey: string;
+  generation: number;
+  targets: Map<HTMLElement, ReadonlySet<string>>;
+  drawn: WeakMap<HTMLElement, number>;
+  decorate?: (layer: HTMLElement) => void;
+}
+
+function createFrameOverlay(layerClass: string, boxClass: string, datasetKey: string, decorate?: (layer: HTMLElement) => void): FrameOverlay {
+  return { layerClass, boxClass, datasetKey, generation: 0, targets: new Map(), drawn: new WeakMap(), decorate };
+}
+
+const findingOverlay = createFrameOverlay('bp-chrome-finding-layer', 'bp-chrome-finding-box', 'findingBoundaryIds');
+const changeOverlay = createFrameOverlay('bp-chrome-change-layer', 'bp-chrome-change-box', 'changeBoundaryIds');
+const agentFocusOverlay = createFrameOverlay('bp-chrome-agent-frame-focus', 'bp-chrome-agent-frame-focus-box', 'focusBoundaryIds', layer => {
+  layer.classList.toggle('bp-chrome-agent-focus-failed', lastAgentActivity?.phase === 'failed');
+});
+
+function resetFrameOverlay(overlay: FrameOverlay): void {
+  overlay.generation += 1;
+  overlay.targets.clear();
+  for (const layer of document.querySelectorAll(`.${overlay.layerClass}`)) layer.remove();
+}
+
+function showFrameOverlay(overlay: FrameOverlay, host: HTMLElement, boundaryIds: ReadonlySet<string>): void {
+  overlay.targets.set(host, boundaryIds);
+  drawFrameOverlay(overlay, host);
+}
+
+// Frames off screen are not mounted, so each overlay draws on mount from the targets of its last render.
+function drawFrameOverlay(overlay: FrameOverlay, host: HTMLElement): void {
+  const boundaryIds = overlay.targets.get(host);
+  const iframe = mountedPrototypeIframe(host);
+  const html = iframe ? prototypeDocument(iframe) : undefined;
+  if (!boundaryIds || !iframe || !html || overlay.drawn.get(host) === overlay.generation) return;
+  const generation = overlay.generation;
+  overlay.drawn.set(host, generation);
+  void measurePrototypeBoundaryExtents(html, iframe.clientWidth, iframe.clientHeight, boundaryIds).then(extents => {
+    if (generation !== overlay.generation || !host.isConnected) return;
+    host.querySelector(`:scope > .${overlay.layerClass}`)?.remove();
+    const layer = el('div', overlay.layerClass);
     layer.setAttribute('aria-hidden', 'true');
-    layer.dataset.focusBoundaryIds = [...boundaryIds].join(' ');
-    layer.classList.toggle('bp-chrome-agent-focus-failed', lastAgentActivity?.phase === 'failed');
+    layer.dataset[overlay.datasetKey] = [...boundaryIds].join(' ');
+    overlay.decorate?.(layer);
     for (const extent of extents) {
-      const box = el('div', 'bp-chrome-agent-frame-focus-box');
+      const box = el('div', overlay.boxClass);
       box.style.left = `${extent.left}px`;
       box.style.top = `${extent.top}px`;
       box.style.width = `${extent.right - extent.left}px`;
@@ -3834,6 +4031,17 @@ function applyPrototypeFrameFocus(frame: HTMLIFrameElement, boundaryIds: Readonl
     }
     host.append(layer);
   });
+}
+
+function annotateMountedHost(host: HTMLElement): void {
+  for (const overlay of [findingOverlay, changeOverlay, agentFocusOverlay]) drawFrameOverlay(overlay, host);
+  const state = canvasSelectionState;
+  if (
+    state?.frameKey !== undefined
+    && state.chain[state.index]?.instance !== undefined
+    && selectionFrameKey(host) === state.frameKey
+    && !host.querySelector(':scope > .bp-chrome-selection-layer')
+  ) renderCanvasSelection();
 }
 
 function measurePrototypeBoundaryExtents(
@@ -3915,7 +4123,6 @@ function renderCanvasAnnotations(): void {
 
 const designFindingsByBundle = new WeakMap<BlueprintProjectBundle, DesignFinding[]>();
 let findingsPanelState: { title: string; boundaryIds: string[] } | undefined;
-let findingAnnotationGeneration = 0;
 
 function designFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
   let findings = designFindingsByBundle.get(bundle);
@@ -3926,52 +4133,24 @@ function designFindings(bundle: BlueprintProjectBundle): DesignFinding[] {
   return findings;
 }
 
-function frameFindingBoundaryIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition, screenEl: HTMLElement): string[] {
-  const iframe = screenEl.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
+function frameFindingBoundaryIds(bundle: BlueprintProjectBundle, screen: ScreenDefinition, usedBoundaryIds: Iterable<string>): string[] {
   return [...new Set([
     boundaryId(bundle.manifest.project.id, 'screen', screen.id),
-    ...iframe ? observedBoundaryIds(iframe) : [],
+    ...usedBoundaryIds,
     ...bundle.tokens.tokenGroups.map(group => boundaryId(bundle.manifest.project.id, 'token-group', group.id))
   ])];
 }
 
-function observedBoundaryIds(iframe: HTMLIFrameElement): string[] {
-  try {
-    const uses = JSON.parse(iframe.dataset.prototypeObservedUses ?? '[]') as Array<{ targetBoundaryId?: string }>;
-    return uses.flatMap(use => use.targetBoundaryId ? [use.targetBoundaryId] : []);
-  } catch {
-    return [];
-  }
-}
-
 function renderFindingAnnotations(): void {
-  const generation = ++findingAnnotationGeneration;
-  for (const layer of document.querySelectorAll('.bp-chrome-finding-layer')) layer.remove();
+  resetFrameOverlay(findingOverlay);
   renderFindingsPanel();
   const root = activeBoardId === 'screens' ? boardState.get('screens')?.root : undefined;
   if (!root) return;
   const componentIds = new Set(designFindings(project).filter(finding => finding.kind === 'component').map(finding => finding.boundaryId));
   if (componentIds.size === 0) return;
-  for (const frame of root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')) {
-    const html = prototypeDocumentByFrame.get(frame);
-    const flagged = new Set(observedBoundaryIds(frame).filter(id => componentIds.has(id)));
-    if (!html || flagged.size === 0) continue;
-    void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, flagged).then(extents => {
-      const host = frame.parentElement;
-      if (generation !== findingAnnotationGeneration || !host || !frame.isConnected) return;
-      const layer = el('div', 'bp-chrome-finding-layer');
-      layer.setAttribute('aria-hidden', 'true');
-      layer.dataset.findingBoundaryIds = [...flagged].join(' ');
-      for (const extent of extents) {
-        const box = el('div', 'bp-chrome-finding-box');
-        box.style.left = `${extent.left}px`;
-        box.style.top = `${extent.top}px`;
-        box.style.width = `${extent.right - extent.left}px`;
-        box.style.height = `${extent.bottom - extent.top}px`;
-        layer.append(box);
-      }
-      host.append(layer);
-    });
+  for (const host of root.querySelectorAll<HTMLElement>('.canonical-prototype-screen')) {
+    const flagged = new Set([...prototypeUsesByHost.get(host)?.usedBoundaryIds ?? []].filter(id => componentIds.has(id)));
+    if (flagged.size > 0) showFrameOverlay(findingOverlay, host, flagged);
   }
 }
 
@@ -4039,7 +4218,6 @@ function flashCopied(button: HTMLButtonElement): void {
 
 let viewingChangeBaseline = false;
 let liveProjectDuringBaselineView: BlueprintProjectBundle | undefined;
-let changeAnnotationGeneration = 0;
 
 function narrowScreenChangesToSections(
   previous: BlueprintProjectBundle,
@@ -4073,44 +4251,24 @@ function sectionMarkup(source: string | undefined): { outside: string; sections:
 }
 
 function renderChangeAnnotations(): void {
-  const generation = ++changeAnnotationGeneration;
+  resetFrameOverlay(changeOverlay);
   refreshItemNav();
-  for (const layer of document.querySelectorAll('.bp-chrome-change-layer')) layer.remove();
   for (const element of document.querySelectorAll('.bp-chrome-changed')) element.classList.remove('bp-chrome-changed');
   renderChangeBar();
   const root = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
   if (!root || latestChanges.length === 0) return;
-  const frameChanges = new Map<HTMLIFrameElement, Set<string>>();
+  const frameChanges = new Map<HTMLElement, Set<string>>();
   for (const change of latestChanges) {
-    const frames = activeBoardId === 'screens' && (change.kind === 'primitive' || change.kind === 'component' || change.kind === 'section')
-      ? prototypeFramesUsingBoundary(root, change)
+    const hosts = activeBoardId === 'screens' && (change.kind === 'primitive' || change.kind === 'component' || change.kind === 'section')
+      ? prototypeHostsUsingBoundary(root, change)
       : [];
-    for (const frame of frames) frameChanges.set(frame, new Set([...frameChanges.get(frame) ?? [], change.boundaryId]));
-    if (frames.length > 0) continue;
+    for (const host of hosts) frameChanges.set(host, new Set([...frameChanges.get(host) ?? [], change.boundaryId]));
+    if (hosts.length > 0) continue;
     for (const element of root.querySelectorAll<HTMLElement>('[data-boundary-id]')) {
       if (element.dataset.boundaryId === change.boundaryId) element.classList.add('bp-chrome-changed');
     }
   }
-  for (const [frame, boundaryIds] of frameChanges) {
-    const html = prototypeDocumentByFrame.get(frame);
-    if (!html) continue;
-    void measurePrototypeBoundaryExtents(html, frame.clientWidth, frame.clientHeight, boundaryIds).then(extents => {
-      const host = frame.parentElement;
-      if (generation !== changeAnnotationGeneration || !host || !frame.isConnected) return;
-      const layer = el('div', 'bp-chrome-change-layer');
-      layer.setAttribute('aria-hidden', 'true');
-      layer.dataset.changeBoundaryIds = [...boundaryIds].join(' ');
-      for (const extent of extents) {
-        const box = el('div', 'bp-chrome-change-box');
-        box.style.left = `${extent.left}px`;
-        box.style.top = `${extent.top}px`;
-        box.style.width = `${extent.right - extent.left}px`;
-        box.style.height = `${extent.bottom - extent.top}px`;
-        layer.append(box);
-      }
-      host.append(layer);
-    });
-  }
+  for (const [host, boundaryIds] of frameChanges) showFrameOverlay(changeOverlay, host, boundaryIds);
 }
 
 function renderChangeBar(): void {
@@ -4169,7 +4327,7 @@ interface CanvasSelectionState {
   chain: SelectionNode[];
   index: number;
   frameKey?: string;
-  measuredFrame?: HTMLIFrameElement;
+  measuredHost?: HTMLElement;
   frame: Omit<BlueprintCanvasSelection, keyof BlueprintSelectedBoundary | 'context'>;
 }
 
@@ -4214,27 +4372,33 @@ async function selectAtPointer(event: MouseEvent): Promise<void> {
     setCanvasSelection(undefined);
     return;
   }
-  const iframe = target.closest('.canonical-prototype-screen')
-    ?.querySelector<HTMLIFrameElement>(':scope > iframe.canonical-prototype-iframe');
-  if (iframe) {
-    await selectInPrototypeFrame(iframe, event.clientX, event.clientY);
+  const host = target.closest<HTMLElement>('.canonical-prototype-screen');
+  const screenFrame = host ? screenFrameByHost.get(host) : undefined;
+  if (host && (mountedPrototypeIframe(host) || (screenFrame && !screenFrame.failed))) {
+    await selectInPrototypeFrame(host, event.clientX, event.clientY);
     return;
   }
   const element = target.closest<HTMLElement>('[data-boundary-id]');
   setCanvasSelection(element ? domSelectionState(element) : undefined, element !== null);
 }
 
-async function selectInPrototypeFrame(iframe: HTMLIFrameElement, clientX: number, clientY: number): Promise<void> {
-  const html = prototypeDocumentByFrame.get(iframe);
-  const frameElement = iframe.closest<HTMLElement>('.frame');
-  if (!html || !frameElement) return;
-  const rect = iframe.getBoundingClientRect();
-  const scale = iframe.clientWidth > 0 ? rect.width / iframe.clientWidth : 1;
+async function selectInPrototypeFrame(host: HTMLElement, clientX: number, clientY: number): Promise<void> {
+  const iframe = mountedPrototypeIframe(host);
+  const screenFrame = screenFrameByHost.get(host);
+  const html = iframe ? prototypeDocument(iframe) : screenFrame ? screenFrameDocument(screenFrame) : undefined;
+  const frameElement = host.closest<HTMLElement>('.frame');
+  if (!frameElement) return;
+  if (!html) {
+    setCanvasSelection(domSelectionState(frameElement), true);
+    return;
+  }
+  const rect = host.getBoundingClientRect();
+  const scale = host.clientWidth > 0 ? rect.width / host.clientWidth : 1;
   const x = (clientX - rect.left) / scale;
   const y = (clientY - rect.top) / scale;
   const generation = ++selectionHitGeneration;
-  const hits = await readPrototypeTwin(html, iframe.clientWidth, iframe.clientHeight, twinDocument => boundaryHitsAtPoint(twinDocument, x, y), []);
-  if (generation !== selectionHitGeneration || !iframe.isConnected) return;
+  const hits = await readPrototypeTwin(html, host.clientWidth, host.clientHeight, twinDocument => boundaryHitsAtPoint(twinDocument, x, y), []);
+  if (generation !== selectionHitGeneration || !host.isConnected) return;
   const chain = hits.flatMap(hit => {
     const node = selectionNodeForBoundaryId(hit.boundaryId);
     if (!node) return [];
@@ -4245,15 +4409,15 @@ async function selectInPrototypeFrame(iframe: HTMLIFrameElement, clientX: number
     return;
   }
   const frameLabel = frameElement.dataset.explorationRole
-    ? iframe.closest('.frame-slot')?.querySelector('.frame-note .frame-name')?.textContent
+    ? host.closest('.frame-slot')?.querySelector('.frame-note .frame-name')?.textContent
     : undefined;
   setCanvasSelection({
     chain: frameLabel
       ? chain.map(node => node.kind === 'screen' ? { ...node, label: `${node.label} · ${frameLabel}` } : node)
       : chain,
     index: 0,
-    frameKey: selectionFrameKey(iframe),
-    measuredFrame: iframe,
+    frameKey: selectionFrameKey(host),
+    measuredHost: host,
     frame: frameSelectionContext(frameElement)
   }, true);
 }
@@ -4362,12 +4526,10 @@ function renderCanvasSelection(): void {
     element?.classList.add('bp-chrome-selected');
     return;
   }
-  const iframe = scope.querySelector<HTMLIFrameElement>('iframe.canonical-prototype-iframe');
-  const html = iframe ? prototypeDocumentByFrame.get(iframe) : undefined;
-  if (!iframe || !html) return;
+  const host = scope.querySelector<HTMLElement>('.canonical-prototype-screen');
+  if (!host) return;
   const draw = (extent: BoundaryExtent | undefined): void => {
-    const host = iframe.parentElement;
-    if (generation !== selectionRenderGeneration || !extent || !host || !iframe.isConnected) return;
+    if (generation !== selectionRenderGeneration || !extent || !host.isConnected) return;
     const layer = el('div', 'bp-chrome-selection-layer');
     layer.setAttribute('aria-hidden', 'true');
     layer.dataset.selectionBoundaryId = node.boundaryId;
@@ -4380,10 +4542,12 @@ function renderCanvasSelection(): void {
     host.append(layer);
   };
   const instance = node.instance;
-  if (state.measuredFrame === iframe && node.extent) {
+  const iframe = mountedPrototypeIframe(host);
+  const html = iframe ? prototypeDocument(iframe) : undefined;
+  if (state.measuredHost === host && node.extent) {
     draw(node.extent);
-  } else {
-    void readPrototypeTwin(html, iframe.clientWidth, iframe.clientHeight, twinDocument => (
+  } else if (html) {
+    void readPrototypeTwin(html, host.clientWidth, host.clientHeight, twinDocument => (
       measureBoundaryInstance(twinDocument, node.boundaryId, instance)
     ), undefined).then(draw);
   }

@@ -2373,6 +2373,34 @@ body {
   pointer-events: none;
 }
 
+.bp-chrome-frame-placeholder {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.4em;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: min(40%, 360px) 24px 24px;
+  background: var(--bp-chrome-surface);
+  color: var(--bp-chrome-muted-fg);
+  font-family: var(--bp-chrome-font);
+  font-size: clamp(16px, calc(var(--frame-width, 393px) / 18), 72px);
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.bp-chrome-frame-placeholder-title {
+  color: var(--bp-chrome-fg);
+  font-family: var(--bp-chrome-font-display);
+  font-weight: 650;
+}
+
+.bp-chrome-frame-placeholder-meta {
+  font-size: 0.6em;
+}
+
 .frame.frame-device {
   display: flex;
   width: auto;
