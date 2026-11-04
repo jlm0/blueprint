@@ -1328,6 +1328,48 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  describe('live board replacement', () => {
+    it('keeps the board of a page that opens while a live replacement waits for its frames', async () => {
+      await withServedAssetCopy(async (url, project) => {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
+        try {
+          const heldAssets: { continue: () => Promise<void> }[] = [];
+          let holdAssets = false;
+          await page.route('**/__blueprint/assets/**', route => holdAssets ? void heldAssets.push(route) : route.continue());
+          await page.clock.install();
+          await page.goto(`${url}?board=screens&page=mobile`);
+          await page.locator('.board-screens .frame[data-screen-id="hub"]').first().waitFor({ state: 'attached', timeout: 15000 });
+          for (let attempt = 0; attempt < 40 && await page.locator('.board-screens .canonical-prototype-iframe').count() === 0; attempt += 1) {
+            await page.clock.runFor(250);
+          }
+
+          // The replacement waits for its frames to load, and held asset requests keep that wait open while the page changes.
+          holdAssets = true;
+          const screensPath = path.join(project, 'screens.json');
+          const screens = JSON.parse(await readFile(screensPath, 'utf8')) as { screens: { id: string; page: string }[] };
+          for (const screen of screens.screens) if (screen.id === 'match') screen.page = 'landing';
+          await writeFile(screensPath, `${JSON.stringify(screens, null, 2)}\n`, 'utf8');
+          await page.locator('[data-board-root="screens"].bp-chrome-live-board-next').waitFor({ state: 'attached', timeout: 15000 });
+          await page.locator('.bp-chrome-nav-group-label[data-page="landing"]').click();
+          holdAssets = false;
+          for (const route of heldAssets.splice(0)) await route.continue();
+          for (let attempt = 0; attempt < 40 && await page.locator('.bp-chrome-live-board-next').count() > 0; attempt += 1) {
+            await page.clock.runFor(250);
+          }
+          await page.clock.runFor(1000);
+
+          assert.equal(await page.locator('[data-board-root="screens"]').count(), 1, 'Only the board of the open page should stay');
+          assert.ok(await page.locator('[data-board-root="screens"] .frame[data-screen-id="launch"]').count() > 0);
+          assert.equal(await page.locator('[data-board-root="screens"] .frame[data-screen-id="hub"]').count(), 0);
+        } finally {
+          await browser.close();
+        }
+      });
+    });
+  });
+
   describe('project snapshot deltas', () => {
     it('answers with a delta only from the previous revision, and the delta rebuilds the full snapshot', async () => {
       await withServedAssetCopy(async (url, project, served) => {

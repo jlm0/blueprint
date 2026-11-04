@@ -871,6 +871,10 @@ async function replaceMountedBoard(id: BoardId): Promise<void> {
   boardContainer(id).append(nextRoot);
   const mounted = config.mount({ root: nextRoot, canvas, project });
   if (isActive) await waitForBoardFrames(nextRoot);
+  if (boardState.get(id) !== current) {
+    nextRoot.remove();
+    return;
+  }
 
   current.root.remove();
   nextRoot.style.removeProperty('visibility');
