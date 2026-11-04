@@ -34,7 +34,7 @@ export interface ViewportSize {
 export const DEFAULT_FRAME_MOUNT_POLICY: FrameMountPolicy = {
   nearMargin: 600,
   farMargin: 1800,
-  maxFrames: 64,
+  maxFrames: 32,
   maxBytes: 384 * 1024 * 1024
 };
 
