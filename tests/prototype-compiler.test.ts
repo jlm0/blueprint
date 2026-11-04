@@ -12,6 +12,8 @@ import { createReadinessReport, validateProject } from '../src/prototype/validat
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const chatSource = 'prototype/screens/chat.html';
+const assetFixtureRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
+const declaredAsset = '../assets/art/eclipse.svg';
 
 describe('canonical prototype compiler', () => {
   it('recursively composes declared slots, sources, tokens, assets, and stable boundary evidence', async () => {
@@ -203,6 +205,243 @@ describe('canonical prototype compiler', () => {
 
     const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
     assert.match(compiled.html, /<span>\$12 \$& \$` \$'<\/span>/);
+  });
+
+  it('keeps the next slot after a self-closing slot when it compiles', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    assert.ok(button?.prototype);
+    bundle.prototypeSourceContents[button.prototype.source] = '<button data-blueprint-primitive="button" type="button"><slot name="label"/><slot name="icon"><svg data-fallback-icon="1"></svg></slot></button>';
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="primitive" ref="button" state="normal"><span slot="label">Open</span></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'button', reason: 'self-closing slot regression' }]
+    );
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.match(compiled.html, /<span>Open<\/span><svg data-fallback-icon="1"><\/svg><\/button>/);
+  });
+
+  it('leaves a commented-out use and a commented-out slot as comments', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    assert.ok(button?.prototype);
+    bundle.prototypeSourceContents[button.prototype.source] = '<button data-blueprint-primitive="button" type="button"><!-- <slot name="label"></slot> --><slot name="label">Fallback</slot></button>';
+    focusChat(
+      bundle,
+      '<main><!-- <blueprint-use kind="component" ref="ghost"></blueprint-use> --><blueprint-use kind="primitive" ref="button" state="normal"><span slot="label">Open</span></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'button', reason: 'commented markup regression' }]
+    );
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.ok(compiled.html.includes('<!-- <blueprint-use kind="component" ref="ghost"></blueprint-use> -->'));
+    assert.ok(compiled.html.includes('<!-- <slot name="label"></slot> --><span>Open</span></button>'));
+    assert.deepEqual(compiled.observedUses.map(use => use.id), ['button']);
+  });
+
+  it('reads the root element past a comment, and past a greater-than sign in a value', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    focusChat(bundle, '<!-- <div> --><main title="a>b" data-blueprint-screen="chat"></main>', []);
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.ok(compiled.html.includes('<!-- <div> --><main title="a>b" data-blueprint-screen="chat" data-blueprint-state="default" data-blueprint-boundary-id='));
+  });
+
+  it('does not read plain text as executable content', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const text of ['Status online = true', 'form action = x', 'a formaction = b', '<!-- Status online = true -->', '<span title="form action = x onclick = y">Label</span>']) {
+      focusChat(bundle, `<main><p>${text}</p></main>`, []);
+      const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+      assert.ok(compiled.html.includes(text), text);
+    }
+  });
+
+  it('still refuses a real handler, each blocked element, and each media element', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const refuses = (markup: string, message: RegExp): void => {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), message, markup);
+    };
+    const executable = /contains executable, navigation, form, or nested browsing content/;
+    for (const markup of [
+      '<main onclick="x"></main>',
+      '<main ONCLICK=x></main>',
+      '<main/onclick="x"></main>',
+      '<main title="a>b" onclick="x"></main>',
+      '<main data-note=a"b onload="x"></main>',
+      '<main><script></script></main>',
+      '<main><SCRIPT src="a.js"></SCRIPT></main>',
+      '<main><iframe></iframe></main>',
+      '<main><object></object></main>',
+      '<main><embed></main>',
+      '<main><meta charset="utf-8"></main>',
+      '<main><base></main>',
+      '<main><link></main>',
+      '<main><form action="/a"></form></main>',
+      '<main><button formaction=/a></button></main>',
+      '<main></main><script',
+      '<main></main><div onclick="x"',
+      '<svg><style><script></script></style></svg>',
+      '<main><!-- </style><script></script> --></main>',
+      '</div a="><!-- "><script></script><!-- -->'
+    ]) {
+      refuses(markup, executable);
+    }
+    refuses('<main><video></video></main>', /contains media content/);
+    refuses('<main><AUDIO></AUDIO></main>', /contains media content/);
+  });
+
+  it('reads only a real href attribute as a link target', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const anchor of ['<a data-href="x">Leave</a>', '<a title="href=\'x\'">Leave</a>', '<a title=" href = \'https://example.com\'">Leave</a>', '<a href>Leave</a>']) {
+      focusChat(bundle, `<main>${anchor}</main>`, []);
+      const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+      assert.ok(compiled.html.includes(anchor), anchor);
+    }
+  });
+
+  it('still refuses a link that a browser reads where this tokenizer sees a comment, raw text, or a value', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of [
+      '<svg><a xlink:href="https://example.com/x">Leave</a></svg>',
+      '<main><a href=https://example.com/x href="/ok">Leave</a></main>',
+      '<svg><style><a href="https://example.com/x">Leave</a></style></svg>',
+      '</div a="><!-- "><a href="https://example.com/x"><!-- -->',
+      '</div a="><p b=\'"><a href="https://example.com/x">\'>',
+      '<noscript><p title="</noscript><a href=\'https://example.com/x\'>"></noscript>',
+      '<main></main><a href="https://example.com/x" '
+    ]) {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /navigation|unsafe href/, markup);
+    }
+  });
+
+  it('checks a resource only in a src or poster attribute of a tag', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of ['<main>src="missing.png"</main>', '<main data-src="missing.png" title="poster=\'missing.png\'"></main>']) {
+      focusChat(bundle, markup, []);
+      assert.ok(compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }).html.includes('missing.png'), markup);
+    }
+    focusChat(bundle, '<main><img SRC = "missing.png"></main>', []);
+    assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /is not a declared controlled asset/);
+  });
+
+  it('refuses a blocked element or attribute that a browser can read where the tokenizer reads something else', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of [
+      `<main></main></x a="><p a='">'<script>alert(1)</script>`,
+      `<main></main></x a="><p a='">'<meta http-equiv="refresh" content="0;url=https://example.com/x">`,
+      `<main></main><![CDATA[<p a='>'<script>alert(1)</script>`,
+      `<main></main><!-- --><![CDATA[<p a='>'<iframe src="https://example.com/x"></iframe>`,
+      `<main></main><![CDATA[><img x="]]><b title=" onerror=alert(1) y="z">`,
+      `<main></main><![CDATA[><form x="]]><b title=" action=https://example.com/x y="z"><button>go</button></form>`,
+      `<main></main></x a="><p q="><img x='" r=' onerror=alert(1) s='t'>`,
+      `<main></main></x a="><!-- "><img x="--><b title=" onerror=alert(1) y="z">`,
+      `<main></main><math><annotation-xml><style><img x="</style><b title=" onerror=alert(1) y="z"></annotation-xml></math>`,
+      '<main></main></x a=" <title> <script src="a.js">'
+    ]) {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /executable, navigation, form/, markup);
+    }
+  });
+
+  it('refuses an undeclared resource in any tag a browser could read', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of [
+      '<main></main><img src="https://example.com/x.png" ',
+      '<main></main><img src="../../undeclared.png" ',
+      '<main></main><![CDATA[><img src="https://example.com/x.png">]]>',
+      '<main></main></x a="><!-- "><img src="https://example.com/x.png"><!-- -->',
+      '<main></main><math><annotation-xml><style><img src="https://example.com/x.png"></style></annotation-xml></math>',
+      '<main><!-- <img src="missing.png"> --></main>',
+      `<main title="<img src='missing.png'>"></main>`,
+      '<main></main></x a=" formaction=/f </p> onclick="e" <title> action=/h <img src="u.png">'
+    ]) {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /is not a declared controlled asset|must be a controlled relative path/, markup);
+    }
+  });
+
+  it('refuses a resource that a slot moves out of raw text', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    assert.ok(button?.prototype);
+    bundle.prototypeSourceContents[button.prototype.source] = '<button data-blueprint-primitive="button" type="button"><svg><slot name="label"></slot></svg></button>';
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="primitive" ref="button" state="normal"><style slot="label"><img src="https://example.com/moved.png"></style></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'button', reason: 'moved resource' }]
+    );
+    assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /must be a controlled relative path/);
+  });
+
+  it('refuses a resource with no quotes, because the compiler rewrites only quoted values', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of ['<main><img src=https://example.com/x.png></main>', '<main><video-frame poster=missing.png></video-frame></main>']) {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /Fix: put double quotes around/, markup);
+    }
+  });
+
+  it('refuses a safe link in a tag that the compiler cannot rewrite, because a browser could read it as live', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    for (const markup of [
+      '<main></main><![CDATA[><a href="/elsewhere">go</a>]]>',
+      '<main></main></x a="><!-- "><a href="/elsewhere">go</a><!-- -->',
+      '<main></main><math><annotation-xml><style><a href="/elsewhere">go</a></style></annotation-xml></math>',
+      '<main><!-- <a href="/elsewhere">go</a> --></main>',
+      '<main></main><a href="/elsewhere" '
+    ]) {
+      focusChat(bundle, markup, []);
+      assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /Fix: delete that link/, markup);
+    }
+  });
+
+  it('reads a deep or long source without a stack overflow or a long stall', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const started = performance.now();
+    for (const opener of ['<!--', '<title>', '<textarea>', '<![CDATA[', '<!x', '<?x']) {
+      focusChat(bundle, `<main></main>${opener.repeat(20_000)}`, []);
+      assert.ok(compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }).html.includes('<main'), opener);
+    }
+    focusChat(bundle, `<main></main>${'<!--'.repeat(2_500)}${'a'.repeat(2_000_000)}`, []);
+    compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.ok(performance.now() - started < 20_000);
+  });
+
+  it('refuses a source with too many unclosed tags, in bounded time, and names the fix', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const started = performance.now();
+    focusChat(bundle, `<main></main>${'<a '.repeat(200_000)}>`, []);
+    assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /too many unclosed tags.*Fix: close each tag/s);
+    assert.ok(performance.now() - started < 20_000);
+  });
+
+  it('marks a section on each level of a composed screen, in document order', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    assert.ok(button?.prototype);
+    bundle.prototypeSourceContents[button.prototype.source] = '<button data-blueprint-primitive="button" type="button"><i data-blueprint-section="inner"></i><slot name="label"/></button>';
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'chat');
+    assert.ok(screen?.prototype);
+    focusChat(
+      bundle,
+      '<main><p data-blueprint-section="first"></p><blueprint-use kind="primitive" ref="button" state="normal" data-blueprint-section="forwarded"><b slot="label" data-blueprint-section="slotted">Go</b></blueprint-use><p data-blueprint-section="last"></p></main>',
+      [{ kind: 'primitive', id: 'button', reason: 'section tag composition' }]
+    );
+    const first = screen.sections[0];
+    screen.sections = ['first', 'forwarded', 'inner', 'slotted', 'last'].map(id => ({ ...first, id }));
+
+    const { html } = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    const marked = [...html.matchAll(/data-blueprint-section-boundary-id="[^"]*\/([a-z]+)"/g)].map(match => match[1]);
+    assert.deepEqual(marked, ['first', 'forwarded', 'inner', 'slotted', 'last']);
+    assert.match(html, /<button [^>]*data-blueprint-section="forwarded"[^>]*data-blueprint-boundary-id=[^>]*data-blueprint-section-boundary-id="[^"]*\/forwarded">/);
+
+    screen.sections = [first];
+    assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /marks undeclared section "first"/);
+    screen.sections = ['first', 'forwarded', 'inner', 'slotted', 'last'].map(id => ({ ...first, id }));
+    bundle.prototypeSourceContents[chatSource] = bundle.prototypeSourceContents[chatSource].replace('"last"', '"first"');
+    assert.throws(() => compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } }), /marks section "first" more than once/);
   });
 
   it('preserves safe review destinations as inert metadata and rejects navigation-capable source', async () => {
@@ -570,6 +809,93 @@ describe('canonical prototype compiler', () => {
     assert.equal(createReadinessReport(original).items.some(item => item.path.endsWith('.marker')), false);
   });
 
+  it('does not read a url in a stylesheet comment or string as an asset', async () => {
+    for (const css of ['/* url(x.png) */', '.a::before { content: "url(x.png)"; }', ".a { background: /* url(x.png) */ none; }", '.a[title="url(x.png)"] { color: inherit; }']) {
+      assert.ok(compileWithStyle(await loadProjectFromFs(assetFixtureRoot), css).includes(css), css);
+    }
+  });
+
+  it('still checks and rewrites a real url in each spelling', async () => {
+    for (const write of [
+      (ref: string) => `url(${ref})`,
+      (ref: string) => `url("${ref}")`,
+      (ref: string) => `url('${ref}')`,
+      (ref: string) => `url( "${ref}" )`,
+      (ref: string) => `url(  ${ref}  )`,
+      (ref: string) => `URL(${ref})`,
+      (ref: string) => `Url("${ref}")`,
+      (ref: string) => `image-set(url(${ref}) 1x)`
+    ]) {
+      await assert.rejects(
+        async () => compileWithStyle(await loadProjectFromFs(assetFixtureRoot), `.a { background: ${write('x.png')}; }`),
+        /Prototype resource "x\.png" from "prototype\/screens\/launch\.css" is not a declared controlled asset/,
+        write('x.png')
+      );
+      const html = compileWithStyle(await loadProjectFromFs(assetFixtureRoot), `.a { background: ${write(declaredAsset)}; }`);
+      assert.doesNotMatch(html, /\.\.\/assets\/art\/eclipse\.svg/, write(declaredAsset));
+      assert.match(html, /\.a \{ background: (?:image-set\()?url\("data:image\/svg\+xml;base64,[^"]+"\)(?: 1x\))?; \}/, write(declaredAsset));
+    }
+  });
+
+  it('keeps every other byte of a stylesheet while it rewrites a url', async () => {
+    const css = `\n.a  {\tbackground :\n  url( ${declaredAsset} )  no-repeat /* url(x.png) */ , none ;;\r\n  content : "url(x.png)" ;\n}\n/* @import "./x.css"; */\n`;
+    const [before, after] = css.split(`url( ${declaredAsset} )`);
+    const html = compileWithStyle(await loadProjectFromFs(assetFixtureRoot), css);
+    assert.ok(html.includes(before), 'keeps the bytes before the url');
+    assert.ok(html.includes(after), 'keeps the bytes after the url');
+    assert.ok(html.includes(`${before}url("data:image/svg+xml;base64,`), 'writes the url where it was');
+  });
+
+  it('does not read an import in a comment or a string as an import', async () => {
+    for (const css of ['/* @import "./x.css"; */', '.a::before { content: "@import x.css"; }', ".a { color: inherit; /* @IMPORT url(x.css); */ }"]) {
+      assert.ok(compileWithStyle(await loadProjectFromFs(assetFixtureRoot), css).includes(css), css);
+    }
+  });
+
+  it('still refuses a real import in each spelling', async () => {
+    for (const css of ['@import "./x.css";', '@IMPORT url(x.css);', '@import"./x.css";', '@media print { @import "./x.css"; }', '.a { color: inherit; } @import url(x.css);']) {
+      await assert.rejects(
+        async () => compileWithStyle(await loadProjectFromFs(assetFixtureRoot), css),
+        /Prototype stylesheet "prototype\/screens\/launch\.css" cannot import external or undeclared stylesheets/,
+        css
+      );
+    }
+  });
+
+  it('compiles and checks a stylesheet that postcss cannot parse', async () => {
+    assert.match(compileWithStyle(await loadProjectFromFs(assetFixtureRoot), '.never-closed { color: inherit;'), /\.never-closed \{ color: inherit;/);
+    assert.match(compileWithStyle(await loadProjectFromFs(assetFixtureRoot), '.a } .b { color: inherit; }'), /\.a \} \.b/);
+    await assert.rejects(
+      async () => compileWithStyle(await loadProjectFromFs(assetFixtureRoot), '.never-closed { background: url(x.png);'),
+      /Prototype resource "x\.png" from "prototype\/screens\/launch\.css" is not a declared controlled asset/
+    );
+    await assert.rejects(
+      async () => compileWithStyle(await loadProjectFromFs(assetFixtureRoot), '@import "./x.css"; .never-closed {'),
+      /cannot import external or undeclared stylesheets/
+    );
+    assert.match(
+      compileWithStyle(await loadProjectFromFs(assetFixtureRoot), `.never-closed { background: url(${declaredAsset});`),
+      /\.never-closed \{ background: url\("data:image\/svg\+xml;base64,/
+    );
+  });
+
+  it('still checks a url that a browser loads where postcss sees a comment or a string', async () => {
+    for (const css of [
+      '.a { content: "x\n; background-image: url(x.png); y: "; }',
+      '.a { x: y\\/* ; background-image: url(x.png); z: */; }',
+      '.a { x: URL(b/*c) ; background-image: url(x.png); d: */) ; }',
+      '.a { x: URL(b"c) ; background-image: url(x.png); d: ") ; }',
+      '.a { x: url( b/*c) ; background-image: url(x.png); d: */ ) ; }',
+      '.a { x: u\\72l(b/*c) ; background-image: url(x.png); d: */) ; }'
+    ]) {
+      await assert.rejects(
+        async () => compileWithStyle(await loadProjectFromFs(assetFixtureRoot), css),
+        /is not a declared controlled asset/,
+        css
+      );
+    }
+  });
+
   it('parses component selectors through the public boundary-address contract', () => {
     assert.deepEqual(parseBoundarySelector('component:insight-chart'), {
       kind: 'component',
@@ -577,6 +903,11 @@ describe('canonical prototype compiler', () => {
     });
   });
 });
+
+function compileWithStyle(bundle: BlueprintProjectBundle, css: string): string {
+  bundle.prototypeSourceContents['prototype/screens/launch.css'] += `\n${css}\n`;
+  return compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'launch' }, state: 'default' }).html;
+}
 
 function focusChat(bundle: BlueprintProjectBundle, markup: string, uses: BoundaryDependency[]): void {
   const screen = bundle.screens.screens.find(candidate => candidate.id === 'chat');

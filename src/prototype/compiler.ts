@@ -11,16 +11,29 @@ import type {
   ScreenDefinition
 } from '../core/types';
 import { brandMarkSourceIssues } from '../core/brand-lint';
+import { cssHasImport, rewriteCssUrls } from '../core/css';
 import { axisIds } from '../core/reusable-contract';
 import {
+  applyMarkupEdits,
   collectInvocationSlots,
-  escapeRegExp,
-  findElementEnd,
-  findFirstUseElement,
-  findTagEnd,
+  elementCloseIndex,
+  firstOpenTag,
+  isDefaultSlot,
+  iterateUseElements,
+  listMarkupTokens,
+  listOpenTags,
+  listPossibleOpenTags,
+  listSectionTags,
+  outerSvgMarkup,
   parseUseAttributes,
-  sectionMarkerPattern,
+  quotedAttribute,
+  setTagAttribute,
   slotContentAccepts,
+  useTagAttributes,
+  type MarkupAttribute,
+  type MarkupEdit,
+  type OpenTag,
+  type SectionTag,
   type UseElement
 } from '../core/markup';
 import { PROTOTYPE_ASSET_PATH_PREFIX } from './host-policy';
@@ -159,6 +172,14 @@ interface CompilerContext {
 /** State shared by the documents compiled in one call, such as one validation pass. */
 interface CompileSession {
   fragments: Map<string, CompiledFragment>;
+  preparedSources: Map<string, PreparedSource>;
+}
+
+/** Each document must check the asset values again, because documents declare different assets. */
+interface PreparedSource {
+  source: string;
+  markup: string;
+  assetValues: string[];
 }
 
 /**
@@ -177,9 +198,13 @@ interface FragmentRecord {
   assetRefs: Set<string>;
 }
 
-interface CompiledFragment extends FragmentRecord {
+/** A fragment keeps its section tags, so a screen need not read its whole document again to find them. */
+interface RenderedFragment {
   fragment: string;
+  sections: SectionTag[];
 }
+
+interface CompiledFragment extends FragmentRecord, RenderedFragment {}
 
 type CompileEvent =
   | { kind: 'styles'; styleRefs: string[] }
@@ -268,7 +293,7 @@ function assetDataUrl(asset: { mediaType: string; base64: string }): string {
 }
 
 function createCompileSession(): CompileSession {
-  return { fragments: new Map() };
+  return { fragments: new Map(), preparedSources: new Map() };
 }
 
 function compileDocument(options: CompileInput, session: CompileSession, output: AssetOutput): CompiledPrototypeDocument {
@@ -291,7 +316,7 @@ function compileDocument(options: CompileInput, session: CompileSession, output:
     styleRefs: [],
     styleRefSet: new Set()
   };
-  const fragment = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelAxes(boundary, options.variant, options.size));
+  const { fragment } = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelAxes(boundary, options.variant, options.size));
   const appCss = context.styleRefs.map(styleRef => loadAndRewriteStyle(context, styleRef)).join('\n\n');
   const tokenCss = createTokenCss(options.bundle);
   const targetBoundaryId = boundaryId(options.bundle, boundary);
@@ -484,7 +509,7 @@ function compileBoundaryFragment(
   invocationChildren: string,
   stack: string[],
   invocationAttributes: ForwardedInvocationAttributes
-): string {
+): RenderedFragment {
   if (stack.length === 0) {
     return compileFragmentSource(context, boundary, state, invocationChildren, stack, invocationAttributes);
   }
@@ -498,18 +523,18 @@ function compileBoundaryFragment(
     for (const event of cached.events) {
       emit(context, event);
     }
-    return cached.fragment;
+    return cached;
   }
   const record: FragmentRecord = { events: [], boundaryIds: new Set(), assetRefs: new Set() };
   context.recorders.push(record);
-  let fragment: string;
+  let rendered: RenderedFragment;
   try {
-    fragment = compileFragmentSource(context, boundary, state, invocationChildren, stack, invocationAttributes);
+    rendered = compileFragmentSource(context, boundary, state, invocationChildren, stack, invocationAttributes);
   } finally {
     context.recorders.pop();
   }
-  context.session.fragments.set(key, { ...record, fragment });
-  return fragment;
+  context.session.fragments.set(key, { ...record, ...rendered });
+  return rendered;
 }
 
 /** A reused fragment must still fail where a fresh compile would: on a cycle through the stack or an asset this document does not declare. */
@@ -539,7 +564,7 @@ function compileFragmentSource(
   invocationChildren: string,
   stack: string[],
   invocationAttributes: ForwardedInvocationAttributes
-): string {
+): RenderedFragment {
   const currentBoundaryId = boundaryId(context.bundle, boundary);
   for (const record of context.recorders) {
     record.boundaryIds.add(currentBoundaryId);
@@ -549,33 +574,77 @@ function compileFragmentSource(
   }
 
   emit(context, { kind: 'styles', styleRefs: boundary.prototype.styles });
-  const source = requireSource(context.bundle, boundary.prototype.source, `${currentBoundaryId} prototype source`);
-  assertNoExecutableMarkup(source, boundary.prototype.source);
-  if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
-    throw new Error(`Prototype source "${boundary.prototype.source}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute.`);
-  }
-  let fragment = rewriteHtmlAssetRefs(context, source, boundary.prototype.source);
-  fragment = rewriteNavigationAttributes(fragment, boundary.prototype.source);
-  fragment = markSlotAuthor(fragment, `${boundary.kind}:${boundary.id}`);
+  let fragment = prepareSource(context, boundary, currentBoundaryId);
   fragment = applySlots(fragment, invocationChildren, boundary, currentBoundaryId);
   fragment = selectFragmentState(fragment, state);
   fragment = applyInvocationAttributes(fragment, resolveReusableAxes(boundary, state, invocationAttributes), boundary);
 
   const nextStack = [...stack, currentBoundaryId];
-  const expanded: string[] = [];
-  let rest = fragment;
-  for (let use = findFirstUseElement(rest); use; use = findFirstUseElement(rest)) {
-    expanded.push(rest.slice(0, use.start), expandUse(context, boundary, currentBoundaryId, use, nextStack));
-    rest = rest.slice(use.end);
+  const ownSections = listSectionTags(fragment);
+  const expansions: MarkupEdit[] = [];
+  const nestedSections: SectionTag[][] = [];
+  for (const use of iterateUseElements(fragment)) {
+    const rendered = expandUse(context, boundary, currentBoundaryId, use, nextStack);
+    expansions.push({ start: use.start, end: use.end, text: rendered.fragment });
+    nestedSections.push(rendered.sections);
   }
-  expanded.push(rest);
-  fragment = expanded.join('');
+  const sections = composeSections(ownSections, expansions, nestedSections);
+  fragment = applyMarkupEdits(fragment, expansions);
 
   emit(context, { kind: 'rendered-uses', boundary, boundaryId: currentBoundaryId });
-  if (boundary.kind === 'screen') {
-    fragment = applySectionMetadata(context.bundle, boundary, fragment);
+  const rendered = boundary.kind === 'screen'
+    ? { fragment: applySectionMetadata(context.bundle, boundary, fragment, sections), sections: [] }
+    : { fragment, sections };
+  return applyBoundaryMetadata(rendered, boundary, currentBoundaryId, state);
+}
+
+/** The passes that read only the source itself run once in a session, because each document repeats them on the same text. */
+function prepareSource(context: CompilerContext, boundary: SourceBoundary, currentBoundaryId: string): string {
+  const sourceRef = boundary.prototype.source;
+  const author = `${boundary.kind}:${boundary.id}`;
+  const prepared = context.session.preparedSources.get(author);
+  if (prepared && prepared.source === context.bundle.prototypeSourceContents[sourceRef]) {
+    for (const value of prepared.assetValues) {
+      assetToken(context, sourceRef, value);
+    }
+    return prepared.markup;
   }
-  return applyBoundaryMetadata(fragment, boundary, currentBoundaryId, state);
+  const source = requireSource(context.bundle, sourceRef, `${currentBoundaryId} prototype source`);
+  assertNoExecutableMarkup(source, sourceRef);
+  if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
+    throw new Error(`Prototype source "${sourceRef}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute.`);
+  }
+  const assetValues: string[] = [];
+  let markup = rewriteHtmlAssetRefs(context, source, sourceRef, assetValues);
+  markup = rewriteNavigationAttributes(markup, sourceRef);
+  markup = markSlotAuthor(markup, author);
+  context.session.preparedSources.set(author, { source, markup, assetValues });
+  return markup;
+}
+
+/** A tag inside a use moved into the fragment of that use, so only that fragment reports it. */
+function composeSections(own: SectionTag[], expansions: MarkupEdit[], nested: SectionTag[][]): SectionTag[] {
+  const sections: SectionTag[] = [];
+  let shift = 0;
+  let ownIndex = 0;
+  const pushShifted = (tag: SectionTag, by: number): void => {
+    sections.push({ start: tag.start + by, end: tag.end + by, id: tag.id });
+  };
+  expansions.forEach((expansion, index) => {
+    for (; ownIndex < own.length && own[ownIndex].start < expansion.end; ownIndex += 1) {
+      if (own[ownIndex].start < expansion.start) {
+        pushShifted(own[ownIndex], shift);
+      }
+    }
+    for (const tag of nested[index]) {
+      pushShifted(tag, expansion.start + shift);
+    }
+    shift += expansion.text.length - (expansion.end - expansion.start);
+  });
+  for (; ownIndex < own.length; ownIndex += 1) {
+    pushShifted(own[ownIndex], shift);
+  }
+  return sections;
 }
 
 function expandUse(
@@ -584,14 +653,15 @@ function expandUse(
   currentBoundaryId: string,
   use: UseElement,
   nextStack: string[]
-): string {
+): RenderedFragment {
   const useAttributes = parseUseAttributes(use.attributes, currentBoundaryId);
   const slotAuthor = useAttributes.get(SLOT_AUTHOR_ATTRIBUTE);
   useAttributes.delete(SLOT_AUTHOR_ATTRIBUTE);
   const kind = requiredParsedUseAttribute(useAttributes, 'kind', currentBoundaryId);
   if (kind === 'brand-mark') {
     const placedBy = slotAuthor ? `${context.bundle.manifest.project.id}/${slotAuthor.replace(':', '/')}` : currentBoundaryId;
-    return renderBrandMark(context, useAttributes, use.children, placedBy);
+    const fragment = renderBrandMark(context, useAttributes, use.children, placedBy);
+    return { fragment, sections: listSectionTags(fragment) };
   }
   if (kind !== 'primitive' && kind !== 'component') {
     throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
@@ -635,19 +705,27 @@ function useKey(use: PrototypeUseDeclaration): string {
  * Tags every `<blueprint-use>` nested inside another use with the boundary whose
  * source wrote it, so slot content keeps its author after it moves into a container.
  */
-function markSlotAuthor(markup: string, author: string, nested = false): string {
-  let output = '';
-  let rest = markup;
-  for (let use = findFirstUseElement(rest); use; use = findFirstUseElement(rest)) {
-    const children = /<blueprint-use\b/i.test(use.children) ? markSlotAuthor(use.children, author, true) : use.children;
-    const attributes = nested ? ` ${SLOT_AUTHOR_ATTRIBUTE}="${escapeAttribute(author)}"${use.attributes}` : use.attributes;
-    const marked = nested || children !== use.children
-      ? `<blueprint-use${attributes}>${children}</blueprint-use>`
-      : rest.slice(use.start, use.end);
-    output += `${rest.slice(0, use.start)}${marked}`;
-    rest = rest.slice(use.end);
+function markSlotAuthor(markup: string, author: string): string {
+  const edits: MarkupEdit[] = [];
+  const authorAttribute = ` ${SLOT_AUTHOR_ATTRIBUTE}="${escapeAttribute(author)}"`;
+  for (const use of iterateUseElements(markup)) {
+    if (!use.hasNestedUse) continue;
+    const tokens = listMarkupTokens(markup);
+    const open = tokens[use.openIndex] as OpenTag;
+    edits.push({ start: open.start, end: open.end, text: `<blueprint-use${use.attributes}>` });
+    for (let index = use.openIndex + 1; index < use.closeIndex; index += 1) {
+      const token = tokens[index];
+      if (token.kind === 'open' && token.name === 'blueprint-use') {
+        const closing = token.selfClosing ? '</blueprint-use>' : '';
+        edits.push({ start: token.start, end: token.end, text: `<blueprint-use${authorAttribute}${useTagAttributes(markup, token)}>${closing}` });
+      } else if (token.kind === 'close' && token.name === 'blueprint-use') {
+        edits.push({ start: token.start, end: token.end, text: '</blueprint-use>' });
+      }
+    }
+    const close = tokens[use.closeIndex];
+    edits.push({ start: close.start, end: close.end, text: '</blueprint-use>' });
   }
-  return `${output}${rest}`;
+  return applyMarkupEdits(markup, edits);
 }
 
 /**
@@ -678,10 +756,11 @@ function creditedBoundary(
   return author;
 }
 
-function applySectionMetadata(bundle: CanvasProjectBundle, boundary: SourceBoundary, fragment: string): string {
+function applySectionMetadata(bundle: CanvasProjectBundle, boundary: SourceBoundary, fragment: string, sections: SectionTag[]): string {
   const sectionIds = new Set(bundle.screens.screens.find(screen => screen.id === boundary.id)?.sections.map(section => section.id) ?? []);
   const marked = new Set<string>();
-  return fragment.replace(sectionMarkerPattern(), (_tag, tagName: string, attributes: string, _quote: string, sectionId: string) => {
+  const edits: MarkupEdit[] = [];
+  for (const { start, end, id: sectionId } of sections) {
     if (!sectionIds.has(sectionId)) {
       throw new Error(`screen "${boundary.id}" marks undeclared section "${sectionId}".`);
     }
@@ -690,8 +769,9 @@ function applySectionMetadata(bundle: CanvasProjectBundle, boundary: SourceBound
     }
     marked.add(sectionId);
     const sectionBoundaryId = `${bundle.manifest.project.id}/section/${boundary.id}/${sectionId}`;
-    return `<${tagName}${setRootAttribute(attributes, 'data-blueprint-section-boundary-id', sectionBoundaryId)}>`;
-  });
+    edits.push({ start, end, text: setRootAttribute(fragment.slice(start, end), 'data-blueprint-section-boundary-id', sectionBoundaryId) });
+  }
+  return applyMarkupEdits(fragment, edits);
 }
 
 function resolveBoundary(bundle: CanvasProjectBundle, target: PrototypeCompileTarget): SourceBoundary {
@@ -794,65 +874,63 @@ function addStyleRefs(context: CompilerContext, styleRefs: string[]): void {
 
 function loadAndRewriteStyle(context: CompilerContext, styleRef: string): string {
   const css = requireSource(context.bundle, styleRef, `prototype stylesheet ${styleRef}`);
-  if (/@import\b/i.test(css)) {
+  if (cssHasImport(css)) {
     throw new Error(`Prototype stylesheet "${styleRef}" cannot import external or undeclared stylesheets.`);
   }
-  return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (_match, _quote: string, value: string) => {
-    return `url("${assetToken(context, styleRef, value.trim())}")`;
-  });
+  return rewriteCssUrls(css, value => `url("${assetToken(context, styleRef, value)}")`);
 }
 
-function rewriteHtmlAssetRefs(context: CompilerContext, html: string, sourceRef: string): string {
-  return html.replace(/(\b(?:src|poster)\s*=\s*)(['"])(.*?)\2/gi, (_match, prefix: string, quote: string, value: string) => {
-    return `${prefix}${quote}${assetToken(context, sourceRef, value)}${quote}`;
-  });
+function rewriteHtmlAssetRefs(context: CompilerContext, html: string, sourceRef: string, assetValues: string[]): string {
+  for (const tag of listPossibleOpenTags(html)) {
+    for (const attribute of tag.attributes.filter(isAssetAttribute)) {
+      if (!attribute.quote) {
+        throw new Error(`Prototype source "${sourceRef}" has an unquoted ${attribute.name} value "${attribute.value}". Fix: put double quotes around the value.`);
+      }
+      assetValues.push(attribute.value);
+      assetToken(context, sourceRef, attribute.value);
+    }
+  }
+  const edits: MarkupEdit[] = [];
+  for (const tag of listOpenTags(html)) {
+    for (const attribute of tag.attributes.filter(isAssetAttribute)) {
+      edits.push({ start: attribute.valueStart, end: attribute.valueEnd, text: assetToken(context, sourceRef, attribute.value) });
+    }
+  }
+  return applyMarkupEdits(html, edits);
+}
+
+function isAssetAttribute(attribute: MarkupAttribute): boolean {
+  return attribute.hasValue && (attribute.name === 'src' || attribute.name === 'poster');
 }
 
 function rewriteNavigationAttributes(html: string, sourceRef: string): string {
-  let output = '';
-  let cursor = 0;
-  for (const start of html.matchAll(/<(?:a|area)\b/gi)) {
-    if (start.index < cursor) continue;
-    const tagEnd = findAttributeAwareTagEnd(html, start.index + start[0].length);
-    if (tagEnd === -1) break;
-    const attributes = html.slice(start.index + start[0].length, tagEnd);
-    output += html.slice(cursor, start.index) + start[0] + rewriteNavigationHref(attributes, sourceRef) + '>';
-    cursor = tagEnd + 1;
+  const realTagStarts = new Set(listOpenTags(html).map(tag => tag.start));
+  for (const tag of listPossibleOpenTags(html)) {
+    if (navigationHref(tag, sourceRef) && !realTagStarts.has(tag.start)) {
+      throw new Error(`Prototype source "${sourceRef}" holds a navigation href in a comment, text, an attribute value, or a cut-off tag, where a browser can read a live link. Fix: delete that link from the source.`);
+    }
   }
-  return output + html.slice(cursor);
+  const edits: MarkupEdit[] = [];
+  for (const tag of listOpenTags(html)) {
+    const href = navigationHref(tag, sourceRef);
+    if (href) {
+      edits.push({ start: href.nameEnd - 'href'.length, end: href.end, text: `data-blueprint-href="${escapeAttribute(href.value)}"` });
+    }
+  }
+  return applyMarkupEdits(html, edits);
 }
 
-function rewriteNavigationHref(attributes: string, sourceRef: string): string {
-  if (!/\bhref\s*=/i.test(attributes)) {
-    return attributes;
-  }
-  const hrefMatches = [...attributes.matchAll(/\bhref\s*=\s*(['"])(.*?)\1/gi)];
-  if (hrefMatches.length !== 1) {
+function navigationHref(tag: OpenTag, sourceRef: string): MarkupAttribute | undefined {
+  if (tag.name !== 'a' && tag.name !== 'area') return undefined;
+  const hrefs = tag.attributes.filter(attribute => (attribute.name === 'href' || attribute.name === 'xlink:href') && attribute.hasValue);
+  if (hrefs.length === 0) return undefined;
+  if (hrefs.length !== 1 || !hrefs[0].quote) {
     throw new Error(`Prototype source "${sourceRef}" contains malformed or duplicate navigation href markup.`);
   }
-  const href = hrefMatches[0];
-  if (!isSafePrototypeHref(href[2])) {
-    throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${href[2]}".`);
+  if (!isSafePrototypeHref(hrefs[0].value)) {
+    throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${hrefs[0].value}".`);
   }
-  return attributes.replace(href[0], () => `data-blueprint-href="${escapeAttribute(href[2])}"`);
-}
-
-/** Like the browser tokenizer, this opens a quoted value only after "=", so a stray quote does not hide a later attribute. */
-function findAttributeAwareTagEnd(html: string, start: number): number {
-  let index = start;
-  while (index < html.length) {
-    const character = html[index];
-    if (character === '>') return index;
-    index += 1;
-    if (character !== '=') continue;
-    while (index < html.length && /\s/.test(html[index])) index += 1;
-    const quote = html[index];
-    if (quote !== '"' && quote !== "'") continue;
-    const close = html.indexOf(quote, index + 1);
-    if (close === -1) return -1;
-    index = close + 1;
-  }
-  return -1;
+  return hrefs[0];
 }
 
 function assetToken(context: CompilerContext, sourceRef: string, value: string): string {
@@ -973,7 +1051,7 @@ function applySlots(template: string, invocationChildren: string, boundary: Sour
     result = replaceDataSlotContents(result, slotName, content);
   }
   const defaultContent = slotContent.get('default');
-  const hadDefaultPlaceholder = /<slot(?:\s[^>]*)?>/i.test(result);
+  const hadDefaultPlaceholder = listOpenTags(result).some(tag => tag.name === 'slot');
   result = replaceDefaultSlotElements(result, defaultContent);
   if (defaultContent && !hadDefaultPlaceholder) {
     throw new Error(`${label} received default slot content but declares no default slot placeholder.`);
@@ -982,43 +1060,50 @@ function applySlots(template: string, invocationChildren: string, boundary: Sour
 }
 
 function replaceNamedSlotElements(template: string, name: string, content: string | undefined): string {
-  const escapedName = escapeRegExp(name);
-  const paired = new RegExp(`<slot\\b([^>]*\\bname\\s*=\\s*(['"])${escapedName}\\2[^>]*)>([\\s\\S]*?)<\\/slot\\s*>`, 'gi');
-  const selfClosing = new RegExp(`<slot\\b([^>]*\\bname\\s*=\\s*(['"])${escapedName}\\2[^>]*)\\s*\\/>`, 'gi');
-  return template
-    .replace(paired, (_full, _attributes: string, _quote: string, fallback: string) => content ?? fallback)
-    .replace(selfClosing, () => content ?? '');
+  return replaceSlotElements(template, tag => quotedAttribute(tag, 'name')?.value === name, content);
+}
+
+function replaceDefaultSlotElements(template: string, content: string | undefined): string {
+  return replaceSlotElements(template, isDefaultSlot, content);
+}
+
+function replaceSlotElements(template: string, matches: (tag: OpenTag) => boolean, content: string | undefined): string {
+  const tokens = listMarkupTokens(template);
+  const edits: MarkupEdit[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const tag = tokens[index];
+    if (tag.kind !== 'open' || tag.name !== 'slot' || !matches(tag)) continue;
+    if (tag.selfClosing) {
+      edits.push({ start: tag.start, end: tag.end, text: content ?? '' });
+      continue;
+    }
+    const closeIndex = elementCloseIndex(tokens, index);
+    if (closeIndex === -1) continue;
+    const close = tokens[closeIndex];
+    edits.push({ start: tag.start, end: close.end, text: content ?? template.slice(tag.end, close.start) });
+    index = closeIndex;
+  }
+  return applyMarkupEdits(template, edits);
 }
 
 function replaceDataSlotContents(template: string, name: string, content: string | undefined): string {
   if (content === undefined) {
     return template;
   }
-  const escapedName = escapeRegExp(name);
-  const openPattern = new RegExp(`<([a-zA-Z][\\w:-]*)\\b[^>]*\\bdata-blueprint-slot\\s*=\\s*(['"])${escapedName}\\2[^>]*>`, 'gi');
-  let result = '';
-  let cursor = 0;
-  for (let open = openPattern.exec(template); open; open = openPattern.exec(template)) {
-    const openEnd = open.index + open[0].length - 1;
-    const end = findElementEnd(template, open[1], open.index, openEnd);
-    if (end === openEnd + 1) {
-      result += `${template.slice(cursor, open.index)}${/\/\s*>$/.test(open[0]) ? content : open[0]}`;
-    } else {
-      const close = template.slice(template.lastIndexOf('<', end - 1), end);
-      result += `${template.slice(cursor, openEnd + 1)}${content}${close}`;
+  const tokens = listMarkupTokens(template);
+  const edits: MarkupEdit[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const tag = tokens[index];
+    if (tag.kind !== 'open' || quotedAttribute(tag, 'data-blueprint-slot')?.value !== name) continue;
+    const closeIndex = elementCloseIndex(tokens, index);
+    if (closeIndex !== -1) {
+      edits.push({ start: tag.end, end: tokens[closeIndex].start, text: content });
+      index = closeIndex;
+    } else if (tag.selfClosing) {
+      edits.push({ start: tag.start, end: tag.end, text: content });
     }
-    cursor = end;
-    openPattern.lastIndex = end;
   }
-  return `${result}${template.slice(cursor)}`;
-}
-
-function replaceDefaultSlotElements(template: string, content: string | undefined): string {
-  const paired = /<slot(?![^>]*\bname\s*=)[^>]*>([\s\S]*?)<\/slot\s*>/gi;
-  const selfClosing = /<slot(?![^>]*\bname\s*=)[^>]*\s*\/>/gi;
-  return template
-    .replace(paired, (_full, fallback: string) => content ?? fallback)
-    .replace(selfClosing, () => content ?? '');
+  return applyMarkupEdits(template, edits);
 }
 
 function requiredParsedUseAttribute(attributes: Map<string, string>, name: string, boundary: string): string {
@@ -1104,35 +1189,46 @@ function renderBrandMark(
   if (issue) {
     throw new Error(`Brand mark "${id}" source "${mark.source}" ${issue}`);
   }
-  const svg = scopeSvgIds(/<svg\b[\s\S]*<\/svg\s*>/i.exec(source)?.[0] ?? '', `bp-brand-${id}-`);
+  const svg = scopeSvgIds(outerSvgMarkup(source), `bp-brand-${id}-`);
   if (!svg) {
     throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element.`);
   }
   emit(context, { kind: 'brand-mark', mark: { sourceBoundaryId: placedBy, id: mark.id, ...(variant ? { variant: variant.id } : {}) } });
 
-  const rootEnd = findTagEnd(svg, 0);
-  let rootAttributes = svg.slice('<svg'.length, rootEnd).replace(/\s(?:width|height)\s*=\s*(['"]).*?\1/gi, '');
-  const existingClass = /\sclass\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes)?.[2] ?? '';
+  const rootTag = firstOpenTag(svg) as OpenTag;
+  let root = withoutRootSize(`<svg${svg.slice(rootTag.nameEnd, rootTag.end)}`);
+  const existingClass = quotedAttribute(firstOpenTag(root) as OpenTag, 'class')?.value ?? '';
   const classes = [...new Set(`${existingClass} ${className ?? ''}`.trim().split(/\s+/).filter(Boolean))].join(' ');
   if (classes) {
-    rootAttributes = setRootAttribute(rootAttributes, 'class', classes);
+    root = setRootAttribute(root, 'class', classes);
   }
-  rootAttributes = setRootAttribute(rootAttributes, 'height', '1em');
-  rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-brand-mark', id);
+  root = setRootAttribute(root, 'height', '1em');
+  root = setRootAttribute(root, 'data-blueprint-brand-mark', id);
   if (variant) {
-    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-brand-variant', variant.id);
+    root = setRootAttribute(root, 'data-blueprint-brand-variant', variant.id);
     const accent = variant.accent ? `var(${colorTokenStyleRef(context.bundle, variant.accent, id)})` : 'currentColor';
-    const existingStyle = /\sstyle\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes)?.[2];
+    const existingStyle = quotedAttribute(firstOpenTag(root) as OpenTag, 'style')?.value;
     const declarations = `color:var(${colorTokenStyleRef(context.bundle, variant.foreground, id)});--brand-accent:${accent}`;
-    rootAttributes = setRootAttribute(rootAttributes, 'style', existingStyle ? `${existingStyle.replace(/;?\s*$/, ';')}${declarations}` : declarations);
+    root = setRootAttribute(root, 'style', existingStyle ? `${existingStyle.replace(/;?\s*$/, ';')}${declarations}` : declarations);
   }
   if (hidden) {
-    rootAttributes = setRootAttribute(rootAttributes, 'aria-hidden', 'true');
+    root = setRootAttribute(root, 'aria-hidden', 'true');
   } else {
-    rootAttributes = setRootAttribute(rootAttributes, 'role', 'img');
-    rootAttributes = setRootAttribute(rootAttributes, 'aria-label', attributes.get('aria-label') ?? brand.name);
+    root = setRootAttribute(root, 'role', 'img');
+    root = setRootAttribute(root, 'aria-label', attributes.get('aria-label') ?? brand.name);
   }
-  return `<svg${rootAttributes}>${svg.slice(rootEnd + 1)}`;
+  return `${root}${svg.slice(rootTag.end)}`;
+}
+
+/** A placed mark sizes from `1em`, so the width and height of its source must not apply. */
+function withoutRootSize(root: string): string {
+  const edits: MarkupEdit[] = [];
+  for (const attribute of (firstOpenTag(root) as OpenTag).attributes) {
+    if ((attribute.name === 'width' || attribute.name === 'height') && attribute.quote && root[attribute.nameStart - 1].trim() === '') {
+      edits.push({ start: attribute.nameStart - 1, end: attribute.end, text: '' });
+    }
+  }
+  return applyMarkupEdits(root, edits);
 }
 
 function colorTokenStyleRef(bundle: CanvasProjectBundle, ref: string, markId: string): string {
@@ -1148,15 +1244,22 @@ function colorTokenStyleRef(bundle: CanvasProjectBundle, ref: string, markId: st
 
 /** Prefixes a mark's internal IDs so two inlined marks never resolve each other's clip paths or gradients. */
 function scopeSvgIds(svg: string, prefix: string): string {
-  const ids = new Set([...svg.matchAll(/\sid\s*=\s*(['"])(.*?)\1/gi)].map(match => match[2]));
+  const attributes = listOpenTags(svg).flatMap(tag => tag.attributes).filter(attribute => attribute.quote);
+  const ids = new Set(attributes.filter(attribute => attribute.name === 'id').map(attribute => attribute.value));
   if (ids.size === 0) {
     return svg;
   }
   const scoped = (id: string): string => (ids.has(id) ? `${prefix}${id}` : id);
-  return svg
-    .replace(/(\sid\s*=\s*)(['"])(.*?)\2/gi, (_match, lead: string, quote: string, id: string) => `${lead}${quote}${scoped(id)}${quote}`)
-    .replace(/url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/gi, (_match, quote: string, id: string) => `url(${quote}#${scoped(id)}${quote})`)
-    .replace(/(\s(?:xlink:)?href\s*=\s*)(['"])#(.*?)\2/gi, (_match, lead: string, quote: string, id: string) => `${lead}${quote}#${scoped(id)}${quote}`);
+  const edits: MarkupEdit[] = [];
+  for (const attribute of attributes) {
+    if (attribute.name === 'id') {
+      edits.push({ start: attribute.valueStart, end: attribute.valueEnd, text: scoped(attribute.value) });
+    } else if ((attribute.name === 'href' || attribute.name === 'xlink:href') && attribute.value.startsWith('#')) {
+      edits.push({ start: attribute.valueStart + 1, end: attribute.valueEnd, text: scoped(attribute.value.slice(1)) });
+    }
+  }
+  return applyMarkupEdits(svg, edits)
+    .replace(/url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/gi, (_match, quote: string, id: string) => `url(${quote}#${scoped(id)}${quote})`);
 }
 
 function applyInvocationAttributes(
@@ -1167,45 +1270,42 @@ function applyInvocationAttributes(
   if (!attributes.className && !attributes.variant && !attributes.size && !attributes.href && !attributes.section) {
     return fragment;
   }
-  const rootPattern = /<([a-zA-Z][\w:-]*)([^>]*)>/;
-  const match = rootPattern.exec(fragment);
-  if (!match) {
+  const rootTag = firstOpenTag(fragment);
+  if (!rootTag) {
     throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for invocation attributes.`);
   }
-  const tagName = match[1];
-  let rootAttributes = match[2];
+  let root = fragment.slice(rootTag.start, rootTag.end);
   if (attributes.className) {
-    const existingClass = /\bclass\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes);
-    if (existingClass) {
-      const merged = [...new Set(`${existingClass[2]} ${attributes.className}`.trim().split(/\s+/))].join(' ');
-      rootAttributes = rootAttributes.replace(existingClass[0], () => `class="${escapeAttribute(merged)}"`);
-    } else {
-      rootAttributes += ` class="${escapeAttribute(attributes.className)}"`;
-    }
+    const existingClass = quotedAttribute(rootTag, 'class')?.value;
+    const merged = existingClass === undefined
+      ? attributes.className
+      : [...new Set(`${existingClass} ${attributes.className}`.trim().split(/\s+/))].join(' ');
+    root = setRootAttribute(root, 'class', merged);
   }
   if (attributes.variant) {
-    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-variant', attributes.variant);
+    root = setRootAttribute(root, 'data-blueprint-variant', attributes.variant);
   }
   if (attributes.size) {
-    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-size', attributes.size);
+    root = setRootAttribute(root, 'data-blueprint-size', attributes.size);
   }
   if (attributes.href) {
-    if (tagName.toLowerCase() !== 'a') {
-      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive href because its root element is <${tagName}>.`);
+    if (rootTag.name !== 'a') {
+      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive href because its root element is <${fragment.slice(rootTag.start + 1, rootTag.nameEnd)}>.`);
     }
-    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-href', attributes.href);
+    root = setRootAttribute(root, 'data-blueprint-href', attributes.href);
   }
   if (attributes.section) {
-    rootAttributes = setRootAttribute(rootAttributes, 'data-blueprint-section', attributes.section);
+    root = setRootAttribute(root, 'data-blueprint-section', attributes.section);
   }
-  const openingTag = `<${tagName}${rootAttributes}>`;
-  return `${fragment.slice(0, match.index)}${openingTag}${fragment.slice(match.index + match[0].length)}`;
+  return replaceOpenTag(fragment, rootTag, root);
 }
 
-function setRootAttribute(attributes: string, name: string, value: string): string {
-  const pattern = new RegExp(`\\b${escapeRegExp(name)}\\s*=\\s*(['"])(.*?)\\1`, 'i');
-  const serialized = `${name}="${escapeAttribute(value)}"`;
-  return pattern.test(attributes) ? attributes.replace(pattern, () => serialized) : `${attributes} ${serialized}`;
+function replaceOpenTag(fragment: string, tag: OpenTag, openTag: string): string {
+  return `${fragment.slice(0, tag.start)}${openTag}${fragment.slice(tag.end)}`;
+}
+
+function setRootAttribute(openTag: string, name: string, value: string): string {
+  return setTagAttribute(openTag, name, `${name}="${escapeAttribute(value)}"`);
 }
 
 function isSafePrototypeHref(href: string): boolean {
@@ -1239,53 +1339,56 @@ function assertRenderedUses(boundary: SourceBoundary, observedKeys: ReadonlySet<
 }
 
 function applyBoundaryMetadata(
-  fragment: string,
+  { fragment, sections }: RenderedFragment,
   boundary: SourceBoundary,
   currentBoundaryId: string,
   state: string
-): string {
-  const rootPattern = /<([a-zA-Z][\w:-]*)([^>]*)>/;
-  const root = rootPattern.exec(fragment);
-  if (!root) {
+): RenderedFragment {
+  const rootTag = firstOpenTag(fragment);
+  if (!rootTag) {
     throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for boundary metadata.`);
   }
-  let attributes = root[2];
-  attributes = setRootAttribute(attributes, 'data-blueprint-boundary-id', currentBoundaryId);
-  attributes = setRootAttribute(attributes, 'data-blueprint-boundary-kind', boundary.kind);
-  attributes = setRootAttribute(attributes, 'data-blueprint-boundary-local-id', boundary.id);
-  attributes = setRootAttribute(attributes, 'data-blueprint-boundary-state', state);
-  const openingTag = `<${root[1]}${attributes}>`;
-  return `${fragment.slice(0, root.index)}${openingTag}${fragment.slice(root.index + root[0].length)}`;
+  let root = fragment.slice(rootTag.start, rootTag.end);
+  root = setRootAttribute(root, 'data-blueprint-boundary-id', currentBoundaryId);
+  root = setRootAttribute(root, 'data-blueprint-boundary-kind', boundary.kind);
+  root = setRootAttribute(root, 'data-blueprint-boundary-local-id', boundary.id);
+  root = setRootAttribute(root, 'data-blueprint-boundary-state', state);
+  const growth = root.length - (rootTag.end - rootTag.start);
+  return {
+    fragment: replaceOpenTag(fragment, rootTag, root),
+    sections: sections.map(tag => ({
+      start: tag.start > rootTag.start ? tag.start + growth : tag.start,
+      end: tag.end + growth,
+      id: tag.id
+    }))
+  };
 }
 
 function selectFragmentState(fragment: string, state: string): string {
-  const rootPattern = /<(?!blueprint-use\b)([a-zA-Z][\w:-]*)([^>]*)>/i;
-  const root = rootPattern.exec(fragment);
-  if (!root) {
+  const rootTag = firstOpenTag(fragment, tag => tag.name !== 'blueprint-use');
+  if (!rootTag) {
     return fragment;
   }
-  const statePattern = /\bdata-blueprint-state\s*=\s*(['"])[^'"]*\1/i;
-  const attributes = statePattern.test(root[2])
-    ? root[2].replace(statePattern, () => `data-blueprint-state="${escapeAttribute(state)}"`)
-    : `${root[2]} data-blueprint-state="${escapeAttribute(state)}"`;
-  const openingTag = `<${root[1]}${attributes}>`;
-  return `${fragment.slice(0, root.index)}${openingTag}${fragment.slice(root.index + root[0].length)}`;
+  return replaceOpenTag(fragment, rootTag, setRootAttribute(fragment.slice(rootTag.start, rootTag.end), 'data-blueprint-state', state));
 }
 
+const EXECUTABLE_ELEMENTS = new Set(['script', 'iframe', 'object', 'embed', 'meta', 'base', 'link']);
+const FORM_TARGET_ATTRIBUTES = new Set(['action', 'formaction']);
+const EVENT_HANDLER_NAME = /^on[a-z]+$/;
+const MEDIA_ELEMENTS = new Set(['video', 'audio']);
+
 function assertNoExecutableMarkup(source: string, sourceRef: string): void {
-  if (
-    /<\s*script\b/i.test(source) ||
-    /\son[a-z]+\s*=/i.test(source) ||
-    /<\s*(?:iframe|object|embed)\b/i.test(source) ||
-    /<\s*(?:meta|base|link)\b/i.test(source) ||
-    /\s(?:action|formaction)\s*=/i.test(source)
-  ) {
+  const tags = listPossibleOpenTags(source);
+  const isExecutable = (tag: OpenTag): boolean => EXECUTABLE_ELEMENTS.has(tag.name) || tag.attributes.some(attribute => (
+    attribute.hasValue && (EVENT_HANDLER_NAME.test(attribute.name) || FORM_TARGET_ATTRIBUTES.has(attribute.name))
+  ));
+  if (tags.some(isExecutable)) {
     throw new Error(`Prototype source "${sourceRef}" contains executable, navigation, form, or nested browsing content.`);
   }
   // Media elements compile fine but the CSP (default-src 'none', no media-src) blocks
   // playback at runtime; reject them here so authors get a clear compile error instead
   // of a silently dead element. <picture> stays allowed: it renders static imagery.
-  if (/<\s*(?:video|audio)\b/i.test(source)) {
+  if (tags.some(tag => MEDIA_ELEMENTS.has(tag.name))) {
     throw new Error(
       `Prototype source "${sourceRef}" contains media content (<video>/<audio>) that the isolated prototype host cannot play; use static imagery or SMIL-animated SVG assets instead.`
     );
@@ -1347,7 +1450,7 @@ function specimenCanvasCss(bundle: CanvasProjectBundle, boundary: SourceBoundary
 }
 
 function safeStyleText(css: string): string {
-  if (/<\/style/i.test(css)) {
+  if (css.includes('</') && css.toLowerCase().includes('</style')) {
     throw new Error('Prototype stylesheet contains an unsafe closing style tag.');
   }
   return css;

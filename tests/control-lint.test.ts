@@ -40,6 +40,22 @@ describe('hand-built control lint', () => {
     assert.equal(createReadinessReport(bundle).tier, 'blocked');
   });
 
+  it('reads a control past a greater-than sign in a value, and not inside a comment', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const original = bundle.prototypeSourceContents[screenSource];
+    const lint = (markup: string): string[] => {
+      bundle.prototypeSourceContents[screenSource] = original.replace('</main>', `${markup}</main>`);
+      return lintHandBuiltControls(bundle).map(issue => `${issue.element}:${issue.primitiveId}`);
+    };
+
+    assert.deepEqual(lint('<button title="a>b">Row</button>'), ['button:button']);
+    assert.deepEqual(lint('<input title="a>b" type="checkbox">'), ['input:checkbox']);
+    assert.deepEqual(lint('<button title="a>b" data-blueprint-native="Full-row hit target">Row</button>'), []);
+    assert.deepEqual(lint('<!-- <button>Row</button> -->'), []);
+    assert.deepEqual(lint('<!-- <input type="checkbox"> --><textarea><select></textarea>'), ['textarea:textarea']);
+    assert.deepEqual(lint('<input data-type="hidden">'), ['input:input']);
+  });
+
   it('does not report controls rendered by canonical primitive sources', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');

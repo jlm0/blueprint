@@ -1,4 +1,5 @@
-import { listUsePlacements, slotContentAccepts, sourceSlotContents } from './markup';
+import { applyMarkupEdits, hasDefaultSlot, listOpenTags, listUsePlacements, slotContentAccepts, sourceSlotContents, type MarkupEdit } from './markup';
+import { rewriteCssAttributeSelectors } from './css';
 import { basePrimitiveText } from './base-primitive-text';
 import { basePrimitive, type BasePrimitiveContractEntry, type BasePrimitiveText, type PrimitiveGroupId } from './base-primitives';
 import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from './migrate-shapes';
@@ -702,7 +703,7 @@ function migrateSlot(
 }
 
 function defaultSlotIfPlaced(source: string): string[] {
-  return /<slot(?![^>]*\bname\s*=)[^>]*>/i.test(source) ? ['default'] : [];
+  return hasDefaultSlot(source) ? ['default'] : [];
 }
 
 function sortAccepts(left: string, right: string): number {
@@ -753,12 +754,16 @@ function rewritePlacements(
 ): { html: string; rewritten: number; conflicts: string[] } {
   let rewritten = 0;
   const conflicts: string[] = [];
-  const result = html.replace(/<blueprint-use\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi, (tag, body: string) => {
-    const attributes = [...body.matchAll(/([^\s=/>]+)\s*=\s*(['"])(.*?)\2/g)].map(match => ({ name: match[1], quote: match[2], value: match[3] }));
+  const edits: MarkupEdit[] = [];
+  for (const tag of listOpenTags(html)) {
+    if (tag.name !== 'blueprint-use') continue;
+    const attributes = tag.attributes
+      .filter(attribute => attribute.quote)
+      .map(attribute => ({ name: html.slice(attribute.nameStart, attribute.nameEnd), quote: attribute.quote, value: attribute.value }));
     const kind = attributes.find(attribute => attribute.name.toLowerCase() === 'kind')?.value;
     const ref = attributes.find(attribute => attribute.name.toLowerCase() === 'ref')?.value;
     const remap = kind && ref ? remaps.get(`${kind}:${ref}`) : undefined;
-    if (!remap) return tag;
+    if (!remap) continue;
     const next: typeof attributes = [];
     let changed = false;
     for (const attribute of attributes) {
@@ -776,61 +781,26 @@ function rewritePlacements(
     const duplicate = names.find((name, index) => names.indexOf(name) !== index);
     if (duplicate) {
       conflicts.push(`${file}: a ${ref} placement would set "${duplicate}" twice after the move, so it was left as it was; set its variant, size, and state by hand.`);
-      return tag;
+      continue;
     }
-    if (!changed) return tag;
+    if (!changed) continue;
     rewritten += 1;
-    const selfClosing = /\/\s*$/.test(body);
-    return `<blueprint-use${next.map(attribute => ` ${attribute.name}=${attribute.quote}${attribute.value}${attribute.quote}`).join('')}${selfClosing ? ' /' : ''}>`;
-  });
-  return { html: result, rewritten, conflicts };
+    const serialized = next.map(attribute => ` ${attribute.name}=${attribute.quote}${attribute.value}${attribute.quote}`).join('');
+    edits.push({ start: tag.start, end: tag.end, text: `<blueprint-use${serialized}${tag.selfClosing ? ' /' : ''}>` });
+  }
+  return { html: applyMarkupEdits(html, edits), rewritten, conflicts };
 }
 
-const AXIS_SELECTOR_PATTERN = /\[\s*data-blueprint-(state|variant|size)\s*=\s*(['"]?)([^'"\]\s]+)\2\s*\]/g;
+const AXIS_BY_SELECTOR_ATTRIBUTE = new Map([['data-blueprint-state', 'state'], ['data-blueprint-variant', 'variant'], ['data-blueprint-size', 'size']]);
 
 /** In the primitive's own stylesheet every axis selector moves; elsewhere only selectors compounded with that primitive do. */
 function rewriteAxisSelectors(css: string, remap: PlacementRemap, kind: 'primitive' | 'component', reusableId: string, ownsFile: boolean): string {
-  const replaceIn = (text: string): string => text.replace(AXIS_SELECTOR_PATTERN, (selector, axis: string, quote: string, value: string) => {
-    const target = axis === 'state' ? remap.state.get(value) : axis === 'variant' ? remap.variant.get(value) : undefined;
-    if (!target || target === axis) return selector;
-    return `[data-blueprint-${target}=${quote || '"'}${value}${quote || '"'}]`;
-  });
-  if (ownsFile) return replaceIn(css);
-
-  const anchor = new RegExp(`\\[\\s*data-blueprint-${kind}\\s*=\\s*(['"]?)${escapeRegExp(reusableId)}\\1\\s*\\]`, 'g');
-  const ranges = [...css.matchAll(anchor)].map(match => compoundRange(css, match.index!, match.index! + match[0].length));
-  let result = css;
-  for (const [start, end] of ranges.reverse()) {
-    result = `${result.slice(0, start)}${replaceIn(result.slice(start, end))}${result.slice(end)}`;
-  }
-  return result;
-}
-
-function compoundRange(css: string, anchorStart: number, anchorEnd: number): [number, number] {
-  const isBoundary = (character: string): boolean => /[\s,>+~{};]/.test(character);
-  let start = anchorStart;
-  let depth = 0;
-  while (start > 0) {
-    const character = css[start - 1];
-    if (character === ')' || character === ']') depth += 1;
-    else if (character === '(' || character === '[') {
-      if (depth === 0) break;
-      depth -= 1;
-    } else if (depth === 0 && isBoundary(character)) break;
-    start -= 1;
-  }
-  let end = anchorEnd;
-  depth = 0;
-  while (end < css.length) {
-    const character = css[end];
-    if (character === '(' || character === '[') depth += 1;
-    else if (character === ')' || character === ']') {
-      if (depth === 0) break;
-      depth -= 1;
-    } else if (depth === 0 && isBoundary(character)) break;
-    end += 1;
-  }
-  return [start, end];
+  return rewriteCssAttributeSelectors(css, selector => {
+    const axis = AXIS_BY_SELECTOR_ATTRIBUTE.get(selector.name);
+    const target = axis === 'state' ? remap.state.get(selector.value) : axis === 'variant' ? remap.variant.get(selector.value) : undefined;
+    if (!target || target === axis) return undefined;
+    return `[data-blueprint-${target}=${selector.quote || '"'}${selector.value}${selector.quote || '"'}]`;
+  }, ownsFile ? undefined : { name: `data-blueprint-${kind}`, value: reusableId });
 }
 
 function countStyleOwners(reusables: RawObject[], screens: RawObject[]): Map<string, number> {
@@ -915,8 +885,4 @@ function stringList(value: unknown): string[] {
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

@@ -8,6 +8,7 @@ import {
   findFirstUseElement,
   findSectionMarkers,
   findTagEnd,
+  listPossibleOpenTags,
   listUsePlacements,
   parseUseAttributes,
   sourceSlotContents,
@@ -53,6 +54,64 @@ describe('listUsePlacements', () => {
     assert.equal(placement.ref, '');
     assert.throws(() => listUsePlacements('<blueprint-use kind="a">'), /unclosed <blueprint-use> element/);
     assert.throws(() => listUsePlacements('<blueprint-use kind=a></blueprint-use>'), /^Error: markup contains a malformed or unquoted <blueprint-use> attribute\.$/);
+  });
+});
+
+describe('markup that a regex misread', () => {
+  it('does not count a commented-out use as a placement', () => {
+    const commented = '<!-- <blueprint-use kind="component" ref="ghost"></blueprint-use> --><p></p>';
+
+    assert.deepEqual(listUsePlacements(commented), []);
+    assert.equal(findFirstUseElement(commented), undefined);
+    assert.deepEqual(listUsePlacements(`${commented}<blueprint-use kind="primitive" ref="real"/>`).map(placement => placement.ref), ['real']);
+  });
+
+  it('does not count a commented-out slot as a slot', () => {
+    assert.equal(sourceSlotContents('<!-- <slot name="ghost"></slot> --><!-- <slot></slot> --><!-- <i data-blueprint-slot="gone">x</i> -->').size, 0);
+  });
+
+  it('keeps a closing tag inside an attribute value in slot content', () => {
+    const content = '<span title="</div>">x</span>';
+
+    assert.deepEqual(Object.fromEntries(sourceSlotContents(`<div data-blueprint-slot="a">${content}</div>`)), { a: content });
+    assert.deepEqual(Object.fromEntries(sourceSlotContents(`<slot name="a"><a title="</slot>">x</a></slot>`)), { a: '<a title="</slot>">x</a>' });
+    assert.deepEqual(Object.fromEntries(collectInvocationSlots(`<div slot="a">${content}</div>`)), { a: `<div>${content}</div>` });
+  });
+
+  it('does not count a commented-out image as a graphic', () => {
+    assert.deepEqual(slotContentAccepts('<!-- <img src="a.png"> -->'), []);
+    assert.deepEqual(slotContentAccepts('<!-- <svg></svg> --><!-- a > b -->'), []);
+    assert.deepEqual(slotContentAccepts('<!-- <blueprint-use kind="primitive" ref="text"></blueprint-use> -->'), []);
+  });
+
+  it('keeps the next slot after a self-closing slot', () => {
+    assert.deepEqual(Object.fromEntries(sourceSlotContents('<slot name="a"/><slot name="b">B</slot>')), { a: '', b: 'B' });
+    assert.deepEqual(Object.fromEntries(sourceSlotContents('<slot/><slot name="b">B</slot>')), { default: '', b: 'B' });
+  });
+
+  it('reads a self-closing use with a space after its slash', () => {
+    const [placement] = listUsePlacements('<blueprint-use kind="a"/ >');
+
+    assert.equal(placement.kind, 'a');
+    assert.deepEqual(findFirstUseElement('<blueprint-use kind="a"/ >tail'), { start: 0, end: 26, attributes: ' kind="a"', children: '' });
+    assert.deepEqual(Object.fromEntries(parseUseAttributes(findFirstUseElement('<blueprint-use kind="a"/ >')!.attributes, 'test')), { kind: 'a' });
+  });
+
+  it('reads the real attribute, not a longer name or text inside a value', () => {
+    assert.deepEqual(Object.fromEntries(sourceSlotContents('<slot data-name="x" title="name=\'y\'">z</slot>')), { default: 'z' });
+    assert.deepEqual(findSectionMarkers('<div x-data-blueprint-section="a" title=" data-blueprint-section=\'b\'"></div><!-- <p data-blueprint-section="c"> -->'), []);
+    assert.deepEqual(findSectionMarkers('<div title="a>b" data-blueprint-section="real"></div>'), ['real']);
+  });
+
+  it('reads an element name exactly', () => {
+    assert.equal(sourceSlotContents('<slotted>x</slotted>').size, 0);
+    assert.deepEqual(slotContentAccepts('<imgx></imgx>'), []);
+  });
+
+  it('treats the inside of a raw text element as text, and keeps it as such inside svg only where a browser does', () => {
+    assert.equal(listUsePlacements('<textarea><blueprint-use kind="a"></textarea>').length, 0);
+    assert.equal(sourceSlotContents('<style>/* <slot> */</style>').size, 0);
+    assert.deepEqual(Object.fromEntries(sourceSlotContents('<svg><title><slot name="a">x</slot></title></svg>')), { a: 'x' });
   });
 });
 
@@ -162,6 +221,61 @@ describe('findFirstUseElement', () => {
 
     assert.throws(() => findFirstUseElement('<blueprint-use kind="a"><p></p>'), /^Error: Prototype source contains an unclosed <blueprint-use> element\.$/);
     assert.throws(() => findFirstUseElement('<blueprint-use kind="a"'), /^Error: Prototype source contains an unclosed HTML tag\.$/);
+  });
+});
+
+describe('listPossibleOpenTags', () => {
+  const names = (markup: string): string[] => [...new Set(listPossibleOpenTags(markup).map(tag => tag.name))].sort();
+
+  it('reads tags a browser could see where this tokenizer sees a comment, raw text, or an attribute value', () => {
+    assert.ok(names('<!-- <script></script> -->').includes('script'));
+    assert.ok(names('<style>a{}</style><title><iframe></title>').includes('iframe'));
+    assert.ok(names('</div a="><!-- "><script></script><!-- -->').includes('script'));
+    assert.ok(names('</div a="><style>"><script></script></style>').includes('script'));
+    assert.ok(names('</div a="><p b=\'"><script></script>\'>').includes('script'));
+    assert.ok(names('<noscript><p title="</noscript><script></script>"></noscript>').includes('script'));
+    assert.ok(names('<![CDATA[ > <script></script> ]]>').includes('script'));
+    assert.ok(names('<svg><p><style><!-- </style><script></script> --></style>').includes('script'));
+    assert.ok(names('<svg><style><script></script></style></svg>').includes('script'));
+  });
+
+  it('reads a tag at each less-than sign, because a quote or a span can hide that tag', () => {
+    assert.ok(names(`</x a="><p a='">'<script>alert(1)</script>`).includes('script'));
+    assert.ok(names(`<![CDATA[<p a='>'<object></object>`).includes('object'));
+    const handler = listPossibleOpenTags('<![CDATA[><img x="]]><b title=" onerror=alert(1) y="z">').find(tag => tag.name === 'img');
+    assert.deepEqual(handler?.attributes.map(attribute => attribute.name), ['x', 'onerror', 'y']);
+  });
+
+  it('reads a tag at the end of raw text that stays open', () => {
+    assert.ok(names('<title><script src="a.js">').includes('script'));
+    const image = listPossibleOpenTags('<title> x <img src="a.png">').find(tag => tag.name === 'img');
+    assert.deepEqual(image?.attributes.map(attribute => [attribute.name, attribute.value]), [['src', 'a.png']]);
+  });
+
+  it('reports offsets in the whole text for a tag that the tokenizer does not read as a tag', () => {
+    const markup = '<p></p><!-- <img src="a.png"> -->';
+    const image = listPossibleOpenTags(markup).find(tag => tag.name === 'img');
+    assert.ok(image);
+    assert.equal(markup.slice(image.start, image.end), '<img src="a.png">');
+    const source = image.attributes[0];
+    assert.equal(markup.slice(source.nameStart, source.nameEnd), 'src');
+    assert.equal(markup.slice(source.valueStart, source.valueEnd), 'a.png');
+  });
+
+  it('refuses text with too many unclosed tags and names the fix', () => {
+    assert.throws(() => listPossibleOpenTags(`${'<a '.repeat(200_000)}>`), /too many unclosed tags.*Fix: close each tag/s);
+    assert.doesNotThrow(() => listPossibleOpenTags(`<!-- ${'<a> '.repeat(50_000)} -->`));
+  });
+
+  it('reads a tag that the end of the text cuts off', () => {
+    assert.ok(names('<p></p><script').includes('script'));
+    assert.ok(names('<p></p><script src="a.js"').includes('script'));
+    assert.deepEqual(listPossibleOpenTags('<div onclick="a').map(tag => tag.attributes.map(attribute => attribute.name)), [['onclick']]);
+  });
+
+  it('stops on text that only holds a less-than sign', () => {
+    assert.deepEqual(names('a < b and c <= d <'), []);
+    assert.deepEqual(names('<style><</style>'), ['style']);
   });
 });
 

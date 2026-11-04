@@ -79,6 +79,51 @@ describe('Blueprint migrate', () => {
     assert.equal(tier.states.default, 'card');
     assert.doesNotMatch(output.writes.get('prototype/components/tier-card.html')!, /data-blueprint-state/);
   });
+  it('moves axis selectors in CSS and keeps every other byte', async () => {
+    const input = await migrationInput(fixtureRoots[2]);
+    useV1Slider(input);
+    const own = [
+      '/* [data-blueprint-state="hero"] */',
+      '.a[data-blueprint-state=hero] ,',
+      '.b:not( [ data-blueprint-state = \'hero\' ] )  {',
+      '  content: "[data-blueprint-state=hero]";',
+      '}',
+      '[data-blueprint-state="hero" i] { color: inherit }',
+      '@scope ([data-blueprint-state=hero]) { .c { color: inherit } }'
+    ].join('\n');
+    input.files.set('prototype/primitives/slider.css', own);
+    const other = [
+      '[data-blueprint-primitive="slider"][data-blueprint-state="hero"]:hover > [data-blueprint-state="hero"] { color: inherit }',
+      '/* [data-blueprint-primitive="slider"][data-blueprint-state="hero"] */',
+      '.unrelated[data-blueprint-state="hero"] { color: inherit }'
+    ].join('\n');
+    input.files.set('prototype/screens/slider-host.css', other);
+
+    const output = migrateProjectFiles(input);
+
+    assert.equal(output.writes.get('prototype/primitives/slider.css'), [
+      '/* [data-blueprint-state="hero"] */',
+      '.a[data-blueprint-variant="hero"] ,',
+      '.b:not( [data-blueprint-variant=\'hero\'] )  {',
+      '  content: "[data-blueprint-state=hero]";',
+      '}',
+      '[data-blueprint-state="hero" i] { color: inherit }',
+      '@scope ([data-blueprint-variant="hero"]) { .c { color: inherit } }'
+    ].join('\n'));
+    assert.equal(output.writes.get('prototype/screens/slider-host.css'), [
+      '[data-blueprint-primitive="slider"][data-blueprint-variant="hero"]:hover > [data-blueprint-state="hero"] { color: inherit }',
+      '/* [data-blueprint-primitive="slider"][data-blueprint-state="hero"] */',
+      '.unrelated[data-blueprint-state="hero"] { color: inherit }'
+    ].join('\n'));
+  });
+
+  it('moves axis selectors in a stylesheet that postcss cannot parse', async () => {
+    const input = await migrationInput(fixtureRoots[2]);
+    useV1Slider(input);
+    input.files.set('prototype/primitives/slider.css', '.a[data-blueprint-state=hero] { color: inherit');
+    assert.equal(migrateProjectFiles(input).writes.get('prototype/primitives/slider.css'), '.a[data-blueprint-variant="hero"] { color: inherit');
+  });
+
   it('moves flows to declared pages, fills the fixed screen and token shapes, and puts every file on the current schema', async () => {
     const input = await migrationInput(fixtureRoots[0]);
     const screens = JSON.parse(input.files.get('screens.json')!) as ScreenFile & Record<string, unknown>;
@@ -119,6 +164,25 @@ describe('Blueprint migrate', () => {
     assert.equal(migrateProjectFiles(input).upToDate, true, 'a second run has nothing left to do');
   });
 });
+
+function useV1Slider(input: MigrationInput): void {
+  const primitives = JSON.parse(input.files.get('primitives.json')!) as PrimitiveFile;
+  input.files.set('primitives.json', JSON.stringify({
+    ...primitives,
+    schemaVersion: '1.0.0',
+    primitives: [
+      ...primitives.primitives.filter(primitive => primitive.id !== 'slider'),
+      {
+        id: 'slider',
+        name: 'Slider',
+        uses: [],
+        tokenGroupIds: ['color'],
+        prototype: { source: 'prototype/primitives/slider.html', styles: ['prototype/primitives/slider.css'], slots: [], states: ['default', 'hero'] }
+      }
+    ]
+  }));
+  input.files.set('prototype/primitives/slider.html', '<div data-blueprint-primitive="slider"></div>');
+}
 
 async function migrationInput(root: string): Promise<MigrationInput> {
   const files = new Map<string, string>();

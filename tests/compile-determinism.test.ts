@@ -82,6 +82,17 @@ describe('compile determinism', () => {
     }
   });
 
+  it('checks a root source again after the source changes', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoots['mira-ai']);
+    const compile = createPrototypeOutputCompiler(bundle);
+    const screen = bundle.screens.screens.find(candidate => candidate.prototype);
+    assert.ok(screen?.prototype);
+    const target = { kind: 'screen', id: screen.id } as const;
+    compile(target);
+    bundle.prototypeSourceContents[screen.prototype.source] += '<script>x</script>';
+    assert.throws(() => compile(target), /executable, navigation, form/);
+  });
+
   it('reports a one-byte source change as a changed boundary', async () => {
     const bundle = await loadProjectFromFs(fixtureRoots['mira-ai']);
     const before = boundaryDigests(bundle);

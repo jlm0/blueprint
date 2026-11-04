@@ -62,6 +62,27 @@
     },
     {
       "files": [
+        "**/src/core/css.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "./*",
+                  "../*"
+                ],
+                "message": "css is a leaf module, so it imports nothing else from Blueprint. Fix: move the code that needs it out of css."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
         "**/src/prototype/**"
       ],
       "rules": {

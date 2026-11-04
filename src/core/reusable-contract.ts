@@ -1,4 +1,5 @@
 import type { BasePrimitiveText } from './base-primitives';
+import { applyMarkupEdits, attributeRemovalStart, firstOpenTag, type MarkupAttribute } from './markup';
 import type { Platform, ReusableAxis, ReusableAxisName, ReusableDefinition } from './types';
 
 export const PLATFORMS: readonly Platform[] = ['web', 'mobile', 'desktop'];
@@ -144,30 +145,38 @@ export function isSlotReuseAccept(accept: string): accept is `${'primitive' | 'c
   return /^(primitive|component):.+$/.test(accept);
 }
 
-const ROOT_TAG_PATTERN = /<([a-zA-Z][\w:-]*)([^>]*)>/;
-const AXIS_ATTRIBUTE_PATTERN = /\s+data-blueprint-(variant|size|state)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
+const AXIS_ATTRIBUTES = new Map<string, ReusableAxisName>([
+  ['data-blueprint-variant', 'variant'],
+  ['data-blueprint-size', 'size'],
+  ['data-blueprint-state', 'state']
+]);
+
+function rootAxisAttributeList(html: string): MarkupAttribute[] {
+  return firstOpenTag(html)?.attributes.filter(attribute => AXIS_ATTRIBUTES.has(attribute.name)) ?? [];
+}
 
 /** Axis attributes set on a reusable source's root element, which the compiler owns. */
 export function rootAxisAttributes(html: string): string[] {
-  const root = ROOT_TAG_PATTERN.exec(html);
-  return root ? [...root[2].matchAll(AXIS_ATTRIBUTE_PATTERN)].map(match => `data-blueprint-${match[1]}`) : [];
+  return rootAxisAttributeList(html).map(attribute => attribute.name);
 }
 
 /** Values a reusable source's root element sets, which v1 rendered for any placement that set none. */
 export function rootAxisValues(html: string): Partial<Record<ReusableAxisName, string>> {
-  const root = ROOT_TAG_PATTERN.exec(html);
   const values: Partial<Record<ReusableAxisName, string>> = {};
-  for (const match of root?.[2].matchAll(/\sdata-blueprint-(variant|size|state)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g) ?? []) {
-    values[match[1] as ReusableAxisName] = match[2] ?? match[3] ?? match[4];
+  for (const attribute of rootAxisAttributeList(html)) {
+    if (attribute.hasValue) {
+      values[AXIS_ATTRIBUTES.get(attribute.name) as ReusableAxisName] = attribute.value;
+    }
   }
   return values;
 }
 
 export function stripRootAxisAttributes(html: string): string {
-  const root = ROOT_TAG_PATTERN.exec(html);
-  if (!root) return html;
-  const attributes = root[2].replace(AXIS_ATTRIBUTE_PATTERN, '');
-  return `${html.slice(0, root.index)}<${root[1]}${attributes}>${html.slice(root.index + root[0].length)}`;
+  return applyMarkupEdits(html, rootAxisAttributeList(html).map(attribute => ({
+    start: attributeRemovalStart(html, attribute),
+    end: attribute.end,
+    text: ''
+  })));
 }
 
 export function isUnsupportedCombination(reusable: Pick<ReusableDefinition, 'unsupported'>, variant: string, size: string, state: string): boolean {

@@ -60,4 +60,51 @@ describe('local style value lint', () => {
     ];
     assert.deepEqual(lintLocalStyleValues(bundle), []);
   });
+
+  it('does not read a literal in a CSS string as a value', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    bundle.prototypeSourceContents[screenCss] += '\n.quote::before { content: "use color: #fff here"; }\n.gap::after { content: "rgb(0, 0, 0)"; gap: 3px; }';
+    assert.deepEqual(lintLocalStyleValues(bundle), []);
+  });
+
+  it('does not read a literal in a CSS comment as a value', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    bundle.prototypeSourceContents[screenCss] += '\n/* color: #fff */\n.note { /* color: #fff; */ gap: /* #fff */ 3px; }';
+    assert.deepEqual(lintLocalStyleValues(bundle), []);
+  });
+
+  it('still reads a literal beside a string, a comment, or a url, and reports the value as written', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    bundle.prototypeSourceContents[screenCss] += `
+.next {
+  content: "a" /* b */;
+  background:   url("a.png")   #FF0000 /* hero */ ;
+  color: rgb(0, 0, 0) !important;
+  padding: 20px;
+  margin: var(--app-space-5, 20px);
+  --local: #123456;
+  border-color: var(--missing, rgb(0, 0, 0));
+}`;
+    assert.deepEqual(
+      lintLocalStyleValues(bundle).map(issue => [issue.property, issue.value, issue.category, issue.tokenStyleRef]),
+      [
+        ['background', 'url("a.png") #FF0000', 'color', undefined],
+        ['color', 'rgb(0, 0, 0) !important', 'color', undefined],
+        ['padding', '20px', 'spacing', '--app-space-5'],
+        ['--local', '#123456', 'color', undefined],
+        ['border-color', 'var(--missing, rgb(0, 0, 0))', 'color', undefined]
+      ]
+    );
+  });
+
+  it('keeps reading a stylesheet that postcss cannot parse', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    bundle.prototypeSourceContents[screenCss] += '\n.open { color: #ff0000; content: "#00ff00"; gap: 8px; padding: 20px }\n.never-closed { margin: 0;';
+    assert.deepEqual(
+      lintLocalStyleValues(bundle).map(issue => [issue.property, issue.value, issue.category]),
+      [['color', '#ff0000', 'color'], ['gap', '8px', 'spacing'], ['padding', '20px', 'spacing']]
+    );
+    assert.equal(validateProject(bundle).ok, true);
+    assert.equal(validateProject(bundle, { mode: 'strict' }).ok, false);
+  });
 });

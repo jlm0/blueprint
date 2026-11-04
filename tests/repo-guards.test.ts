@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import ts from 'typescript';
 
 const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as {
   dependencies: Record<string, string>;
@@ -29,7 +30,148 @@ function bareImports(file: string): string[] {
     .map(specifier => specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/'));
 }
 
+/** The HTML tag scans in a source file, found through the syntax tree, so a string or comment never counts. */
+function htmlTagRegexes(text: string): string[] {
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isRegularExpressionLiteral(node) && /^\/<[a-zA-Z([\\]/.test(node.text)) {
+      found.push(node.text);
+    }
+    if ((ts.isNewExpression(node) || ts.isCallExpression(node)) && ts.isIdentifier(node.expression) && node.expression.text === 'RegExp') {
+      const pattern = node.arguments?.[0];
+      if (pattern && (ts.isStringLiteralLike(pattern) || ts.isTemplateExpression(pattern))) {
+        const start = ts.isTemplateExpression(pattern) ? pattern.head.text : pattern.text;
+        if (start.startsWith('<')) {
+          found.push(pattern.getText());
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ts.createSourceFile('source.ts', text, ts.ScriptTarget.Latest, true));
+  return found;
+}
+
+/** The source of each regex literal and each `RegExp` call with a written pattern, found through the syntax tree. */
+function regexPatterns(text: string): string[] {
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isRegularExpressionLiteral(node)) {
+      found.push(node.text.slice(1, node.text.lastIndexOf('/')));
+    }
+    if ((ts.isNewExpression(node) || ts.isCallExpression(node)) && ts.isIdentifier(node.expression) && node.expression.text === 'RegExp') {
+      const pattern = node.arguments?.[0];
+      if (pattern && ts.isStringLiteralLike(pattern)) {
+        found.push(pattern.text);
+      } else if (pattern && ts.isTemplateExpression(pattern)) {
+        found.push([pattern.head.text, ...pattern.templateSpans.map(span => span.literal.text)].join(''));
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ts.createSourceFile('source.ts', text, ts.ScriptTarget.Latest, true));
+  return found;
+}
+
+function cssSyntaxPatterns(text: string): string[] {
+  return regexPatterns(text).filter(pattern => /url\\\(|@import|var\\\(|\\s\*:|(?<!\(\?):\\s\*|\b(?:color|background|margin|padding|border|font)[-\w]*:/i.test(pattern));
+}
+
+const SVG_ATTRIBUTE_SCANS = [
+  {
+    file: 'src/core/brand-lint.ts',
+    pattern: 'url\\(\\s*["\']?(?!#)',
+    reason: 'scans brand mark SVG text, because a mark must not reach out through an attribute such as fill or style'
+  },
+  {
+    file: 'src/core/brand-lint.ts',
+    pattern: '@import\\b',
+    reason: 'scans brand mark SVG text, and a mark with a real stylesheet is already refused for its <style> element'
+  },
+  {
+    file: 'src/core/brand-lint.ts',
+    pattern: '(?:fill|stroke|stop-color|flood-color|color)\\s*(?:=\\s*["\']|:\\s*)\\s*(?:#[0-9a-f]{3,8}\\b|(?:rgb|hsl|hwb|lab|lch|oklab|oklch)a?\\()',
+    reason: 'scans presentation attributes and style attributes of brand mark SVG text'
+  },
+  {
+    file: 'src/prototype/compiler.ts',
+    pattern: 'url\\(\\s*([\'"]?)#([^\'")\\s]+)\\1\\s*\\)',
+    reason: 'rescopes fragment references in the attributes of an inlined brand mark SVG'
+  }
+] as const;
+
 describe('repository guards', () => {
+  it('keeps HTML tag scans in src/core/markup.ts', () => {
+    const scans = [...sourceFiles('src/core'), ...sourceFiles('src/prototype')]
+      .filter(file => file !== path.join('src', 'core', 'markup.ts'))
+      .flatMap(file => htmlTagRegexes(readFileSync(file, 'utf8')).map(pattern => `${file}: ${pattern}`));
+    assert.deepEqual(scans, [], 'Fix: read the markup through src/core/markup.ts.');
+  });
+
+  it('recognizes each form of an HTML tag scan, and nothing else', () => {
+    for (const scan of [
+      'const a = /<script\\b/i;',
+      'const a = /<(?:a|area)\\b/gi;',
+      'const a = /<[a-z]+>/;',
+      'const a = /<\\/style/i;',
+      'a.replace(/<\\s*script/, "");',
+      'const a = new RegExp("<div");',
+      'const a = new RegExp(`</${name}`);',
+      'const a = RegExp(\'<slot\\\\b\', "gi");'
+    ]) {
+      assert.equal(htmlTagRegexes(scan).length, 1, scan);
+    }
+    for (const other of [
+      'const a = "/<script";',
+      '// /<script/',
+      'const a = value.replace(/</g, "&lt;");',
+      'const a = /url\\(/;',
+      'const a = new RegExp(`\\\\b${name}`);',
+      'const a = new RegExp(pattern);',
+      'const a = b / c < d / e;'
+    ]) {
+      assert.deepEqual(htmlTagRegexes(other), [], other);
+    }
+  });
+
+  it('keeps CSS syntax scans in src/core/css.ts, except the named scans of SVG attribute text', () => {
+    const scans = [...sourceFiles('src/core'), ...sourceFiles('src/prototype')]
+      .filter(file => file !== path.join('src', 'core', 'css.ts'))
+      .flatMap(file => cssSyntaxPatterns(readFileSync(file, 'utf8')).map(pattern => `${file.split(path.sep).join('/')}: ${pattern}`));
+    assert.deepEqual(
+      scans.sort(),
+      SVG_ATTRIBUTE_SCANS.map(scan => `${scan.file}: ${scan.pattern}`).sort(),
+      'Fix: read the CSS through src/core/css.ts. Only a scan of SVG attribute text may stay outside it, and it needs a named reason here.'
+    );
+  });
+
+  it('recognizes each form of a CSS syntax scan, and nothing else', () => {
+    for (const scan of [
+      'const a = /url\\(/i;',
+      'const a = /@import\\b/i;',
+      'const a = /var\\([^()]*\\)/gi;',
+      'const a = /color\\s*:/;',
+      'const a = /([-\\w]+)\\s*:\\s*([^;{}]+?)/g;',
+      'const a = /background:\\s/;',
+      'a.replace(/URL\\(/gi, "");',
+      'const a = new RegExp("url\\\\(");',
+      'const a = new RegExp(`@import ${name}`);',
+      'const a = RegExp(`${name}\\\\s*:`, "g");'
+    ]) {
+      assert.equal(cssSyntaxPatterns(scan).length, 1, scan);
+    }
+    for (const other of [
+      'const a = "url\\\\(";',
+      '// /url\\(/',
+      'const a = /curl /;',
+      'const a = /^https:\\/\\//;',
+      'const a = /^([a-z][\\w-]*):\\s/;',
+      'const a = new RegExp(pattern);'
+    ]) {
+      assert.deepEqual(cssSyntaxPatterns(other), [], other);
+    }
+  });
+
   it('declares every package that source and tests import', () => {
     const declared = new Set([
       ...Object.keys(manifest.dependencies),
@@ -81,6 +223,7 @@ describe('repository guards', () => {
   for (const [fixture, rule] of [
     ['src/core/imports-prototype.ts', 'no-restricted-imports'],
     ['src/core/markup.ts', 'no-restricted-imports'],
+    ['src/core/css.ts', 'no-restricted-imports'],
     ['src/prototype/imports-mcp.ts', 'no-restricted-imports'],
     ['src/mcp/imports-app.ts', 'no-restricted-imports'],
     ['src/app/imports-mcp.ts', 'no-restricted-imports'],
