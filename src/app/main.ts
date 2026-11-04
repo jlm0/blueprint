@@ -66,6 +66,7 @@ import {
 } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
 import { createFrameMounter, type FrameMounter, type MountableFrame } from './frame-mounting';
+import { frameNeedsRebuild, rebuildScope } from './frame-rebuild';
 import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive, PRIMITIVE_GROUPS, primitiveGroupName } from '../core/base-primitives';
 import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '../core/reusable-contract';
 import { createConfiguredProjectBundle } from '../core/bundle';
@@ -3724,23 +3725,25 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
   if (focusedReviewIsRequested()) return false;
   const state = boardState.get('screens');
   if (!state) return true;
-  const affected = affectedScreenIds(changedPaths);
-  if (!affected || affected.size === 0) return false;
+  const oldFrames = new Map(
+    [...state.root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')]
+      .map(frame => [frame.dataset.liveFrameKey ?? '', frame] as const)
+  );
+  const previousBundle = [...oldFrames.values()].map(slotScreenFrame).find(frame => frame)?.source.bundle;
+  const scope = rebuildScope(changedPaths, previousBundle, project);
+  if (!scope || (!scope.all && scope.screenIds.size === 0 && scope.boundaryIds.size === 0)) return false;
+  const everyScreen = scope.all || scope.boundaryIds.size > 0;
   const params = new URLSearchParams(location.search);
   const request: PrototypeReviewSelectionRequest = {
     state: params.get('state') ?? undefined,
     viewport: params.get('viewport') ?? undefined
   };
   const pageFilter = request.state || request.viewport ? undefined : (activeScreenPage ?? undefined);
-  const layouts = layoutScreenFrames(project, request, pageFilter).filter(layout => affected.has(layout.screen.id));
-  const oldFrames = new Map(
-    [...state.root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')]
-      .map(frame => [frame.dataset.liveFrameKey ?? '', frame] as const)
-  );
+  const layouts = layoutScreenFrames(project, request, pageFilter).filter(layout => everyScreen || scope.screenIds.has(layout.screen.id));
   const nextKeys = layouts.map(layout => liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection));
   if (nextKeys.some(key => !oldFrames.has(key))) return false;
   const currentKeys = [...oldFrames.entries()]
-    .filter(([, frame]) => affected.has(frame.querySelector<HTMLElement>('.frame')?.dataset.screenId ?? ''))
+    .filter(([, frame]) => everyScreen || scope.screenIds.has(frame.querySelector<HTMLElement>('.frame')?.dataset.screenId ?? ''))
     .map(([key]) => key);
   if (currentKeys.length !== nextKeys.length) return false;
 
@@ -3754,6 +3757,12 @@ async function reconcileScreenFrames(changedPaths: string[]): Promise<boolean> {
       const previous = oldFrames.get(liveFrameKey(layout.screen.id, layout.preset.id, layout.prototypeSelection));
       if (!previous) continue;
       const replaced = slotScreenFrame(previous);
+      if (replaced && !frameNeedsRebuild(scope, layout.screen.id, replaced.failed ? undefined : prototypeUsesByHost.get(replaced.host)?.usedBoundaryIds)) {
+        replaced.source.bundle = project;
+        const view = frameViewBySlot.get(previous);
+        if (view) view.bundle = project;
+        continue;
+      }
       const next = createPrototypeFrame(project, tokenIndex, layout, mounter);
       if (!replaced?.mounted) {
         if (replaced) mounter.remove(replaced);
@@ -3789,32 +3798,6 @@ function slotScreenFrame(slot: HTMLElement): ScreenFrame | undefined {
   return host ? screenFrameByHost.get(host) : undefined;
 }
 
-function affectedScreenIds(changedPaths: string[]): Set<string> | undefined {
-  const screenIds = new Set<string>();
-  for (const changedPath of changedPaths) {
-    if (
-      changedPath === 'manifest.json' || changedPath === 'screens.json' ||
-      changedPath.startsWith('explorations/') || changedPath.startsWith('history/')
-    ) return undefined;
-    if (
-      changedPath === 'tokens.json' || changedPath === 'primitives.json' || changedPath === 'components.json' ||
-      changedPath === 'brand.json' || changedPath.startsWith('brand/') ||
-      changedPath.startsWith('prototype/primitives/') || changedPath.startsWith('prototype/components/')
-    ) {
-      project.screens.screens.forEach(screen => screenIds.add(screen.id));
-      continue;
-    }
-    if (changedPath === 'inspo.json' || changedPath.startsWith('inspo/')) continue;
-    const owner = project.screens.screens.find(screen => screen.prototype && [
-      screen.prototype.source,
-      ...screen.prototype.styles,
-      ...screen.prototype.assetRefs
-    ].includes(changedPath));
-    if (!owner) return undefined;
-    screenIds.add(owner.id);
-  }
-  return screenIds;
-}
 
 function showAgentActivity(event: BlueprintAgentActivityEvent): void {
   if (event.phase === 'started') {
