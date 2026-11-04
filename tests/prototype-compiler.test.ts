@@ -75,6 +75,26 @@ describe('canonical prototype compiler', () => {
 
     assert.match(launch.html, /data:image\/svg\+xml;base64,/);
     assert.doesNotMatch(launch.html, /src="\.\.\/assets\//);
+    assert.doesNotMatch(launch.html, /bp-asset-/);
+  });
+
+  it('keeps asset-token look-alike text in sources literal', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    focusChat(bundle, '<main><p>bp-asset-0- stays text</p></main>', []);
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.match(compiled.html, /<p>bp-asset-0- stays text<\/p>/);
+  });
+
+  it('reports a declared asset missing from the bundle when validating without inlining', async () => {
+    const bundle = await loadProjectFromFs('fixtures/valid/umbra-gaming/design/blueprint');
+    const assetRef = Object.keys(bundle.prototypeAssetContents)[0];
+    assert.ok(assetRef);
+    delete bundle.prototypeAssetContents[assetRef];
+
+    const result = validateProject(bundle);
+    assert.equal(result.ok, false);
+    assert.ok(result.errors.some(error => error.includes(`Declared prototype asset "${assetRef}" is missing from the loaded bundle.`)));
   });
 
   it('selects a declared primitive state without changing the canonical source contract', async () => {
@@ -150,6 +170,21 @@ describe('canonical prototype compiler', () => {
 
     const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
     assert.match(compiled.html, /<span class="slotted-label">\$4\.28M treasury balance<\/span>/);
+  });
+
+  it('keeps dollar replacement patterns literal in self-closing slots', async () => {
+    const bundle = await loadProjectFromFs(fixtureRoot);
+    const button = bundle.primitives.primitives.find(primitive => primitive.id === 'button');
+    assert.ok(button?.prototype);
+    bundle.prototypeSourceContents[button.prototype.source] = '<button data-blueprint-primitive="button" type="button"><slot name="label"/></button>';
+    focusChat(
+      bundle,
+      '<main><blueprint-use kind="primitive" ref="button" state="normal"><span slot="label">$12 $& $` $\'</span></blueprint-use></main>',
+      [{ kind: 'primitive', id: 'button', reason: 'self-closing dollar slot regression' }]
+    );
+
+    const compiled = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+    assert.match(compiled.html, /<span>\$12 \$& \$` \$'<\/span>/);
   });
 
   it('preserves safe review destinations as inert metadata and rejects navigation-capable source', async () => {

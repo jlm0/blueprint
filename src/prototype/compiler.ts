@@ -136,10 +136,22 @@ interface SourceBoundary {
 interface CompilerContext {
   bundle: BlueprintProjectBundle;
   allowedAssetRefs: Set<string>;
+  assetTokens: AssetTokens;
   observedUses: ObservedPrototypeUse[];
+  observedUsesBySource: Map<string, ObservedPrototypeUse[]>;
   brandMarks: PlacedBrandMark[];
   styleRefs: string[];
   styleRefSet: Set<string>;
+}
+
+/**
+ * Stands in for each asset data URL until the document is complete, so the
+ * expansion passes never scan or copy base64 text.
+ */
+interface AssetTokens {
+  prefix: string;
+  refs: string[];
+  indexByRef: Map<string, number>;
 }
 
 interface UseElement {
@@ -178,6 +190,10 @@ export const PROTOTYPE_CONTENT_SECURITY_POLICY = [
  * @throws {Error} When a source, state, reusable use, slot, asset, or host policy is invalid.
  */
 export function compilePrototypeDocument(options: CompilePrototypeDocumentOptions): CompiledPrototypeDocument {
+  return compileDocument(options, true);
+}
+
+function compileDocument(options: CompilePrototypeDocumentOptions, inlineAssets: boolean): CompiledPrototypeDocument {
   assertIsolatedHostPolicy(options.bundle);
   const boundary = resolveBoundary(options.bundle, options.target);
   const state = resolveState(boundary, options.state);
@@ -189,7 +205,9 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
   const context: CompilerContext = {
     bundle: options.bundle,
     allowedAssetRefs,
+    assetTokens: { prefix: `bp-asset-${Math.random().toString(36).slice(2)}-`, refs: [], indexByRef: new Map() },
     observedUses: [],
+    observedUsesBySource: new Map(),
     brandMarks: [],
     styleRefs: [],
     styleRefSet: new Set()
@@ -215,7 +233,7 @@ export function compilePrototypeDocument(options: CompilePrototypeDocumentOption
   ].join('');
 
   return {
-    html,
+    html: inlineAssets ? inlineAssetTokens(context, html) : html,
     targetBoundaryId,
     state,
     observedUses: context.observedUses,
@@ -253,7 +271,7 @@ export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): Pro
   const issues: PrototypeSourceGraphIssue[] = [];
   for (const candidate of targets) {
     try {
-      compilePrototypeDocument({ bundle, target: candidate.target, state: candidate.state });
+      compileDocument({ bundle, target: candidate.target, state: candidate.state }, false);
     } catch (error) {
       const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
       issues.push({
@@ -323,17 +341,27 @@ function resolveTopLevelAxes(boundary: SourceBoundary, variant: string | undefin
     }
     return {};
   }
-  assertDeclaredAxisValue(boundary, 'variant', variant);
-  assertDeclaredAxisValue(boundary, 'size', size);
-  return { ...(variant ? { variant } : {}), ...(size ? { size } : {}) };
+  const declaredVariant = declaredAxisValue(boundary, 'variant', variant);
+  const declaredSize = declaredAxisValue(boundary, 'size', size);
+  return { ...(declaredVariant ? { variant: declaredVariant } : {}), ...(declaredSize ? { size: declaredSize } : {}) };
 }
 
-function assertDeclaredAxisValue(boundary: SourceBoundary, axis: 'variant' | 'size', value: string | undefined): void {
-  if (value === undefined || !boundary.reusable) return;
+function declaredAxisValue(boundary: SourceBoundary, axis: 'variant' | 'size', value: string | undefined): string | undefined {
+  if (value === undefined || !boundary.reusable) return value;
   const declared = axisIds(axis === 'variant' ? boundary.reusable.variants : boundary.reusable.sizes);
-  if (!declared.includes(value)) {
+  const match = declaredCopy(declared, value);
+  if (match === undefined) {
     throw new Error(`${boundary.kind} "${boundary.id}" does not declare ${axis} "${value}"; it declares ${declared.map(id => `"${id}"`).join(', ')}.`);
   }
+  return match;
+}
+
+/**
+ * Returns the contract's own copy of a value. A value parsed from markup is a
+ * slice that keeps its whole source fragment in memory for as long as it lives.
+ */
+function declaredCopy(declared: readonly string[], value: string): string | undefined {
+  return declared.find(candidate => candidate === value);
 }
 
 /** Every reusable root carries all three axes, so its CSS can select on each one. */
@@ -378,49 +406,66 @@ function compileBoundaryFragment(
   fragment = applyInvocationAttributes(fragment, resolveReusableAxes(boundary, state, invocationAttributes), boundary);
 
   const nextStack = [...stack, currentBoundaryId];
-  while (true) {
-    const use = findFirstUseElement(fragment);
-    if (!use) {
-      break;
-    }
-    const useAttributes = parseUseAttributes(use.attributes, currentBoundaryId);
-    const slotAuthor = useAttributes.get(SLOT_AUTHOR_ATTRIBUTE);
-    useAttributes.delete(SLOT_AUTHOR_ATTRIBUTE);
-    const kind = requiredParsedUseAttribute(useAttributes, 'kind', currentBoundaryId);
-    if (kind === 'brand-mark') {
-      const placedBy = slotAuthor ? `${context.bundle.manifest.project.id}/${slotAuthor.replace(':', '/')}` : currentBoundaryId;
-      const rendered = renderBrandMark(context, useAttributes, use.children, placedBy);
-      fragment = `${fragment.slice(0, use.start)}${rendered}${fragment.slice(use.end)}`;
-      continue;
-    }
-    if (kind !== 'primitive' && kind !== 'component') {
-      throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
-    }
-    const id = requiredParsedUseAttribute(useAttributes, 'ref', currentBoundaryId);
-    const owner = creditedBoundary(context.bundle, boundary, slotAuthor, { kind, id });
-    const target = resolveBoundary(context.bundle, { kind, id });
-    const targetState = resolveState(target, useAttributes.get('state'));
-    const forwardedAttributes = resolveForwardedInvocationAttributes(useAttributes, target);
-    const targetBoundaryId = boundaryId(context.bundle, target);
-    const axes = resolveReusableAxes(target, targetState, forwardedAttributes);
-    context.observedUses.push({
-      sourceBoundaryId: boundaryId(context.bundle, owner),
-      targetBoundaryId,
-      kind,
-      id,
-      variant: axes.variant ?? 'default',
-      size: axes.size ?? 'default',
-      state: targetState
-    });
-    const rendered = compileBoundaryFragment(context, target, targetState, use.children, nextStack, forwardedAttributes);
-    fragment = `${fragment.slice(0, use.start)}${rendered}${fragment.slice(use.end)}`;
+  const expanded: string[] = [];
+  let rest = fragment;
+  for (let use = findFirstUseElement(rest); use; use = findFirstUseElement(rest)) {
+    expanded.push(rest.slice(0, use.start), expandUse(context, boundary, currentBoundaryId, use, nextStack));
+    rest = rest.slice(use.end);
   }
+  expanded.push(rest);
+  fragment = expanded.join('');
 
-  assertRenderedUses(boundary, context.observedUses.filter(use => use.sourceBoundaryId === currentBoundaryId));
+  assertRenderedUses(boundary, context.observedUsesBySource.get(currentBoundaryId) ?? []);
   if (boundary.kind === 'screen') {
     fragment = applySectionMetadata(context.bundle, boundary, fragment);
   }
   return applyBoundaryMetadata(fragment, boundary, currentBoundaryId, state);
+}
+
+function expandUse(
+  context: CompilerContext,
+  boundary: SourceBoundary,
+  currentBoundaryId: string,
+  use: UseElement,
+  nextStack: string[]
+): string {
+  const useAttributes = parseUseAttributes(use.attributes, currentBoundaryId);
+  const slotAuthor = useAttributes.get(SLOT_AUTHOR_ATTRIBUTE);
+  useAttributes.delete(SLOT_AUTHOR_ATTRIBUTE);
+  const kind = requiredParsedUseAttribute(useAttributes, 'kind', currentBoundaryId);
+  if (kind === 'brand-mark') {
+    const placedBy = slotAuthor ? `${context.bundle.manifest.project.id}/${slotAuthor.replace(':', '/')}` : currentBoundaryId;
+    return renderBrandMark(context, useAttributes, use.children, placedBy);
+  }
+  if (kind !== 'primitive' && kind !== 'component') {
+    throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
+  }
+  const id = requiredParsedUseAttribute(useAttributes, 'ref', currentBoundaryId);
+  const owner = creditedBoundary(context.bundle, boundary, slotAuthor, { kind, id });
+  const target = resolveBoundary(context.bundle, { kind, id });
+  const targetState = resolveState(target, useAttributes.get('state'));
+  const forwardedAttributes = resolveForwardedInvocationAttributes(useAttributes, target);
+  const axes = resolveReusableAxes(target, targetState, forwardedAttributes);
+  recordObservedUse(context, {
+    sourceBoundaryId: boundaryId(context.bundle, owner),
+    targetBoundaryId: boundaryId(context.bundle, target),
+    kind,
+    id: target.id,
+    variant: axes.variant ?? 'default',
+    size: axes.size ?? 'default',
+    state: targetState
+  });
+  return compileBoundaryFragment(context, target, targetState, use.children, nextStack, forwardedAttributes);
+}
+
+function recordObservedUse(context: CompilerContext, use: ObservedPrototypeUse): void {
+  context.observedUses.push(use);
+  const fromSource = context.observedUsesBySource.get(use.sourceBoundaryId);
+  if (fromSource) {
+    fromSource.push(use);
+  } else {
+    context.observedUsesBySource.set(use.sourceBoundaryId, [use]);
+  }
 }
 
 /**
@@ -573,10 +618,11 @@ function resolveState(boundary: SourceBoundary, requestedState: string | undefin
   if (!state) {
     throw new Error(`${boundary.kind} "${boundary.id}" has no declared prototype state.`);
   }
-  if (!boundary.states.includes(state)) {
+  const declared = declaredCopy(boundary.states, state);
+  if (declared === undefined) {
     throw new Error(`${boundary.kind} "${boundary.id}" does not declare prototype state "${state}".`);
   }
-  return state;
+  return declared;
 }
 
 function assertIsolatedHostPolicy(bundle: BlueprintProjectBundle): void {
@@ -601,15 +647,13 @@ function loadAndRewriteStyle(context: CompilerContext, styleRef: string): string
     throw new Error(`Prototype stylesheet "${styleRef}" cannot import external or undeclared stylesheets.`);
   }
   return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (_match, _quote: string, value: string) => {
-    const dataUrl = resolveAssetDataUrl(context, styleRef, value.trim());
-    return `url("${dataUrl}")`;
+    return `url("${assetToken(context, styleRef, value.trim())}")`;
   });
 }
 
 function rewriteHtmlAssetRefs(context: CompilerContext, html: string, sourceRef: string): string {
   return html.replace(/(\b(?:src|poster)\s*=\s*)(['"])(.*?)\2/gi, (_match, prefix: string, quote: string, value: string) => {
-    const dataUrl = resolveAssetDataUrl(context, sourceRef, value);
-    return `${prefix}${quote}${dataUrl}${quote}`;
+    return `${prefix}${quote}${assetToken(context, sourceRef, value)}${quote}`;
   });
 }
 
@@ -626,20 +670,34 @@ function rewriteNavigationAttributes(html: string, sourceRef: string): string {
     if (!isSafePrototypeHref(href[2])) {
       throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${href[2]}".`);
     }
-    return openingTag.replace(href[0], `data-blueprint-href="${escapeAttribute(href[2])}"`);
+    return openingTag.replace(href[0], () => `data-blueprint-href="${escapeAttribute(href[2])}"`);
   });
 }
 
-function resolveAssetDataUrl(context: CompilerContext, sourceRef: string, value: string): string {
+function assetToken(context: CompilerContext, sourceRef: string, value: string): string {
   const assetRef = resolveRelativeRef(sourceRef, value);
   if (!context.allowedAssetRefs.has(assetRef)) {
     throw new Error(`Prototype resource "${value}" from "${sourceRef}" is not a declared controlled asset.`);
   }
-  const asset = context.bundle.prototypeAssetContents[assetRef];
-  if (!asset) {
+  if (!context.bundle.prototypeAssetContents[assetRef]) {
     throw new Error(`Declared prototype asset "${assetRef}" is missing from the loaded bundle.`);
   }
-  return `data:${asset.mediaType};base64,${asset.base64}`;
+  const tokens = context.assetTokens;
+  let index = tokens.indexByRef.get(assetRef);
+  if (index === undefined) {
+    index = tokens.refs.push(assetRef) - 1;
+    tokens.indexByRef.set(assetRef, index);
+  }
+  return `${tokens.prefix}${index}-`;
+}
+
+function inlineAssetTokens(context: CompilerContext, html: string): string {
+  const { prefix, refs } = context.assetTokens;
+  const dataUrls = refs.map(assetRef => {
+    const asset = context.bundle.prototypeAssetContents[assetRef];
+    return `data:${asset.mediaType};base64,${asset.base64}`;
+  });
+  return html.replace(new RegExp(`${escapeRegExp(prefix)}(\\d+)-`, 'g'), (_token, index: string) => dataUrls[Number(index)]);
 }
 
 function resolveRelativeRef(sourceRef: string, value: string): string {
@@ -875,7 +933,7 @@ function replaceNamedSlotElements(template: string, name: string, content: strin
   const selfClosing = new RegExp(`<slot\\b([^>]*\\bname\\s*=\\s*(['"])${escapedName}\\2[^>]*)\\s*\\/>`, 'gi');
   return template
     .replace(paired, (_full, _attributes: string, _quote: string, fallback: string) => content ?? fallback)
-    .replace(selfClosing, content ?? '');
+    .replace(selfClosing, () => content ?? '');
 }
 
 function replaceDataSlotContents(template: string, name: string, content: string | undefined): string {
@@ -906,7 +964,7 @@ function replaceDefaultSlotElements(template: string, content: string | undefine
   const selfClosing = /<slot(?![^>]*\bname\s*=)[^>]*\s*\/>/gi;
   return template
     .replace(paired, (_full, fallback: string) => content ?? fallback)
-    .replace(selfClosing, content ?? '');
+    .replace(selfClosing, () => content ?? '');
 }
 
 function findFirstUseElement(html: string): UseElement | undefined {
@@ -1013,10 +1071,8 @@ function resolveForwardedInvocationAttributes(
   if (className && !/^[a-zA-Z0-9_-]+(?:\s+[a-zA-Z0-9_-]+)*$/.test(className)) {
     throw new Error(`${target.kind} "${target.id}" received an unsafe class invocation attribute.`);
   }
-  const variant = attributes.get('variant');
-  assertDeclaredAxisValue(target, 'variant', variant);
-  const size = attributes.get('size');
-  assertDeclaredAxisValue(target, 'size', size);
+  const variant = declaredAxisValue(target, 'variant', attributes.get('variant'));
+  const size = declaredAxisValue(target, 'size', attributes.get('size'));
   const href = attributes.get('href');
   if (href && !isSafePrototypeHref(href)) {
     throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}".`);
@@ -1080,7 +1136,7 @@ function renderBrandMark(
   if (!svg) {
     throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element.`);
   }
-  context.brandMarks.push({ sourceBoundaryId: placedBy, id, ...(variantId ? { variant: variantId } : {}) });
+  context.brandMarks.push({ sourceBoundaryId: placedBy, id: mark.id, ...(variant ? { variant: variant.id } : {}) });
 
   const rootEnd = findTagEnd(svg, 0);
   let rootAttributes = svg.slice('<svg'.length, rootEnd).replace(/\s(?:width|height)\s*=\s*(['"]).*?\1/gi, '');
@@ -1150,7 +1206,7 @@ function applyInvocationAttributes(
     const existingClass = /\bclass\s*=\s*(['"])(.*?)\1/i.exec(rootAttributes);
     if (existingClass) {
       const merged = [...new Set(`${existingClass[2]} ${attributes.className}`.trim().split(/\s+/))].join(' ');
-      rootAttributes = rootAttributes.replace(existingClass[0], `class="${escapeAttribute(merged)}"`);
+      rootAttributes = rootAttributes.replace(existingClass[0], () => `class="${escapeAttribute(merged)}"`);
     } else {
       rootAttributes += ` class="${escapeAttribute(attributes.className)}"`;
     }
@@ -1177,7 +1233,7 @@ function applyInvocationAttributes(
 function setRootAttribute(attributes: string, name: string, value: string): string {
   const pattern = new RegExp(`\\b${escapeRegExp(name)}\\s*=\\s*(['"])(.*?)\\1`, 'i');
   const serialized = `${name}="${escapeAttribute(value)}"`;
-  return pattern.test(attributes) ? attributes.replace(pattern, serialized) : `${attributes} ${serialized}`;
+  return pattern.test(attributes) ? attributes.replace(pattern, () => serialized) : `${attributes} ${serialized}`;
 }
 
 function isSafePrototypeHref(href: string): boolean {
@@ -1238,7 +1294,7 @@ function selectFragmentState(fragment: string, state: string): string {
   }
   const statePattern = /\bdata-blueprint-state\s*=\s*(['"])[^'"]*\1/i;
   const attributes = statePattern.test(root[2])
-    ? root[2].replace(statePattern, `data-blueprint-state="${escapeAttribute(state)}"`)
+    ? root[2].replace(statePattern, () => `data-blueprint-state="${escapeAttribute(state)}"`)
     : `${root[2]} data-blueprint-state="${escapeAttribute(state)}"`;
   const openingTag = `<${root[1]}${attributes}>`;
   return `${fragment.slice(0, root.index)}${openingTag}${fragment.slice(root.index + root[0].length)}`;
