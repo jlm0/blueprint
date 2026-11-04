@@ -260,13 +260,6 @@ const frameMounterByRoot = new WeakMap<HTMLElement, FrameMounter>();
 const frameViewBySlot = new WeakMap<HTMLElement, FrameView>();
 const frameThumbnails = createFrameThumbnailCache(FRAME_THUMBNAIL_LIMIT, url => URL.revokeObjectURL(url));
 const thumbnailKeyByBundle = new WeakMap<CanvasProjectBundle, Map<string, string>>();
-let canvasSettled = true;
-canvas.onViewChange(() => {
-  canvasSettled = false;
-});
-canvas.onViewSettled(() => {
-  canvasSettled = true;
-});
 const frameThumbnailQueue = createIdleQueue(captureFrameThumbnail, whenCanvasIdle);
 
 // Quiet chrome verb: jump back out to a fitted view of the active board.
@@ -2070,7 +2063,7 @@ function createScreenFrameMounter(root: HTMLElement): FrameMounter {
       window.removeEventListener('resize', schedule);
     }
   });
-  stopViewChanges = canvas.onViewSettled(schedule);
+  stopViewChanges = canvas.onViewSettled(() => canvas.gesturing() ? mounter.mountOne() : mounter.schedule());
   window.addEventListener('resize', schedule);
   // A new board fits its view in the next animation frame, so the first batch waits for that view.
   const release = mounter.hold();
@@ -3189,9 +3182,10 @@ function rememberFrameThumbnail(frame: ScreenFrame): void {
 
 async function whenCanvasIdle(): Promise<void> {
   await idleCallback();
-  while (!canvasSettled) {
+  while (canvas.gesturing()) {
     await new Promise<void>(resolve => {
       const stop = canvas.onViewSettled(() => {
+        if (canvas.gesturing()) return;
         stop();
         resolve();
       });

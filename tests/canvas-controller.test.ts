@@ -78,6 +78,30 @@ describe('Blueprint canvas fit', () => {
     }
   });
 
+  it('settles a continuous gesture at least every 500 ms and keeps it active until it is idle', () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      const listeners: Record<string, (event: unknown) => void> = {};
+      const canvas = controller(listeners);
+      const settled: Array<{ x: number; gesturing: boolean }> = [];
+      canvas.onViewSettled(view => settled.push({ x: view.x, gesturing: canvas.gesturing() }));
+      const wheel = { ctrlKey: false, deltaY: 0, deltaX: -5, clientX: 600, clientY: 400, preventDefault() {} };
+      for (let elapsed = 0; elapsed < 1200; elapsed += 50) {
+        listeners.wheel(wheel);
+        mock.timers.tick(50);
+      }
+
+      assert.deepEqual(settled.map(entry => entry.gesturing), [true, true]);
+      assert.ok(settled[0].x < settled[1].x, 'Each forced settle should carry the current view');
+      mock.timers.tick(GESTURE_IDLE_MS);
+      assert.deepEqual(settled.map(entry => entry.gesturing), [true, true, false]);
+      mock.timers.tick(1000);
+      assert.equal(settled.length, 3);
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
   it('settles a wheel zoom once, after the gesture is idle, and a set view at once', () => {
     mock.timers.enable({ apis: ['setTimeout'] });
     try {

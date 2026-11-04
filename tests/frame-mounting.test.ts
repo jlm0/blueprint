@@ -318,6 +318,39 @@ describe('Blueprint frame mounter', () => {
     assert.equal(mounts, 6);
   });
 
+  it('mounts one frame for each forced settle while a gesture is active', async () => {
+    let mounts = 0;
+    const mounter = createFrameMounter({
+      view: () => ({ x: 0, y: 0, s: 0.25 }),
+      viewport: () => viewport,
+      state: () => 'paused',
+      policy: { ...policy, maxFrames: 6 },
+      yieldToMain: () => new Promise(resolve => setTimeout(resolve, 0))
+    });
+    for (const candidate of row(6)) {
+      const frame: MountableFrame = {
+        ...candidate,
+        mount() {
+          frame.mounted = true;
+          mounts += 1;
+        },
+        unmount() {
+          frame.mounted = false;
+        }
+      };
+      mounter.add(frame);
+    }
+    await nextTasks();
+    assert.equal(mounts, 0);
+    mounter.mountOne();
+    await nextTasks();
+    assert.equal(mounts, 1);
+    mounter.mountOne();
+    mounter.mountOne();
+    await nextTasks();
+    assert.equal(mounts, 2, 'Two forced settles in one task should still mount one frame');
+  });
+
   it('settles a waiter without mounting while the board is hidden', async () => {
     let mounts = 0;
     const mounter = createFrameMounter({

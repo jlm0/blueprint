@@ -19,6 +19,7 @@ export interface CanvasController {
 }
 
 export const GESTURE_IDLE_MS = 120;
+const GESTURE_SETTLE_MAX_MS = 500;
 
 export interface CanvasOptions {
   minScale: number;
@@ -56,6 +57,7 @@ export function createCanvasController({
   const viewListeners = new Set<(view: Readonly<CanvasView>) => void>();
   const settledListeners = new Set<(view: Readonly<CanvasView>) => void>();
   let settleTimer: ReturnType<typeof setTimeout> | undefined;
+  let forcedSettleTimer: ReturnType<typeof setTimeout> | undefined;
   let spaceHeld = false;
 
   function apply(): void {
@@ -69,11 +71,19 @@ export function createCanvasController({
     for (const listener of viewListeners) listener(view);
     clearTimeout(settleTimer);
     settleTimer = setTimeout(settle, GESTURE_IDLE_MS);
+    forcedSettleTimer ??= setTimeout(settleDuringGesture, GESTURE_SETTLE_MAX_MS);
+  }
+
+  function settleDuringGesture(): void {
+    forcedSettleTimer = setTimeout(settleDuringGesture, GESTURE_SETTLE_MAX_MS);
+    for (const listener of settledListeners) listener(view);
   }
 
   function settle(): void {
     clearTimeout(settleTimer);
+    clearTimeout(forcedSettleTimer);
     settleTimer = undefined;
+    forcedSettleTimer = undefined;
     for (const listener of settledListeners) listener(view);
   }
 

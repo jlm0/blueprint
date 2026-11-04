@@ -111,6 +111,7 @@ export interface FrameMounter {
   add: (frame: MountableFrame) => void;
   remove: (frame: MountableFrame) => void;
   schedule: () => void;
+  mountOne: () => void;
   visibleMounted: () => Promise<void>;
   hold: () => () => void;
 }
@@ -130,6 +131,7 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
   let holds = 0;
   let disposed = false;
   let pumping = false;
+  let pausedMounts = 0;
 
   const settle = (): void => {
     const pending = waiters;
@@ -158,7 +160,8 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
           settle();
           return;
         }
-        if (holds > 0 || state === 'paused') return;
+        if (state === 'active') pausedMounts = 0;
+        if (holds > 0 || (state === 'paused' && pausedMounts === 0)) return;
 
         const plan = planFrameMounts(frames, options.view(), options.viewport(), policy);
         const toUnmount = plan.unmount.map(index => frames[index]);
@@ -171,6 +174,7 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
         }
         next.mount();
         next.requested = false;
+        if (state === 'paused') pausedMounts -= 1;
         options.onMounted?.();
         if (plan.visibleMount <= 1) settle();
         await yieldNext();
@@ -190,6 +194,10 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
       if (index >= 0) frames.splice(index, 1);
     },
     schedule,
+    mountOne() {
+      pausedMounts = 1;
+      schedule();
+    },
     visibleMounted() {
       if (disposed) return Promise.resolve();
       return new Promise(resolve => {
