@@ -1,0 +1,259 @@
+[data-blueprint-component="cashflow-chart"] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--app-space-5);
+  margin: 0;
+  padding: var(--app-space-6);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-color-surface);
+}
+
+.cashflow__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-4);
+}
+
+.cashflow__titles {
+  display: grid;
+  gap: 6px;
+}
+
+.cashflow__eyebrow {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+}
+
+.cashflow__figure {
+  font: var(--app-type-display);
+  font-size: 40px;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.cashflow__caption {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-blueprint-component="cashflow-chart"] .cashflow__range {
+  font: var(--app-type-label);
+}
+
+[data-blueprint-component="cashflow-chart"] .cashflow__range .segmented-control__option {
+  min-height: 26px;
+  padding: 0 10px;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+}
+
+.cashflow__plot {
+  position: relative;
+  min-height: 200px;
+  padding: 0 0 22px 44px;
+}
+
+.cashflow__scale {
+  position: absolute;
+  inset: 0 0 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cashflow__scale i {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 0;
+}
+
+.cashflow__scale i::after {
+  flex: 1;
+  height: 1px;
+  background: var(--app-color-border);
+  content: '';
+}
+
+.cashflow__scale i:nth-child(2)::after {
+  background: var(--app-color-foreground);
+}
+
+.cashflow__scale i:nth-child(2) {
+  padding-left: 22px;
+}
+
+.cashflow__months {
+  position: relative;
+  display: grid;
+  height: 100%;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0 var(--app-space-2);
+  list-style: none;
+}
+
+.cashflow__months li {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+}
+
+.cashflow__in,
+.cashflow__out {
+  position: relative;
+  display: flex;
+}
+
+.cashflow__in {
+  align-items: flex-end;
+}
+
+.cashflow__out {
+  align-items: flex-start;
+}
+
+.cashflow__in::before,
+.cashflow__out::before {
+  width: 100%;
+  content: '';
+}
+
+.cashflow__in::before {
+  height: calc(var(--in) * 100%);
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--app-color-foreground) 78%, var(--app-color-surface));
+}
+
+.cashflow__out::before {
+  height: calc(var(--out) * 100%);
+  border-radius: 0 0 2px 2px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-foreground) 22%, transparent) 0 1px, transparent 1px 4px), color-mix(in srgb, var(--app-color-foreground) 7%, var(--app-color-surface));
+}
+
+.cashflow__months .is-current .cashflow__in::before {
+  background: var(--app-color-accent);
+}
+
+.cashflow__months .is-current .cashflow__out::before {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-accent) 45%, transparent) 0 1px, transparent 1px 4px), color-mix(in srgb, var(--app-color-accent) 10%, var(--app-color-surface));
+}
+
+.cashflow__months b {
+  position: absolute;
+  left: 50%;
+  padding: 2px 6px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+  font: var(--app-type-code);
+  font-size: 10px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.cashflow__in b {
+  bottom: calc(var(--in) * 100% + 6px);
+  background: var(--app-color-accent);
+}
+
+.cashflow__out b {
+  top: calc(var(--out) * 100% + 6px);
+  color: var(--app-color-accent);
+  background: var(--app-color-surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-color-accent) 40%, transparent);
+}
+
+.cashflow__months em {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  width: 100%;
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 10px;
+  font-style: normal;
+  text-align: center;
+}
+
+.cashflow__months .is-current em {
+  color: var(--app-color-foreground);
+  font-weight: 600;
+}
+
+.cashflow__legend {
+  display: flex;
+  gap: var(--app-space-5);
+  margin: 0;
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.cashflow__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.cashflow__key {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.cashflow__key--in {
+  background: color-mix(in srgb, var(--app-color-foreground) 78%, var(--app-color-surface));
+}
+
+.cashflow__key--out {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-foreground) 30%, transparent) 0 1px, transparent 1px 3px), color-mix(in srgb, var(--app-color-foreground) 7%, var(--app-color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-color-foreground) 18%, transparent);
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] {
+  gap: var(--app-space-4);
+  padding: var(--app-space-4);
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__range,
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__scale i {
+  font-size: 0;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__range {
+  display: none;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__figure {
+  font-size: 30px;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__plot {
+  min-height: 120px;
+  padding-left: 0;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__scale i:nth-child(2) {
+  padding-left: 0;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months {
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--app-space-3);
+  padding: 0;
+}
+
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months li:nth-child(-n + 6),
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__months b,
+[data-blueprint-component="cashflow-chart"][data-blueprint-state="compact"] .cashflow__legend {
+  display: none;
+}

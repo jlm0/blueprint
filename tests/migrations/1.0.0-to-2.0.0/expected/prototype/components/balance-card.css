@@ -1,0 +1,110 @@
+[data-blueprint-component="balance-card"] {
+  display: grid;
+  align-content: start;
+  gap: var(--app-space-3);
+  margin: 0;
+  padding: var(--app-space-5);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-color-surface);
+}
+
+.balance-card__label,
+.balance-card__amount,
+.balance-card__delta {
+  margin: 0;
+}
+
+.balance-card__label {
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+}
+
+.balance-card__amount {
+  display: flex;
+  align-items: baseline;
+  color: var(--app-color-foreground);
+  font: var(--app-type-display);
+  font-size: 46px;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.balance-card__amount b {
+  font-weight: 400;
+}
+
+.balance-card__currency {
+  margin-right: 0.04em;
+  color: var(--app-color-muted);
+  font-size: 0.62em;
+  align-self: flex-start;
+  line-height: 1.35;
+}
+
+.balance-card__cents {
+  margin-left: 0.04em;
+  color: var(--app-color-muted);
+  font-size: 0.5em;
+}
+
+.balance-card__delta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-blueprint-component="balance-card"] .balance-card__change {
+  padding: 2px var(--app-space-2) 2px 7px;
+  border-color: color-mix(in srgb, var(--app-color-success) 22%, transparent);
+  color: var(--app-color-success);
+  background: color-mix(in srgb, var(--app-color-success) 9%, var(--app-color-surface));
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-card__change i {
+  font-style: normal;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="hero"] {
+  gap: var(--app-space-4);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__amount {
+  font-size: 112px;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__currency {
+  font-size: 0.42em;
+  line-height: 1.2;
+  margin-right: 0.08em;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__cents {
+  font-size: 0.36em;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__delta {
+  font: var(--app-type-body);
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="compact"] {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-state="compact"] .balance-card__amount {
+  font-size: 56px;
+  line-height: 1;
+}

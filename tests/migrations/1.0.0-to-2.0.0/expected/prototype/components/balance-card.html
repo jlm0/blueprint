@@ -1,0 +1,10 @@
+<section class="balance-card" data-blueprint-component="balance-card" data-blueprint-state="card" data-blueprint-surface>
+  <p class="balance-card__label" data-blueprint-slot="label">Total cash</p>
+  <p class="balance-card__amount"><span class="balance-card__currency">$</span><b data-blueprint-slot="amount">4,812,406</b><span class="balance-card__cents" data-blueprint-slot="cents">.18</span></p>
+  <p class="balance-card__delta">
+    <blueprint-use kind="primitive" ref="badge" state="default" variant="success" class="balance-card__change">
+      <b slot="label"><i data-blueprint-slot="change">+4.6%</i></b>
+    </blueprint-use>
+    <span data-blueprint-slot="delta">+$212,480.50 since Sep 1</span>
+  </p>
+</section>

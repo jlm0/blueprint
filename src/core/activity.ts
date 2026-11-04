@@ -34,7 +34,7 @@ export interface BlueprintProjectChangedEvent {
   changedPaths: string[];
 }
 
-/** A structured file on an older schema, which keeps the project from loading until `migrate` runs. */
+/** A structured file or saved record on an older schema, which keeps the project from loading until `migrate` runs. */
 export interface BlueprintOutdatedFile {
   file: string;
   version: string;

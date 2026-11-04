@@ -1,0 +1,104 @@
+<div class="home" data-blueprint-screen="home" data-blueprint-state="default">
+  <header class="home__top" data-blueprint-section="header">
+    <a class="org" href="#">
+      <span class="org__mark" aria-hidden="true">N</span>
+      <span class="org__name">Northwind Labs</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+    </a>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon" class="home__bell">
+      <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg></span>
+      <span slot="label">Notifications</span>
+    </blueprint-use>
+  </header>
+
+  <section class="home__balance" data-blueprint-section="balance" aria-label="Total cash">
+    <blueprint-use kind="component" ref="balance-card" state="compact">
+      <span slot="label">Total cash · 4 accounts</span>
+      <span slot="amount">4,812,406</span>
+      <span slot="cents">.18</span>
+      <span slot="change">+4.6%</span>
+      <span slot="delta">+$212,480 this month</span>
+    </blueprint-use>
+    <div class="actions">
+      <span class="actions__item">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="icon">
+          <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+          <span slot="label">Send</span>
+        </blueprint-use>
+        <span aria-hidden="true">Send</span>
+      </span>
+      <span class="actions__item">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="icon">
+          <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg></span>
+          <span slot="label">Request</span>
+        </blueprint-use>
+        <span aria-hidden="true">Request</span>
+      </span>
+      <span class="actions__item">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="icon">
+          <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
+          <span slot="label">Deposit check</span>
+        </blueprint-use>
+        <span aria-hidden="true">Deposit</span>
+      </span>
+      <span class="actions__item">
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="icon">
+          <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M7 15h3"/></svg></span>
+          <span slot="label">Cards</span>
+        </blueprint-use>
+        <span aria-hidden="true">Cards</span>
+      </span>
+    </div>
+  </section>
+
+  <section class="home__accounts" data-blueprint-section="accounts" aria-label="Accounts">
+    <blueprint-use kind="component" ref="account-tile" state="compact">
+      <span slot="kind">Checking</span><span slot="number">··4821</span><span slot="name">Operating</span><span slot="balance">$2,184,902</span><span slot="meta">45% of cash</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="account-tile" state="compact">
+      <span slot="kind">4.62% APY</span><span slot="number">··7730</span><span slot="name">Reserve</span><span slot="balance">$1,402,118</span><span slot="meta">29% of cash</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="account-tile" state="compact">
+      <span slot="kind">Checking</span><span slot="number">··3306</span><span slot="name">Payroll</span><span slot="balance">$861,440</span><span slot="meta">18% of cash</span>
+    </blueprint-use>
+  </section>
+
+  <section class="home__activity" data-blueprint-section="activity" aria-labelledby="home-activity">
+    <header class="home__head"><h2 id="home-activity">Activity</h2><a href="/transactions">See all</a></header>
+    <blueprint-use kind="component" ref="transaction-row" state="pending">
+      <span slot="mark">AW</span>
+      <span slot="name">Amazon Web Services</span>
+      <span slot="meta">Card ··1180</span>
+      <span slot="amount">−$23,861.52</span>
+      <span slot="date">Today</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="transaction-row" state="default">
+      <span slot="mark">FG</span>
+      <span slot="name">Fieldgrove Capital</span>
+      <span slot="meta">Incoming wire</span>
+      <span slot="amount" class="is-in">+$240,000.00</span>
+      <span slot="date">Today</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="transaction-row" state="default">
+      <span slot="mark">ST</span>
+      <span slot="name">Stripe payout</span>
+      <span slot="meta">ACH</span>
+      <span slot="amount" class="is-in">+$86,412.07</span>
+      <span slot="date">Yesterday</span>
+    </blueprint-use>
+    <blueprint-use kind="component" ref="transaction-row" state="default">
+      <span slot="mark">LN</span>
+      <span slot="name">Linear</span>
+      <span slot="meta">Card ··1180</span>
+      <span slot="amount">−$4,320.00</span>
+      <span slot="date">Yesterday</span>
+    </blueprint-use>
+  </section>
+
+  <nav class="tabbar" data-blueprint-section="navigation" aria-label="Primary">
+    <a class="tabbar__item tabbar__item--active" href="/" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-5h-5v5H4Z"/></svg>Home</a>
+    <a class="tabbar__item" href="/payments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Payments</a>
+    <a class="tabbar__item" href="/cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18"/></svg>Cards</a>
+    <a class="tabbar__item" href="/treasury"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 17V10M10 17V10M14 17V10M18 17V10M3 9l9-5 9 5"/></svg>Treasury</a>
+  </nav>
+</div>

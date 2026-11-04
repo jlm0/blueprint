@@ -1,0 +1,49 @@
+[data-blueprint-primitive="segmented-control"] {
+  display: inline-flex;
+  gap: var(--app-space-1);
+  box-sizing: border-box;
+  padding: var(--app-space-1);
+  border-radius: var(--app-radius-md);
+  background: var(--app-color-surface-muted);
+  font: var(--app-type-body);
+}
+
+.segmented-control__option {
+  display: inline-flex;
+  min-height: calc(var(--app-size-control-md) - var(--app-space-2));
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 var(--app-space-3);
+  border-radius: var(--app-radius-sm);
+  color: var(--app-color-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--app-motion-state),
+    color var(--app-motion-state);
+}
+
+.segmented-control__option:hover {
+  color: var(--app-color-foreground);
+}
+
+[data-blueprint-primitive="segmented-control"][data-blueprint-state="first-selected"] .segmented-control__option:nth-child(1),
+[data-blueprint-primitive="segmented-control"][data-blueprint-state="second-selected"] .segmented-control__option:nth-child(2),
+[data-blueprint-primitive="segmented-control"][data-blueprint-state="disabled"] .segmented-control__option:nth-child(1) {
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  box-shadow: var(--app-shadow-sm);
+}
+
+[data-blueprint-primitive="segmented-control"][data-blueprint-state="disabled"] .segmented-control__option:nth-child(3) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-control__option {
+    transition: none;
+  }
+}

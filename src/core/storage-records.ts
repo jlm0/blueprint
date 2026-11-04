@@ -17,6 +17,10 @@ export function historyRecordRef(screenId: string, version: number): string {
   return `history/${storageRecordSegment(screenId)}-v${version}.json`;
 }
 
+export function isSavedRecordFile(fileRef: string): boolean {
+  return /^(explorations|history)\/[^/]+\.json$/.test(fileRef);
+}
+
 export function explorationRecordFile(
   projectId: string,
   exploration: ExplorationDefinition

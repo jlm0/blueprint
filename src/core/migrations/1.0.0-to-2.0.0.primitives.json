@@ -1,0 +1,2165 @@
+[
+  {
+    "id": "button",
+    "name": "Button",
+    "group": "actions",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "primary",
+      "sizes": "md",
+      "states": "normal"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "primary",
+          "name": "Primary",
+          "description": "The one main action in a region."
+        },
+        {
+          "id": "secondary",
+          "name": "Secondary",
+          "description": "A supporting action beside the primary one."
+        },
+        {
+          "id": "outline",
+          "name": "Outline",
+          "description": "A bordered action that stays quiet on busy surfaces."
+        },
+        {
+          "id": "ghost",
+          "name": "Ghost",
+          "description": "A borderless action for toolbars and dense rows."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "An action that deletes or cannot be undone."
+        },
+        {
+          "id": "link",
+          "name": "Link",
+          "description": "An action that reads as inline text."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "sm",
+          "name": "Small",
+          "description": "Dense rows, toolbars, and inline actions."
+        },
+        {
+          "id": "md",
+          "name": "Medium",
+          "description": "The default control height."
+        },
+        {
+          "id": "lg",
+          "name": "Large",
+          "description": "Prominent calls to action and touch-first layouts."
+        },
+        {
+          "id": "icon",
+          "name": "Icon",
+          "description": "A square button holding only an icon."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "normal",
+          "name": "Normal",
+          "description": "At rest, ready to press."
+        },
+        {
+          "id": "hover",
+          "name": "Hover",
+          "description": "A pointer is over it."
+        },
+        {
+          "id": "focus",
+          "name": "Focus",
+          "description": "It holds keyboard focus."
+        },
+        {
+          "id": "pressed",
+          "name": "Pressed",
+          "description": "A pointer or key holds it down."
+        },
+        {
+          "id": "loading",
+          "name": "Loading",
+          "description": "Its command is running. A loading mark replaces the label."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "It cannot be pressed right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "The command in a word or two.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "icon",
+        "name": "Icon",
+        "description": "An optional glyph before the label.",
+        "accepts": [
+          "graphic"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "input",
+    "name": "Input",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "empty"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "A bordered field on a plain surface."
+        },
+        {
+          "id": "filled",
+          "name": "Filled",
+          "description": "A tinted field without a border."
+        },
+        {
+          "id": "ghost",
+          "name": "Ghost",
+          "description": "A borderless field that blends into its surface."
+        },
+        {
+          "id": "outline",
+          "name": "Outline",
+          "description": "A field with a stronger border."
+        },
+        {
+          "id": "underline",
+          "name": "Underline",
+          "description": "A field drawn as a single bottom rule."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "empty",
+          "name": "Empty",
+          "description": "The field is empty, so the placeholder shows."
+        },
+        {
+          "id": "value",
+          "name": "Value",
+          "description": "Holds a typed value."
+        },
+        {
+          "id": "focused",
+          "name": "Focused",
+          "description": "Has keyboard focus and is ready for typing."
+        },
+        {
+          "id": "invalid",
+          "name": "Invalid",
+          "description": "The value failed validation."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Cannot be edited right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the field above it.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "placeholder",
+        "name": "Placeholder",
+        "description": "A hint shown while the field is empty.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkbox",
+    "name": "Checkbox",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "off"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "off",
+          "name": "Off",
+          "description": "Not selected."
+        },
+        {
+          "id": "on",
+          "name": "On",
+          "description": "Selected."
+        },
+        {
+          "id": "focus",
+          "name": "Focus",
+          "description": "Holds keyboard focus."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Not selected and cannot change."
+        },
+        {
+          "id": "disabled-on",
+          "name": "Disabled on",
+          "description": "Selected and cannot change."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the option beside the box.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "switch",
+    "name": "Switch",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "off"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "off",
+          "name": "Off",
+          "description": "The setting is off."
+        },
+        {
+          "id": "on",
+          "name": "On",
+          "description": "The setting is on."
+        },
+        {
+          "id": "focus",
+          "name": "Focus",
+          "description": "Holds keyboard focus."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Off and cannot change."
+        },
+        {
+          "id": "disabled-on",
+          "name": "Disabled on",
+          "description": "On and cannot change."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the setting beside the switch.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "otp-input",
+    "name": "OTP input",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "empty"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "empty",
+          "name": "Empty",
+          "description": "No digits entered yet."
+        },
+        {
+          "id": "filled",
+          "name": "Filled",
+          "description": "Every cell holds a digit."
+        },
+        {
+          "id": "focused",
+          "name": "Focused",
+          "description": "The next empty cell has focus."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "slider",
+    "name": "Slider",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "primary",
+      "states": "normal"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "primary",
+          "name": "Primary",
+          "description": "The fill uses the primary color."
+        },
+        {
+          "id": "secondary",
+          "name": "Secondary",
+          "description": "The fill uses the secondary color."
+        },
+        {
+          "id": "contrast",
+          "name": "Contrast",
+          "description": "The fill uses the foreground color for maximum contrast."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "normal",
+          "name": "Normal",
+          "description": "At rest, ready to drag."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Shows its value but cannot be dragged."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "surface",
+    "name": "Surface",
+    "group": "surfaces",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "1",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "1",
+          "name": "Surface 1",
+          "description": "The base level, directly on the page."
+        },
+        {
+          "id": "2",
+          "name": "Surface 2",
+          "description": "One level up: a card or panel on the base."
+        },
+        {
+          "id": "3",
+          "name": "Surface 3",
+          "description": "Two levels up: content inside a card."
+        },
+        {
+          "id": "4",
+          "name": "Surface 4",
+          "description": "Three levels up, for deeply nested content."
+        },
+        {
+          "id": "5",
+          "name": "Surface 5",
+          "description": "Four levels up, the deepest level."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the level in the specimen.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "card",
+    "name": "Card",
+    "group": "surfaces",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "A bordered card on its surface."
+        },
+        {
+          "id": "flat",
+          "name": "Flat",
+          "description": "A card without a border or shadow."
+        },
+        {
+          "id": "elevated",
+          "name": "Elevated",
+          "description": "A card lifted off its surface with a shadow."
+        },
+        {
+          "id": "status-accent",
+          "name": "Status accent",
+          "description": "A card with an accent edge that flags its status."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "default",
+        "name": "Content",
+        "description": "The content the card groups.",
+        "accepts": [
+          "text",
+          "graphic"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nav-bar",
+    "name": "Navigation bar",
+    "group": "navigation",
+    "platforms": [
+      "mobile"
+    ],
+    "required": {
+      "variants": "back-and-right",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "back-and-right",
+          "name": "Back and right",
+          "description": "A back action on the left and an action on the right."
+        },
+        {
+          "id": "back-only",
+          "name": "Back only",
+          "description": "Only a back action, for screens deeper in a stack."
+        },
+        {
+          "id": "right-only",
+          "name": "Right only",
+          "description": "Only a trailing action, for the root of a stack."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "The screen title, centered.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "back-button",
+    "name": "Back button",
+    "group": "navigation",
+    "platforms": [
+      "mobile"
+    ],
+    "required": {
+      "variants": "default",
+      "sizes": "md",
+      "states": "normal"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "md",
+          "name": "Medium",
+          "description": "The default size in a navigation bar."
+        },
+        {
+          "id": "sm",
+          "name": "Small",
+          "description": "A compact size for sheets and dense headers."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "normal",
+          "name": "Normal",
+          "description": "At rest, ready to press."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Cannot go back right now."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "separator",
+    "name": "Separator",
+    "group": "structure",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "subtle",
+          "name": "Subtle",
+          "description": "A faint rule between closely related items."
+        },
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The standard rule between groups."
+        },
+        {
+          "id": "strong",
+          "name": "Strong",
+          "description": "A heavier rule between major regions."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "list",
+    "name": "List",
+    "group": "structure",
+    "platforms": [
+      "mobile"
+    ],
+    "required": {
+      "variants": "grouped",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "grouped",
+          "name": "Grouped",
+          "description": "Rows share one rounded surface."
+        },
+        {
+          "id": "plain",
+          "name": "Plain",
+          "description": "Rows sit directly on the page, divided by rules."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "pressable-row",
+    "name": "Pressable row",
+    "group": "structure",
+    "platforms": [
+      "mobile"
+    ],
+    "required": {
+      "variants": "standalone",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "standalone",
+          "name": "Standalone",
+          "description": "A row on its own, rounded on every corner."
+        },
+        {
+          "id": "group-first",
+          "name": "Group first",
+          "description": "The first row of a group, rounded on top."
+        },
+        {
+          "id": "group-middle",
+          "name": "Group middle",
+          "description": "A row between others in a group, square on every corner."
+        },
+        {
+          "id": "group-last",
+          "name": "Group last",
+          "description": "The last row of a group, rounded on the bottom."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "What the row opens or selects.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "row-layout",
+    "name": "Row layout",
+    "group": "structure",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "leading-body-trailing",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "leading-body-trailing",
+          "name": "Leading body trailing",
+          "description": "Leading art, body text, and a trailing accessory."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "The main line of the body.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "loading-mark",
+    "name": "Loading mark",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "primary",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "primary",
+          "name": "Primary",
+          "description": "A spinner in the primary color on any surface."
+        },
+        {
+          "id": "surface",
+          "name": "Surface",
+          "description": "A spinner inside a filled primary circle, for busy backgrounds."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "badge",
+    "name": "Badge",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The primary fill, for the most important label."
+        },
+        {
+          "id": "secondary",
+          "name": "Secondary",
+          "description": "A quieter fill for supporting labels."
+        },
+        {
+          "id": "tonal",
+          "name": "Tonal",
+          "description": "A muted fill with an accent dot."
+        },
+        {
+          "id": "accent",
+          "name": "Accent",
+          "description": "A bordered label with an accent dot."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "An error or a destructive status."
+        },
+        {
+          "id": "success",
+          "name": "Success",
+          "description": "A success or completed status."
+        },
+        {
+          "id": "outline",
+          "name": "Outline",
+          "description": "A border only, for neutral categories."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "The status, count, or category.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "icon",
+    "name": "Icon",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The foreground color."
+        },
+        {
+          "id": "muted",
+          "name": "Muted",
+          "description": "The muted foreground color, for secondary glyphs."
+        },
+        {
+          "id": "accent",
+          "name": "Accent",
+          "description": "The accent color, to draw the eye."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "default",
+        "name": "Content",
+        "description": "The glyph, as an inline SVG.",
+        "accepts": [
+          "graphic"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "skeleton",
+    "name": "Skeleton",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "line",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "line",
+          "name": "Line",
+          "description": "A text-height bar standing in for a line of copy."
+        },
+        {
+          "id": "block",
+          "name": "Block",
+          "description": "A larger block standing in for media or a card."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "alert-dialog",
+    "name": "Alert dialog",
+    "group": "overlays",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "neutral",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "neutral",
+          "name": "Neutral",
+          "description": "Confirms an ordinary action."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "Confirms an action that deletes or cannot be undone."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "The question, in a few words.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "message",
+        "name": "Message",
+        "description": "What happens if they confirm.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "context-menu",
+    "name": "Context menu",
+    "group": "overlays",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "Shows a plain action item."
+        },
+        {
+          "id": "checked",
+          "name": "Checked",
+          "description": "Shows an item checked as the current choice."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "Shows an item for an action that deletes or cannot be undone."
+        }
+      ]
+    },
+    "slots": []
+  },
+  {
+    "id": "bottom-sheet",
+    "name": "Bottom sheet",
+    "group": "overlays",
+    "platforms": [
+      "mobile"
+    ],
+    "required": {
+      "variants": "navbar",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "navbar",
+          "name": "Navbar",
+          "description": "The sheet top: close, title, and done."
+        },
+        {
+          "id": "content",
+          "name": "Content",
+          "description": "The sheet body."
+        },
+        {
+          "id": "footer",
+          "name": "Footer",
+          "description": "The sheet bottom, holding its main action."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "The sheet title, centered in its navigation bar.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "text",
+    "name": "Text",
+    "group": "text",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "sizes": "body",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The foreground color."
+        },
+        {
+          "id": "muted",
+          "name": "Muted",
+          "description": "The muted foreground color, for secondary copy."
+        },
+        {
+          "id": "primary",
+          "name": "Primary",
+          "description": "The primary color, for emphasis."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "display",
+          "name": "Display",
+          "description": "Titles and hero copy."
+        },
+        {
+          "id": "body",
+          "name": "Body",
+          "description": "Running text."
+        },
+        {
+          "id": "label",
+          "name": "Label",
+          "description": "Captions, field labels, and metadata."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "text",
+        "name": "Text",
+        "description": "The copy to set.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "radio",
+    "name": "Radio",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "off"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "off",
+          "name": "Off",
+          "description": "Not chosen."
+        },
+        {
+          "id": "on",
+          "name": "On",
+          "description": "The chosen option."
+        },
+        {
+          "id": "focus",
+          "name": "Focus",
+          "description": "Holds keyboard focus."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Not chosen and cannot change."
+        },
+        {
+          "id": "disabled-on",
+          "name": "Disabled on",
+          "description": "Chosen and cannot change."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the option beside the circle.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "select",
+    "name": "Select",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "placeholder"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "placeholder",
+          "name": "Placeholder",
+          "description": "Nothing is chosen yet, so the placeholder shows."
+        },
+        {
+          "id": "value",
+          "name": "Value",
+          "description": "Shows the chosen value."
+        },
+        {
+          "id": "open",
+          "name": "Open",
+          "description": "The option list is open."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Cannot be opened right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "placeholder",
+        "name": "Placeholder",
+        "description": "A hint shown before a value is chosen.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "value",
+        "name": "Value",
+        "description": "The chosen value.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tabs",
+    "name": "Tabs",
+    "group": "navigation",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "first-selected"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "first-selected",
+          "name": "First selected",
+          "description": "The first tab is selected."
+        },
+        {
+          "id": "second-selected",
+          "name": "Second selected",
+          "description": "The second tab is selected."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "One tab cannot be selected right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "tabs",
+        "name": "Tabs",
+        "description": "The tab labels, in order.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "toast",
+    "name": "Toast",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "A neutral confirmation."
+        },
+        {
+          "id": "success",
+          "name": "Success",
+          "description": "A completed action."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "A failed action or an error."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "The message, in one line.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "action",
+        "name": "Action",
+        "description": "An optional follow-up, such as Undo.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "textarea",
+    "name": "Textarea",
+    "group": "inputs",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "empty"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "empty",
+          "name": "Empty",
+          "description": "The field is empty, so the placeholder shows."
+        },
+        {
+          "id": "value",
+          "name": "Value",
+          "description": "Holds typed text."
+        },
+        {
+          "id": "focused",
+          "name": "Focused",
+          "description": "Has keyboard focus and is ready for typing."
+        },
+        {
+          "id": "invalid",
+          "name": "Invalid",
+          "description": "The text failed validation."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "Cannot be edited right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the field above it.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "placeholder",
+        "name": "Placeholder",
+        "description": "A hint shown while the field is empty.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "hint",
+        "name": "Hint",
+        "description": "Guidance or a character count below the field.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "avatar",
+    "name": "Avatar",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "sizes": "md",
+      "states": "initials"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "sm",
+          "name": "Small",
+          "description": "Dense lists and inline mentions."
+        },
+        {
+          "id": "md",
+          "name": "Medium",
+          "description": "The default size in rows and headers."
+        },
+        {
+          "id": "lg",
+          "name": "Large",
+          "description": "Profiles and detail headers."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "initials",
+          "name": "Initials",
+          "description": "Shows the initials of the name."
+        },
+        {
+          "id": "fallback",
+          "name": "Fallback",
+          "description": "It has no name or image, so it shows a generic glyph."
+        },
+        {
+          "id": "status",
+          "name": "Status",
+          "description": "Adds a presence dot."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "initials",
+        "name": "Initials",
+        "description": "One or two letters from the name.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "progress",
+    "name": "Progress",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "value"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "value",
+          "name": "Value",
+          "description": "Part done, with the current value."
+        },
+        {
+          "id": "complete",
+          "name": "Complete",
+          "description": "Finished."
+        },
+        {
+          "id": "indeterminate",
+          "name": "Indeterminate",
+          "description": "Under way, with no known end."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "Names the task above the bar.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tooltip",
+    "name": "Tooltip",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "desktop"
+    ],
+    "required": {
+      "variants": "top",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "top",
+          "name": "Top",
+          "description": "Appears above its control."
+        },
+        {
+          "id": "bottom",
+          "name": "Bottom",
+          "description": "Appears below its control."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "label",
+        "name": "Label",
+        "description": "The label, in a few words.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "inline-alert",
+    "name": "Inline alert",
+    "group": "feedback",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "info",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "info",
+          "name": "Info",
+          "description": "Neutral information."
+        },
+        {
+          "id": "success",
+          "name": "Success",
+          "description": "A completed action or a good outcome."
+        },
+        {
+          "id": "warning",
+          "name": "Warning",
+          "description": "Something needs attention soon."
+        },
+        {
+          "id": "destructive",
+          "name": "Destructive",
+          "description": "An error that blocks progress."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only state."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "title",
+        "name": "Title",
+        "description": "The point, in a few words.",
+        "accepts": [
+          "text"
+        ]
+      },
+      {
+        "id": "message",
+        "name": "Message",
+        "description": "What happened and what to do next.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "segmented-control",
+    "name": "Segmented control",
+    "group": "navigation",
+    "platforms": [
+      "web",
+      "mobile",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "first-selected"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "first-selected",
+          "name": "First selected",
+          "description": "The first option is selected."
+        },
+        {
+          "id": "second-selected",
+          "name": "Second selected",
+          "description": "The second option is selected."
+        },
+        {
+          "id": "disabled",
+          "name": "Disabled",
+          "description": "One option cannot be selected right now."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "options",
+        "name": "Options",
+        "description": "The option labels, in order.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table-row",
+    "name": "Table row",
+    "group": "structure",
+    "platforms": [
+      "web",
+      "desktop"
+    ],
+    "required": {
+      "variants": "default",
+      "states": "default"
+    },
+    "variants": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only variant."
+        }
+      ]
+    },
+    "sizes": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "The only size."
+        }
+      ]
+    },
+    "states": {
+      "values": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "At rest."
+        },
+        {
+          "id": "hover",
+          "name": "Hover",
+          "description": "A pointer is over the row."
+        },
+        {
+          "id": "selected",
+          "name": "Selected",
+          "description": "The row is selected."
+        }
+      ]
+    },
+    "slots": [
+      {
+        "id": "cells",
+        "name": "Cells",
+        "description": "The cell contents, in column order.",
+        "accepts": [
+          "text"
+        ]
+      }
+    ]
+  }
+]

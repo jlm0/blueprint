@@ -10,7 +10,7 @@ import {
   createProjectBundle
 } from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
-import { BLUEPRINT_SCHEMA_VERSION } from './schema-version';
+import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from './schema-version';
 import { explorationRecordRef, historyRecordRef } from './storage-records';
 import type {
   BlueprintManifest,
@@ -42,11 +42,13 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
   const brand = brandText === undefined ? undefined : parseJson<BrandFile>('brand.json', brandText);
   const inspoText = await reader.readText('inspo.json', { kind: 'fixed JSON', optional: true });
   const inspo = inspoText === undefined ? undefined : parseJson<InspoFile>('inspo.json', inspoText);
+  assertNoNewerSchema(fileSchemaVersions({ manifest, tokens, primitives, components, screens, brand, inspo }));
   assertStructuredShapes({ manifest, tokens, primitives, components, screens, brand });
   const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
   const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
-  const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs);
-  const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs);
+  const recordSchemaVersions: Record<string, string> = {};
+  const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs, recordSchemaVersions);
+  const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs, recordSchemaVersions);
   const sourceRefs = [
     ...collectPrototypeTextSourceRefs(primitives, components, screens),
     ...collectBrandSourceRefs(brand),
@@ -86,6 +88,7 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
     inspo,
     explorations,
     history,
+    recordSchemaVersions,
     explorationRecordRefs,
     historyRecordRefs,
     prototypeSourceContents,
@@ -96,11 +99,12 @@ export async function loadProjectFromFs(sourceRoot: string): Promise<BlueprintPr
 async function readExplorationCollection(
   reader: ContainedBlueprintReader,
   projectId: string,
-  recordRefs: string[]
+  recordRefs: string[],
+  recordSchemaVersions: Record<string, string>
 ): Promise<ExplorationFile> {
   const byId = new Map<string, ExplorationDefinition>();
   for (const recordRef of recordRefs) {
-    const record = await readJson<ExplorationRecordFile>(reader, recordRef);
+    const record = await readRecord<ExplorationRecordFile>(reader, recordRef, recordSchemaVersions);
     if (record.projectId !== projectId) {
       throw new Error(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}".`);
     }
@@ -122,12 +126,13 @@ async function readExplorationCollection(
 async function readHistoryCollection(
   reader: ContainedBlueprintReader,
   projectId: string,
-  recordRefs: string[]
+  recordRefs: string[],
+  recordSchemaVersions: Record<string, string>
 ): Promise<ScreenHistoryFile> {
   const entries: ScreenHistoryEntry[] = [];
   const keys = new Set<string>();
   for (const recordRef of recordRefs) {
-    const record = await readJson<ScreenHistoryRecordFile>(reader, recordRef);
+    const record = await readRecord<ScreenHistoryRecordFile>(reader, recordRef, recordSchemaVersions);
     if (record.projectId !== projectId) {
       throw new Error(`History record "${recordRef}" projectId must match manifest project id "${projectId}".`);
     }
@@ -154,6 +159,18 @@ async function readHistoryCollection(
 
 export function normalizePath(filePath: string): string {
   return filePath.split(path.sep).join(path.posix.sep);
+}
+
+async function readRecord<T extends { schemaVersion: string }>(
+  reader: ContainedBlueprintReader,
+  recordRef: string,
+  recordSchemaVersions: Record<string, string>
+): Promise<T> {
+  const record = await readJson<T>(reader, recordRef);
+  const version = record?.schemaVersion;
+  assertNoNewerSchema([[recordRef, version]]);
+  if (version !== BLUEPRINT_SCHEMA_VERSION) recordSchemaVersions[recordRef] = String(version);
+  return record;
 }
 
 async function readJson<T>(reader: ContainedBlueprintReader, fileRef: string): Promise<T> {

@@ -1,0 +1,82 @@
+[data-blueprint-component="account-tile"] {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--app-space-4) var(--app-space-4) 14px;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-lg);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  text-decoration: none;
+  transition: border-color var(--app-motion-state), box-shadow var(--app-motion-state);
+}
+
+.account-tile__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--app-space-3);
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.account-tile__number {
+  font: var(--app-type-code);
+  font-size: 11px;
+}
+
+.account-tile__name {
+  font: var(--app-type-heading);
+}
+
+.account-tile__balance {
+  font: var(--app-type-body);
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.account-tile__meta {
+  margin-top: var(--app-space-2);
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.account-tile__check {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  fill: var(--app-color-accent);
+  stroke: var(--app-color-on-primary);
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="selected"] {
+  border-color: var(--app-color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-accent) 14%, transparent);
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="selected"] .account-tile__check {
+  display: block;
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="selected"] .account-tile__number {
+  margin-right: 26px;
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="compact"] {
+  min-width: 0;
+  padding: 14px;
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="compact"] .account-tile__top {
+  margin-bottom: var(--app-space-2);
+}
+
+[data-blueprint-component="account-tile"][data-blueprint-state="compact"] .account-tile__balance {
+  font-size: 15px;
+}

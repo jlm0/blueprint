@@ -30,6 +30,7 @@ export interface RawProjectFiles {
   inspo?: InspoFile;
   explorations?: ExplorationFile;
   history?: ScreenHistoryFile;
+  recordSchemaVersions?: Record<string, string>;
   explorationRecordRefs?: string[];
   historyRecordRefs?: string[];
   prototypeSourceContents?: Record<string, string>;
@@ -53,6 +54,7 @@ export function createProjectBundle(sourceRoot: string, raw: RawProjectFiles): B
     ...(raw.inspo ? { inspo: raw.inspo } : {}),
     explorations,
     history,
+    ...(Object.keys(raw.recordSchemaVersions ?? {}).length > 0 ? { recordSchemaVersions: raw.recordSchemaVersions } : {}),
     sourceRoot,
     sourceFiles: {
       manifest: `${sourceRoot}/manifest.json`,

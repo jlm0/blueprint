@@ -526,6 +526,8 @@ export interface BlueprintProjectBundle<TAsset extends PrototypeAsset = Prototyp
   explorations: ExplorationFile;
   /** Prior canonical versions assembled from separate history records. */
   history: ScreenHistoryFile;
+  /** The version of each saved record not on the current schema, keyed by record path; absent when every record is current. */
+  recordSchemaVersions?: Record<string, string>;
   sourceRoot: string;
   sourceFiles: {
     manifest: string;

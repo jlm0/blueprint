@@ -35,12 +35,14 @@ const PROJECT_BUNDLE_FIELDS: Record<ProjectBundleField, true> = {
   inspo: true,
   explorations: true,
   history: true,
+  recordSchemaVersions: true,
   sourceRoot: true
 };
 
 const OPTIONAL_PROJECT_BUNDLE_FIELDS: Record<OptionalProjectBundleField, true> = {
   brand: true,
-  inspo: true
+  inspo: true,
+  recordSchemaVersions: true
 };
 
 export function diffProjectBundles<TAsset extends PrototypeAsset>(

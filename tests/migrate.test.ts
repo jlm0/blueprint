@@ -10,6 +10,61 @@ const starterRoot = 'starter/design/blueprint';
 const fixtureRoots = ['mira-ai', 'umbra-gaming', 'meridian-finance'].map(id => `fixtures/valid/${id}/design/blueprint`);
 
 describe('Blueprint migrate', () => {
+  it('restores a missing base primitive and its prototype files from the starter', async () => {
+    const input = await migrationInput(fixtureRoots[0]);
+    input.starterFiles = await textFiles(starterRoot);
+    const primitives = JSON.parse(input.files.get('primitives.json')!) as PrimitiveFile;
+    input.files.set('primitives.json', JSON.stringify({
+      ...primitives,
+      primitives: primitives.primitives.filter(primitive => primitive.id !== 'switch' && primitive.id !== 'table-row')
+    }));
+    input.files.delete('prototype/primitives/switch.html');
+    input.files.delete('prototype/primitives/switch.css');
+    input.files.delete('prototype/primitives/table-row.html');
+    input.files.set('prototype/primitives/table-row.css', '/* the app kept this file */');
+
+    const output = migrateProjectFiles(input);
+
+    const starter = JSON.parse(input.starterFiles.get('primitives.json')!) as PrimitiveFile;
+    const migrated = (JSON.parse(output.writes.get('primitives.json')!) as PrimitiveFile).primitives;
+    for (const id of ['switch', 'table-row']) {
+      assert.deepEqual(migrated.find(primitive => primitive.id === id), starter.primitives.find(primitive => primitive.id === id));
+    }
+    assert.equal(output.writes.get('prototype/primitives/switch.html'), input.starterFiles.get('prototype/primitives/switch.html'));
+    assert.equal(output.writes.get('prototype/primitives/switch.css'), input.starterFiles.get('prototype/primitives/switch.css'));
+    assert.equal(output.writes.get('prototype/primitives/table-row.html'), input.starterFiles.get('prototype/primitives/table-row.html'));
+    assert.equal(output.writes.has('prototype/primitives/table-row.css'), false);
+    assert.deepEqual(output.changes.filter(change => change !== 'AGENTS.md: replaced with the current starter copy.'), ['primitives.json: restored 2 missing Blueprint primitives from the starter, with the prototype files: "switch", "table-row".']);
+
+    for (const [file, content] of output.writes) input.files.set(file, content);
+    assert.equal(migrateProjectFiles(input).upToDate, true, 'a second run has nothing left to do');
+  });
+
+  it('leaves out a missing base primitive that names a token the project lacks, until the project declares it', async () => {
+    const input = await migrationInput(fixtureRoots[0]);
+    input.starterFiles = await textFiles(starterRoot);
+    const primitives = JSON.parse(input.files.get('primitives.json')!) as PrimitiveFile;
+    input.files.set('primitives.json', JSON.stringify({ ...primitives, primitives: primitives.primitives.filter(primitive => primitive.id !== 'tooltip') }));
+    input.files.delete('prototype/primitives/tooltip.html');
+    input.files.delete('prototype/primitives/tooltip.css');
+    const tokens = JSON.parse(input.files.get('tokens.json')!) as TokenFile;
+    const shape = tokens.tokenGroups.find(group => group.id === 'shape')!;
+    const shadow = shape.tokens.find(token => token.id === 'shadow-md')!;
+    shape.tokens = shape.tokens.filter(token => token !== shadow);
+    input.files.set('tokens.json', JSON.stringify(tokens));
+
+    const refused = migrateProjectFiles(input);
+    assert.ok(refused.changes.includes('primitives.json: left out the missing Blueprint primitive "tooltip", because tokens.json does not declare "shape.shadow-md". Fix: add them, then run migrate again.'), refused.changes.join('\n'));
+    assert.equal(refused.writes.has('primitives.json'), false);
+    assert.equal(refused.writes.has('prototype/primitives/tooltip.html'), false);
+
+    shape.tokens.push(shadow);
+    input.files.set('tokens.json', JSON.stringify(tokens));
+    const restored = migrateProjectFiles(input);
+    assert.ok(restored.changes.some(change => change.startsWith('primitives.json: restored 1 missing Blueprint primitive from the starter')), restored.changes.join('\n'));
+    assert.equal(restored.writes.get('prototype/primitives/tooltip.css'), input.starterFiles.get('prototype/primitives/tooltip.css'));
+  });
+
   it('leaves a current project untouched', async () => {
     for (const root of [starterRoot, ...fixtureRoots]) {
       const output = migrateProjectFiles(await migrationInput(root));
@@ -184,7 +239,7 @@ function useV1Slider(input: MigrationInput): void {
   input.files.set('prototype/primitives/slider.html', '<div data-blueprint-primitive="slider"></div>');
 }
 
-async function migrationInput(root: string): Promise<MigrationInput> {
+async function textFiles(root: string): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   const walk = async (directory: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -195,9 +250,12 @@ async function migrationInput(root: string): Promise<MigrationInput> {
     }
   };
   await walk(root);
+  return files;
+}
+
+async function migrationInput(root: string): Promise<MigrationInput> {
   return {
-    files,
-    starterPrimitives: JSON.parse(await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')) as PrimitiveFile,
-    starterAgents: files.get('AGENTS.md') ?? ''
+    files: await textFiles(root),
+    starterFiles: new Map([['primitives.json', await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')]])
   };
 }

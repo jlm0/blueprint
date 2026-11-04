@@ -189,8 +189,7 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
   const output = await withProjectMutation(projectRoot, signal, async () => {
     const migration = migrateProjectFiles({
       files: await readProjectTextFiles(projectRoot),
-      starterPrimitives: JSON.parse(await readFile(path.join(starterRoot, 'primitives.json'), 'utf8')),
-      starterAgents: await readFile(path.join(starterRoot, 'AGENTS.md'), 'utf8')
+      starterFiles: await readProjectTextFiles(starterRoot)
     });
 
     throwIfAborted(signal);

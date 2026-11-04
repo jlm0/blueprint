@@ -1,3 +1,4 @@
+import { asArray, asObject, isObject, serializeJson, type RawObject } from './raw-json';
 import { humanizeId, isTitleCase, toSentenceCase } from './reusable-contract';
 import {
   PAGE_FIELDS,
@@ -9,9 +10,8 @@ import {
   SECTION_USE_FIELDS,
   SECTION_USE_OPTIONAL_FIELDS
 } from './screen-contract';
+import { isSavedRecordFile } from './storage-records';
 import { TOKEN_FIELDS, TOKEN_FILE_FIELDS, TOKEN_GROUP_FIELDS } from './token-contract';
-
-type RawObject = Record<string, unknown>;
 
 /** Values migrate adds for fields the fixed shapes require, when an older file left them out. */
 const SCREEN_DEFAULTS: Record<string, () => unknown> = {
@@ -89,7 +89,7 @@ export function normalizeScreenShapes(files: ReadonlyMap<string, string>, writes
   }
 
   let snapshots = 0;
-  for (const recordFile of [...new Set([...files.keys(), ...writes.keys()])].filter(isSnapshotRecord).sort()) {
+  for (const recordFile of [...new Set([...files.keys(), ...writes.keys()])].filter(isSavedRecordFile).sort()) {
     const before = writes.get(recordFile) ?? files.get(recordFile)!;
     const record = asObject(JSON.parse(before));
     const recordTally: ShapeTally = { filled: 0, reordered: 0, renamed: [] };
@@ -211,26 +211,10 @@ function ordered(item: RawObject, order: readonly string[], tally: ShapeTally): 
 
 function writeIfChanged(writes: Map<string, string>, file: string, before: string, value: unknown): boolean {
   if (JSON.stringify(JSON.parse(before)) === JSON.stringify(value)) return false;
-  writes.set(file, `${JSON.stringify(value, null, 2)}\n`);
+  writes.set(file, serializeJson(value));
   return true;
-}
-
-function isSnapshotRecord(file: string): boolean {
-  return /^(explorations|history)\/[^/]+\.json$/.test(file);
 }
 
 function plural(count: number): string {
   return count === 1 ? '' : 's';
-}
-
-function asObject(value: unknown): RawObject {
-  return isObject(value) ? value : {};
-}
-
-function isObject(value: unknown): value is RawObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
 }
