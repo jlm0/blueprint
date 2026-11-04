@@ -22,7 +22,7 @@ import type {
 } from './types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { inspectPrototypeSourceGraph, type PrototypeSourceGraphIssue } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { validateReusables } from './reusable-validate';
 import { validateScreenContract } from './screen-contract';
@@ -41,7 +41,33 @@ import { storageRecordSegment } from './storage-records';
 
 const supportedHandoffContractVersion = '1.0.0';
 
+type SourceGraphIssues = () => PrototypeSourceGraphIssue[];
+
 export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
+  return validateProjectWithSourceGraph(bundle, options, () => inspectPrototypeSourceGraph(bundle));
+}
+
+export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
+  return createReadinessReportWithSourceGraph(bundle, () => inspectPrototypeSourceGraph(bundle));
+}
+
+export function validateProjectReadiness(
+  bundle: BlueprintProjectBundle,
+  inspect: (bundle: BlueprintProjectBundle) => PrototypeSourceGraphIssue[] = inspectPrototypeSourceGraph
+): { baseline: ValidationResult; readiness: ReadinessReport } {
+  let issues: PrototypeSourceGraphIssue[] | undefined;
+  const sourceGraphIssues = (): PrototypeSourceGraphIssue[] => issues ??= inspect(bundle);
+  return {
+    baseline: validateProjectWithSourceGraph(bundle, {}, sourceGraphIssues),
+    readiness: createReadinessReportWithSourceGraph(bundle, sourceGraphIssues)
+  };
+}
+
+function validateProjectWithSourceGraph(
+  bundle: BlueprintProjectBundle,
+  options: ValidationOptions,
+  sourceGraphIssues: SourceGraphIssues
+): ValidationResult {
   const schemaErrors = schemaVersionErrors(bundle);
   if (schemaErrors.length > 0) {
     return { ok: false, errors: schemaErrors };
@@ -125,7 +151,7 @@ export function validateProject(bundle: BlueprintProjectBundle, options: Validat
   validateBrand(errors, bundle, options.mode ?? 'baseline');
   validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds);
-  recordPrototypeSourceGraphValidation(errors, bundle);
+  recordPrototypeSourceGraphValidation(errors, sourceGraphIssues());
 
   if ((options.mode ?? 'baseline') === 'strict') {
     validateStrictHandoffReadiness(errors, bundle);
@@ -192,7 +218,10 @@ function recordInspoReadiness(items: ReadinessItem[], bundle: BlueprintProjectBu
   }
 }
 
-export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
+function createReadinessReportWithSourceGraph(
+  bundle: BlueprintProjectBundle,
+  sourceGraphIssues: SourceGraphIssues
+): ReadinessReport {
   const items: ReadinessItem[] = [];
   const prototypeSources = relativePrototypeSources(bundle);
 
@@ -206,7 +235,7 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
       });
     }
   }
-  recordPrototypeSourceGraphReadiness(items, bundle);
+  recordPrototypeSourceGraphReadiness(items, sourceGraphIssues());
   recordInspoReadiness(items, bundle);
   if (!bundle.brand) {
     items.push({
@@ -328,14 +357,14 @@ export function createReadinessReport(bundle: BlueprintProjectBundle): Readiness
   };
 }
 
-function recordPrototypeSourceGraphValidation(errors: string[], bundle: BlueprintProjectBundle): void {
-  for (const issue of inspectPrototypeSourceGraph(bundle)) {
+function recordPrototypeSourceGraphValidation(errors: string[], issues: PrototypeSourceGraphIssue[]): void {
+  for (const issue of issues) {
     errors.push(`Prototype source graph ${issue.boundaryId} state "${issue.state}" cannot compile: ${issue.message}`);
   }
 }
 
-function recordPrototypeSourceGraphReadiness(items: ReadinessItem[], bundle: BlueprintProjectBundle): void {
-  for (const issue of inspectPrototypeSourceGraph(bundle)) {
+function recordPrototypeSourceGraphReadiness(items: ReadinessItem[], issues: PrototypeSourceGraphIssue[]): void {
+  for (const issue of issues) {
     items.push({
       path: `prototypeSourceGraph.${issue.boundaryId}.${issue.state}`,
       severity: 'blocker',

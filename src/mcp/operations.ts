@@ -38,7 +38,7 @@ import {
   selectionSourceFiles,
   type BlueprintCanvasSelection
 } from '../core/selection';
-import { createReadinessReport, validateProject } from '../core/validate';
+import { validateProject, validateProjectReadiness } from '../core/validate';
 import {
   archiveExploration,
   computeExplorationBaselineDigest,
@@ -232,8 +232,7 @@ export async function validateBlueprint(input: ValidateInput, signal?: AbortSign
   const { project, mode } = input;
   const bundle = await loadProjectFromFs(project);
   if (mode === 'readiness') {
-    const baseline = validateProject(bundle);
-    const readiness = createReadinessReport(bundle);
+    const { baseline, readiness } = validateProjectReadiness(bundle);
     const ok = baseline.ok && readiness.tier !== 'blocked';
     const output = validateOutputSchema.parse({
       command: 'validate',
