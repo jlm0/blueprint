@@ -1187,6 +1187,51 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     }
   });
 
+  it('keeps a separate thumbnail for each frame size when two presets compile to the same html', async () => {
+    const bundle = cloneBundle(await loadProjectFromFs(starterRoot));
+    const screen = bundle.screens.screens.find(candidate => candidate.id === 'web-home');
+    assert.ok(screen);
+    screen.prototype.reviewConditions.push({ id: 'desktop-web-page-default', framePresetId: 'desktop-web-page', state: 'default' });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(projectBundle => {
+      Object.defineProperty(window, '__BLUEPRINT_PROJECT_BUNDLE__', { configurable: true, value: projectBundle });
+      const thumbnailUrls: string[] = [];
+      Object.defineProperty(window, '__thumbnailUrls', { value: thumbnailUrls });
+      const createObjectURL = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = object => {
+        const url = createObjectURL(object);
+        thumbnailUrls.push(url);
+        return url;
+      };
+    }, bundle);
+    try {
+      await page.goto(`${baseUrl}?board=screens&page=web`);
+      await page.waitForFunction(() => document.querySelectorAll('.board-screens .canonical-prototype-iframe').length === 2, undefined, { timeout: 10000 });
+      const documents = await page.locator('.board-screens .canonical-prototype-iframe').evaluateAll(frames => frames.map(frame => frame.getAttribute('srcdoc')));
+      assert.equal(documents[0], documents[1], 'Both presets should compile to the same html');
+      await page.waitForFunction(() => (window as unknown as { __thumbnailUrls: string[] }).__thumbnailUrls.length >= 2, undefined, { timeout: 8000 }).catch(() => undefined);
+
+      const view = await page.locator('#viewport').boundingBox();
+      assert.ok(view);
+      await page.mouse.move(view.x + 8, view.y + 8);
+      await page.mouse.wheel(0, 40000);
+      await page.waitForFunction(() => document.querySelectorAll('.board-screens .canonical-prototype-iframe').length === 0, undefined, { timeout: 5000 });
+      const shapes = await page.locator('.board-screens .canonical-prototype-screen').evaluateAll(async hosts => Promise.all(hosts.map(async host => {
+        const image = host.querySelector<HTMLImageElement>('.bp-chrome-frame-placeholder-thumbnail');
+        if (!image) return undefined;
+        await image.decode();
+        return { host: host.clientHeight / host.clientWidth, image: image.naturalHeight / image.naturalWidth };
+      })));
+      assert.equal(shapes.length, 2);
+      for (const shape of shapes) {
+        assert.ok(shape, 'Each frame should show a thumbnail');
+        assert.ok(Math.abs(shape.image - shape.host) < 0.01, `The thumbnail should have the shape of its frame, not of the other preset: ${JSON.stringify(shape)}`);
+      }
+    } finally {
+      await page.close();
+    }
+  });
+
   it('opens the page a serve focus link names and centers a linked screen', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     assert.deepEqual(canvasLocationParams(bundle, 'project:root'), { board: 'primitives', section: 'foundations', item: 'brand' });

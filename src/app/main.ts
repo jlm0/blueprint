@@ -3203,7 +3203,7 @@ async function whenCanvasIdle(): Promise<void> {
 async function captureFrameThumbnail(frame: ScreenFrame): Promise<void> {
   const live = frame.iframe && frame.host.isConnected ? prototypeDocument(frame.iframe) : undefined;
   if (!live || frameElementCount(live) > FRAME_THUMBNAIL_ELEMENT_LIMIT) return;
-  const key = frameThumbnailKey(live);
+  const key = frameThumbnailKey(live, frame.host.clientWidth, frame.host.clientHeight);
   frame.thumbnailKey = key;
   rememberFrameThumbnail(frame);
   if (!frameThumbnails.get(key)) {

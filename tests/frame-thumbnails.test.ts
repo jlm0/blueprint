@@ -5,9 +5,14 @@ import { createFrameThumbnailCache, createIdleQueue, frameThumbnailKey } from '.
 describe('Blueprint frame thumbnails', () => {
   it('keys a thumbnail by the full compiled html', () => {
     const html = '<!doctype html><main>Sign in</main>';
-    assert.equal(frameThumbnailKey(html), frameThumbnailKey(`${html}`));
-    assert.notEqual(frameThumbnailKey(html), frameThumbnailKey(html.replace('Sign in', 'Sign up')));
-    assert.notEqual(frameThumbnailKey(`${'a'.repeat(4096)}b`), frameThumbnailKey(`${'a'.repeat(4096)}c`));
+    assert.equal(frameThumbnailKey(html, 393, 852), frameThumbnailKey(`${html}`, 393, 852));
+    assert.notEqual(frameThumbnailKey(html, 393, 852), frameThumbnailKey(html.replace('Sign in', 'Sign up'), 393, 852));
+    assert.notEqual(frameThumbnailKey(`${'a'.repeat(4096)}b`, 393, 852), frameThumbnailKey(`${'a'.repeat(4096)}c`, 393, 852));
+  });
+
+  it('keys a thumbnail by the frame size, because presets with equal safe areas compile to the same html', () => {
+    const html = '<!doctype html><main>Browser base</main>';
+    assert.notEqual(frameThumbnailKey(html, 1440, 900), frameThumbnailKey(html, 1440, 1760));
   });
 
   it('keeps the most recently used thumbnails up to the count cap and releases the rest', () => {

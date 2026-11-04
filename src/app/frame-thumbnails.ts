@@ -7,7 +7,7 @@ export function frameElementCount(html: string): number {
   return html.match(/<[a-z]/gi)?.length ?? 0;
 }
 
-export function frameThumbnailKey(html: string): string {
+export function frameThumbnailKey(html: string, width: number, height: number): string {
   let first = 0xdeadbeef ^ html.length;
   let second = 0x41c6ce57 ^ html.length;
   for (let index = 0; index < html.length; index += 1) {
@@ -17,7 +17,7 @@ export function frameThumbnailKey(html: string): string {
   }
   first = Math.imul(first ^ (first >>> 16), 2246822507) ^ Math.imul(second ^ (second >>> 13), 3266489909);
   second = Math.imul(second ^ (second >>> 16), 2246822507) ^ Math.imul(first ^ (first >>> 13), 3266489909);
-  return `${html.length.toString(36)}.${(first >>> 0).toString(36)}.${(second >>> 0).toString(36)}`;
+  return `${width}x${height}.${html.length.toString(36)}.${(first >>> 0).toString(36)}.${(second >>> 0).toString(36)}`;
 }
 
 export interface FrameThumbnailCache {
