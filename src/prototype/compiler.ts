@@ -135,13 +135,20 @@ interface SourceBoundary {
 
 interface CompilerContext {
   bundle: BlueprintProjectBundle;
+  session: CompileSession;
   allowedAssetRefs: Set<string>;
-  assetTokens: AssetTokens;
+  recorders: FragmentRecord[];
   observedUses: ObservedPrototypeUse[];
   observedUsesBySource: Map<string, ObservedPrototypeUse[]>;
   brandMarks: PlacedBrandMark[];
   styleRefs: string[];
   styleRefSet: Set<string>;
+}
+
+/** State shared by the documents compiled in one call, such as one validation pass. */
+interface CompileSession {
+  assetTokens: AssetTokens;
+  fragments: Map<string, CompiledFragment>;
 }
 
 /**
@@ -153,6 +160,23 @@ interface AssetTokens {
   refs: string[];
   indexByRef: Map<string, number>;
 }
+
+/** Everything a nested compile did to its document, so a later identical compile can replay it. */
+interface FragmentRecord {
+  events: CompileEvent[];
+  boundaryIds: Set<string>;
+  assetRefs: Set<string>;
+}
+
+interface CompiledFragment extends FragmentRecord {
+  fragment: string;
+}
+
+type CompileEvent =
+  | { kind: 'styles'; styleRefs: string[] }
+  | { kind: 'use'; use: ObservedPrototypeUse }
+  | { kind: 'brand-mark'; mark: PlacedBrandMark }
+  | { kind: 'rendered-uses'; boundary: SourceBoundary; boundaryId: string };
 
 interface UseElement {
   start: number;
@@ -190,10 +214,17 @@ export const PROTOTYPE_CONTENT_SECURITY_POLICY = [
  * @throws {Error} When a source, state, reusable use, slot, asset, or host policy is invalid.
  */
 export function compilePrototypeDocument(options: CompilePrototypeDocumentOptions): CompiledPrototypeDocument {
-  return compileDocument(options, true);
+  return compileDocument(options, createCompileSession(), true);
 }
 
-function compileDocument(options: CompilePrototypeDocumentOptions, inlineAssets: boolean): CompiledPrototypeDocument {
+function createCompileSession(): CompileSession {
+  return {
+    assetTokens: { prefix: `bp-asset-${Math.random().toString(36).slice(2)}-`, refs: [], indexByRef: new Map() },
+    fragments: new Map()
+  };
+}
+
+function compileDocument(options: CompilePrototypeDocumentOptions, session: CompileSession, inlineAssets: boolean): CompiledPrototypeDocument {
   assertIsolatedHostPolicy(options.bundle);
   const boundary = resolveBoundary(options.bundle, options.target);
   const state = resolveState(boundary, options.state);
@@ -204,8 +235,9 @@ function compileDocument(options: CompilePrototypeDocumentOptions, inlineAssets:
   );
   const context: CompilerContext = {
     bundle: options.bundle,
+    session,
     allowedAssetRefs,
-    assetTokens: { prefix: `bp-asset-${Math.random().toString(36).slice(2)}-`, refs: [], indexByRef: new Map() },
+    recorders: [],
     observedUses: [],
     observedUsesBySource: new Map(),
     brandMarks: [],
@@ -269,9 +301,10 @@ export function inspectPrototypeSourceGraph(bundle: BlueprintProjectBundle): Pro
   }
 
   const issues: PrototypeSourceGraphIssue[] = [];
+  const session = createCompileSession();
   for (const candidate of targets) {
     try {
-      compileDocument({ bundle, target: candidate.target, state: candidate.state }, false);
+      compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, false);
     } catch (error) {
       const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
       issues.push({
@@ -379,6 +412,10 @@ function resolveReusableAxes(boundary: SourceBoundary, state: string, attributes
   return { ...attributes, variant, size };
 }
 
+/**
+ * Reuses a nested compile with the same inputs from earlier in the session and
+ * replays its effects in order. A document root is never reused.
+ */
 function compileBoundaryFragment(
   context: CompilerContext,
   boundary: SourceBoundary,
@@ -387,12 +424,70 @@ function compileBoundaryFragment(
   stack: string[],
   invocationAttributes: ForwardedInvocationAttributes
 ): string {
+  if (stack.length === 0) {
+    return compileFragmentSource(context, boundary, state, invocationChildren, stack, invocationAttributes);
+  }
+  const key = JSON.stringify([boundary.kind, boundary.id, state, invocationAttributes, invocationChildren]);
+  const cached = context.session.fragments.get(key);
+  if (cached && canReuseFragment(context, cached, stack)) {
+    for (const outer of context.recorders) {
+      for (const id of cached.boundaryIds) outer.boundaryIds.add(id);
+      for (const ref of cached.assetRefs) outer.assetRefs.add(ref);
+    }
+    for (const event of cached.events) {
+      emit(context, event);
+    }
+    return cached.fragment;
+  }
+  const record: FragmentRecord = { events: [], boundaryIds: new Set(), assetRefs: new Set() };
+  context.recorders.push(record);
+  let fragment: string;
+  try {
+    fragment = compileFragmentSource(context, boundary, state, invocationChildren, stack, invocationAttributes);
+  } finally {
+    context.recorders.pop();
+  }
+  context.session.fragments.set(key, { ...record, fragment });
+  return fragment;
+}
+
+/** A reused fragment must still fail where a fresh compile would: on a cycle through the stack or an asset this document does not declare. */
+function canReuseFragment(context: CompilerContext, cached: CompiledFragment, stack: string[]): boolean {
+  return !stack.some(id => cached.boundaryIds.has(id)) && [...cached.assetRefs].every(ref => context.allowedAssetRefs.has(ref));
+}
+
+function emit(context: CompilerContext, event: CompileEvent): void {
+  if (event.kind === 'styles') {
+    addStyleRefs(context, event.styleRefs);
+  } else if (event.kind === 'use') {
+    recordObservedUse(context, { ...event.use });
+  } else if (event.kind === 'brand-mark') {
+    context.brandMarks.push({ ...event.mark });
+  } else {
+    assertRenderedUses(event.boundary, context.observedUsesBySource.get(event.boundaryId) ?? []);
+  }
+  for (const record of context.recorders) {
+    record.events.push(event);
+  }
+}
+
+function compileFragmentSource(
+  context: CompilerContext,
+  boundary: SourceBoundary,
+  state: string,
+  invocationChildren: string,
+  stack: string[],
+  invocationAttributes: ForwardedInvocationAttributes
+): string {
   const currentBoundaryId = boundaryId(context.bundle, boundary);
+  for (const record of context.recorders) {
+    record.boundaryIds.add(currentBoundaryId);
+  }
   if (stack.includes(currentBoundaryId)) {
     throw new Error(`Prototype composition cycle detected: ${[...stack, currentBoundaryId].join(' -> ')}.`);
   }
 
-  addStyleRefs(context, boundary.prototype.styles);
+  emit(context, { kind: 'styles', styleRefs: boundary.prototype.styles });
   const source = requireSource(context.bundle, boundary.prototype.source, `${currentBoundaryId} prototype source`);
   assertNoExecutableMarkup(source, boundary.prototype.source);
   if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
@@ -415,7 +510,7 @@ function compileBoundaryFragment(
   expanded.push(rest);
   fragment = expanded.join('');
 
-  assertRenderedUses(boundary, context.observedUsesBySource.get(currentBoundaryId) ?? []);
+  emit(context, { kind: 'rendered-uses', boundary, boundaryId: currentBoundaryId });
   if (boundary.kind === 'screen') {
     fragment = applySectionMetadata(context.bundle, boundary, fragment);
   }
@@ -446,14 +541,17 @@ function expandUse(
   const targetState = resolveState(target, useAttributes.get('state'));
   const forwardedAttributes = resolveForwardedInvocationAttributes(useAttributes, target);
   const axes = resolveReusableAxes(target, targetState, forwardedAttributes);
-  recordObservedUse(context, {
-    sourceBoundaryId: boundaryId(context.bundle, owner),
-    targetBoundaryId: boundaryId(context.bundle, target),
-    kind,
-    id: target.id,
-    variant: axes.variant ?? 'default',
-    size: axes.size ?? 'default',
-    state: targetState
+  emit(context, {
+    kind: 'use',
+    use: {
+      sourceBoundaryId: boundaryId(context.bundle, owner),
+      targetBoundaryId: boundaryId(context.bundle, target),
+      kind,
+      id: target.id,
+      variant: axes.variant ?? 'default',
+      size: axes.size ?? 'default',
+      state: targetState
+    }
   });
   return compileBoundaryFragment(context, target, targetState, use.children, nextStack, forwardedAttributes);
 }
@@ -682,7 +780,10 @@ function assetToken(context: CompilerContext, sourceRef: string, value: string):
   if (!context.bundle.prototypeAssetContents[assetRef]) {
     throw new Error(`Declared prototype asset "${assetRef}" is missing from the loaded bundle.`);
   }
-  const tokens = context.assetTokens;
+  for (const record of context.recorders) {
+    record.assetRefs.add(assetRef);
+  }
+  const tokens = context.session.assetTokens;
   let index = tokens.indexByRef.get(assetRef);
   if (index === undefined) {
     index = tokens.refs.push(assetRef) - 1;
@@ -692,12 +793,11 @@ function assetToken(context: CompilerContext, sourceRef: string, value: string):
 }
 
 function inlineAssetTokens(context: CompilerContext, html: string): string {
-  const { prefix, refs } = context.assetTokens;
-  const dataUrls = refs.map(assetRef => {
-    const asset = context.bundle.prototypeAssetContents[assetRef];
+  const { prefix, refs } = context.session.assetTokens;
+  return html.replace(new RegExp(`${escapeRegExp(prefix)}(\\d+)-`, 'g'), (_token, index: string) => {
+    const asset = context.bundle.prototypeAssetContents[refs[Number(index)]];
     return `data:${asset.mediaType};base64,${asset.base64}`;
   });
-  return html.replace(new RegExp(`${escapeRegExp(prefix)}(\\d+)-`, 'g'), (_token, index: string) => dataUrls[Number(index)]);
 }
 
 function resolveRelativeRef(sourceRef: string, value: string): string {
@@ -1136,7 +1236,7 @@ function renderBrandMark(
   if (!svg) {
     throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element.`);
   }
-  context.brandMarks.push({ sourceBoundaryId: placedBy, id: mark.id, ...(variant ? { variant: variant.id } : {}) });
+  emit(context, { kind: 'brand-mark', mark: { sourceBoundaryId: placedBy, id: mark.id, ...(variant ? { variant: variant.id } : {}) } });
 
   const rootEnd = findTagEnd(svg, 0);
   let rootAttributes = svg.slice('<svg'.length, rootEnd).replace(/\s(?:width|height)\s*=\s*(['"]).*?\1/gi, '');

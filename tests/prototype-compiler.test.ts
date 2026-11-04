@@ -86,6 +86,24 @@ describe('canonical prototype compiler', () => {
     assert.match(compiled.html, /<p>bp-asset-0- stays text<\/p>/);
   });
 
+  it('fails a reused component compile on an asset that the later screen does not declare', async () => {
+    const bundle = await loadProjectFromFs('fixtures/valid/umbra-gaming/design/blueprint');
+    const launch = bundle.screens.screens.find(screen => screen.id === 'launch');
+    const hub = bundle.screens.screens.find(screen => screen.id === 'hub');
+    assert.ok(launch?.prototype && hub?.prototype);
+    bundle.prototypeSourceContents[hub.prototype.source] = bundle.prototypeSourceContents[launch.prototype.source]
+      .replace(/<img[^>]*eclipse\.svg[^>]*>/g, '');
+    hub.sections = structuredClone(launch.sections);
+    hub.prototype.renderedUses = structuredClone(launch.prototype.renderedUses);
+    hub.prototype.assetRefs = (hub.prototype.assetRefs ?? []).filter(ref => !ref.endsWith('/eclipse.svg'));
+
+    const errors = validateProject(bundle).errors.filter(error => error.includes('umbra-gaming/screen/hub state'));
+    assert.ok(errors.length > 0);
+    for (const error of errors) {
+      assert.match(error, /Prototype resource "\.\.\/assets\/art\/eclipse\.svg" from "prototype\/components\/event-card\.html" is not a declared controlled asset\./);
+    }
+  });
+
   it('reports a declared asset missing from the bundle when validating without inlining', async () => {
     const bundle = await loadProjectFromFs('fixtures/valid/umbra-gaming/design/blueprint');
     const assetRef = Object.keys(bundle.prototypeAssetContents)[0];
