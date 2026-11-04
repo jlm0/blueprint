@@ -4416,7 +4416,7 @@ function collectVisibleBoundaryRecords(root: HTMLElement, board: BoardId): Visib
       board,
       label: element.dataset.boundaryLabel ?? element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? '',
       screenId: element.dataset.screenId,
-      renderedSnippet: element.outerHTML.slice(0, 900),
+      renderedSnippet: (element.cloneNode(false) as HTMLElement).outerHTML.slice(0, 900),
       computedStyles: {
         backgroundColor: computed.backgroundColor,
         borderColor: computed.borderColor,
