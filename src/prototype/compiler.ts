@@ -148,7 +148,7 @@ interface CompilerContext {
   allowedAssetRefs: Set<string>;
   recorders: FragmentRecord[];
   observedUses: ObservedPrototypeUse[];
-  observedUsesBySource: Map<string, ObservedPrototypeUse[]>;
+  observedUseKeysBySource: Map<string, Set<string>>;
   brandMarks: PlacedBrandMark[];
   styleRefs: string[];
   styleRefSet: Set<string>;
@@ -156,19 +156,17 @@ interface CompilerContext {
 
 /** State shared by the documents compiled in one call, such as one validation pass. */
 interface CompileSession {
-  assetTokens: AssetTokens;
   fragments: Map<string, CompiledFragment>;
 }
 
 /**
- * Stands in for each asset data URL until the document is complete, so the
- * expansion passes never scan or copy base64 text.
+ * An asset token stands in for each asset data URL until the document is complete, so the
+ * expansion passes never scan or copy base64 text. The token holds the asset ref, so it does
+ * not depend on compile order. U+FDD0 and U+FDD1 are noncharacters that sources must not hold.
  */
-interface AssetTokens {
-  prefix: string;
-  refs: string[];
-  indexByRef: Map<string, number>;
-}
+const ASSET_TOKEN_START = '\uFDD0';
+const ASSET_TOKEN_END = '\uFDD1';
+const ASSET_TOKEN_PATTERN = /\uFDD0([0-9a-f]+)\uFDD1/g;
 
 /** Everything a nested compile did to its document, so a later identical compile can replay it. */
 interface FragmentRecord {
@@ -276,10 +274,7 @@ function assetDataUrl(asset: { mediaType: string; base64: string }): string {
 }
 
 function createCompileSession(): CompileSession {
-  return {
-    assetTokens: { prefix: `bp-asset-${Math.random().toString(36).slice(2)}-`, refs: [], indexByRef: new Map() },
-    fragments: new Map()
-  };
+  return { fragments: new Map() };
 }
 
 function compileDocument(options: CompileInput, session: CompileSession, output: AssetOutput): CompiledPrototypeDocument {
@@ -297,7 +292,7 @@ function compileDocument(options: CompileInput, session: CompileSession, output:
     allowedAssetRefs,
     recorders: [],
     observedUses: [],
-    observedUsesBySource: new Map(),
+    observedUseKeysBySource: new Map(),
     brandMarks: [],
     styleRefs: [],
     styleRefSet: new Set()
@@ -336,6 +331,35 @@ function compileDocument(options: CompileInput, session: CompileSession, output:
  * readiness, the canvas, and MCP share one governed-source contract.
  */
 export function inspectPrototypeSourceGraph(bundle: CanvasProjectBundle): PrototypeSourceGraphIssue[] {
+  const targets = listPrototypeCompileTargets(bundle);
+  const issues: PrototypeSourceGraphIssue[] = [];
+  const session = createCompileSession();
+  for (const candidate of targets) {
+    try {
+      compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, { kind: 'tokens' });
+    } catch (error) {
+      const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
+      issues.push({
+        boundaryId: localBoundaryId,
+        state: candidate.state,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  return issues;
+}
+
+/**
+ * Compiles documents that share fragment work and keep their asset tokens. The output of a
+ * target does not depend on compile order, so equal output means equal rendered source.
+ */
+export function createPrototypeOutputCompiler(bundle: CanvasProjectBundle): (target: PrototypeCompileTarget, state?: string) => string {
+  const session = createCompileSession();
+  return (target, state) => compileDocument({ bundle, target, state }, session, { kind: 'tokens' }).html;
+}
+
+/** Every declared canonical boundary and state that a sidecar can compile. */
+export function listPrototypeCompileTargets(bundle: CanvasProjectBundle): Array<{ target: PrototypeCompileTarget; state: string }> {
   const targets: Array<{ target: PrototypeCompileTarget; state: string }> = [];
   for (const primitive of bundle.primitives.primitives) {
     if (primitive.prototype) {
@@ -357,22 +381,7 @@ export function inspectPrototypeSourceGraph(bundle: CanvasProjectBundle): Protot
       }
     }
   }
-
-  const issues: PrototypeSourceGraphIssue[] = [];
-  const session = createCompileSession();
-  for (const candidate of targets) {
-    try {
-      compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, { kind: 'tokens' });
-    } catch (error) {
-      const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
-      issues.push({
-        boundaryId: localBoundaryId,
-        state: candidate.state,
-        message: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-  return issues;
+  return targets;
 }
 
 /**
@@ -522,7 +531,7 @@ function emit(context: CompilerContext, event: CompileEvent): void {
   } else if (event.kind === 'brand-mark') {
     context.brandMarks.push({ ...event.mark });
   } else {
-    assertRenderedUses(event.boundary, context.observedUsesBySource.get(event.boundaryId) ?? []);
+    assertRenderedUses(event.boundary, context.observedUseKeysBySource.get(event.boundaryId));
   }
   for (const record of context.recorders) {
     record.events.push(event);
@@ -616,12 +625,16 @@ function expandUse(
 
 function recordObservedUse(context: CompilerContext, use: ObservedPrototypeUse): void {
   context.observedUses.push(use);
-  const fromSource = context.observedUsesBySource.get(use.sourceBoundaryId);
+  const fromSource = context.observedUseKeysBySource.get(use.sourceBoundaryId);
   if (fromSource) {
-    fromSource.push(use);
+    fromSource.add(useKey(use));
   } else {
-    context.observedUsesBySource.set(use.sourceBoundaryId, [use]);
+    context.observedUseKeysBySource.set(use.sourceBoundaryId, new Set([useKey(use)]));
   }
+}
+
+function useKey(use: PrototypeUseDeclaration): string {
+  return `${use.kind}:${use.id}`;
 }
 
 /**
@@ -871,20 +884,21 @@ function assetToken(context: CompilerContext, sourceRef: string, value: string):
   for (const record of context.recorders) {
     record.assetRefs.add(assetRef);
   }
-  const tokens = context.session.assetTokens;
-  let index = tokens.indexByRef.get(assetRef);
-  if (index === undefined) {
-    index = tokens.refs.push(assetRef) - 1;
-    tokens.indexByRef.set(assetRef, index);
-  }
-  return `${tokens.prefix}${index}-`;
+  return `${ASSET_TOKEN_START}${hexFromText(assetRef)}${ASSET_TOKEN_END}`;
+}
+
+function hexFromText(text: string): string {
+  return Array.from(new TextEncoder().encode(text), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function textFromHex(hex: string): string {
+  return new TextDecoder().decode(Uint8Array.from(hex.match(/../g) ?? [], pair => Number.parseInt(pair, 16)));
 }
 
 function resolveAssetTokens(context: CompilerContext, html: string, output: AssetOutput): string {
   if (output.kind === 'tokens') return html;
-  const { prefix, refs } = context.session.assetTokens;
-  return html.replace(new RegExp(`${escapeRegExp(prefix)}(\\d+)-`, 'g'), (_token, index: string) => {
-    const assetRef = refs[Number(index)];
+  return html.replace(ASSET_TOKEN_PATTERN, (_token, hex: string) => {
+    const assetRef = textFromHex(hex);
     const asset = context.bundle.prototypeAssetContents[assetRef];
     if ('base64' in asset) return assetDataUrl(asset);
     if (output.kind === 'linked') return linkedAssetUrl(output.assetSource, asset.sha256);
@@ -1448,10 +1462,10 @@ function assertDeclaredUse(boundary: SourceBoundary, use: PrototypeUseDeclaratio
   }
 }
 
-function assertRenderedUses(boundary: SourceBoundary, observed: ObservedPrototypeUse[]): void {
-  const observedKeys = [...new Set(observed.map(use => `${use.kind}:${use.id}`))].sort();
-  const declaredKeys = [...new Set(boundary.renderedUses.map(use => `${use.kind}:${use.id}`))].sort();
-  if (observedKeys.join('\n') !== declaredKeys.join('\n')) {
+function assertRenderedUses(boundary: SourceBoundary, observedKeys: ReadonlySet<string> | undefined): void {
+  const declaredKeys = new Set(boundary.renderedUses.map(useKey));
+  const matches = (observedKeys?.size ?? 0) === declaredKeys.size && [...declaredKeys].every(key => observedKeys?.has(key));
+  if (!matches) {
     throw new Error(
       `${boundary.kind} "${boundary.id}" rendered uses do not match its declared reusable dependencies.`
     );
@@ -1516,6 +1530,9 @@ function requireSource(bundle: CanvasProjectBundle, sourceRef: string, label: st
   const source = bundle.prototypeSourceContents[sourceRef];
   if (source === undefined) {
     throw new Error(`${label} "${sourceRef}" is missing from the loaded bundle.`);
+  }
+  if (source.includes(ASSET_TOKEN_START) || source.includes(ASSET_TOKEN_END)) {
+    throw new Error(`${label} "${sourceRef}" contains a reserved noncharacter, U+FDD0 or U+FDD1. Fix: delete that character from the source.`);
   }
   return source;
 }

@@ -75,7 +75,7 @@ describe('canonical prototype compiler', () => {
 
     assert.match(launch.html, /data:image\/svg\+xml;base64,/);
     assert.doesNotMatch(launch.html, /src="\.\.\/assets\//);
-    assert.doesNotMatch(launch.html, /bp-asset-/);
+    assert.doesNotMatch(launch.html, /[\uFDD0\uFDD1]/);
   });
 
   it('keeps asset-token look-alike text in sources literal', async () => {

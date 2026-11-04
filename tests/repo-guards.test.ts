@@ -77,6 +77,12 @@ describe('repository guards', () => {
     assert.deepEqual([...extensions].sort(), ['.css', '.html', '.svg']);
   });
 
+  it('keeps the compiler free of clocks and random values', () => {
+    const impure = sourceFiles('src/prototype')
+      .filter(file => /Math\.random|Date\.now|new Date\(|randomUUID|performance\.now/.test(readFileSync(file, 'utf8')));
+    assert.deepEqual(impure, []);
+  });
+
   it('states which tools still work on an older schema', () => {
     const instructions = readFileSync('src/mcp/create-server.ts', 'utf8');
     const agents = readFileSync('starter/design/blueprint/AGENTS.md', 'utf8');
