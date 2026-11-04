@@ -66,6 +66,7 @@ import {
 } from './boundary-extent';
 import { loadConfiguredProject } from './fixture-projects';
 import { createFrameMounter, type FrameMounter, type MountableFrame } from './frame-mounting';
+import { trackFrameLoad, waitForFrameLoads } from './frame-loads';
 import { frameNeedsRebuild, rebuildScope } from './frame-rebuild';
 import { BASE_PRIMITIVE_CONTRACT, isBasePrimitive, PRIMITIVE_GROUPS, primitiveGroupName } from '../core/base-primitives';
 import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '../core/reusable-contract';
@@ -883,13 +884,7 @@ async function waitForBoardFrames(root: HTMLElement): Promise<void> {
 
 async function waitForPrototypeFrames(root: HTMLElement): Promise<void> {
   const frames = [...root.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe, iframe.canonical-primitive-iframe')];
-  if (frames.length === 0) return;
-  await Promise.race([
-    Promise.all(frames.map(frame => new Promise<void>(resolve => {
-      frame.addEventListener('load', () => resolve(), { once: true });
-    }))),
-    new Promise<void>(resolve => window.setTimeout(resolve, 500))
-  ]);
+  await waitForFrameLoads(frames, 500);
 }
 
 function mountDocumentBoard({ root, project: bundle }: BoardContext): BoardMount {
@@ -1542,6 +1537,7 @@ function createReusableCell(context: SpecimenContext, variant: string, size: str
     applyPrototypeIframeIsolation(iframe);
     iframe.title = `${reusable.name} · ${variant} · ${size} · ${state.id}`;
     iframe.srcdoc = compiled.html;
+    trackFrameLoad(iframe);
     iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
     iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
     item.append(createPreviewFit(iframe));
@@ -3062,6 +3058,7 @@ function createCanonicalPrototypeIframe(compiled: CompiledPrototypeDocument, tit
   applyPrototypeIframeIsolation(iframe);
   iframe.title = title;
   iframe.srcdoc = compiled.html;
+  trackFrameLoad(iframe);
   iframe.dataset.prototypeTargetBoundary = compiled.targetBoundaryId;
   iframe.dataset.prototypeObservedUses = JSON.stringify(compiled.observedUses);
   return iframe;
