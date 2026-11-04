@@ -4,7 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createExtractionPacket, queryPrototypeOnly, querySections, queryUsedBy, queryUses, showBoundary } from '../src/core/query';
 import { loadProjectFromFs } from '../src/core/load';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 import type { BoundaryPacket, PrimitiveDefinition, ReusableDefinition, ScreenDefinition, ScreenSection } from '../src/core/types';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';

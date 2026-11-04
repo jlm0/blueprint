@@ -16,13 +16,13 @@ import type {
   ScreenSection,
   StyleEvidence,
   ValidationMode,
+  PrototypeSourceGraphIssue,
   ValidationOptions,
   TokenGroup,
   ValidationResult
 } from './types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { inspectPrototypeSourceGraph, type PrototypeSourceGraphIssue } from '../prototype/compiler';
 import { BASE_PRIMITIVE_CONTRACT, BASE_PRIMITIVE_LOCK_REASON, primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { validateReusables } from './reusable-validate';
 import { validateScreenContract } from './screen-contract';
@@ -41,29 +41,9 @@ import { storageRecordSegment } from './storage-records';
 
 const supportedHandoffContractVersion = '1.0.0';
 
-type SourceGraphIssues = () => PrototypeSourceGraphIssue[];
+export type SourceGraphIssues = () => PrototypeSourceGraphIssue[];
 
-export function validateProject(bundle: BlueprintProjectBundle, options: ValidationOptions = {}): ValidationResult {
-  return validateProjectWithSourceGraph(bundle, options, () => inspectPrototypeSourceGraph(bundle));
-}
-
-export function createReadinessReport(bundle: BlueprintProjectBundle): ReadinessReport {
-  return createReadinessReportWithSourceGraph(bundle, () => inspectPrototypeSourceGraph(bundle));
-}
-
-export function validateProjectReadiness(
-  bundle: BlueprintProjectBundle,
-  inspect: (bundle: BlueprintProjectBundle) => PrototypeSourceGraphIssue[] = inspectPrototypeSourceGraph
-): { baseline: ValidationResult; readiness: ReadinessReport } {
-  let issues: PrototypeSourceGraphIssue[] | undefined;
-  const sourceGraphIssues = (): PrototypeSourceGraphIssue[] => issues ??= inspect(bundle);
-  return {
-    baseline: validateProjectWithSourceGraph(bundle, {}, sourceGraphIssues),
-    readiness: createReadinessReportWithSourceGraph(bundle, sourceGraphIssues)
-  };
-}
-
-function validateProjectWithSourceGraph(
+export function validateProjectWithSourceGraph(
   bundle: BlueprintProjectBundle,
   options: ValidationOptions,
   sourceGraphIssues: SourceGraphIssues
@@ -218,7 +198,7 @@ function recordInspoReadiness(items: ReadinessItem[], bundle: BlueprintProjectBu
   }
 }
 
-function createReadinessReportWithSourceGraph(
+export function createReadinessReportWithSourceGraph(
   bundle: BlueprintProjectBundle,
   sourceGraphIssues: SourceGraphIssues
 ): ReadinessReport {

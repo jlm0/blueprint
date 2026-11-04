@@ -4,7 +4,7 @@ import { lintColorContrast } from '../src/core/contrast-lint';
 import { collectDesignFindings } from '../src/core/findings';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle } from '../src/core/types';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const starterRoot = 'starter/design/blueprint';
 

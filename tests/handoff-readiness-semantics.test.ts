@@ -5,7 +5,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, queryUsedBy, showBoundary } from '../src/core/query';
-import * as validateCore from '../src/core/validate';
+import * as validateCore from '../src/prototype/validate-project';
 import type {
   BlueprintProjectBundle,
   BoundaryDependency,

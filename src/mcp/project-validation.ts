@@ -6,7 +6,7 @@ import type { BlueprintOutdatedFile } from '../core/activity';
 import { loadProjectFromFs } from '../core/load';
 import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
 import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
-import { validateProject } from '../core/validate';
+import { validateProject } from '../prototype/validate-project';
 
 export type ValidatedProject = ValidProject | InvalidProject;
 

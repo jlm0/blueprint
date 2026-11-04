@@ -8,7 +8,7 @@ import {
 import { parseBoundarySelector } from '../src/core/address';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, BoundaryDependency, ReusableDefinition } from '../src/core/types';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const chatSource = 'prototype/screens/chat.html';

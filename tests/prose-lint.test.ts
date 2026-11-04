@@ -7,7 +7,7 @@ import { lintProse, lintSynonymRotation, MAX_SENTENCE_WORDS } from '../src/core/
 import { reusableProseFields } from '../src/core/reusable-contract';
 import { collectProseAdvisories } from '../src/core/prose-advisories';
 import type { BlueprintProjectBundle } from '../src/core/types';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 
 const starterRoot = 'starter/design/blueprint';
 const fixtureRoots = ['mira-ai', 'umbra-gaming', 'meridian-finance'].map(id => `fixtures/valid/${id}/design/blueprint`);

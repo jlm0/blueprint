@@ -3,7 +3,7 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';

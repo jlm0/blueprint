@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { lintHandBuiltControls } from '../src/core/control-lint';
 import { loadProjectFromFs } from '../src/core/load';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';

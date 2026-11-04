@@ -24,10 +24,12 @@
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "lint": "oxlint .",
-    "lint:fix": "oxlint --fix .",
+    "lint": "oxlint --ignore-pattern 'tests/lint-fixtures/**' .",
+    "lint:fix": "oxlint --ignore-pattern 'tests/lint-fixtures/**' --fix .",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "npm run test:unit && npm run test:browser",
+    "test:unit": "node --import tsx --test tests/*.test.ts",
+    "test:browser": "node --import tsx --test tests/browser/*.test.ts",
     "check:fixtures": "node --import tsx src/scripts/validate-fixtures.ts",
     "scan:scope": "node --import tsx src/scripts/scope-scan.ts",
     "extract:artifacts": "node --import tsx src/scripts/create-extraction-artifacts.ts",
@@ -35,7 +37,7 @@
     "build:site": "vite build",
     "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js dist/mcp/codex-activity-hook.js",
     "build": "npm run build:site && npm run build:mcp",
-    "qa": "npm run lint && npm run typecheck && npm run check:fixtures && npm test && npm run extract:artifacts && npm run scan:scope && npm run build && npm run smoke:browser"
+    "qa": "npm run lint && npm run typecheck && npm run check:fixtures && npm run test:unit && npm run extract:artifacts && npm run scan:scope && npm run build && npm run test:browser && npm run smoke:browser"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

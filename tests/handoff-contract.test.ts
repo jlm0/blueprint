@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { createExtractionPacket, showBoundary } from '../src/core/query';
 import { createCanvasStyleEvidence, createReviewManifest } from '../src/core/review';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 import { compilePrototypeReview, resolvePrototypeReviewSelection } from '../src/prototype/review';
 import type {
   BlueprintProjectBundle,

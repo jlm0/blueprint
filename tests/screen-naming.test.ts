@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { loadProjectFromFs } from '../src/core/load';
 import { screenFrameLabel, screenRoutePath } from '../src/core/screen-naming';
 import type { ScreenDefinition } from '../src/core/types';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
 

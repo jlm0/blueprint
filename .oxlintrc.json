@@ -3,11 +3,135 @@
   "categories": {
     "correctness": "error"
   },
-  "plugins": ["typescript", "unicorn", "oxc"],
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import"
+  ],
   "rules": {
-    "eslint/no-control-regex": "off"
+    "eslint/no-control-regex": "off",
+    "import/no-cycle": "error"
   },
-  "ignorePatterns": ["dist/**", ".blueprint-artifacts/**", "node_modules/**"],
+  "overrides": [
+    {
+      "files": [
+        "**/src/core/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/prototype/**",
+                  "**/mcp/**",
+                  "**/app/**",
+                  "**/hooks/**",
+                  "**/scripts/**",
+                  "**/design/**"
+                ],
+                "message": "core is the bottom layer, so it imports only core. Fix: move the shared code into core, or pass it in as a parameter."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/src/core/markup.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "./*",
+                  "../*"
+                ],
+                "message": "markup is a leaf module, so it imports nothing else from Blueprint. Fix: move the code that needs it out of markup."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/src/prototype/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/mcp/**",
+                  "**/app/**",
+                  "**/hooks/**",
+                  "**/scripts/**"
+                ],
+                "message": "prototype sits under the MCP server and the canvas. Fix: move the shared code into prototype or core."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/src/mcp/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/app/**",
+                  "**/scripts/**"
+                ],
+                "message": "The MCP server does not import the canvas or scripts. Fix: move the shared code into core."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/src/app/**"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/mcp/**",
+                  "**/hooks/**",
+                  "**/scripts/**"
+                ],
+                "message": "The canvas does not import the MCP server. Fix: move the shared code into core."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    ".blueprint-artifacts/**",
+    "node_modules/**"
+  ],
   "options": {
     "denyWarnings": true,
     "reportUnusedDisableDirectives": "error"

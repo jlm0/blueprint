@@ -110,7 +110,7 @@ export {
   historyRecordFile,
   historyRecordRef
 } from './core/storage-records';
-export { createReadinessReport, validateProject } from './core/validate';
+export { createReadinessReport, validateProject } from './prototype/validate-project';
 export {
   createExtractionPacket,
   listBoundaryReferences,

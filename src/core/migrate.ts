@@ -1,4 +1,4 @@
-import { listUsePlacements, slotContentAccepts, sourceSlotContents } from '../prototype/compiler';
+import { listUsePlacements, slotContentAccepts, sourceSlotContents } from './markup';
 import { basePrimitiveText } from './base-primitive-text';
 import { basePrimitive, type BasePrimitiveContractEntry, type BasePrimitiveText, type PrimitiveGroupId } from './base-primitives';
 import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from './migrate-shapes';

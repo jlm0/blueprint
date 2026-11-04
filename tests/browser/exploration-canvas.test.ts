@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { chromium, type Browser, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
-import { loadProjectFromFs } from '../src/core/load';
-import type { BlueprintProjectBundle, ExplorationPrototypeSource, ScreenDefinition } from '../src/core/types';
+import { loadProjectFromFs } from '../../src/core/load';
+import type { BlueprintProjectBundle, ExplorationPrototypeSource, ScreenDefinition } from '../../src/core/types';
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 

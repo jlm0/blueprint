@@ -64,6 +64,7 @@ import {
   measureBoundaryInstance,
   type BoundaryExtent
 } from './boundary-extent';
+import { findSectionMarkers } from '../core/markup';
 import { loadConfiguredProject } from './fixture-projects';
 import { createFrameMounter, type FrameMounter, type MountableFrame } from './frame-mounting';
 import { trackFrameLoad, waitForFrameLoads } from './frame-loads';
@@ -83,7 +84,6 @@ import { PLATFORMS, platformsLabel, REUSABLE_AXES, SLOT_CONTENT_ACCEPTS } from '
 import { createConfiguredProjectBundle } from '../core/bundle';
 import {
   compilePrototypeDocument,
-  findSectionMarkers,
   prototypeAssetUrl,
   selectPrototypeReviewCondition,
   type CompiledPrototypeDocument,

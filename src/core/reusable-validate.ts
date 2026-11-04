@@ -1,4 +1,4 @@
-import { slotContentAccepts, sourceSlotContents } from '../prototype/compiler';
+import { slotContentAccepts, sourceSlotContents } from './markup';
 import { basePrimitiveText } from './base-primitive-text';
 import {
   BASE_PRIMITIVE_LOCK_REASON,

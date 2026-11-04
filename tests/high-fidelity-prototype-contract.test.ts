@@ -11,7 +11,7 @@ import type {
   DeepHandoffPacket,
   ScreenDefinition
 } from '../src/core/types';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 import { compilePrototypeDocument, PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
 import { applyPrototypeIframeIsolation } from '../src/prototype/host-policy';
 import { createBlueprintResponseHeaders } from '../src/prototype/host-policy';

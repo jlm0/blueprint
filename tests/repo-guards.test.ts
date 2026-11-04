@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
@@ -76,6 +77,21 @@ describe('repository guards', () => {
     );
     assert.deepEqual([...extensions].sort(), ['.css', '.html', '.svg']);
   });
+
+  for (const [fixture, rule] of [
+    ['src/core/imports-prototype.ts', 'no-restricted-imports'],
+    ['src/core/markup.ts', 'no-restricted-imports'],
+    ['src/prototype/imports-mcp.ts', 'no-restricted-imports'],
+    ['src/mcp/imports-app.ts', 'no-restricted-imports'],
+    ['src/app/imports-mcp.ts', 'no-restricted-imports'],
+    ['cycle-a.ts', 'no-cycle']
+  ] as const) {
+    it(`fails lint on the wrong import in ${fixture}`, () => {
+      const result = spawnSync('node_modules/.bin/oxlint', [`tests/lint-fixtures/${fixture}`], { encoding: 'utf8' });
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.match(result.stdout, new RegExp(rule));
+    });
+  }
 
   it('keeps the compiler free of clocks and random values', () => {
     const impure = sourceFiles('src/prototype')

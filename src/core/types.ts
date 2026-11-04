@@ -696,3 +696,13 @@ export interface QueryResult {
   projectId: string;
   results: unknown[];
 }
+
+/** One deterministic source-graph error found before mounting or capture. */
+export interface PrototypeSourceGraphIssue {
+  /** Canonical boundary and state that could not compile. */
+  boundaryId: string;
+  /** Declared state or review-condition state inspected. */
+  state: string;
+  /** Actionable compiler diagnostic. */
+  message: string;
+}

@@ -4,7 +4,7 @@ import { loadProjectFromFs } from '../src/core/load';
 import { collectProseAdvisories } from '../src/core/prose-advisories';
 import { assertCurrentSchema, BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import type { BlueprintProjectBundle } from '../src/core/types';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 

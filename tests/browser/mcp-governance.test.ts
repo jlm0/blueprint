@@ -9,14 +9,14 @@ import path from 'node:path';
 import { before, describe, it } from 'node:test';
 import { Client, type CallToolResult, type Tool } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import type { BlueprintProjectSnapshot, BlueprintProjectSnapshotDelta } from '../src/core/activity';
-import { applyProjectBundleDelta } from '../src/core/bundle-delta';
-import { loadProjectFromFs } from '../src/core/load';
-import type { BlueprintProjectBundle, LinkedProjectBundle } from '../src/core/types';
-import { serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
-import { hashProjectAssets } from '../src/mcp/project-validation';
-import { linkProjectAssets } from '../src/mcp/serve-snapshot';
-import { compilePrototypeDocument } from '../src/prototype/compiler';
+import type { BlueprintProjectSnapshot, BlueprintProjectSnapshotDelta } from '../../src/core/activity';
+import { applyProjectBundleDelta } from '../../src/core/bundle-delta';
+import { loadProjectFromFs } from '../../src/core/load';
+import type { BlueprintProjectBundle, LinkedProjectBundle } from '../../src/core/types';
+import { serveBlueprint, type BlueprintServeHandle } from '../../src/mcp/operations';
+import { hashProjectAssets } from '../../src/mcp/project-validation';
+import { linkProjectAssets } from '../../src/mcp/serve-snapshot';
+import { compilePrototypeDocument } from '../../src/prototype/compiler';
 
 const projectRoot = process.cwd();
 const mcpPath = path.join(projectRoot, 'dist/mcp/server.js');
@@ -837,6 +837,45 @@ describe('Blueprint MCP and template governance', () => {
         assert.equal(prototype.status, 200);
         assert.equal(prototype.headers.get('x-blueprint-screen'), 'workspace');
         await call(session, 'index', { project: projectCopy });
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('shows an exploration that the page requested before the exploration existed', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0 });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens&exploration=workspace-hero`);
+          await call(session, 'explore', {
+            project: 'design/blueprint',
+            operation: {
+              type: 'create',
+              id: 'workspace-hero',
+              screenId: 'workspace',
+              state: 'default',
+              framePresetId: 'desktop-web',
+              title: 'Workspace hero',
+              intent: 'Compare hero directions.',
+              candidateLabels: ['Calm', 'Bold']
+            }
+          });
+          await page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] iframe.canonical-prototype-iframe').waitFor({ timeout: 20_000 });
+        } finally {
+          await browser.close();
+        }
       } finally {
         await session.close();
       }

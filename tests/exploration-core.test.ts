@@ -27,7 +27,7 @@ import {
   historyRecordRef
 } from '../src/core/storage-records';
 import type { BlueprintProjectBundle } from '../src/core/types';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 
 const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';

@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { loadProjectFromFs } from '../core/load';
 import type { ValidationMode } from '../core/types';
-import { createReadinessReport, validateProject } from '../core/validate';
+import { createReadinessReport, validateProject } from '../prototype/validate-project';
 
 const validRoot = 'fixtures/valid';
 const invalidRoot = 'fixtures/invalid';

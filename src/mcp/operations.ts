@@ -41,7 +41,7 @@ import {
   selectionSourceFiles,
   type BlueprintCanvasSelection
 } from '../core/selection';
-import { validateProject, validateProjectReadiness } from '../core/validate';
+import { validateProject, validateProjectReadiness } from '../prototype/validate-project';
 import {
   archiveExploration,
   computeExplorationBaselineDigest,

@@ -5,7 +5,7 @@ import { compilePrototypeDocument } from '../src/prototype/compiler';
 import { createExtractionPacket } from '../src/core/query';
 import { loadProjectFromFs } from '../src/core/load';
 import type { DeepHandoffPacket } from '../src/core/types';
-import { createReadinessReport, validateProject } from '../src/core/validate';
+import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const starterRoot = 'starter/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';

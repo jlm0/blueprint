@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 
 const starterRoot = 'starter/design/blueprint';
 const structuredFiles = ['manifest.json', 'tokens.json', 'primitives.json', 'components.json', 'screens.json', 'brand.json'];

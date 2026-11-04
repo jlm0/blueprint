@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { BASE_PRIMITIVE_CONTRACT } from '../src/core/base-primitives';
 import { loadProjectFromFs } from '../src/core/load';
 import { collectDesignFindings } from '../src/core/findings';
-import { validateProject } from '../src/core/validate';
+import { validateProject } from '../src/prototype/validate-project';
 import { axisIds, REUSABLE_AXES } from '../src/core/reusable-contract';
 import type { BlueprintProjectBundle } from '../src/core/types';
 

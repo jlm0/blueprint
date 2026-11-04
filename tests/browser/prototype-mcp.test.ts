@@ -4,14 +4,14 @@ import { describe, it } from 'node:test';
 import {
   assertChromiumExecutableAvailable,
   CHROMIUM_INSTALL_COMMAND
-} from '../src/prototype/browser-preflight';
+} from '../../src/prototype/browser-preflight';
 import {
   compilePrototypeReview,
   parsePrototypeReviewRequest,
   resolvePrototypeReviewSelection
-} from '../src/prototype/review';
-import { loadProjectFromFs } from '../src/core/load';
-import { captureInputSchema } from '../src/mcp/schemas';
+} from '../../src/prototype/review';
+import { loadProjectFromFs } from '../../src/core/load';
+import { captureInputSchema } from '../../src/mcp/schemas';
 
 const fixtureRoot = 'fixtures/valid/mira-ai/design/blueprint';
 

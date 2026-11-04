@@ -1,4 +1,4 @@
-import { findSectionMarkers } from '../prototype/compiler';
+import { findSectionMarkers } from './markup';
 import { boundaryId } from './address';
 import { primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { contrastMessage, lintColorContrast } from './contrast-lint';

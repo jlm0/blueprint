@@ -6,7 +6,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle, ValidationResult } from '../src/core/types';
-import { createReadinessReport, validateProject, validateProjectReadiness } from '../src/core/validate';
+import { createReadinessReport, validateProject, validateProjectReadiness } from '../src/prototype/validate-project';
 import type { InspoFetcher } from '../src/mcp/inspo-download';
 import type { QueryInput } from '../src/mcp/schemas';
 import {
