@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { existsSync } from 'node:fs';
 import {
   createServer as createHttpServer,
@@ -21,7 +22,8 @@ import type {
   InspoEntry,
   InspoFile,
   ScreenDefinition,
-  ScreenHistoryEntry
+  ScreenHistoryEntry,
+  ValidationResult
 } from '../core/types';
 import type { BlueprintOutdatedFile, BlueprintProjectLoadError } from '../core/activity';
 import { boundaryId, parseBoundarySelector } from '../core/address';
@@ -563,7 +565,11 @@ async function capturePrototypeDocument(
   }
 }
 
-export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal): Promise<ExploreOutput> {
+export async function exploreBlueprint(
+  input: ExploreInput,
+  signal?: AbortSignal,
+  validate: ProjectValidator = validateProject
+): Promise<ExploreOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
@@ -576,7 +582,7 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
     explorations: result.explorations,
     prototypeSourceContents: result.prototypeSourceContents
   };
-  assertValidMutation(projected);
+  assertValidMutation(projected, validate);
   const output = exploreOutputSchema.parse({
     command: 'explore',
     operation: input.operation.type,
@@ -591,7 +597,7 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
   ]);
   try {
     throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot);
+    await assertPersistedProjectValid(projectRoot, projected, validate);
   } catch (error) {
     await transaction.rollback();
     throw error;
@@ -600,7 +606,11 @@ export async function exploreBlueprint(input: ExploreInput, signal?: AbortSignal
   return output;
 }
 
-export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal): Promise<PromoteOutput> {
+export async function promoteBlueprint(
+  input: PromoteInput,
+  signal?: AbortSignal,
+  validate: ProjectValidator = validateProject
+): Promise<PromoteOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
@@ -609,13 +619,14 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   const bundle = await loadCurrentProject(projectRoot);
   const result = promoteExploration(bundle, input);
   const projectId = bundle.manifest.project.id;
-  assertValidMutation({
+  const projected = {
     ...bundle,
     screens: result.screens,
     explorations: result.explorations,
     history: result.history,
     prototypeSourceContents: result.prototypeSourceContents
-  });
+  };
+  assertValidMutation(projected, validate);
   const output = promoteOutputSchema.parse({
     command: 'promote',
     project: normalize(projectRoot),
@@ -638,7 +649,7 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   ]);
   try {
     throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot);
+    await assertPersistedProjectValid(projectRoot, projected, validate);
   } catch (error) {
     await transaction.rollback();
     throw error;
@@ -647,19 +658,24 @@ export async function promoteBlueprint(input: PromoteInput, signal?: AbortSignal
   return output;
 }
 
-export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal): Promise<RestoreOutput> {
+export async function restoreBlueprint(
+  input: RestoreInput,
+  signal?: AbortSignal,
+  validate: ProjectValidator = validateProject
+): Promise<RestoreOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
   assertBlueprintProjectPath(projectRoot);
   const bundle = await loadCurrentProject(projectRoot);
   const result = restoreScreenHistory(bundle, input);
   const projectId = bundle.manifest.project.id;
-  assertValidMutation({
+  const projected = {
     ...bundle,
     screens: result.screens,
     history: result.history,
     prototypeSourceContents: result.prototypeSourceContents
-  });
+  };
+  assertValidMutation(projected, validate);
   const output = restoreOutputSchema.parse({
     command: 'restore',
     project: normalize(projectRoot),
@@ -679,7 +695,7 @@ export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal
   ]);
   try {
     throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot);
+    await assertPersistedProjectValid(projectRoot, projected, validate);
   } catch (error) {
     await transaction.rollback();
     throw error;
@@ -691,7 +707,8 @@ export async function restoreBlueprint(input: RestoreInput, signal?: AbortSignal
 export async function inspoBlueprint(
   input: InspoInput,
   signal?: AbortSignal,
-  fetcher: InspoFetcher = defaultInspoFetcher
+  fetcher: InspoFetcher = defaultInspoFetcher,
+  validate: ProjectValidator = validateProject
 ): Promise<InspoOutput> {
   throwIfAborted(signal);
   const projectRoot = path.resolve(input.project);
@@ -810,7 +827,8 @@ export async function inspoBlueprint(
   }
 
   throwIfAborted(signal);
-  assertValidMutation({ ...bundle, inspo: next });
+  const projected = { ...bundle, inspo: next };
+  assertValidMutation(projected, validate);
   writes.push({ fileRef: 'inspo.json', content: jsonFileContent(next) });
   if (!existsSync(path.join(projectRoot, INSPO_IMAGE_DIRECTORY, '.gitignore'))) {
     writes.push({ fileRef: `${INSPO_IMAGE_DIRECTORY}/.gitignore`, content: INSPO_GITIGNORE });
@@ -818,7 +836,7 @@ export async function inspoBlueprint(
   const transaction = await applyProjectFileTransaction(projectRoot, writes);
   try {
     throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot);
+    await assertPersistedProjectValid(projectRoot, projected, validate);
   } catch (error) {
     await transaction.rollback();
     throw error;
@@ -1094,19 +1112,48 @@ function proseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
   }
 }
 
-function assertValidMutation(bundle: BlueprintProjectBundle): void {
-  const validation = validateProject(bundle);
+type ProjectValidator = (bundle: BlueprintProjectBundle) => ValidationResult;
+
+function assertValidMutation(bundle: BlueprintProjectBundle, validate: ProjectValidator): void {
+  const validation = validate(bundle);
   if (!validation.ok) {
     throw new Error(`Exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
   }
 }
 
-async function assertPersistedProjectValid(projectRoot: string): Promise<void> {
+async function assertPersistedProjectValid(
+  projectRoot: string,
+  projected: BlueprintProjectBundle,
+  validate: ProjectValidator
+): Promise<void> {
   const persisted = await loadProjectFromFs(projectRoot);
-  const validation = validateProject(persisted);
+  if (isDeepStrictEqual(comparableMutationBundle(persisted), comparableMutationBundle(projected))) {
+    return;
+  }
+  const validation = validate(persisted);
   if (!validation.ok) {
     throw new Error(`Persisted exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
   }
+}
+
+// Baseline validation reads neither the sourceFiles path index nor the record order, and projections keep neither as the loader does.
+function comparableMutationBundle(bundle: BlueprintProjectBundle): unknown {
+  return {
+    ...bundle,
+    sourceFiles: undefined,
+    explorations: {
+      ...bundle.explorations,
+      explorations: [...bundle.explorations.explorations].sort((left, right) => compareText(left.id, right.id))
+    },
+    history: {
+      ...bundle.history,
+      entries: [...bundle.history.entries].sort((left, right) => compareText(left.screenId, right.screenId) || left.version - right.version)
+    }
+  };
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function screenMutationSummary(projectId: string, screen: ScreenDefinition): {
