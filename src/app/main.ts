@@ -229,6 +229,14 @@ const canvas = createCanvasController({
   fallbackWidth: 320,
   fallbackHeight: 260
 });
+const chromeScaleStyle = document.head.appendChild(document.createElement('style'));
+let chromeScale = Number.NaN;
+// Setting the scale on the world would restyle every frame on each zoom step, so only the heads that read it get it.
+canvas.onViewChange(view => {
+  if (view.s === chromeScale) return;
+  chromeScale = view.s;
+  chromeScaleStyle.textContent = `.bp-chrome-frame-head, .bp-chrome-world-label { --bp-chrome-canvas-scale: ${view.s}; }`;
+});
 const prototypeDocumentByFrame = new WeakMap<HTMLIFrameElement, string>();
 const frameViewBySlot = new WeakMap<HTMLElement, FrameView>();
 

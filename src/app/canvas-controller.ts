@@ -13,6 +13,7 @@ export interface CanvasController {
   configure: (nextOptions?: Partial<CanvasOptions>) => CanvasController;
   snapshot: () => CanvasView;
   setView: (nextView: CanvasView) => void;
+  onViewChange: (listener: (view: Readonly<CanvasView>) => void) => () => void;
 }
 
 export interface CanvasOptions {
@@ -48,11 +49,19 @@ export function createCanvasController({
     beforeWheel
   };
   const view: CanvasView = { x: 0, y: 0, s: 1 };
+  const viewListeners = new Set<(view: Readonly<CanvasView>) => void>();
   let spaceHeld = false;
 
   function apply(): void {
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.s})`;
-    world.style.setProperty('--bp-chrome-canvas-scale', String(view.s));
+    for (const listener of viewListeners) listener(view);
+  }
+
+  function onViewChange(listener: (view: Readonly<CanvasView>) => void): () => void {
+    viewListeners.add(listener);
+    return () => {
+      viewListeners.delete(listener);
+    };
   }
 
   function zoomAt(cx: number, cy: number, factor: number): void {
@@ -213,6 +222,6 @@ export function createCanvasController({
     apply();
   }
 
-  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView };
+  const api: CanvasController = { view, apply, zoomAt, fitTo, makeDraggable, configure, snapshot, setView, onViewChange };
   return api;
 }

@@ -42,4 +42,15 @@ describe('Blueprint canvas fit', () => {
     const frameCentre = canvas.view.y + (top + height / 2) * canvas.view.s;
     assert.ok(Math.abs(frameCentre - (viewportHeight / 2 + 24)) < 0.001);
   });
+
+  it('tells each view listener about a view change until it unsubscribes', () => {
+    const canvas = controller();
+    const scales: number[] = [];
+    const unsubscribe = canvas.onViewChange(view => scales.push(view.s));
+    canvas.setView({ x: 10, y: 20, s: 0.4 });
+    unsubscribe();
+    canvas.setView({ x: 0, y: 0, s: 0.9 });
+
+    assert.deepEqual(scales, [0.4]);
+  });
 });
