@@ -25,6 +25,7 @@ export interface FrameMountPlan {
   mount: number[];
   unmount: number[];
   visibleMount: number;
+  expiredRequests: number[];
 }
 
 export interface ViewportSize {
@@ -72,7 +73,10 @@ export function planFrameMounts(
   return {
     mount: mount.map(({ index }) => index),
     unmount: ranked.filter(({ index }) => frames[index].mounted && !kept.has(index)).map(({ index }) => index).reverse(),
-    visibleMount: mount.filter(({ edge }) => edge === 0).length
+    visibleMount: mount.filter(({ edge }) => edge === 0).length,
+    expiredRequests: ranked
+      .filter(({ index, edge }) => frames[index].requested && !frames[index].mounted && edge > policy.nearMargin)
+      .map(({ index }) => index)
   };
 }
 
@@ -159,12 +163,14 @@ export function createFrameMounter(options: FrameMounterOptions): FrameMounter {
         const plan = planFrameMounts(frames, options.view(), options.viewport(), policy);
         const toUnmount = plan.unmount.map(index => frames[index]);
         const next = plan.mount.length > 0 ? frames[plan.mount[0]] : undefined;
+        for (const index of plan.expiredRequests) frames[index].requested = false;
         for (const frame of toUnmount) frame.unmount();
         if (!next) {
           settle();
           return;
         }
         next.mount();
+        next.requested = false;
         options.onMounted?.();
         if (plan.visibleMount <= 1) settle();
         await yieldNext();

@@ -21,6 +21,25 @@ function row(count: number, options: Partial<FrameMountCandidate> = {}): FrameMo
   }));
 }
 
+function mountableRow(count: number): MountableFrame[] {
+  return row(count).map(candidate => {
+    const frame: MountableFrame = {
+      ...candidate,
+      mount() {
+        frame.mounted = true;
+      },
+      unmount() {
+        frame.mounted = false;
+      }
+    };
+    return frame;
+  });
+}
+
+function nextTasks(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 20));
+}
+
 describe('Blueprint frame mount plan', () => {
   it('mounts the frames in the viewport and near it, nearest the centre first', () => {
     const plan = planFrameMounts(row(4), { x: 20, y: 0, s: 1 }, viewport, policy);
@@ -217,6 +236,52 @@ describe('Blueprint frame mounter', () => {
 
     assert.equal(mounts, 2);
     assert.equal(disposed, 1);
+  });
+
+  it('gives a clicked frame its priority only until it mounts', async () => {
+    let view = { x: 0, y: 0, s: 0.25 };
+    const frames = mountableRow(5);
+    const mounter = createFrameMounter({
+      view: () => view,
+      viewport: () => viewport,
+      state: () => 'active',
+      policy: { ...policy, maxFrames: 4 },
+      yieldToMain: () => new Promise(resolve => setTimeout(resolve, 0))
+    });
+    for (const frame of frames) mounter.add(frame);
+    await mounter.visibleMounted();
+    await nextTasks();
+    assert.deepEqual(frames.map(frame => frame.mounted), [false, true, true, true, true]);
+
+    frames[0].requested = true;
+    mounter.schedule();
+    await nextTasks();
+    assert.equal(frames[0].mounted, true);
+
+    view = { x: -110, y: 0, s: 0.25 };
+    mounter.schedule();
+    await nextTasks();
+    assert.equal(frames[1].mounted, true, 'A visible frame should get the slot of a clicked frame that is now off-screen');
+    assert.equal(frames[0].mounted, false);
+    assert.equal(frames[0].requested, false);
+  });
+
+  it('drops the request of a clicked frame that leaves the near margin before it mounts', async () => {
+    const frames = mountableRow(5);
+    frames[3].requested = true;
+    const mounter = createFrameMounter({
+      view: () => ({ x: 0, y: 0, s: 1 }),
+      viewport: () => viewport,
+      state: () => 'active',
+      policy,
+      yieldToMain: () => new Promise(resolve => setTimeout(resolve, 0))
+    });
+    for (const frame of frames) mounter.add(frame);
+    await mounter.visibleMounted();
+    await nextTasks();
+
+    assert.equal(frames[3].mounted, false);
+    assert.equal(frames[3].requested, false);
   });
 
   it('settles a waiter without mounting while the board is hidden', async () => {
