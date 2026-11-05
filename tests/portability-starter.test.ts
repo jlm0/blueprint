@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 import { compilePrototypeDocument } from '../src/prototype/compiler';
@@ -100,7 +101,7 @@ describe('starter and high-fidelity portability contract', () => {
 
   it('keeps runtime code free of fixture-specific branches', async () => {
     const runtime = (await Promise.all([
-      'src/app/main.ts',
+      ...readdirSync('src/app', { recursive: true, encoding: 'utf8' }).filter(file => file.endsWith('.ts')).map(file => `src/app/${file}`),
       'src/prototype/compiler.ts',
       'src/core/load.ts',
       'src/core/query.ts',

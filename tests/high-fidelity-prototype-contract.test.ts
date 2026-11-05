@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -186,8 +186,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
 
   it('T6/R6 keeps the Blueprint runtime free of NowWhat-specific rendering branches', async () => {
     const runtimeFiles = [
-      'src/app/main.ts',
-      'src/app/fixture-projects.ts',
+      ...readdirSync('src/app', { recursive: true, encoding: 'utf8' }).filter(file => file.endsWith('.ts')).map(file => `src/app/${file}`),
       'src/core/load.ts',
       'src/core/query.ts',
       'src/core/review.ts',

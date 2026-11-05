@@ -234,7 +234,8 @@ describe('repository guards', () => {
     ['src/app/imports-zod.ts', 'no-restricted-imports'],
     ['src/prototype/imports-schemas.ts', 'no-restricted-imports'],
     ['src/core/migrations/imports-schema.ts', 'no-restricted-imports'],
-    ['cycle-a.ts', 'no-cycle']
+    ['cycle-a.ts', 'no-cycle'],
+    ['src/app/cycle-a.ts', 'no-cycle']
   ] as const) {
     it(`fails lint on the wrong import in ${fixture}`, () => {
       const result = spawnSync('node_modules/.bin/oxlint', [`tests/lint-fixtures/${fixture}`], { encoding: 'utf8' });
@@ -255,6 +256,14 @@ describe('repository guards', () => {
 
   it('fails lint when src/mcp/operations.ts grows past its line limit', () => {
     const fixture = 'tests/lint-fixtures/src/mcp/operations.ts';
+    assert.equal(readFileSync(fixture, 'utf8').split('\n').length - 1, 801, 'The fixture has one line more than the limit in .oxlintrc.json.');
+    const result = spawnSync('node_modules/.bin/oxlint', [fixture], { encoding: 'utf8' });
+    assert.notEqual(result.status, 0, result.stdout);
+    assert.match(result.stdout, /max-lines/);
+  });
+
+  it('fails lint when a module in src/app grows past its line limit', () => {
+    const fixture = 'tests/lint-fixtures/src/app/long-module.ts';
     assert.equal(readFileSync(fixture, 'utf8').split('\n').length - 1, 801, 'The fixture has one line more than the limit in .oxlintrc.json.');
     const result = spawnSync('node_modules/.bin/oxlint', [fixture], { encoding: 'utf8' });
     assert.notEqual(result.status, 0, result.stdout);

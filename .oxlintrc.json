@@ -237,6 +237,19 @@
           }
         ]
       }
+    },
+    {
+      "files": [
+        "**/src/app/**/*.ts"
+      ],
+      "rules": {
+        "eslint/max-lines": [
+          "error",
+          {
+            "max": 800
+          }
+        ]
+      }
     }
   ],
   "ignorePatterns": [
