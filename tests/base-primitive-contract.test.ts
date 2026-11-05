@@ -86,18 +86,19 @@ describe('Blueprint closed primitive set', () => {
     assert.equal(validateProject(extended, { mode: 'strict' }).errors.some(error => /primitive set/.test(error)), false);
   });
 
-  it('flags primitives outside the set and blocks them in strict validation', async () => {
+  it('flags primitives outside the set and blocks them in each validation mode', async () => {
     const extended = cloneBundle(await loadProjectFromFs(meridianRoot));
     const chip = structuredClone(requirePrimitive(extended, 'badge'));
     chip.id = 'stat-chip';
     chip.name = 'Stat chip';
     extended.primitives.primitives.push(chip);
 
-    assert.equal(validateProject(extended).ok, true, 'existing sidecars with extra primitives stay baseline-valid');
-    assert.match(
-      validateProject(extended, { mode: 'strict' }).errors.join('\n'),
-      /primitive "stat-chip" is not in the Blueprint primitive set; rebuild it as a component from primitives/
-    );
+    for (const mode of ['baseline', 'strict'] as const) {
+      assert.match(
+        validateProject(extended, { mode }).errors.join('\n'),
+        /primitive "stat-chip" is not in the Blueprint primitive set; rebuild it as a component from primitives/
+      );
+    }
     assert.deepEqual(
       collectDesignFindings(extended).filter(finding => finding.rule === 'primitive-set').map(finding => finding.boundaryId),
       ['meridian-finance/primitive/stat-chip']

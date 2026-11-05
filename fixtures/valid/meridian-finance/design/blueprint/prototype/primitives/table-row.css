@@ -1,6 +1,6 @@
 [data-blueprint-primitive="table-row"] {
   display: grid;
-  grid-template-columns: var(--table-row-columns, repeat(4, minmax(0, 1fr)));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   box-sizing: border-box;
   min-height: var(--app-size-control-lg);
@@ -42,4 +42,40 @@
 [data-blueprint-primitive="table-row"][data-blueprint-state="selected"] {
   background-color: var(--app-color-surface-muted);
   box-shadow: inset 2px 0 0 var(--app-color-primary);
+}
+
+[data-blueprint-primitive="table-row"][data-blueprint-variant="columns-six"] {
+  grid-template-columns: 64px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) 150px;
+}
+
+[data-blueprint-primitive="table-row"][data-blueprint-variant="columns-five"] {
+  grid-template-columns: 72px minmax(0, 2fr) minmax(0, 1fr) minmax(0, 0.8fr) 170px;
+}
+
+[data-blueprint-primitive="table-row"][data-blueprint-variant="columns-six-tight"] {
+  grid-template-columns: 64px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr) 200px;
+  font-size: var(--app-text-13);
+}
+
+[data-blueprint-primitive="table-row"]:is([data-blueprint-variant="columns-six"], [data-blueprint-variant="columns-five"], [data-blueprint-variant="columns-six-tight"])[data-blueprint-state="selected"] {
+  background-color: color-mix(in srgb, var(--app-color-accent) 6%, var(--app-color-surface));
+  box-shadow: inset 3px 0 0 var(--app-color-accent);
+}
+
+[data-blueprint-primitive="table-row"]:is([data-blueprint-variant="columns-six"], [data-blueprint-variant="columns-five"], [data-blueprint-variant="columns-six-tight"]) .table-row__status {
+  padding: 2px var(--app-space-2);
+  border: 1px solid var(--app-color-border);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface);
+  font-size: var(--app-text-11-5);
+}
+
+[data-blueprint-primitive="table-row"][data-blueprint-variant="columns-six-tight"] .table-row__cell {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+[data-blueprint-primitive="table-row"][data-blueprint-variant="columns-six-tight"] .table-row__status {
+  padding: 0 6px;
+  font-size: var(--app-text-11);
 }

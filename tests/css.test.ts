@@ -26,11 +26,11 @@ describe('CSS reader', () => {
 
   it('reads each declaration with its property, its important flag, and its literals', () => {
     assert.deepEqual(listCssDeclarations('.a { MARGIN : /* x */ -1.5rem  2px !important ; *zoom: 1; _gap: 3px; --x: #FFF; b: c }'), [
-      { property: 'margin', value: '-1.5rem 2px !important', hasColorLiteral: false, lengths: ['-1.5rem', '2px'] },
-      { property: 'zoom', value: '1', hasColorLiteral: false, lengths: [] },
-      { property: '_gap', value: '3px', hasColorLiteral: false, lengths: ['3px'] },
-      { property: '--x', value: '#FFF', hasColorLiteral: true, lengths: [] },
-      { property: 'b', value: 'c', hasColorLiteral: false, lengths: [] }
+      { property: 'margin', value: '-1.5rem 2px !important', hasColorLiteral: false, namedColors: [], lengths: ['-1.5rem', '2px'], variables: [], important: true, inFontFace: false },
+      { property: 'zoom', value: '1', hasColorLiteral: false, namedColors: [], lengths: [], variables: [], important: false, inFontFace: false },
+      { property: '_gap', value: '3px', hasColorLiteral: false, namedColors: [], lengths: ['3px'], variables: [], important: false, inFontFace: false },
+      { property: '--x', value: '#FFF', hasColorLiteral: true, namedColors: [], lengths: [], variables: [], important: false, inFontFace: false },
+      { property: 'b', value: 'c', hasColorLiteral: false, namedColors: [], lengths: [], variables: [], important: false, inFontFace: false }
     ]);
   });
 
@@ -73,5 +73,18 @@ describe('CSS reader', () => {
   it('reads a token length value', () => {
     for (const value of ['4px', '-1.5rem', '.5em']) assert.equal(isCssLengthLiteral(value), true, value);
     for (const value of ['4', '4vw', 'calc(4px)', '4px 2px']) assert.equal(isCssLengthLiteral(value), false, value);
+  });
+});
+
+describe('image-set strings', () => {
+  it('rewrites a string in image-set as a url, and leaves the resolution as written', () => {
+    assert.equal(
+      rewriteCssUrls('.a { background-image: image-set("a.png" 1x, url(b.png) 2x, -webkit-image-set("c.png" 3x)); }', value => `url("${value}!")`),
+      '.a { background-image: image-set(url("a.png!") 1x, url("b.png!") 2x, -webkit-image-set(url("c.png!") 3x)); }'
+    );
+  });
+
+  it('leaves an empty string in image-set as written', () => {
+    assert.equal(rewriteCssUrls('.a { background-image: image-set("" 1x); }', value => `url("${value}!")`), '.a { background-image: image-set("" 1x); }');
   });
 });

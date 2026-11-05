@@ -1,11 +1,14 @@
 import { basePrimitiveText } from './base-primitive-text';
 import { BASE_PRIMITIVE_CONTRACT, basePrimitive, type BasePrimitiveText } from './base-primitives';
+import { renameSingleAxisValues } from './migrate-axes';
 import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from './migrate-shapes';
+import { normalizeBrandFonts, normalizeSelectorRoots } from './migrate-style';
+import { normalizeLiteralValues } from './migrate-values';
 import { rewriteAxisSelectors, rewritePlacements, rewriteScreenRecordBindings, type PlacementRemap } from './placement-remap';
 import { asArray, asObject, parseJsonFile, serializeJson, unique, type RawObject } from './raw-json';
 import { SINGLE_VALUE_DESCRIPTIONS, SIZE_VALUE_IDS, stripRootAxisAttributes } from './reusable-contract';
 import { componentFileSchema } from './schemas/components';
-import { structuredFileErrors } from './schemas/issues';
+import { unreadableFileErrors } from './schemas/issues';
 import { primitiveFileSchema } from './schemas/primitives';
 import { isSavedRecordFile } from './storage-records';
 import type { ComponentFile, PrimitiveFile, ReusableAxisName, ReusableDefinition } from './types';
@@ -21,17 +24,23 @@ export function normalizeCurrentFiles(input: NormalizeInput, writes: Map<string,
   normalizeReusables(input, writes, changes);
   normalizeScreenShapes(input.files, writes, changes);
   normalizeTokenShapes(input.files, writes, changes);
+  normalizeBrandFonts(input.files, writes, changes);
+  normalizeSelectorRoots(input.files, writes, changes);
+  normalizeLiteralValues(input.files, writes, changes);
 }
 
-/** Fields that this pass uses without a check, in addition to the fields load requires. */
 function reusableFieldsRead(list: string): string[] {
-  return ['variants', 'variants.values', 'sizes', 'sizes.values', 'states', 'states.values', 'slots', 'unsupported'].map(field => `${list}[].${field}`);
+  return [
+    list,
+    ...['prototype', 'prototype.source', 'prototype.styles', 'uses', 'variants', 'variants.values', 'sizes', 'sizes.values', 'states', 'states.values', 'slots', 'slots[].accepts', 'unsupported', 'tokenGroupIds', 'tokenRoles', 'styleRefs']
+      .map(field => `${list}[].${field}`)
+  ];
 }
 
 function assertNormalizerCanRead(primitiveFile: unknown, componentFile: unknown): void {
   const errors = [
-    ...structuredFileErrors('primitives.json', primitiveFileSchema, primitiveFile, new Set(reusableFieldsRead('primitives'))),
-    ...structuredFileErrors('components.json', componentFileSchema, componentFile, new Set(['groups', ...reusableFieldsRead('components')]))
+    ...unreadableFileErrors('primitives.json', primitiveFileSchema, primitiveFile, new Set(reusableFieldsRead('primitives'))),
+    ...unreadableFileErrors('components.json', componentFileSchema, componentFile, new Set(['groups', ...reusableFieldsRead('components')]))
   ];
   if (errors.length > 0) throw new Error(errors.join('\n'));
 }
@@ -72,6 +81,8 @@ function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, 
   if (remaps.size > 0) {
     applyRemaps(input, remaps, reusables.map(({ kind, reusable }) => ({ kind, id: reusable.id, styles: reusable.prototype?.styles ?? [] })), writes, changes);
   }
+
+  renameSingleAxisValues(input, reusables, writes, changes);
 
   let restored = 0;
   let movedNotes = 0;

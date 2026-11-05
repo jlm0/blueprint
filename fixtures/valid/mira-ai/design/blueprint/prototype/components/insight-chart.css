@@ -23,7 +23,7 @@
 .insight-chart__eyebrow {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -53,7 +53,7 @@
   gap: var(--app-space-2);
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   font-style: normal;
   line-height: 0;
 }
@@ -88,7 +88,6 @@
 
 .insight-chart__bar::before {
   display: block;
-  height: calc((100% - 22px) * var(--value));
   border-radius: var(--app-radius-sm) var(--app-radius-sm) 0 0;
   background: color-mix(in srgb, var(--app-color-foreground) 14%, var(--app-color-surface));
   content: '';
@@ -96,12 +95,11 @@
 
 .insight-chart__bar b {
   position: absolute;
-  bottom: calc(22px + (100% - 22px) * var(--value) + 6px);
   left: 0;
   width: 100%;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   text-align: center;
 }
 
@@ -159,4 +157,62 @@
 [data-blueprint-component="insight-chart"][data-blueprint-size="compact"] .insight-chart__bars {
   gap: 10px;
   padding: 0 var(--app-space-1);
+}
+
+.insight-chart__bar:nth-child(1)::before {
+  height: calc((100% - 22px) * 0.78);
+}
+
+.insight-chart__bar:nth-child(1) b {
+  bottom: calc(22px + (100% - 22px) * 0.78 + 6px);
+}
+
+.insight-chart__bar:nth-child(2)::before {
+  height: calc((100% - 22px) * 0.66);
+}
+
+.insight-chart__bar:nth-child(2) b {
+  bottom: calc(22px + (100% - 22px) * 0.66 + 6px);
+}
+
+.insight-chart__bar:nth-child(3)::before {
+  height: calc((100% - 22px) * 0.61);
+}
+
+.insight-chart__bar:nth-child(3) b {
+  bottom: calc(22px + (100% - 22px) * 0.61 + 6px);
+}
+
+.insight-chart__bar:nth-child(4)::before {
+  height: calc((100% - 22px) * 0.93);
+}
+
+.insight-chart__bar:nth-child(4) b {
+  bottom: calc(22px + (100% - 22px) * 0.93 + 6px);
+}
+
+.insight-chart__bar:nth-child(5)::before {
+  height: calc((100% - 22px) * 0.42);
+}
+
+.insight-chart__bar:nth-child(5) b {
+  bottom: calc(22px + (100% - 22px) * 0.42 + 6px);
+}
+
+.insight-chart__bar:nth-child(6)::before {
+  height: calc((100% - 22px) * 0.26);
+}
+
+.insight-chart__bar:nth-child(6) b {
+  bottom: calc(22px + (100% - 22px) * 0.26 + 6px);
+}
+
+[data-blueprint-component="insight-chart"][data-blueprint-variant="prose-note"] .insight-chart__note {
+  color: color-mix(in srgb, var(--app-color-foreground) 86%, var(--app-color-surface));
+  font-size: var(--app-text-15);
+  line-height: 1.7;
+}
+
+[data-blueprint-component="insight-chart"][data-blueprint-variant="prose-note"][data-blueprint-size="compact"] .insight-chart__note {
+  line-height: 1.6;
 }

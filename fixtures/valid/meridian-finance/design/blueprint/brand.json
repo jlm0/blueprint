@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "meridian-finance",
   "name": "Meridian",
   "tagline": "Treasury for companies that would rather be building.",
@@ -133,6 +133,45 @@
         "axis": "width",
         "note": "Below 96 px wide, use the wordmark or the globe."
       }
+    }
+  ],
+  "fonts": [
+    {
+      "family": "Inter Tight",
+      "source": "asset",
+      "assets": [
+        "prototype/assets/fonts/inter-tight-variable.woff2"
+      ]
+    },
+    {
+      "family": "JetBrains Mono",
+      "source": "asset",
+      "assets": [
+        "prototype/assets/fonts/jetbrains-mono-variable.woff2"
+      ]
+    },
+    {
+      "family": "SFMono-Regular",
+      "source": "system",
+      "assets": []
+    },
+    {
+      "family": "Menlo",
+      "source": "system",
+      "assets": []
+    },
+    {
+      "family": "Instrument Serif",
+      "source": "asset",
+      "assets": [
+        "prototype/assets/fonts/instrument-serif-400.woff2",
+        "prototype/assets/fonts/instrument-serif-400-italic.woff2"
+      ]
+    },
+    {
+      "family": "Georgia",
+      "source": "system",
+      "assets": []
     }
   ],
   "usage": {

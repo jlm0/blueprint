@@ -8,7 +8,7 @@
   color: var(--app-color-foreground);
 }
 
-[data-blueprint-primitive="icon"] svg {
+[data-blueprint-primitive="icon"]:not([data-blueprint-variant="inherit"]) svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -20,4 +20,14 @@
 
 [data-blueprint-primitive="icon"][data-blueprint-variant="accent"] {
   color: var(--app-color-accent);
+}
+
+[data-blueprint-primitive="icon"][data-blueprint-variant="inherit"] {
+  display: contents;
+  color: inherit;
+}
+
+:where([data-blueprint-primitive="icon"][data-blueprint-variant="inherit"] svg:not([width])) {
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
 }

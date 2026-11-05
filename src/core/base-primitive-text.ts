@@ -229,7 +229,7 @@ export const BASE_PRIMITIVE_TEXT: Readonly<Record<string, BasePrimitiveText>> = 
     accessibility: 'A row of leading, body, and trailing content with no role of its own. Only interactive slot content takes focus.',
     notes: [],
     variants: {
-      'leading-body-trailing': { name: 'Leading body trailing', description: 'Leading art, body text, and a trailing accessory.' }
+      default: { name: 'Default', description: 'Leading art, body text, and a trailing accessory.' }
     },
     sizes: {},
     states: {},

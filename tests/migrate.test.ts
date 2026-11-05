@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import { BASE_PRIMITIVE_TEXT } from '../src/core/base-primitive-text';
 import { migrateProjectFiles, type MigrationInput } from '../src/core/migrate';
 import type { BlueprintManifest, ComponentFile, PrimitiveFile, ScreenFile, TokenFile } from '../src/core/types';
@@ -139,12 +140,12 @@ describe('Blueprint migrate', () => {
     useV1Slider(input);
     const own = [
       '/* [data-blueprint-state="hero"] */',
-      '.a[data-blueprint-state=hero] ,',
-      '.b:not( [ data-blueprint-state = \'hero\' ] )  {',
+      '.slider__a[data-blueprint-state=hero] ,',
+      '.slider__b:not( [ data-blueprint-state = \'hero\' ] )  {',
       '  content: "[data-blueprint-state=hero]";',
       '}',
       '[data-blueprint-state="hero" i] { color: inherit }',
-      '@scope ([data-blueprint-state=hero]) { .c { color: inherit } }'
+      '@scope ([data-blueprint-state=hero]) { .slider__c { color: inherit } }'
     ].join('\n');
     input.files.set('prototype/primitives/slider.css', own);
     const other = [
@@ -158,12 +159,12 @@ describe('Blueprint migrate', () => {
 
     assert.equal(output.writes.get('prototype/primitives/slider.css'), [
       '/* [data-blueprint-state="hero"] */',
-      '.a[data-blueprint-variant="hero"] ,',
-      '.b:not( [data-blueprint-variant=\'hero\'] )  {',
+      '.slider__a[data-blueprint-variant="hero"] ,',
+      '.slider__b:not( [data-blueprint-variant=\'hero\'] )  {',
       '  content: "[data-blueprint-state=hero]";',
       '}',
       '[data-blueprint-state="hero" i] { color: inherit }',
-      '@scope ([data-blueprint-variant="hero"]) { .c { color: inherit } }'
+      '@scope ([data-blueprint-variant="hero"]) { .slider__c { color: inherit } }'
     ].join('\n'));
     assert.equal(output.writes.get('prototype/screens/slider-host.css'), [
       '[data-blueprint-primitive="slider"][data-blueprint-variant="hero"]:hover > [data-blueprint-state="hero"] { color: inherit }',
@@ -202,7 +203,7 @@ describe('Blueprint migrate', () => {
     const output = migrateProjectFiles(input);
     assert.equal(output.fromVersion, '1.0.0');
     const migratedScreens = JSON.parse(output.writes.get('screens.json')!) as ScreenFile;
-    assert.equal(migratedScreens.schemaVersion, '2.0.0');
+    assert.equal(migratedScreens.schemaVersion, BLUEPRINT_SCHEMA_VERSION);
     assert.deepEqual(migratedScreens.pages, [{ id: 'onboarding', name: 'Onboarding' }, { id: 'home', name: 'Home' }]);
     assert.deepEqual(migratedScreens.screens.map(screen => [screen.page, 'flow' in screen]), [['onboarding', false], ['home', false]]);
     assert.deepEqual(migratedScreens.screens[0].styleEvidence, []);
@@ -211,9 +212,9 @@ describe('Blueprint migrate', () => {
     const migratedTokens = JSON.parse(output.writes.get('tokens.json')!) as TokenFile;
     assert.deepEqual(migratedTokens.tokenGroups[0].notes, []);
     assert.equal(migratedTokens.tokenGroups[0].name, 'Color roles');
-    assert.equal((JSON.parse(output.writes.get('manifest.json')!) as BlueprintManifest).schemaVersion, '2.0.0');
+    assert.equal((JSON.parse(output.writes.get('manifest.json')!) as BlueprintManifest).schemaVersion, BLUEPRINT_SCHEMA_VERSION);
     assert.ok(output.changes.includes('screens.json: 2 screens moved from flow to page, and 2 new pages are declared: "onboarding", "home". Give each new page a description.'), output.changes.join('\n'));
-    assert.ok(output.changes.includes('manifest.json, tokens.json, screens.json: schemaVersion is now "2.0.0".'), output.changes.join('\n'));
+    assert.ok(output.changes.includes(`manifest.json, tokens.json, screens.json: schemaVersion is now "${BLUEPRINT_SCHEMA_VERSION}".`), output.changes.join('\n'));
 
     for (const [file, content] of output.writes) input.files.set(file, content);
     assert.equal(migrateProjectFiles(input).upToDate, true, 'a second run has nothing left to do');
@@ -232,7 +233,7 @@ function useV1Slider(input: MigrationInput): void {
         name: 'Slider',
         uses: [],
         tokenGroupIds: ['color'],
-        prototype: { source: 'prototype/primitives/slider.html', styles: ['prototype/primitives/slider.css'], slots: [], states: ['default', 'hero'] }
+        prototype: { source: 'prototype/primitives/slider.html', styles: ['prototype/primitives/slider.css'], slots: [], states: ['default', 'hero', 'lead'] }
       }
     ]
   }));

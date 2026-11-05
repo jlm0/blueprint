@@ -1,9 +1,9 @@
 <div class="pay" data-blueprint-screen="transfer-mobile" data-blueprint-state="default">
   <header class="pay__nav" data-blueprint-section="header">
-    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only" class="pay__navbar pay__navbar--send">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only-clear" class="pay__navbar--send">
       <span slot="title">Send payment</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only" class="pay__navbar pay__navbar--review">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-only-clear" class="pay__navbar--review">
       <span slot="title">Approve wire</span>
     </blueprint-use>
   </header>
@@ -11,22 +11,22 @@
   <section class="entry" data-blueprint-section="amount" aria-label="Payment amount">
     <div class="entry__stage">
     <div class="entry__to">
-      <blueprint-use kind="primitive" ref="avatar" state="initials" size="lg" class="entry__mark">
+      <blueprint-use kind="primitive" ref="avatar" state="initials" variant="tile-ink" size="lg">
         <span slot="initials">HS</span>
       </blueprint-use>
       <span class="entry__who"><b>Halcyon Studio</b><small>Wells Fargo ··0917</small></span>
     </div>
-    <blueprint-use kind="component" ref="amount-field" size="compact">
+    <blueprint-use kind="component" ref="amount-field" variant="unlabeled" size="compact">
       <span slot="label">Amount</span>
       <span slot="amount">18,400</span>
       <span slot="cents">.00</span>
       <span slot="hint">$2,184,902.44 available</span>
     </blueprint-use>
     <div class="entry__options">
-      <blueprint-use kind="primitive" ref="select" state="value" class="entry__source">
+      <blueprint-use kind="primitive" ref="select" state="value" variant="pill">
         <span slot="value">From Operating ··4821</span>
       </blueprint-use>
-      <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" class="entry__method">
+      <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" variant="pill">
         <span class="segmented-control__option" role="radio" aria-checked="false">ACH</span>
         <span class="segmented-control__option" role="radio" aria-checked="true">Wire</span>
         <span class="segmented-control__option" role="radio" aria-checked="false">Book</span>
@@ -47,7 +47,7 @@
         <button class="keypad__key" type="button" data-blueprint-native="numeric keypad key">0</button>
         <button class="keypad__key" type="button" data-blueprint-native="numeric keypad key" aria-label="Delete">⌫</button>
     </div>
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="pay__cta">
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="pill" size="lg" class="pay__cta">
       <span slot="label">Review payment</span>
     </blueprint-use>
   </section>
@@ -69,14 +69,14 @@
       <span>Code sent to ••42</span>
       <blueprint-use kind="primitive" ref="otp-input" state="filled"></blueprint-use>
     </div>
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="pay__cta">
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="pill" size="lg" class="pay__cta">
       <span slot="label">Send $18,400.00</span>
     </blueprint-use>
   </section>
 
   <section class="sent" data-blueprint-section="confirmation" aria-labelledby="sent-title">
     <span class="sent__seal" aria-hidden="true">
-      <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="23"/><path d="m15 24.5 6.2 6L33.5 18" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="sent__seal-glyph" viewBox="0 0 48 48" fill="none"><circle class="sent__seal-ring" cx="24" cy="24" r="23"/><path d="m15 24.5 6.2 6L33.5 18" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></blueprint-use>
     </span>
     <p class="approve__kicker">Wire sent · 10:52 AM</p>
     <h1 id="sent-title">$18,400.00 is on its way</h1>
@@ -86,10 +86,10 @@
       <div><dt>Operating balance</dt><dd>$2,166,502.44</dd></div>
     </dl>
     <div class="sent__actions">
-      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="pay__cta">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="pill" size="lg" class="pay__cta">
         <span slot="label">Done</span>
       </blueprint-use>
-      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="lg" class="pay__cta">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-ghost" size="lg" class="pay__cta">
         <span slot="label">Share receipt</span>
       </blueprint-use>
     </div>

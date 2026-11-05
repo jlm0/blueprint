@@ -225,6 +225,61 @@ export function listOpenTags(html: string): readonly OpenTag[] {
   return scanMarkup(html).openTags;
 }
 
+function holdsSlotContent(token: OpenTag): boolean {
+  return token.name === 'blueprint-use' || token.attributes.some(attribute => attribute.name === 'data-blueprint-slot');
+}
+
+/** Each tag outside a `<blueprint-use>` and outside a declared slot, because the reusable rules on the content of its slots. */
+export function listTagsOutsideSlots(html: string): readonly OpenTag[] {
+  const tokens = listMarkupTokens(html);
+  const tags: OpenTag[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.kind !== 'open') continue;
+    if (!holdsSlotContent(token)) {
+      tags.push(token);
+      continue;
+    }
+    const close = elementCloseIndex(tokens, index);
+    if (close > index) index = close;
+  }
+  return tags;
+}
+
+/** Each `<svg>` outside a `<blueprint-use>` and outside a declared slot, because the `accepts` list of a slot rules on the graphic in it. */
+export function listSvgsOutsideSlots(html: string): readonly OpenTag[] {
+  const tokens = listMarkupTokens(html);
+  const svgs: OpenTag[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.kind !== 'open') continue;
+    const inSlot = holdsSlotContent(token);
+    if (token.name === 'svg' && !inSlot) svgs.push(token);
+    if (inSlot || token.name === 'svg') {
+      const close = elementCloseIndex(tokens, index);
+      if (close > index) index = close;
+    }
+  }
+  return svgs;
+}
+
+/** Each tag inside an `<svg>`, and the `<svg>` itself, because a drawing keeps its color in attributes. */
+export function listSvgTags(html: string): readonly OpenTag[] {
+  const tokens = listMarkupTokens(html);
+  const tags: OpenTag[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.kind !== 'open' || token.name !== 'svg') continue;
+    const close = elementCloseIndex(tokens, index);
+    const end = close > index ? close : index;
+    for (const inner of tokens.slice(index, end + 1)) {
+      if (inner.kind === 'open') tags.push(inner);
+    }
+    index = end;
+  }
+  return tags;
+}
+
 /** The scan stops at the match, because a caller can hold a whole document. */
 export function firstOpenTag(html: string, accepts: (tag: OpenTag) => boolean = () => true): OpenTag | undefined {
   return tokenize(html, accepts).openTags.find(accepts);

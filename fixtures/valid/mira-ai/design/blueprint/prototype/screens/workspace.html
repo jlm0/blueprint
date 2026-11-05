@@ -2,20 +2,20 @@
   <aside class="rail" data-blueprint-section="library" aria-label="Threads">
     <div class="rail__brand">
       <a class="wordmark" href="/" aria-label="Mira home">
-        <svg class="wordmark__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+        <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="wordmark__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg></blueprint-use>
         <span>Mira</span>
       </a>
-      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="quiet" size="icon">
         <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></span>
         <span slot="label">Collapse sidebar</span>
       </blueprint-use>
     </div>
 
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" class="rail__new">
-      <span slot="label">New thread<kbd>⌘ N</kbd></span>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="outline-split" class="rail__new">
+      <span slot="label">New thread<kbd class="rail__kbd">⌘ N</kbd></span>
     </blueprint-use>
 
-    <blueprint-use kind="primitive" ref="input" state="empty" variant="filled" class="rail__search">
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="filled-hidden-label">
       <span slot="label">Search threads</span>
       <span slot="placeholder">Search threads</span>
     </blueprint-use>
@@ -35,7 +35,7 @@
     </nav>
 
     <div class="rail__foot">
-      <blueprint-use kind="primitive" ref="progress" state="value" class="rail__usage">
+      <blueprint-use kind="primitive" ref="progress" state="value" variant="muted-label">
         <span slot="label">Deep research · 15 of 25</span>
       </blueprint-use>
       <div class="account">
@@ -54,11 +54,11 @@
     <header class="stage__bar" data-blueprint-section="thread-header">
       <div class="crumbs">
         <span class="crumbs__project">Growth research</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="crumbs__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></blueprint-use>
         <h1>Q3 churn drivers</h1>
       </div>
       <div class="stage__actions">
-        <blueprint-use kind="primitive" ref="select" state="value" class="model-select">
+        <blueprint-use kind="primitive" ref="select" state="value" variant="quiet" class="model-select">
           <span slot="value">Mira 2 Pro</span>
         </blueprint-use>
         <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="sm">
@@ -71,18 +71,18 @@
       <section class="conversation" data-blueprint-section="conversation" aria-label="Conversation">
         <div class="ask">
           <span class="attachment">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-            <span><b>q3-retention.csv</b><small>48,210 rows · 2.4 MB</small></span>
+            <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="attachment__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></blueprint-use>
+            <span class="attachment__name"><b>q3-retention.csv</b><small>48,210 rows · 2.4 MB</small></span>
           </span>
           <p class="ask__bubble">Why did churn jump in Q3? Break it down by cohort and tell me what we should change before the October renewals.</p>
         </div>
 
         <article class="answer">
           <header class="answer__meta">
-            <svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+            <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg></blueprint-use>
             <b>Mira</b>
             <span class="reasoned">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="reasoned__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></blueprint-use>
               Reasoned for 14s · read 5 sources
             </span>
           </header>
@@ -90,7 +90,7 @@
           <h2>Three drivers explain 71% of the Q3 increase.</h2>
           <p>Churn rose from <strong>4.2% to 6.8%</strong> quarter over quarter, but the rise is concentrated. Most of it comes from the June cohort, which joined on the annual discount<sup>1</sup>, from accounts with a single data source<sup>2</sup>, and from seat-heavy teams downgrading after the August price change<sup>3</sup>.</p>
 
-          <blueprint-use kind="component" ref="insight-chart" state="default"></blueprint-use>
+          <blueprint-use kind="component" ref="insight-chart" state="default" variant="prose-note"></blueprint-use>
 
           <ol class="findings">
             <li>
@@ -111,11 +111,11 @@
           </ol>
 
           <footer class="answer__actions">
-            <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+            <blueprint-use kind="primitive" ref="button" class="answer__action" state="normal" variant="quiet" size="icon">
               <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
               <span slot="label">Copy answer</span>
             </blueprint-use>
-            <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost" size="icon">
+            <blueprint-use kind="primitive" ref="button" class="answer__action" state="normal" variant="quiet" size="icon">
               <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span>
               <span slot="label">Regenerate</span>
             </blueprint-use>
@@ -123,13 +123,13 @@
           </footer>
 
           <div class="followups" aria-label="Suggested follow-ups">
-            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-secondary" size="sm">
               <span slot="label">Model a 5% renewal discount</span>
             </blueprint-use>
-            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-secondary" size="sm">
               <span slot="label">Draft the retention memo</span>
             </blueprint-use>
-            <blueprint-use kind="primitive" ref="button" state="normal" variant="secondary" size="sm">
+            <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-secondary" size="sm">
               <span slot="label">Which accounts are at risk?</span>
             </blueprint-use>
           </div>
@@ -211,9 +211,9 @@
     <div class="plan">
       <p class="plan__title">Research steps</p>
       <ol>
-        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Profiled 48,210 accounts</span><small>3s</small></li>
-        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Joined usage by account</span><small>5s</small></li>
-        <li><span class="plan__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span>Compared six signup cohorts</span><small>4s</small></li>
+        <li><span class="plan__check"><blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="plan__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></blueprint-use></span><span>Profiled 48,210 accounts</span><small>3s</small></li>
+        <li><span class="plan__check"><blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="plan__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></blueprint-use></span><span>Joined usage by account</span><small>5s</small></li>
+        <li><span class="plan__check"><blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="plan__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></blueprint-use></span><span>Compared six signup cohorts</span><small>4s</small></li>
         <li><span class="plan__check plan__check--active" aria-hidden="true"></span><span>Drafting the renewal memo</span><small>Now</small></li>
       </ol>
     </div>

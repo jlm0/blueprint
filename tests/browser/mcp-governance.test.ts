@@ -390,7 +390,7 @@ describe('Blueprint MCP and template governance', () => {
           project: projectCopy,
           operation: {
             type: 'create',
-            id: 'launch-copy',
+            id: 'launch-wording',
             screenId: 'launch',
             state: 'default',
             framePresetId: 'desktop-web-page',
@@ -401,7 +401,7 @@ describe('Blueprint MCP and template governance', () => {
         });
         const archived = await call(session, 'explore', {
           project: projectCopy,
-          operation: { type: 'archive', explorationId: 'launch-copy' }
+          operation: { type: 'archive', explorationId: 'launch-wording' }
         });
         assert.equal((archived.exploration as { lifecycle: string }).lifecycle, 'archived');
         const secondSource = ((second.exploration as {
@@ -636,9 +636,9 @@ describe('Blueprint MCP and template governance', () => {
           await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
           const preservedTransform = await page.locator('#world').getAttribute('style');
           const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.workspace { --blueprint-live-test: 1; }\n`, 'utf8');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* blueprint-live-test */\n`, 'utf8');
           await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
-            .some(frame => frame.srcdoc.includes('--blueprint-live-test: 1')));
+            .some(frame => frame.srcdoc.includes('blueprint-live-test')));
           await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-agent-focus').first().waitFor();
 
           await page.evaluate(() => {
@@ -647,7 +647,7 @@ describe('Blueprint MCP and template governance', () => {
             new MutationObserver(() => {
               if (status?.dataset.phase !== 'complete' || record.__BLUEPRINT_COMPLETE_SAW_EDIT__ !== undefined) return;
               record.__BLUEPRINT_COMPLETE_SAW_EDIT__ = [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
-                .some(frame => frame.srcdoc.includes('--blueprint-complete-test: 1'));
+                .some(frame => frame.srcdoc.includes('blueprint-complete-test'));
             }).observe(status!, { attributes: true, attributeFilter: ['data-phase'] });
           });
           const editPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`;
@@ -660,7 +660,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-complete',
             tool_input: editPatch
           });
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n.workspace { --blueprint-complete-test: 1; }\n`, 'utf8');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* blueprint-complete-test */\n`, 'utf8');
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
             turn_id: 'turn-live-complete',
@@ -814,7 +814,7 @@ describe('Blueprint MCP and template governance', () => {
         assertToolError(await session.client.callTool({ name: 'index', arguments: { project: projectCopy } }), /manifest\.json is on schema "1\.0\.0".*Fix: run the migrate tool/);
         const validation = structured(await session.client.callTool({ name: 'validate', arguments: { project: projectCopy } }));
         assert.deepEqual(validation.errors, [
-          'manifest.json is on schema "1.0.0", and Blueprint now reads "2.0.0". Fix: run the migrate tool on this project, then fix what validate reports.'
+          'manifest.json is on schema "1.0.0", and Blueprint now reads "3.0.0". Fix: run the migrate tool on this project, then fix what validate reports.'
         ]);
 
         const served = await call(session, 'serve', { project: projectCopy, port: 0 });
@@ -829,7 +829,7 @@ describe('Blueprint MCP and template governance', () => {
         assert.match((await refusedPrototype.json() as { detail: string }).detail, /manifest\.json is on schema "1\.0\.0"/);
 
         const migrated = await call(session, 'migrate', { project: projectCopy });
-        assert.deepEqual([migrated.fromVersion, migrated.toVersion, migrated.files], ['1.0.0', '2.0.0', ['manifest.json']]);
+        assert.deepEqual([migrated.fromVersion, migrated.toVersion, migrated.files], ['1.0.0', '3.0.0', ['manifest.json']]);
         assert.equal((migrated.validation as { ok: boolean }).ok, true);
         await assertEventually(async () => (await (await fetch(served.url as string)).text()).includes('__BLUEPRINT_PROJECT_BUNDLE__'));
         assert.equal((await fetch(snapshotUrl, { method: 'HEAD', signal: AbortSignal.timeout(750) })).status, 200);
@@ -1046,7 +1046,7 @@ describe('Blueprint MCP and template governance', () => {
           const workspaceCss = path.join(projectCopy, 'prototype/screens/workspace.css');
           const secondPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`;
           await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-b', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-b', tool_input: secondPatch });
-          await writeFile(workspaceCss, `${await readFile(workspaceCss, 'utf8')}\n.workspace { --blueprint-diff-test: 1; }\n`, 'utf8');
+          await writeFile(workspaceCss, `${await readFile(workspaceCss, 'utf8')}\n/* blueprint-diff-test */\n`, 'utf8');
           await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Workspace');
           await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-changed').first().waitFor();
 
@@ -1132,6 +1132,74 @@ describe('Blueprint MCP and template governance', () => {
 
           await page.keyboard.press('Escape');
           await page.locator('.bp-chrome-findings').waitFor({ state: 'hidden' });
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('renders the canvas and reports the errors when a project has only style errors', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(umbraRoot, projectCopy, { recursive: true });
+      const launchCss = path.join(projectCopy, 'prototype/screens/launch.css');
+      await writeFile(launchCss, `${await readFile(launchCss, 'utf8')}\n[data-blueprint-screen="launch"] { margin: 0 !important; }\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const validation = structured(await session.client.callTool({ name: 'validate', arguments: { project: projectCopy } }));
+        assert.equal(validation.ok, false);
+        const styleError = 'screen.launch prototype/screens/launch.css margin: "0 !important" uses !important. Fix: delete !important from this declaration in prototype/screens/launch.css.';
+        assert.deepEqual(validation.errors, [styleError]);
+
+        const served = await call(session, 'serve', { project: projectCopy, port: 0 });
+        assert.equal(served.styleErrorCount, 1);
+        assert.deepEqual(served.styleErrors, [styleError]);
+
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens`);
+          await page.locator('[data-board-root="screens"]').waitFor();
+          await page.locator('.board-screens .frame[data-screen-id="launch"]').first().waitFor({ state: 'attached' });
+          assert.equal(await page.getByText('Blueprint cannot load this sidecar').count(), 0);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('shows the error page when a project has a contract error', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(umbraRoot, projectCopy, { recursive: true });
+      const launchCss = path.join(projectCopy, 'prototype/screens/launch.css');
+      await writeFile(launchCss, `${await readFile(launchCss, 'utf8')}\n[data-blueprint-screen="launch"] { margin: 0 !important; }\n`, 'utf8');
+      const tokensPath = path.join(projectCopy, 'tokens.json');
+      const tokens = JSON.parse(await readFile(tokensPath, 'utf8'));
+      tokens.projectId = 'someone-else';
+      await writeFile(tokensPath, `${JSON.stringify(tokens, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { project: projectCopy, port: 0 });
+        assert.equal(served.styleErrorCount, 1);
+
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens`);
+          await page.getByRole('heading', { name: 'Blueprint cannot load this sidecar' }).waitFor();
+          const message = await page.locator('pre').innerText();
+          assert.match(message, /tokens\.projectId "someone-else"/);
+          assert.doesNotMatch(message, /uses !important/);
+          assert.equal(await page.locator('[data-board-root="screens"]').count(), 0);
         } finally {
           await browser.close();
         }
@@ -1269,13 +1337,13 @@ describe('Blueprint MCP and template governance', () => {
         await writeFile(path.join(out, 'inspo', 'ref-1.png'), png);
         await symlink(path.join(out, 'manifest.json'), path.join(out, 'inspo', 'leak.png'));
         await writeFile(path.join(out, 'inspo.json'), `${JSON.stringify({
-          schemaVersion: '2.0.0',
+          schemaVersion: '3.0.0',
           projectId: 'app-i',
           entries: [{ id: 'ref-1', sourceUrl: 'https://images.example.com/a.png', image: 'inspo/ref-1.png', aspects: ['mark'], stance: 'like', note: 'this mark', reading: '' }],
           directions: []
         }, null, 2)}\n`);
         assertToolError(
-          await session.client.callTool({ name: 'inspo', arguments: { project: out, operation: { type: 'add', url: 'https://dribbble.com/shots/1-brand' } } }),
+          await session.client.callTool({ name: 'inspo', arguments: { project: out, operation: { type: 'add', id: 'dribbble-shot', url: 'https://dribbble.com/shots/1-brand' } } }),
           /Dribbble page.*Fix:/
         );
 

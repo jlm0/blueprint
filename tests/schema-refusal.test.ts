@@ -150,7 +150,7 @@ describe('a record on an older schema', () => {
 });
 
 describe('a file or record on a newer schema', () => {
-  const NEWER = /is on schema "9\.9\.9", which is newer than schema "2\.0\.0" that this Blueprint reads\. Fix: update Blueprint to a release that reads this schema/;
+  const NEWER = /is on schema "9\.9\.9", which is newer than schema "3\.0\.0" that this Blueprint reads\. Fix: update Blueprint to a release that reads this schema/;
 
   for (const file of ['manifest.json', 'tokens.json', 'brand.json', 'screens.json', 'primitives.json', 'components.json', historyRecord, explorationRecord]) {
     it(`refuses ${file} in each tool and in migrate, and writes nothing`, async () => {
@@ -177,10 +177,10 @@ describe('a file or record on a newer schema', () => {
   it('names each newer file, and does not read a shape it cannot know', async () => {
     await withProject(async project => {
       await writeFile(path.join(project, 'manifest.json'), JSON.stringify({ schemaVersion: '9.9.9', layout: 'future' }));
-      await setVersion(project, 'tokens.json', '3.0.0');
+      await setVersion(project, 'tokens.json', '4.0.0');
       await assert.rejects(loadProjectFromFs(project), (error: Error) => {
         assert.match(error.message, /manifest\.json is on schema "9\.9\.9".*Fix: update Blueprint/);
-        assert.match(error.message, /tokens\.json is on schema "3\.0\.0".*Fix: update Blueprint/);
+        assert.match(error.message, /tokens\.json is on schema "4\.0\.0".*Fix: update Blueprint/);
         return true;
       });
     });
@@ -202,8 +202,8 @@ describe('a file or record on a newer schema', () => {
 
   it('compares each part of the version as a number, and treats text as not newer', () => {
     const cases: Array<[unknown, boolean]> = [
-      ['9.9.9', true], ['2.0.1', true], ['2.1.0', true], ['3.0.0', true], ['10.0.0', true],
-      ['2.0.0', false], ['1.0.0', false], ['1.9.9', false], ['0.10.0', false],
+      ['9.9.9', true], ['3.0.1', true], ['3.1.0', true], ['4.0.0', true], ['10.0.0', true],
+      ['3.0.0', false], ['2.0.0', false], ['1.0.0', false], ['1.9.9', false], ['0.10.0', false],
       ['draft', false], ['', false], ['3', false], ['3.0.0-beta', false], [undefined, false], [null, false], [7, false]
     ];
     for (const [version, newer] of cases) assert.equal(isNewerSchemaVersion(version), newer, String(version));

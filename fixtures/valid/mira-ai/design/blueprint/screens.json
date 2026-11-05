@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "mira-ai",
   "pages": [
     {
@@ -143,6 +143,22 @@
           {
             "kind": "primitive",
             "id": "button"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
           }
         ]
       },
@@ -168,7 +184,7 @@
               "reason": "New thread and collapse commands.",
               "binding": {
                 "slot": "actions",
-                "variant": "outline",
+                "variant": "outline-split, quiet",
                 "copy": "New thread"
               }
             },
@@ -178,7 +194,7 @@
               "reason": "Thread search.",
               "binding": {
                 "slot": "search",
-                "variant": "filled",
+                "variant": "filled-hidden-label",
                 "state": "empty"
               }
             },
@@ -189,7 +205,8 @@
               "binding": {
                 "slot": "usage",
                 "state": "value",
-                "data": "quota.used / quota.limit"
+                "data": "quota.used / quota.limit",
+                "variant": "muted-label"
               }
             },
             {
@@ -209,6 +226,15 @@
                 "slot": "plan",
                 "variant": "outline",
                 "copy": "Pro"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -256,7 +282,8 @@
               "binding": {
                 "slot": "model",
                 "state": "value",
-                "copy": "Mira 2 Pro"
+                "copy": "Mira 2 Pro",
+                "variant": "quiet"
               }
             },
             {
@@ -267,6 +294,15 @@
                 "slot": "share",
                 "variant": "outline",
                 "copy": "Share"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -313,7 +349,8 @@
               "reason": "Figure embedded in the answer.",
               "binding": {
                 "slot": "figure",
-                "state": "default"
+                "state": "default",
+                "variant": "prose-note"
               }
             },
             {
@@ -322,7 +359,16 @@
               "reason": "Answer actions and follow-up prompts.",
               "binding": {
                 "slot": "actions",
-                "variant": "ghost, secondary"
+                "variant": "quiet, pill-secondary"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -495,6 +541,15 @@
                 "variant": "primary",
                 "copy": "Open draft"
               }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
+              }
             }
           ],
           "prototypeOnly": false,
@@ -613,6 +668,10 @@
           {
             "kind": "component",
             "id": "composer"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
           }
         ]
       },
@@ -639,7 +698,7 @@
               "binding": {
                 "slot": "title",
                 "copy": "Q3 churn drivers",
-                "variant": "back-and-right"
+                "variant": "back-and-right-borderless, right-only-borderless"
               }
             }
           ],
@@ -685,7 +744,8 @@
               "reason": "Figure embedded in the answer.",
               "binding": {
                 "slot": "figure",
-                "size": "compact"
+                "size": "compact",
+                "variant": "prose-note"
               }
             },
             {
@@ -694,7 +754,16 @@
               "reason": "Citation chips.",
               "binding": {
                 "slot": "citations",
-                "variant": "outline"
+                "variant": "quiet"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],

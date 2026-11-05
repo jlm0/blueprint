@@ -53,7 +53,7 @@ describe('persistent screen exploration core', () => {
       const bundle = await loadProjectFromFs(root);
       const created = createExplorationMetadata(bundle, {
         ...workspaceTarget,
-        title: 'A very long exploration title intended to prove generated identifiers remain safely bounded for filesystem use',
+        title: 'Thread density',
         intent: 'Compare thread density.',
         candidateLabels: ['A', 'B', 'C']
       });
@@ -227,9 +227,8 @@ describe('persistent screen exploration core', () => {
   it('restores a version saved on another page, or before pages existed, onto the screen\'s current page', async () => {
     const bundle = await loadProjectFromFs(meridianRoot);
     const entry = bundle.history.entries[0]!;
-    const legacy = entry.screen as Omit<typeof entry.screen, 'page'> & { page?: string; flow?: string };
+    const legacy = entry.screen as Omit<typeof entry.screen, 'page'> & { page?: string };
     delete legacy.page;
-    legacy.flow = 'Phone';
     assert.equal(validateProject(bundle).ok, true, validateProject(bundle).errors.join('\n'));
 
     bundle.screens.pages.push({ id: 'app', name: 'App', description: 'Signed-in app screens.' });

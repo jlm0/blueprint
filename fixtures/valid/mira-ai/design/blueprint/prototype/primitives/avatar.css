@@ -68,3 +68,8 @@
   width: var(--app-size-icon-lg);
   height: var(--app-size-icon-lg);
 }
+
+[data-blueprint-primitive="avatar"][data-blueprint-variant="tile"] {
+  border-radius: var(--app-radius-md);
+  font-size: var(--app-text-11);
+}

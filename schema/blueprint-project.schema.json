@@ -518,7 +518,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -657,12 +657,37 @@
         "minimumSize"
       ]
     },
+    "brandFont": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "asset",
+            "system"
+          ]
+        },
+        "assets": {
+          "$ref": "#/$defs/stringArray"
+        }
+      },
+      "required": [
+        "family",
+        "source",
+        "assets"
+      ],
+      "additionalProperties": false
+    },
     "brandFile": {
       "type": "object",
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -716,6 +741,12 @@
             "$ref": "#/$defs/brandMark"
           }
         },
+        "fonts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/brandFont"
+          }
+        },
         "usage": {
           "type": "object",
           "properties": {
@@ -736,7 +767,8 @@
         "schemaVersion",
         "projectId",
         "name",
-        "marks"
+        "marks",
+        "fonts"
       ]
     },
     "readinessItem": {
@@ -984,7 +1016,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -1146,7 +1178,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "handoffContractVersion": {
           "type": "string"
@@ -1191,7 +1223,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -1575,9 +1607,6 @@
           "items": {
             "$ref": "#/$defs/screenSection"
           }
-        },
-        "flow": {
-          "type": "string"
         }
       },
       "required": [
@@ -1601,7 +1630,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -1788,7 +1817,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -1900,7 +1929,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"
@@ -1996,7 +2025,7 @@
       "properties": {
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "3.0.0"
         },
         "projectId": {
           "type": "string"

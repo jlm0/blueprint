@@ -73,3 +73,7 @@
     animation: none;
   }
 }
+
+[data-blueprint-primitive="progress"][data-blueprint-variant="muted-label"] .progress__label {
+  color: var(--app-color-muted);
+}

@@ -4,7 +4,7 @@ import { mkdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/pr
 import path from 'node:path';
 import { loadProjectFromFs } from '../core/load';
 import { assertCurrentSchema } from '../core/schema-version';
-import type { BlueprintProjectBundle } from '../core/types';
+import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
 import { normalize, runInOrder, throwIfAborted } from './operation-support';
 import type { ProjectCheck, ProjectValidator } from './project-validation';
 
@@ -24,6 +24,13 @@ interface ProjectFileTransaction {
 
 const projectMutations = new Map<string, Promise<void>>();
 
+/** `inspo` edits no design file, so a style error stops only the tools that change the design. */
+export type MutationGate = 'all-errors' | 'contract-errors';
+
+function gated(result: ValidationResult, gate: MutationGate): { errors: string[] } {
+  return { errors: gate === 'contract-errors' ? result.contractErrors : result.errors };
+}
+
 // A worker check leaves the event loop free, so another mutation of this project must wait until this commit ends.
 export async function withProjectMutation<T>(projectRoot: string, signal: AbortSignal | undefined, mutate: () => Promise<T>): Promise<T> {
   return runInOrder(projectMutations, realpathSync.native(projectRoot), signal, mutate);
@@ -32,11 +39,14 @@ export async function withProjectMutation<T>(projectRoot: string, signal: AbortS
 export async function assertValidMutation(
   bundle: BlueprintProjectBundle,
   validate: ProjectValidator,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  gate: MutationGate = 'all-errors',
+  nameFiles: (error: string) => string = error => error
 ): Promise<ProjectCheck> {
   const check = await validate.projected(bundle, signal);
-  if (!check.ok) {
-    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${check.errors.join('\n')}`);
+  const validation = gated(check, gate);
+  if (validation.errors.length > 0) {
+    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${validation.errors.map(error => nameFiles(error)).join('\n')}`);
   }
   return check;
 }
@@ -45,10 +55,11 @@ export async function assertPersistedProjectValid(
   projectRoot: string,
   projected: ProjectCheck,
   validate: ProjectValidator,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  gate: MutationGate = 'all-errors'
 ): Promise<void> {
-  const validation = await validate.persisted(projectRoot, projected.fingerprint, signal);
-  if (!validation.ok) {
+  const validation = gated(await validate.persisted(projectRoot, projected.fingerprint, signal), gate);
+  if (validation.errors.length > 0) {
     throw new Error(`Persisted exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
   }
 }
@@ -58,13 +69,14 @@ export async function commitProjectMutation(
   writes: ProjectFileWrite[],
   projected: ProjectCheck,
   validate: ProjectValidator,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  gate: MutationGate = 'all-errors'
 ): Promise<void> {
   throwIfAborted(signal);
   const transaction = await applyProjectFileTransaction(projectRoot, writes);
   try {
     throwIfAborted(signal);
-    await assertPersistedProjectValid(projectRoot, projected, validate, signal);
+    await assertPersistedProjectValid(projectRoot, projected, validate, signal, gate);
   } catch (error) {
     await transaction.rollback();
     throw error;

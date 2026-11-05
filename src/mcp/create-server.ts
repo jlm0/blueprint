@@ -189,7 +189,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Serve Blueprint Review',
       description:
-        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. Pass focus with a kind:id boundary to get a URL that opens that boundary\'s page, so the person lands on what changed. Omitted ports allocate from 4173; separate projects receive separate listeners. Independent MCP connections share the repository runtime; its owning connection closes it.',
+        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. A project with only style errors still opens on the canvas, and styleErrors lists the first of them. A contract error shows the error page. Pass focus with a kind:id boundary to get a URL that opens that boundary\'s page, so the person lands on what changed. Omitted ports allocate from 4173; separate projects receive separate listeners. Independent MCP connections share the repository runtime; its owning connection closes it.',
       inputSchema: withArgumentFixes('serve', serveInputSchema),
       outputSchema: serveOutputSchema
     },
@@ -222,6 +222,8 @@ export function createBlueprintMcpServer(): McpServer {
           port: handle.port,
           url: handle.url,
           runtime: handle.runtime,
+          styleErrorCount: handle.styleErrorCount,
+          styleErrors: handle.styleErrors,
           ...(handle.focus ? { focus: handle.focus } : {}),
           ...(handle.selection ? { selection: handle.selection } : {})
         });

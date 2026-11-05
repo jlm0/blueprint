@@ -57,6 +57,17 @@ export const brandMarkSchema = named('brandMark', z.object({
   })
 }));
 
+export const brandFontSourceSchema = z.enum(['asset', 'system']);
+
+export const brandFontSchema = named('brandFont', z.strictObject({
+  /** The name that a font-family token value and an @font-face rule use. */
+  family: z.string().min(1),
+  /** `asset` loads a file from the project. `system` reads a font that the device has. */
+  source: brandFontSourceSchema,
+  /** Sidecar-relative files of an `asset` family. A `system` family holds none. */
+  assets: stringListSchema
+}));
+
 export const brandFileSchema = named('brandFile', z.object({
   schemaVersion: schemaVersionSchema,
   projectId: z.string(),
@@ -66,6 +77,8 @@ export const brandFileSchema = named('brandFile', z.object({
   personality: z.array(brandTraitSchema).optional(),
   voice: brandVoiceSchema.optional(),
   marks: z.array(brandMarkSchema),
+  /** Each font family that a token or an @font-face rule names, except the generic families. */
+  fonts: z.array(brandFontSchema),
   usage: brandUsageSchema.optional()
 }));
 
@@ -75,4 +88,6 @@ export type BrandUsage = z.infer<typeof brandUsageSchema>;
 export type BrandMarkRole = z.infer<typeof brandMarkRoleSchema>;
 export type BrandMarkVariant = z.infer<typeof brandMarkVariantSchema>;
 export type BrandMark = z.infer<typeof brandMarkSchema>;
+export type BrandFontSource = z.infer<typeof brandFontSourceSchema>;
+export type BrandFont = z.infer<typeof brandFontSchema>;
 export type BrandFile = z.infer<typeof brandFileSchema>;

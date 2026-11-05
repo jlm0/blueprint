@@ -45,11 +45,11 @@
       <div class="field">
         <span class="field__label">To</span>
         <div class="recipient">
-          <blueprint-use kind="primitive" ref="avatar" state="initials" size="lg" class="recipient__mark">
+          <blueprint-use kind="primitive" ref="avatar" state="initials" variant="tile-ink" size="lg">
             <span slot="initials">HS</span>
           </blueprint-use>
           <span class="recipient__body"><b>Halcyon Studio</b><small>Wells Fargo ··0917 · Paid 6 times since March</small></span>
-          <blueprint-use kind="primitive" ref="button" state="normal" variant="link" class="recipient__change">
+          <blueprint-use kind="primitive" ref="button" state="normal" variant="link">
             <span slot="label">Change</span>
           </blueprint-use>
         </div>
@@ -71,13 +71,13 @@
       <div class="details__row">
         <div class="field">
           <span class="field__label">Method</span>
-          <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" class="details__method">
-            <span class="segmented-control__option" role="radio" aria-checked="false">ACH<small>1–2 days</small></span>
-            <span class="segmented-control__option" role="radio" aria-checked="true">Wire<small>Today</small></span>
-            <span class="segmented-control__option" role="radio" aria-checked="false">Book<small>Instant</small></span>
+          <blueprint-use kind="primitive" ref="segmented-control" state="second-selected" variant="stacked">
+            <span class="segmented-control__option" role="radio" aria-checked="false">ACH<small class="details__method-note">1–2 days</small></span>
+            <span class="segmented-control__option" role="radio" aria-checked="true">Wire<small class="details__method-note">Today</small></span>
+            <span class="segmented-control__option" role="radio" aria-checked="false">Book<small class="details__method-note">Instant</small></span>
           </blueprint-use>
         </div>
-        <blueprint-use kind="primitive" ref="input" state="empty" variant="outline" class="details__memo">
+        <blueprint-use kind="primitive" ref="input" state="empty" variant="tall">
           <span slot="label">Memo</span>
           <span slot="placeholder">Brand retainer, September</span>
         </blueprint-use>
@@ -104,7 +104,7 @@
       <p class="review__sentence">You're sending <b>$18,400.00</b> from <b>Operating</b> to <b>Halcyon Studio</b> by domestic wire, arriving <b>today by 5:00 PM ET</b>.</p>
       <div class="review__code">
         <span class="field__label">Enter the 6-digit code sent to ••• ••42</span>
-        <blueprint-use kind="primitive" ref="otp-input" state="focused" class="review__otp"></blueprint-use>
+        <blueprint-use kind="primitive" ref="otp-input" state="focused" variant="tall"></blueprint-use>
         <span class="review__resend">Didn't get it? <a href="#">Resend in 0:24</a></span>
       </div>
       <blueprint-use kind="primitive" ref="checkbox" state="on" class="review__confirm">
@@ -134,7 +134,7 @@
 
     <section class="done" data-blueprint-section="confirmation" aria-labelledby="done-title">
       <span class="done__seal" aria-hidden="true">
-        <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="23"/><path d="m15 24.5 6.2 6L33.5 18" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="done__seal-glyph" viewBox="0 0 48 48" fill="none"><circle class="done__seal-ring" cx="24" cy="24" r="23"/><path d="m15 24.5 6.2 6L33.5 18" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></blueprint-use>
       </span>
       <p class="send__kicker">Wire sent · 10:52 AM ET</p>
       <h1 id="done-title">$18,400.00 is on its way to Halcyon Studio</h1>
@@ -178,7 +178,7 @@
         <span slot="after" class="is-negative">−$215,097.56</span>
         <span slot="note">Payments can't overdraw an account. Move funds first or lower the amount.</span>
       </blueprint-use>
-      <p class="send__assure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg>Payments over $10,000 need a second approver. Maya Chen will be notified.</p>
+      <p class="send__assure"><blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="send__assure-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg></blueprint-use>Payments over $10,000 need a second approver. Maya Chen will be notified.</p>
     </div>
   </main>
 </div>

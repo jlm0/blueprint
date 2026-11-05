@@ -1,20 +1,10 @@
 <a class="account-tile" href="#" data-blueprint-component="account-tile" data-blueprint-surface>
   <div class="account-tile__top">
-    <blueprint-use kind="primitive" ref="text" size="label" variant="muted" class="account-tile__kind">
-      <span slot="text" data-blueprint-slot="kind">Checking</span>
-    </blueprint-use>
-    <blueprint-use kind="primitive" ref="text" size="label" variant="muted" class="account-tile__number">
-      <span slot="text" data-blueprint-slot="number">··4821</span>
-    </blueprint-use>
+    <p class="account-tile__kind"><span data-blueprint-slot="kind">Checking</span></p>
+    <p class="account-tile__number"><span data-blueprint-slot="number">··4821</span></p>
   </div>
-  <blueprint-use kind="primitive" ref="text" size="body" class="account-tile__name">
-    <span slot="text" data-blueprint-slot="name">Operating</span>
-  </blueprint-use>
-  <blueprint-use kind="primitive" ref="text" size="body" class="account-tile__balance">
-    <span slot="text" data-blueprint-slot="balance">$2,184,902.44</span>
-  </blueprint-use>
-  <blueprint-use kind="primitive" ref="text" size="label" variant="muted" class="account-tile__meta">
-    <span slot="text" data-blueprint-slot="meta">45% of cash</span>
-  </blueprint-use>
-  <svg class="account-tile__check" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10"/><path d="m6 10.2 2.7 2.6L14.2 7" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <p class="account-tile__name"><span data-blueprint-slot="name">Operating</span></p>
+  <p class="account-tile__balance"><span data-blueprint-slot="balance">$2,184,902.44</span></p>
+  <p class="account-tile__meta"><span data-blueprint-slot="meta">45% of cash</span></p>
+  <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="account-tile__check" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10"/><path d="m6 10.2 2.7 2.6L14.2 7" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></blueprint-use>
 </a>

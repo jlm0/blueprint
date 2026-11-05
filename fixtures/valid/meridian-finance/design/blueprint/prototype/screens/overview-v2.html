@@ -3,11 +3,11 @@
     <blueprint-use kind="component" ref="web-header" state="overview"></blueprint-use>
   </div>
 
-  <main class="overview__main">
+  <main class="overview-v2__main">
     <section class="hero" data-blueprint-section="position" aria-labelledby="position-title">
       <div class="hero__cash">
         <p class="hero__eyebrow"><span class="hero__live" aria-hidden="true"></span><span id="position-title">Total cash across four accounts</span><span class="hero__time">Updated 9:41 AM ET</span></p>
-        <blueprint-use kind="component" ref="balance-card" state="hero">
+        <blueprint-use kind="component" ref="balance-card" state="hero" variant="unlabeled">
           <span slot="label">Northwind Labs, Inc.</span>
           <span slot="amount">4,812,406</span>
           <span slot="cents">.18</span>
@@ -42,8 +42,8 @@
       </aside>
     </section>
 
-    <div class="overview__grid">
-      <div class="overview__chart" data-blueprint-section="cash-flow">
+    <div class="overview-v2__grid">
+      <div class="overview-v2__chart" data-blueprint-section="cash-flow">
         <blueprint-use kind="component" ref="cashflow-chart" state="default"></blueprint-use>
       </div>
 

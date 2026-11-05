@@ -13,7 +13,7 @@ import {
 } from './bundle';
 import { ContainedBlueprintReader } from './filesystem-containment';
 import { isObject } from './raw-json';
-import { structuredFileErrors } from './schemas/issues';
+import { ProjectShapeError, structuredFileErrors } from './schemas/issues';
 import { STRUCTURED_FILE_SCHEMAS } from './schemas/project';
 import { explorationRecordFileSchema, screenHistoryRecordFileSchema } from './schemas/records';
 import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions, schemaVersionErrors, schemaVersionText } from './schema-version';
@@ -75,7 +75,7 @@ function assertCurrentFilesMatchSchemas(files: StructuredFiles): void {
     const content = files[key];
     return content === undefined || isOnOtherSchema(content) ? [] : structuredFileErrors(file, schema, content);
   });
-  if (errors.length > 0) throw new Error(errors.join('\n'));
+  if (errors.length > 0) throw new ProjectShapeError(errors);
 }
 
 async function readBundle(
@@ -210,7 +210,7 @@ async function readRecord<T extends { schemaVersion: string }>(
   if (version !== BLUEPRINT_SCHEMA_VERSION) recordSchemaVersions[recordRef] = schemaVersionText(version);
   if (isOnOtherSchema(record)) return record;
   const errors = structuredFileErrors(recordRef, schema, record);
-  if (errors.length > 0) throw new Error(errors.join('\n'));
+  if (errors.length > 0) throw new ProjectShapeError(errors);
   return record;
 }
 

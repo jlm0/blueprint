@@ -1,4 +1,5 @@
 import { checkClosedObject, checkEntries, checkId, checkName, checkProse, checkText, isRecord, isStringList, quoteList } from './contract-checks';
+import { isCssColorTokenValue, isCssLengthValue, isCssMotionValue, isCssShadowValue, isCssSizeValue, readFontValue } from './css';
 import type { ProseField } from './screen-contract';
 import type { DesignToken, TokenFile, TokenGroup } from './types';
 
@@ -52,6 +53,26 @@ export function validateTokenContract(errors: string[], tokens: TokenFile): void
   });
 }
 
+const TOKEN_VALUE_FORMS: Record<DesignToken['type'], { parses: (value: string) => boolean; form: string; example: string }> = {
+  color: { parses: isCssColorTokenValue, form: 'a CSS color or a gradient', example: '"#ffffff"' },
+  space: { parses: isCssLengthValue, form: 'a length, a percentage, 0, or a math function', example: '"8px"' },
+  size: { parses: isCssSizeValue, form: 'a length, a percentage, a number, or a grid track list', example: '"44px"' },
+  radius: { parses: isCssLengthValue, form: 'a length, a percentage, 0, or a math function', example: '"8px"' },
+  typography: {
+    parses: value => readFontValue(value).form !== 'other',
+    form: 'a font shorthand, a font family list, or a length',
+    example: '"400 14px/1.5 var(--app-font-sans)"'
+  },
+  shadow: { parses: isCssShadowValue, form: 'a shadow', example: '"0 1px 2px rgba(0, 0, 0, 0.2)"' },
+  motion: { parses: isCssMotionValue, form: 'a duration or an easing', example: '"160ms ease"' }
+};
+
+function validateTokenValue(errors: string[], label: string, type: unknown, value: string): void {
+  const form = TOKEN_VALUE_FORMS[type as DesignToken['type']];
+  if (!form || form.parses(value)) return;
+  errors.push(`${label}.value "${value}" is not ${form.form}, so it does not fit type "${String(type)}". Fix: set value to ${form.form}, such as ${form.example}, or set type to the type that this value has.`);
+}
+
 function validateToken(errors: string[], groupLabel: string, token: unknown, index: number): void {
   const label = isRecord(token) && typeof token.id === 'string' && token.id ? `${groupLabel}.token.${token.id}` : `${groupLabel}.tokens[${index}]`;
   if (!isRecord(token)) {
@@ -66,6 +87,8 @@ function validateToken(errors: string[], groupLabel: string, token: unknown, ind
   }
   if (typeof token.value !== 'string' || !token.value.trim()) {
     errors.push(`${label}.value is missing. Fix: set it to the CSS value the token stands for, such as "#ffffff" or "8px".`);
+  } else {
+    validateTokenValue(errors, label, token.type, token.value);
   }
   checkText(errors, `${label}.description`, token.description, TOKEN_LIMITS.description, 'say where the token applies');
   if (typeof token.styleRef !== 'string' || !/^--[\w-]+$/.test(token.styleRef)) {

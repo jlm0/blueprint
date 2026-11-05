@@ -2,7 +2,7 @@
   <div class="match__glow" aria-hidden="true"></div>
 
   <header class="match__bar" data-blueprint-section="header">
-    <blueprint-use kind="primitive" ref="nav-bar" variant="back-and-right" class="match__nav">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="overlay">
       <span slot="title">Match summary</span>
     </blueprint-use>
   </header>
@@ -31,22 +31,22 @@
   </section>
 
   <section class="stats" data-blueprint-section="stats" aria-label="Your performance">
-    <blueprint-use kind="component" ref="stat-meter" state="record">
+    <blueprint-use kind="component" ref="stat-meter" state="record" size="compact">
       <span slot="label">Eliminations</span>
       <span slot="value">11</span>
       <span slot="delta">Season best</span>
     </blueprint-use>
-    <blueprint-use kind="component" ref="stat-meter" state="above">
+    <blueprint-use kind="component" ref="stat-meter" state="above" size="compact">
       <span slot="label">Damage</span>
       <span slot="value">2,847</span>
       <span slot="delta">+38% vs average</span>
     </blueprint-use>
-    <blueprint-use kind="component" ref="stat-meter" state="average">
+    <blueprint-use kind="component" ref="stat-meter" state="average" size="compact">
       <span slot="label">Accuracy</span>
       <span slot="value">34%</span>
       <span slot="delta">On your average</span>
     </blueprint-use>
-    <blueprint-use kind="component" ref="stat-meter" state="below">
+    <blueprint-use kind="component" ref="stat-meter" state="below" size="compact">
       <span slot="label">Revives</span>
       <span slot="value">1</span>
       <span slot="delta">−2 vs average</span>
@@ -58,31 +58,31 @@
       <h2 id="board-title">Squad</h2>
       <span><i>Elims</i><i>Damage</i></span>
     </header>
-    <blueprint-use kind="component" ref="squad-member" state="mvp">
+    <blueprint-use kind="component" ref="squad-member" state="mvp" size="compact">
       <span slot="tag">V9</span>
       <span slot="name">VESPER_09</span>
       <span slot="status">MVP · you</span>
-      <b slot="stats"><i>11</i><i>2,847</i></b>
+      <b slot="stats" class="board__figures"><i class="board__figure">11</i><i class="board__figure">2,847</i></b>
     </blueprint-use>
-    <blueprint-use kind="component" ref="squad-member" state="scoreboard">
+    <blueprint-use kind="component" ref="squad-member" state="scoreboard" size="compact">
       <span slot="tag">KS</span>
       <span slot="name">KESTREL</span>
       <span slot="status">6 assists</span>
-      <b slot="stats"><i>7</i><i>1,904</i></b>
+      <b slot="stats" class="board__figures"><i class="board__figure">7</i><i class="board__figure">1,904</i></b>
     </blueprint-use>
-    <blueprint-use kind="component" ref="squad-member" state="scoreboard">
+    <blueprint-use kind="component" ref="squad-member" state="scoreboard" size="compact">
       <span slot="tag">NV</span>
       <span slot="name">NOVA.EXE</span>
       <span slot="status">3 revives</span>
-      <b slot="stats"><i>4</i><i>1,210</i></b>
+      <b slot="stats" class="board__figures"><i class="board__figure">4</i><i class="board__figure">1,210</i></b>
     </blueprint-use>
   </section>
 
   <footer class="match__actions" data-blueprint-section="actions">
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="match__again">
-      <span slot="label">Queue again</span>
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-glow-tight" size="lg" class="match__again">
+      <span slot="label" class="match__again-label">Queue again</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="icon" class="match__share">
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-outline" size="icon" class="match__share">
       <span slot="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span>
       <span slot="label">Share result</span>
     </blueprint-use>

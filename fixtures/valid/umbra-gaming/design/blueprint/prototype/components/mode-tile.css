@@ -32,7 +32,7 @@
   letter-spacing: 0.1em;
 }
 
-[data-blueprint-component="mode-tile"] .mode-tile__flag {
+[data-blueprint-component="mode-tile"]:not([data-blueprint-state="new"]) .mode-tile__flag {
   display: none;
 }
 
@@ -59,7 +59,7 @@
 
 .mode-tile__name {
   font-family: var(--app-font-display);
-  font-size: 17px;
+  font-size: var(--app-text-17);
   font-weight: 700;
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -68,10 +68,6 @@
 .mode-tile__meta {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
-}
-
-[data-blueprint-component="mode-tile"][data-blueprint-state="new"] .mode-tile__flag {
-  display: inline-flex;
 }
 
 [data-blueprint-component="mode-tile"][data-blueprint-state="new"] .mode-tile__glyph {

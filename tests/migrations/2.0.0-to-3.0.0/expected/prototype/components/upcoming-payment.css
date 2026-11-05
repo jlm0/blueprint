@@ -1,0 +1,89 @@
+[data-blueprint-component="upcoming-payment"] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--app-color-border);
+  color: var(--app-color-foreground);
+  text-decoration: none;
+}
+
+.upcoming__date {
+  display: grid;
+  width: 44px;
+  height: 46px;
+  place-content: center;
+  justify-items: center;
+  border: 1px solid var(--app-color-border-strong);
+  border-radius: var(--app-radius-md);
+  background: var(--app-color-surface);
+}
+
+.upcoming__date b {
+  font: var(--app-type-display);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.upcoming__date span {
+  color: var(--app-color-muted);
+  font: var(--app-type-code);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.upcoming__body,
+.upcoming__figures {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.upcoming__name,
+.upcoming__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upcoming__name {
+  font: var(--app-type-body);
+  font-weight: 550;
+}
+
+.upcoming__meta {
+  color: var(--app-color-muted);
+  font: var(--app-type-caption);
+}
+
+.upcoming__figures {
+  justify-items: end;
+}
+
+.upcoming__amount {
+  font: var(--app-type-body);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-blueprint-component="upcoming-payment"] .upcoming__approval {
+  display: none;
+}
+
+[data-blueprint-component="upcoming-payment"][data-blueprint-state="approval"] .upcoming__approval {
+  display: inline-flex;
+  padding: 1px 7px;
+  color: var(--app-color-warning);
+  background: color-mix(in srgb, var(--app-color-warning) 10%, var(--app-color-surface));
+  font-size: 11px;
+}
+
+[data-blueprint-component="upcoming-payment"][data-blueprint-state="approval"] .upcoming__approval .badge__dot {
+  background: var(--app-color-warning);
+}
+
+[data-blueprint-component="upcoming-payment"][data-blueprint-state="approval"] .upcoming__date {
+  border-color: color-mix(in srgb, var(--app-color-warning) 45%, transparent);
+}

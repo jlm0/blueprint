@@ -1,9 +1,9 @@
 <div class="chat" data-blueprint-screen="chat" data-blueprint-state="default">
   <header class="chat__header" data-blueprint-section="header">
-    <blueprint-use kind="primitive" ref="nav-bar" variant="back-and-right" class="chat__nav chat__nav--thread">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="back-and-right-borderless" class="chat__nav--thread">
       <span slot="title">Q3 churn drivers</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="nav-bar" variant="right-only" class="chat__nav chat__nav--new">
+    <blueprint-use kind="primitive" ref="nav-bar" variant="right-only-borderless" class="chat__nav--new">
       <span slot="title">New thread</span>
     </blueprint-use>
   </header>
@@ -14,21 +14,21 @@
 
     <article class="answer">
       <header class="answer__meta">
-        <svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg>
+        <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="answer__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M16 6.5c.7 5.4 2.2 7.6 4.3 8.9 1.2.7 3.1 1.1 5.2 1.4-2.1.3-4 .7-5.2 1.4-2.1 1.3-3.6 3.5-4.3 8.9-.7-5.4-2.2-7.6-4.3-8.9-1.2-.7-3.1-1.1-5.2-1.4 2.1-.3 4-.7 5.2-1.4 2.1-1.3 3.6-3.5 4.3-8.9Z"/></svg></blueprint-use>
         <b>Mira</b>
         <span>Reasoned for 14s</span>
       </header>
       <h1>Three drivers explain 71% of the Q3 increase.</h1>
       <p>Churn rose from <strong>4.2% to 6.8%</strong>. Most of it comes from the June cohort, which joined on the annual discount and left at renewal.</p>
-      <blueprint-use kind="component" ref="insight-chart" size="compact">
+      <blueprint-use kind="component" ref="insight-chart" variant="prose-note" size="compact">
         <span slot="eyebrow">Figure 1</span>
         <span slot="title">Churn by signup cohort</span>
         <span slot="note">June joined on the annual discount.</span>
       </blueprint-use>
       <div class="citations" aria-label="Sources">
-        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">1 · Retention export</span></blueprint-use>
-        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">2 · Usage</span></blueprint-use>
-        <blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">+4</span></blueprint-use>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="quiet"><span slot="label">1 · Retention export</span></blueprint-use>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="quiet"><span slot="label">2 · Usage</span></blueprint-use>
+        <blueprint-use kind="primitive" ref="badge" state="default" variant="quiet"><span slot="label">+4</span></blueprint-use>
       </div>
     </article>
   </section>

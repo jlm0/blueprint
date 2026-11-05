@@ -6,7 +6,7 @@
   font: var(--app-type-body);
 }
 
-h1 {
+[data-blueprint-screen="hand-built-control"] h1 {
   margin: 0 0 var(--app-space-4);
   font: var(--app-type-title);
 }

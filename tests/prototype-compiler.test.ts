@@ -41,13 +41,14 @@ describe('canonical prototype compiler', () => {
     assert.deepEqual(
       first.observedUses.map(use => `${use.kind}:${use.id}:${use.variant}:${use.size}:${use.state}`),
       [
-        'primitive:nav-bar:back-and-right:default:default',
-        'primitive:nav-bar:right-only:default:default',
-        'component:insight-chart:default:compact:default',
+        'primitive:nav-bar:back-and-right-borderless:default:default',
+        'primitive:nav-bar:right-only-borderless:default:default',
+        'primitive:icon:inherit:default:default',
+        'component:insight-chart:prose-note:compact:default',
         'primitive:segmented-control:default:default:second-selected',
-        'primitive:badge:outline:default:default',
-        'primitive:badge:outline:default:default',
-        'primitive:badge:outline:default:default',
+        'primitive:badge:quiet:default:default',
+        'primitive:badge:quiet:default:default',
+        'primitive:badge:quiet:default:default',
         'component:prompt-card:default:compact:default',
         'primitive:icon:muted:default:default',
         'component:prompt-card:default:compact:default',
@@ -55,13 +56,13 @@ describe('canonical prototype compiler', () => {
         'component:prompt-card:default:compact:default',
         'primitive:icon:muted:default:default',
         'component:composer:default:compact:default',
-        'primitive:button:ghost:icon:normal',
-        'primitive:badge:accent:default:default',
-        'primitive:button:primary:icon:normal',
+        'primitive:button:ring:icon:normal',
+        'primitive:badge:accent-roomy:default:default',
+        'primitive:button:pill:icon:normal',
         'component:composer:default:compact:default',
-        'primitive:button:ghost:icon:normal',
-        'primitive:badge:accent:default:default',
-        'primitive:button:primary:icon:normal'
+        'primitive:button:ring:icon:normal',
+        'primitive:badge:accent-roomy:default:default',
+        'primitive:button:pill:icon:normal'
       ]
     );
 

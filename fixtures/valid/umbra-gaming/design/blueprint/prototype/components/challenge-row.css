@@ -43,37 +43,36 @@
   white-space: nowrap;
 }
 
-[data-blueprint-component="challenge-row"] .progress__head {
-  display: none;
-}
-
-[data-blueprint-component="challenge-row"] .challenge-row__meter [data-blueprint-primitive="progress"] {
+.challenge-row__meter {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
 }
 
-[data-blueprint-component="challenge-row"] .progress__track {
+.challenge-row__count {
+  display: block;
+  font-size: var(--app-text-10);
+  white-space: nowrap;
+}
+
+.challenge-row__track {
+  position: relative;
+  display: block;
   height: 3px;
-  grid-row: 1;
-  grid-column: 1;
+  overflow: hidden;
+  border-radius: var(--app-radius-full);
   background: var(--app-color-surface-4);
 }
 
-[data-blueprint-component="challenge-row"] .challenge-row__meter .progress__head {
-  display: block;
-  grid-row: 1;
-  grid-column: 2;
-  color: var(--app-color-muted);
-  font-size: 10px;
-}
-
-[data-blueprint-component="challenge-row"] .challenge-row__meter [data-blueprint-primitive="progress"] .progress__value {
-  display: none;
-}
-
-.challenge-row__meter i {
-  font-style: normal;
+.challenge-row__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--app-color-primary);
+  transition: width var(--app-motion-state);
 }
 
 .challenge-row__reward {
@@ -88,19 +87,19 @@
 .challenge-row__reward small {
   color: var(--app-color-muted);
   font: var(--app-type-label);
-  font-size: 9px;
+  font-size: var(--app-text-9);
   letter-spacing: 0.12em;
 }
 
-[data-blueprint-component="challenge-row"][data-blueprint-state="started"] .progress__bar {
+[data-blueprint-component="challenge-row"][data-blueprint-state="started"] .challenge-row__bar {
   width: 20%;
 }
 
-[data-blueprint-component="challenge-row"][data-blueprint-state="halfway"] .progress__bar {
+[data-blueprint-component="challenge-row"][data-blueprint-state="halfway"] .challenge-row__bar {
   width: 50%;
 }
 
-[data-blueprint-component="challenge-row"][data-blueprint-state="close"] .progress__bar {
+[data-blueprint-component="challenge-row"][data-blueprint-state="close"] .challenge-row__bar {
   width: 80%;
 }
 
@@ -114,10 +113,23 @@
   background: var(--app-color-primary);
 }
 
-[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .progress__bar {
+[data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .challenge-row__bar {
   width: 100%;
 }
 
 [data-blueprint-component="challenge-row"][data-blueprint-state="complete"] .challenge-row__reward {
   color: var(--app-color-primary);
+}
+
+[data-blueprint-component="challenge-row"]:not([data-blueprint-state="started"]) .challenge-row__track--started,
+[data-blueprint-component="challenge-row"]:not([data-blueprint-state="halfway"]) .challenge-row__track--halfway,
+[data-blueprint-component="challenge-row"]:not([data-blueprint-state="close"]) .challenge-row__track--close,
+[data-blueprint-component="challenge-row"]:not([data-blueprint-state="complete"]) .challenge-row__track--complete {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .challenge-row__bar {
+    transition: none;
+  }
 }

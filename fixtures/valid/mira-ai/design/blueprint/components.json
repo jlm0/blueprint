@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "mira-ai",
   "groups": [
     {
@@ -155,7 +155,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Sets the note as a muted caption."
+          },
+          {
+            "id": "prose-note",
+            "name": "Prose note",
+            "description": "Sets the note at reading size in the body color, so the note reads as part of the answer around the figure."
           }
         ]
       },

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "meridian-finance",
   "entry": {
     "screenId": "home",
@@ -95,6 +95,14 @@
           {
             "kind": "component",
             "id": "transaction-row"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
           }
         ]
       },
@@ -122,6 +130,15 @@
                 "slot": "notifications",
                 "variant": "ghost",
                 "layout": "icon"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -176,7 +193,7 @@
               "reason": "Send, request, deposit, and cards.",
               "binding": {
                 "slot": "actions",
-                "variant": "primary, secondary",
+                "variant": "pill, pill-outline",
                 "layout": "icon"
               }
             }
@@ -308,7 +325,17 @@
               "sourceAnchor": "prototype/screens/home.css"
             }
           ],
-          "uses": [],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
+              }
+            }
+          ],
           "prototypeOnly": false,
           "notes": [],
           "implementationHints": [],

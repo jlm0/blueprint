@@ -1,5 +1,5 @@
 export type { BoundaryKind, ReadinessItem, ReadinessReport, ReadinessSeverity, ReadinessSource, ReadinessTier, TokenUsage } from './schemas/handoff';
-export type { BrandFile, BrandMark, BrandMarkRole, BrandMarkVariant, BrandTrait, BrandUsage, BrandVoice } from './schemas/brand';
+export type { BrandFile, BrandFont, BrandFontSource, BrandMark, BrandMarkRole, BrandMarkVariant, BrandTrait, BrandUsage, BrandVoice } from './schemas/brand';
 export type { DeclaredGroup, ImplementationTarget, LocalValueException, ReusableKind, StyleEvidence, StyleEvidenceStatus } from './schemas/common';
 export type { ComponentDefinition, ComponentFile } from './schemas/components';
 export type { InspoAspect, InspoDirection, InspoEntry, InspoFile } from './schemas/inspo';
@@ -199,11 +199,18 @@ export type ValidationMode = 'baseline' | 'strict';
 export interface ValidationOptions {
   mode?: ValidationMode;
   fileExists?: (filePath: string) => boolean;
+  /** Called once for each rule pass over a candidate file. */
+  onCandidateFileLint?: (file: string) => void;
 }
 
 export interface ValidationResult {
   ok: boolean;
+  /** Each contract error, then each style error. */
   errors: string[];
+  /** The errors of the file contracts. They stop `serve` and each tool that changes the project. */
+  contractErrors: string[];
+  /** The errors of the style rules. They refuse validate, `explore`, `promote`, and `restore`, but the canvas shows them as finding marks. */
+  styleErrors: string[];
 }
 
 export interface QueryResult {

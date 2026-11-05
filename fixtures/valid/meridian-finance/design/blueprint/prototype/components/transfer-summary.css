@@ -6,23 +6,26 @@
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-xl);
   background: var(--app-color-surface);
+  text-align: left;
 }
 
-[data-blueprint-component="transfer-summary"] [data-blueprint-primitive="text"].summary__amount {
+[data-blueprint-component="transfer-summary"] .summary__amount {
+  margin: 0;
+  color: var(--app-color-foreground);
   font: var(--app-type-display);
-  font-size: 48px;
+  font-size: var(--app-text-48);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
-.summary__list {
+:where([data-blueprint-component="transfer-summary"]) .summary__list {
   display: grid;
   margin: 0;
   border-top: 1px solid var(--app-color-border);
 }
 
-.summary__list div {
+:where([data-blueprint-component="transfer-summary"]) .summary__list div {
   display: flex;
   justify-content: space-between;
   gap: var(--app-space-4);
@@ -30,26 +33,28 @@
   border-bottom: 1px solid var(--app-color-border);
 }
 
-.summary__list dt {
+:where([data-blueprint-component="transfer-summary"]) .summary__list dt {
   color: var(--app-color-muted);
 }
 
-.summary__list dd {
+:where([data-blueprint-component="transfer-summary"]) .summary__list dd {
   margin: 0;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.summary__after {
+:where([data-blueprint-component="transfer-summary"]) .summary__after {
   border-bottom: 0;
 }
 
-.summary__list .summary__after {
+:where([data-blueprint-component="transfer-summary"]) .summary__list .summary__after {
   border-bottom: 0;
 }
 
-[data-blueprint-component="transfer-summary"] [data-blueprint-primitive="text"].summary__note {
+[data-blueprint-component="transfer-summary"] .summary__note {
+  margin: 0;
+  color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
@@ -71,6 +76,6 @@
   padding-bottom: var(--app-space-2);
 }
 
-.summary__list .is-negative {
+:where([data-blueprint-component="transfer-summary"]) .summary__list .is-negative {
   color: var(--app-color-destructive);
 }

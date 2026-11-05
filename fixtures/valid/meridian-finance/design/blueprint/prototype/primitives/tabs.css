@@ -65,3 +65,20 @@
     transition: none;
   }
 }
+
+[data-blueprint-primitive="tabs"][data-blueprint-variant="flush"] {
+  gap: var(--app-space-2);
+  border-bottom: 0;
+}
+
+[data-blueprint-primitive="tabs"][data-blueprint-variant="flush"] .tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--app-space-2);
+  border-radius: 0;
+}
+
+[data-blueprint-primitive="tabs"][data-blueprint-variant="flush"] .tabs__tab::after {
+  bottom: -1px;
+  height: 1.5px;
+}

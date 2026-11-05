@@ -132,13 +132,17 @@ describe('migrate operation', () => {
       const shape = tokens.tokenGroups.find((group: { id: string }) => group.id === 'shape');
       shape.tokens = shape.tokens.filter((token: { id: string }) => token.id !== 'shadow-md');
       await writeFile(tokensPath, `${JSON.stringify(tokens, null, 2)}\n`, 'utf8');
+      for (const boundary of ['primitives/card', 'primitives/context-menu', 'primitives/select', 'primitives/toast', 'components/composer']) {
+        const cssPath = path.join(project, `prototype/${boundary}.css`);
+        await writeFile(cssPath, (await readFile(cssPath, 'utf8')).replaceAll('box-shadow: var(--app-shadow-md);', ''), 'utf8');
+      }
       const before = validateProject(await loadProjectFromFs(project));
       assert.equal(before.ok, true, before.errors.join('\n'));
 
       const output = await migrateBlueprint({ project, dryRun: false });
 
       assert.equal(output.validation.ok, true, output.validation.errors.join('\n'));
-      assert.equal(output.upToDate, true);
+      assert.equal(output.upToDate, false);
       assert.ok(output.changes.includes('primitives.json: left out the missing Blueprint primitive "tooltip", because tokens.json does not declare "shape.shadow-md". Fix: add them, then run migrate again.'), output.changes.join('\n'));
     });
   });

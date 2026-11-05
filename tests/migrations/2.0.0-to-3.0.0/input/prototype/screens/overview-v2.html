@@ -1,0 +1,149 @@
+<div class="overview" data-blueprint-screen="overview-v2" data-blueprint-state="default">
+  <div data-blueprint-section="header">
+    <blueprint-use kind="component" ref="web-header" state="overview"></blueprint-use>
+  </div>
+
+  <main class="overview__main">
+    <section class="hero" data-blueprint-section="position" aria-labelledby="position-title">
+      <div class="hero__cash">
+        <p class="hero__eyebrow"><span class="hero__live" aria-hidden="true"></span><span id="position-title">Total cash across four accounts</span><span class="hero__time">Updated 9:41 AM ET</span></p>
+        <blueprint-use kind="component" ref="balance-card" state="hero">
+          <span slot="label">Northwind Labs, Inc.</span>
+          <span slot="amount">4,812,406</span>
+          <span slot="cents">.18</span>
+          <span slot="change">+4.6%</span>
+          <span slot="delta">+$212,480.50 since September 1</span>
+        </blueprint-use>
+        <div class="allocation" aria-label="Cash by account">
+          <div class="allocation__bar" aria-hidden="true">
+            <i class="allocation__segment allocation__segment--operating"></i>
+            <i class="allocation__segment allocation__segment--reserve"></i>
+            <i class="allocation__segment allocation__segment--payroll"></i>
+            <i class="allocation__segment allocation__segment--tax"></i>
+          </div>
+          <ul class="allocation__legend">
+            <li><i class="allocation__key allocation__key--operating"></i><span>Operating</span><b>$2,184,902</b></li>
+            <li><i class="allocation__key allocation__key--reserve"></i><span>Treasury reserve</span><b>$1,402,118</b></li>
+            <li><i class="allocation__key allocation__key--payroll"></i><span>Payroll</span><b>$861,440</b></li>
+            <li><i class="allocation__key allocation__key--tax"></i><span>Tax</span><b>$363,946</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <aside class="runway" aria-labelledby="runway-title">
+        <p class="runway__label" id="runway-title">Runway</p>
+        <p class="runway__figure">31<span>months</span></p>
+        <p class="runway__note">At $148K average net burn over the last 90 days. Target is 24 months.</p>
+        <div class="runway__meter" aria-hidden="true"><i></i><em></em></div>
+        <dl class="runway__stats">
+          <div><dt>In · 30 days</dt><dd>$1.24M <small class="is-up">+8.2%</small></dd></div>
+          <div><dt>Out · 30 days</dt><dd>$982K <small class="is-down">−3.1%</small></dd></div>
+        </dl>
+      </aside>
+    </section>
+
+    <div class="overview__grid">
+      <div class="overview__chart" data-blueprint-section="cash-flow">
+        <blueprint-use kind="component" ref="cashflow-chart" state="default"></blueprint-use>
+      </div>
+
+      <section class="panel" data-blueprint-section="activity" aria-labelledby="activity-title">
+        <header class="panel__head">
+          <h2 id="activity-title">Recent activity</h2>
+          <a href="/transactions">View all</a>
+        </header>
+        <blueprint-use kind="component" ref="transaction-row" state="pending">
+          <span slot="mark">AW</span>
+          <span slot="name">Amazon Web Services</span>
+          <span slot="meta">Infrastructure · Card ··1180</span>
+          <span slot="amount">−$23,861.52</span>
+          <span slot="date">Today</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">FG</span>
+          <span slot="name">Fieldgrove Capital</span>
+          <span slot="meta">Customer payment · Wire</span>
+          <span slot="amount" class="is-in">+$240,000.00</span>
+          <span slot="date">Today</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">LN</span>
+          <span slot="name">Linear</span>
+          <span slot="meta">Software · Card ··1180</span>
+          <span slot="amount">−$1,920.00</span>
+          <span slot="date">Sep 22</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">ST</span>
+          <span slot="name">Stripe payout</span>
+          <span slot="meta">Revenue · ACH</span>
+          <span slot="amount" class="is-in">+$86,412.07</span>
+          <span slot="date">Sep 22</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">WW</span>
+          <span slot="name">WeWork</span>
+          <span slot="meta">Rent · ACH</span>
+          <span slot="amount">−$32,500.00</span>
+          <span slot="date">Sep 21</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">GU</span>
+          <span slot="name">Gusto</span>
+          <span slot="meta">Payroll taxes · ACH</span>
+          <span slot="amount">−$61,208.33</span>
+          <span slot="date">Sep 20</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="transaction-row" state="default">
+          <span slot="mark">NV</span>
+          <span slot="name">Novella Health</span>
+          <span slot="meta">Customer payment · ACH</span>
+          <span slot="amount" class="is-in">+$58,900.00</span>
+          <span slot="date">Sep 19</span>
+        </blueprint-use>
+      </section>
+
+      <section class="panel" data-blueprint-section="upcoming" aria-labelledby="upcoming-title">
+        <header class="panel__head">
+          <h2 id="upcoming-title">Next 7 days</h2>
+          <span class="panel__total">$607,810</span>
+        </header>
+        <blueprint-use kind="component" ref="upcoming-payment" state="approval">
+          <span slot="day">24</span>
+          <span slot="month">Sep</span>
+          <span slot="name">Halcyon Studio</span>
+          <span slot="meta">Brand retainer · Wire</span>
+          <span slot="amount">$18,400.00</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="upcoming-payment" state="default">
+          <span slot="day">26</span>
+          <span slot="month">Sep</span>
+          <span slot="name">Payroll · Gusto</span>
+          <span slot="meta">Recurring · ACH</span>
+          <span slot="amount">$412,380.00</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="upcoming-payment" state="default">
+          <span slot="day">28</span>
+          <span slot="month">Sep</span>
+          <span slot="name">Q3 estimated tax</span>
+          <span slot="meta">IRS EFTPS · From Tax</span>
+          <span slot="amount">$148,000.00</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="upcoming-payment" state="default">
+          <span slot="day">30</span>
+          <span slot="month">Sep</span>
+          <span slot="name">Datadog</span>
+          <span slot="meta">Monthly · Card ··1180</span>
+          <span slot="amount">$19,430.00</span>
+        </blueprint-use>
+        <blueprint-use kind="component" ref="upcoming-payment" state="default">
+          <span slot="day">30</span>
+          <span slot="month">Sep</span>
+          <span slot="name">Figma</span>
+          <span slot="meta">Annual renewal · Card ··1180</span>
+          <span slot="amount">$9,600.00</span>
+        </blueprint-use>
+      </section>
+    </div>
+  </main>
+</div>

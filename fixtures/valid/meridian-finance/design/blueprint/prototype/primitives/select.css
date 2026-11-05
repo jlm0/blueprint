@@ -98,3 +98,7 @@
     transition: none;
   }
 }
+
+[data-blueprint-primitive="select"][data-blueprint-variant="pill"] .select__field {
+  border-radius: var(--app-radius-full);
+}

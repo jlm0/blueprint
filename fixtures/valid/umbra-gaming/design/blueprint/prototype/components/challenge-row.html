@@ -3,8 +3,12 @@
   <span class="challenge-row__body">
     <b class="challenge-row__title" data-blueprint-slot="title">Win 2 matches in Duo Rush</b>
     <span class="challenge-row__meter">
-      <blueprint-use kind="primitive" ref="progress" state="value">
-        <b slot="label"><i data-blueprint-slot="count">1 of 2</i></b>
+      <span class="challenge-row__track challenge-row__track--started" role="progressbar" aria-label="Challenge progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="20"><span class="challenge-row__bar"></span></span>
+      <span class="challenge-row__track challenge-row__track--halfway" role="progressbar" aria-label="Challenge progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><span class="challenge-row__bar"></span></span>
+      <span class="challenge-row__track challenge-row__track--close" role="progressbar" aria-label="Challenge progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"><span class="challenge-row__bar"></span></span>
+      <span class="challenge-row__track challenge-row__track--complete" role="progressbar" aria-label="Challenge progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span class="challenge-row__bar"></span></span>
+      <blueprint-use kind="primitive" ref="text" size="label" variant="muted">
+        <b slot="text" class="challenge-row__count" data-blueprint-slot="count">1 of 2</b>
       </blueprint-use>
     </span>
   </span>

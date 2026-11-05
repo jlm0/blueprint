@@ -27,13 +27,13 @@
   background-color: var(--app-color-secondary);
 }
 
-[data-blueprint-primitive="button"][data-blueprint-variant="outline"] {
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="outline"], [data-blueprint-variant="pill-outline"]) {
   border-color: var(--app-color-border-strong);
   color: var(--app-color-foreground);
   background-color: var(--app-color-surface);
 }
 
-[data-blueprint-primitive="button"][data-blueprint-variant="ghost"] {
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="ghost"], [data-blueprint-variant="pill-ghost"], [data-blueprint-variant="ghost-muted"], [data-blueprint-variant="ghost-reversed"]) {
   color: var(--app-color-foreground);
   background-color: transparent;
 }
@@ -174,4 +174,40 @@
     transition: none;
     animation: none;
   }
+}
+
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="pill"], [data-blueprint-variant="pill-wide"], [data-blueprint-variant="pill-outline"], [data-blueprint-variant="pill-ghost"], [data-blueprint-variant="pill-reversed"], [data-blueprint-variant="pill-reversed-outline"]) {
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="pill-wide"], [data-blueprint-variant="pill-outline"])[data-blueprint-size="sm"] {
+  padding: 0 14px;
+}
+
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="pill"], [data-blueprint-variant="pill-wide"], [data-blueprint-variant="pill-outline"], [data-blueprint-variant="pill-ghost"], [data-blueprint-variant="pill-reversed"], [data-blueprint-variant="pill-reversed-outline"])[data-blueprint-size="lg"] {
+  font-size: var(--app-text-16);
+}
+
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="pill"], [data-blueprint-variant="pill-wide"], [data-blueprint-variant="pill-outline"], [data-blueprint-variant="pill-ghost"], [data-blueprint-variant="pill-reversed"], [data-blueprint-variant="pill-reversed-outline"])[data-blueprint-size="icon"] .button__icon {
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="pill-reversed"] {
+  color: var(--app-color-foreground);
+  background-color: var(--app-color-on-primary);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="pill-reversed-outline"] {
+  border-color: color-mix(in srgb, var(--app-color-on-primary) 22%, transparent);
+  color: var(--app-color-on-primary);
+  background-color: color-mix(in srgb, var(--app-color-on-primary) 8%, transparent);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="ghost-muted"] {
+  color: var(--app-color-muted);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="ghost-reversed"] {
+  color: color-mix(in srgb, var(--app-color-on-primary) 70%, transparent);
 }

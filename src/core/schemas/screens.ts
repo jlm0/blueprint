@@ -105,11 +105,10 @@ export const screenSchema = named('screen', z.strictObject({
   sections: z.array(screenSectionSchema)
 }));
 
-/** A saved snapshot keeps the fields it had when it was saved: older snapshots have `flow` and no `page`, and restore puts the screen back on its current page. */
+/** A snapshot from before pages has no `page`, and restore puts the screen back on its current page. */
 export const savedScreenSchema = named('savedScreen', z.strictObject({
   ...screenSchema.shape,
-  page: z.string().optional(),
-  flow: z.string().optional()
+  page: z.string().optional()
 }));
 
 export const screenFileSchema = named('screenFile', z.strictObject({

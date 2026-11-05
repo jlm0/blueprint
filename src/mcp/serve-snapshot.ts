@@ -10,6 +10,7 @@ export interface ServeProjectSnapshot {
   linkedBundle?: LinkedProjectBundle;
   error?: string;
   outdatedFiles: BlueprintOutdatedFile[];
+  styleErrors: string[];
 }
 
 export interface ServeProjectSnapshotOptions {
@@ -23,7 +24,7 @@ export class ServeProjectSnapshots {
   readonly #projectRoot: string;
   readonly #options: ServeProjectSnapshotOptions;
   readonly #changedPaths = new Set<string>();
-  #current: ServeProjectSnapshot = { revision: randomUUID(), outdatedFiles: [] };
+  #current: ServeProjectSnapshot = { revision: randomUUID(), outdatedFiles: [], styleErrors: [] };
   #assets = new Map<string, PrototypeAssetContent>();
   #previous: { revision: string; linkedBundle: LinkedProjectBundle; nextRevision: string } | undefined;
   #delta: BlueprintProjectSnapshotDelta | undefined;
@@ -69,7 +70,7 @@ export class ServeProjectSnapshots {
       this.#publish(this.#current.revision, initial);
       this.#fingerprint = initial.fingerprint;
     } else {
-      this.#current = { revision: this.#current.revision, error: initial.error, outdatedFiles: initial.outdatedFiles };
+      this.#current = { revision: this.#current.revision, error: initial.error, outdatedFiles: initial.outdatedFiles, styleErrors: initial.styleErrors };
     }
     this.#started = true;
     this.#releaseWhenIdle();
@@ -119,7 +120,7 @@ export class ServeProjectSnapshots {
     if (this.#closed) return;
     if (next.error !== undefined) {
       const { bundle, linkedBundle, revision } = this.#current;
-      this.#current = { revision, bundle, linkedBundle, error: next.error, outdatedFiles: next.outdatedFiles };
+      this.#current = { revision, bundle, linkedBundle, error: next.error, outdatedFiles: next.outdatedFiles, styleErrors: next.styleErrors };
       if (next.error !== this.#announcedError) {
         this.#announcedError = next.error;
         this.#options.onFailed({ message: next.error, outdatedFiles: next.outdatedFiles });
@@ -135,13 +136,13 @@ export class ServeProjectSnapshots {
     if (changed) this.#options.onChanged({ revision: this.#current.revision, changedPaths });
   }
 
-  #publish(revision: string, { bundle, assetHashes, outdatedFiles }: ValidProject): void {
+  #publish(revision: string, { bundle, assetHashes, outdatedFiles, styleErrors }: ValidProject): void {
     const { revision: previousRevision, linkedBundle: previousBundle } = this.#current;
     if (previousBundle && previousRevision !== revision) {
       this.#previous = { revision: previousRevision, linkedBundle: previousBundle, nextRevision: revision };
     }
     this.#assets = new Map(Object.entries(bundle.prototypeAssetContents).map(([assetRef, asset]) => [assetHashes[assetRef], asset]));
-    this.#current = { revision, bundle, linkedBundle: linkProjectAssets(bundle, assetHashes), outdatedFiles };
+    this.#current = { revision, bundle, linkedBundle: linkProjectAssets(bundle, assetHashes), outdatedFiles, styleErrors };
   }
 
   #read(): Promise<ValidatedProject> {

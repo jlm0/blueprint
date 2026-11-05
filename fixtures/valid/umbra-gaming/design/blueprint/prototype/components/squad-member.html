@@ -1,7 +1,10 @@
 <div class="squad-member" data-blueprint-component="squad-member">
-  <blueprint-use kind="primitive" ref="avatar" state="status" size="md" class="squad-member__avatar">
-    <b slot="initials"><i data-blueprint-slot="tag">KS</i></b>
-  </blueprint-use>
+  <span class="squad-member__mark">
+    <blueprint-use kind="primitive" ref="avatar" state="initials" variant="ringed" size="md" class="squad-member__avatar">
+      <b slot="initials" class="squad-member__initials" data-blueprint-slot="tag">KS</b>
+    </blueprint-use>
+    <span class="squad-member__dot" aria-hidden="true"></span>
+  </span>
   <span class="squad-member__body">
     <b class="squad-member__name" data-blueprint-slot="name">KESTREL</b>
     <span class="squad-member__status" data-blueprint-slot="status">In lobby</span>

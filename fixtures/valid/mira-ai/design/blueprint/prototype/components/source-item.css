@@ -17,18 +17,13 @@
 .source-item__index {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   text-align: right;
 }
 
 .source-item__initials {
   font-style: normal;
   font-weight: 600;
-}
-
-[data-blueprint-component="source-item"] .source-item__mark {
-  border-radius: var(--app-radius-md);
-  font-size: 11px;
 }
 
 .source-item__body {

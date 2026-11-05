@@ -62,6 +62,8 @@ export interface LocalServeServer extends CaptureServer {
   isAvailable: () => Promise<boolean>;
   /** The validated project of an owned runtime, after the file changes it has seen are applied. Undefined when the deadline ends first. */
   settledProject?: () => Promise<ServeProjectSnapshot | undefined>;
+  /** The last snapshot, for a caller that must not wait past the deadline of `settledProject`. */
+  latestProject?: () => ServeProjectSnapshot;
 }
 
 export interface StoredCanvasSelection extends BlueprintCanvasSelection {
@@ -187,6 +189,7 @@ export async function startServeServer(
     ownership: 'owned',
     isAvailable: async () => server.listening,
     settledProject: () => settledBeforeDeadline(snapshots),
+    latestProject: () => snapshots.current,
     close: () => {
       closePromise ??= (async () => {
         snapshots.close();

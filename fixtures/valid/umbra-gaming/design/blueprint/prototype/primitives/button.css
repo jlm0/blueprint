@@ -27,13 +27,13 @@
   background-color: var(--app-color-secondary);
 }
 
-[data-blueprint-primitive="button"][data-blueprint-variant="outline"] {
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="outline"], [data-blueprint-variant="pill-outline"], [data-blueprint-variant="pill-glass"]) {
   border-color: var(--app-color-border-strong);
   color: var(--app-color-foreground);
   background-color: var(--app-color-surface);
 }
 
-[data-blueprint-primitive="button"][data-blueprint-variant="ghost"] {
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="ghost"], [data-blueprint-variant="pill-ghost"]) {
   color: var(--app-color-foreground);
   background-color: transparent;
 }
@@ -174,4 +174,20 @@
     transition: none;
     animation: none;
   }
+}
+
+[data-blueprint-primitive="button"]:is([data-blueprint-variant="pill"], [data-blueprint-variant="pill-outline"], [data-blueprint-variant="pill-ghost"], [data-blueprint-variant="pill-glass"], [data-blueprint-variant="pill-glow"], [data-blueprint-variant="pill-glow-tight"]) {
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="pill-glass"] {
+  backdrop-filter: blur(12px);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="pill-glow"] {
+  box-shadow: 0 0 40px -6px var(--app-color-glow);
+}
+
+[data-blueprint-primitive="button"][data-blueprint-variant="pill-glow-tight"] {
+  box-shadow: 0 0 36px -8px var(--app-color-glow);
 }

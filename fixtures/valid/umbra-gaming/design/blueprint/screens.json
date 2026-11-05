@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "umbra-gaming",
   "pages": [
     {
@@ -110,6 +110,14 @@
           {
             "kind": "primitive",
             "id": "badge"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
           }
         ],
         "localValueExceptions": [
@@ -142,8 +150,17 @@
               "reason": "Sign in and play commands.",
               "binding": {
                 "slot": "actions",
-                "variant": "ghost, primary",
+                "variant": "pill-ghost, pill",
                 "copy": "Sign in, Play free"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -189,7 +206,7 @@
               "reason": "Play and trailer commands.",
               "binding": {
                 "slot": "ctas",
-                "variant": "primary, outline",
+                "variant": "pill-glow, pill-glass",
                 "copy": "Play free now, Watch trailer"
               }
             },
@@ -283,7 +300,8 @@
               "reason": "Live event tile.",
               "binding": {
                 "slot": "event",
-                "state": "default"
+                "state": "default",
+                "variant": "roomy"
               }
             },
             {
@@ -293,6 +311,15 @@
               "binding": {
                 "slot": "modes",
                 "state": "default, new"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -548,6 +575,14 @@
           {
             "kind": "primitive",
             "id": "skeleton"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
+          },
+          {
+            "kind": "primitive",
+            "id": "icon"
           }
         ]
       },
@@ -574,7 +609,8 @@
               "binding": {
                 "slot": "avatar",
                 "state": "status",
-                "copy": "V9"
+                "copy": "V9",
+                "variant": "solid"
               }
             },
             {
@@ -583,7 +619,17 @@
               "reason": "Sync indicator in loading.",
               "binding": {
                 "slot": "sync",
-                "variant": "primary"
+                "variant": "primary",
+                "size": "sm"
+              }
+            },
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
               }
             }
           ],
@@ -643,7 +689,7 @@
               "binding": {
                 "slot": "pass",
                 "layout": "tier tile",
-                "variant": "block"
+                "variant": "tile"
               }
             },
             {
@@ -653,7 +699,7 @@
               "binding": {
                 "slot": "pass",
                 "layout": "title and XP",
-                "variant": "line"
+                "variant": "lines"
               }
             },
             {
@@ -663,7 +709,7 @@
               "binding": {
                 "slot": "pass",
                 "layout": "reward rail",
-                "variant": "block"
+                "variant": "rail"
               }
             },
             {
@@ -673,7 +719,7 @@
               "binding": {
                 "slot": "pass",
                 "layout": "next reward",
-                "variant": "line"
+                "variant": "bar"
               }
             }
           ],
@@ -723,7 +769,9 @@
               "reason": "Squadmates.",
               "binding": {
                 "slot": "members",
-                "state": "online, in-match"
+                "state": "online, in-match",
+                "variant": "chip",
+                "size": "compact"
               }
             }
           ],
@@ -778,7 +826,7 @@
               "reason": "Event copy placeholder while loading.",
               "binding": {
                 "slot": "event",
-                "variant": "line"
+                "variant": "lines"
               }
             }
           ],
@@ -837,7 +885,7 @@
               "binding": {
                 "slot": "rows",
                 "layout": "glyph",
-                "variant": "block"
+                "variant": "glyph"
               }
             },
             {
@@ -846,7 +894,7 @@
               "reason": "Challenge copy placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "variant": "line"
+                "variant": "lines"
               }
             },
             {
@@ -856,7 +904,7 @@
               "binding": {
                 "slot": "rows",
                 "layout": "glyph",
-                "variant": "block"
+                "variant": "glyph"
               }
             },
             {
@@ -865,7 +913,7 @@
               "reason": "Challenge copy placeholder while loading.",
               "binding": {
                 "slot": "rows",
-                "variant": "line"
+                "variant": "lines"
               }
             }
           ],
@@ -908,7 +956,17 @@
               "sourceAnchor": "prototype/screens/hub.css"
             }
           ],
-          "uses": [],
+          "uses": [
+            {
+              "kind": "primitive",
+              "id": "icon",
+              "reason": "Holds one inline glyph.",
+              "binding": {
+                "slot": "default",
+                "variant": "inherit"
+              }
+            }
+          ],
           "prototypeOnly": false,
           "notes": [],
           "implementationHints": [],
@@ -1048,7 +1106,7 @@
               "binding": {
                 "slot": "title",
                 "copy": "Match summary",
-                "variant": "back-and-right"
+                "variant": "overlay"
               }
             }
           ],
@@ -1187,7 +1245,8 @@
               "reason": "Performance stats.",
               "binding": {
                 "slot": "stats",
-                "state": "record, above, average, below"
+                "state": "record, above, average, below",
+                "size": "compact"
               }
             }
           ],
@@ -1233,7 +1292,8 @@
               "reason": "Squad rows.",
               "binding": {
                 "slot": "rows",
-                "state": "mvp, scoreboard"
+                "state": "mvp, scoreboard",
+                "size": "compact"
               }
             }
           ],
@@ -1279,7 +1339,7 @@
               "reason": "Requeue and share commands.",
               "binding": {
                 "slot": "actions",
-                "variant": "primary, outline",
+                "variant": "pill-glow-tight, pill-outline",
                 "copy": "Queue again"
               }
             }

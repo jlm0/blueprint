@@ -157,7 +157,7 @@ class MessageTracer {
       if (isCaughtErrorMessage(expression)) return this.gap(expression, 'the message comes from a caught error');
       return [...this.gaps(expression.whenTrue, env), ...this.gaps(expression.whenFalse, env)];
     }
-    if (ts.isPropertyAccessExpression(expression) && expression.name.text === 'errors') return [];
+    if (ts.isPropertyAccessExpression(expression) && (expression.name.text === 'errors' || expression.name.text === 'contractErrors')) return [];
     if (ts.isIdentifier(expression) || ts.isPropertyAccessExpression(expression)) return this.traceReference(expression, env);
     if (ts.isElementAccessExpression(expression)) return this.traceElement(expression, env);
     if (ts.isCallExpression(expression)) return this.traceCall(expression, env);

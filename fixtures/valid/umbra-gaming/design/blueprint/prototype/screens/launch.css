@@ -16,7 +16,7 @@
   src: url("../assets/fonts/geist-mono.woff2") format("woff2");
 }
 
-* {
+*:where([data-blueprint-screen="launch"], [data-blueprint-screen="launch"] *) {
   box-sizing: border-box;
 }
 
@@ -30,7 +30,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.site-nav {
+:where([data-blueprint-screen="launch"]) .site-nav {
   position: absolute;
   z-index: 5;
   top: 0;
@@ -43,31 +43,31 @@
   padding: 0 var(--app-space-12);
 }
 
-.wordmark {
+:where([data-blueprint-screen="launch"]) .wordmark {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-3);
   color: var(--app-color-foreground);
   font-family: var(--app-font-display);
-  font-size: 17px;
+  font-size: var(--app-text-17);
   font-weight: 800;
   letter-spacing: 0.18em;
   text-decoration: none;
 }
 
-.wordmark__glyph {
+:where([data-blueprint-screen="launch"]) .wordmark__glyph {
   width: 26px;
   height: 26px;
   fill: none;
   stroke: var(--app-color-primary);
 }
 
-.wordmark__glyph circle:first-child {
+:where([data-blueprint-screen="launch"]) .wordmark__glyph circle:first-child {
   fill: var(--app-color-foreground);
   stroke: none;
 }
 
-.site-nav__links {
+:where([data-blueprint-screen="launch"]) .site-nav__links {
   display: flex;
   gap: var(--app-space-1);
   padding: var(--app-space-1);
@@ -77,38 +77,37 @@
   backdrop-filter: blur(14px);
 }
 
-.site-nav__links a {
+:where([data-blueprint-screen="launch"]) .site-nav__links a {
   padding: var(--app-space-2) var(--app-space-4);
   border-radius: var(--app-radius-full);
   color: color-mix(in srgb, var(--app-color-foreground) 72%, transparent);
-  font-size: 13px;
+  font-size: var(--app-text-13);
   font-weight: 500;
   text-decoration: none;
 }
 
-.site-nav__links a[aria-current] {
+:where([data-blueprint-screen="launch"]) .site-nav__links a[aria-current] {
   color: var(--app-color-foreground);
   background: color-mix(in srgb, var(--app-color-foreground) 10%, transparent);
 }
 
-.site-nav__actions {
+:where([data-blueprint-screen="launch"]) .site-nav__actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--app-space-2);
 }
 
-[data-blueprint-screen="launch"] .site-nav__actions [data-blueprint-primitive="button"] {
-  border-radius: var(--app-radius-full);
+:where([data-blueprint-screen="launch"]) .site-nav__label {
   font-weight: 600;
 }
 
-.hero {
+:where([data-blueprint-screen="launch"]) .hero {
   position: relative;
   height: 700px;
   isolation: isolate;
 }
 
-.hero__art {
+:where([data-blueprint-screen="launch"]) .hero__art {
   position: absolute;
   inset: 0;
   z-index: -2;
@@ -118,7 +117,7 @@
   object-position: 50% 30%;
 }
 
-.hero__veil {
+:where([data-blueprint-screen="launch"]) .hero__veil {
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -127,7 +126,7 @@
     linear-gradient(180deg, transparent 62%, var(--app-color-background) 100%);
 }
 
-.hero__intro {
+:where([data-blueprint-screen="launch"]) .hero__intro {
   position: absolute;
   top: 150px;
   left: var(--app-space-12);
@@ -136,19 +135,19 @@
   gap: 22px;
 }
 
-.hero__eyebrow {
+:where([data-blueprint-screen="launch"]) .hero__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   margin: 0;
   color: var(--app-color-primary);
   font: var(--app-type-label);
-  font-size: 12px;
+  font-size: var(--app-text-12);
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
-.live-dot {
+:where([data-blueprint-screen="launch"]) .live-dot {
   width: 8px;
   height: 8px;
   border-radius: var(--app-radius-full);
@@ -156,64 +155,52 @@
   box-shadow: 0 0 0 4px var(--app-color-glow), 0 0 18px var(--app-color-primary);
 }
 
-.hero__lede {
+:where([data-blueprint-screen="launch"]) .hero__lede {
   margin: 0;
-  font-size: 38px;
+  font-size: var(--app-text-38);
   font-weight: 600;
   line-height: 1.06;
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
-.hero__lede em {
+:where([data-blueprint-screen="launch"]) .hero__lede em {
   color: color-mix(in srgb, var(--app-color-foreground) 48%, transparent);
   font-style: normal;
 }
 
-.hero__body {
+:where([data-blueprint-screen="launch"]) .hero__body {
   max-width: 380px;
   margin: 0;
   color: var(--app-color-muted);
-  font-size: 16px;
+  font-size: var(--app-text-16);
   line-height: 1.55;
 }
 
-.hero__ctas {
+:where([data-blueprint-screen="launch"]) .hero__ctas {
   display: flex;
   gap: var(--app-space-3);
   margin-top: var(--app-space-2);
 }
 
-[data-blueprint-screen="launch"] .hero__ctas [data-blueprint-primitive="button"] {
-  border-radius: var(--app-radius-full);
-  font-size: 15px;
+:where([data-blueprint-screen="launch"]) .hero__cta-label {
+  font-size: var(--app-text-15);
   font-weight: 600;
 }
 
-[data-blueprint-screen="launch"] .hero__play {
-  box-shadow: 0 0 40px -6px var(--app-color-glow);
-}
-
-[data-blueprint-screen="launch"] .hero__watch {
-  border-color: color-mix(in srgb, var(--app-color-foreground) 22%, transparent);
-  background: color-mix(in srgb, var(--app-color-background) 40%, transparent);
-  backdrop-filter: blur(12px);
-}
-
-.hero__watch b {
+:where([data-blueprint-screen="launch"]) .hero__watch-label {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-weight: 600;
 }
 
-.hero__watch svg {
+:where([data-blueprint-screen="launch"]) svg.hero__watch-glyph {
   width: 14px;
   height: 14px;
   fill: currentColor;
 }
 
-.hero__clock {
+:where([data-blueprint-screen="launch"]) .hero__clock {
   position: absolute;
   top: 146px;
   right: var(--app-space-12);
@@ -222,15 +209,15 @@
   gap: 10px;
 }
 
-.hero__clock-label,
-.hero__season {
+:where([data-blueprint-screen="launch"]) .hero__clock-label,
+:where([data-blueprint-screen="launch"]) .hero__season {
   color: var(--app-color-muted);
   font: var(--app-type-label);
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
-.hero__clock-digits {
+:where([data-blueprint-screen="launch"]) .hero__clock-digits {
   display: flex;
   align-items: baseline;
   gap: 2px;
@@ -238,24 +225,24 @@
   font-variant-numeric: tabular-nums;
 }
 
-.hero__clock-digits b {
-  font-size: 40px;
+:where([data-blueprint-screen="launch"]) .hero__clock-digits b {
+  font-size: var(--app-text-40);
   font-weight: 500;
   letter-spacing: -0.04em;
 }
 
-.hero__clock-digits i {
+:where([data-blueprint-screen="launch"]) .hero__clock-digits i {
   margin-right: 10px;
   color: var(--app-color-primary);
-  font-size: 15px;
+  font-size: var(--app-text-15);
   font-style: normal;
 }
 
-.hero__clock-digits i:last-child {
+:where([data-blueprint-screen="launch"]) .hero__clock-digits i:last-child {
   margin-right: 0;
 }
 
-.hero__stats {
+:where([data-blueprint-screen="launch"]) .hero__stats {
   position: absolute;
   top: 262px;
   right: var(--app-space-12);
@@ -265,11 +252,7 @@
   text-align: right;
 }
 
-.hero__stats [data-blueprint-component="stat-meter"] {
-  justify-items: end;
-}
-
-.hero__title {
+:where([data-blueprint-screen="launch"]) .hero__title {
   position: absolute;
   right: 0;
   bottom: -18px;
@@ -280,7 +263,7 @@
   background-clip: text;
   color: transparent;
   font-family: var(--app-font-display);
-  font-size: 246px;
+  font-size: var(--app-text-246);
   font-weight: 800;
   line-height: 0.82;
   letter-spacing: -0.06em;
@@ -288,7 +271,7 @@
   text-transform: uppercase;
 }
 
-.hero__season {
+:where([data-blueprint-screen="launch"]) .hero__season {
   position: absolute;
   top: -34px;
   left: 50%;
@@ -302,7 +285,7 @@
   transform: translateX(-50%);
 }
 
-.ticker {
+:where([data-blueprint-screen="launch"]) .ticker {
   position: relative;
   z-index: 3;
   width: 104%;
@@ -313,7 +296,7 @@
   box-shadow: 0 0 60px -10px var(--app-color-glow);
 }
 
-.ticker__track {
+:where([data-blueprint-screen="launch"]) .ticker__track {
   display: flex;
   align-items: center;
   gap: 26px;
@@ -321,7 +304,7 @@
   padding: 15px 0;
   color: var(--app-color-on-primary);
   font-family: var(--app-font-display);
-  font-size: 18px;
+  font-size: var(--app-text-18);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -329,63 +312,63 @@
   transform: translateX(-60px);
 }
 
-.ticker__track i {
-  font-size: 14px;
+:where([data-blueprint-screen="launch"]) .ticker__track i {
+  font-size: var(--app-text-14);
   font-style: normal;
 }
 
-.modes,
-.editions {
+:where([data-blueprint-screen="launch"]) .modes,
+:where([data-blueprint-screen="launch"]) .editions {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: var(--app-space-12);
   padding: var(--app-space-12) var(--app-space-12) 0;
 }
 
-.editions {
+:where([data-blueprint-screen="launch"]) .editions {
   padding-top: var(--app-space-10);
 }
 
-.section-head {
+:where([data-blueprint-screen="launch"]) .section-head {
   display: grid;
   align-content: start;
   gap: 18px;
 }
 
-.section-head__index {
+:where([data-blueprint-screen="launch"]) .section-head__index {
   margin: 0;
   color: var(--app-color-primary);
   font: var(--app-type-label);
-  font-size: 12px;
+  font-size: var(--app-text-12);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.section-head__title {
+:where([data-blueprint-screen="launch"]) .section-head__title {
   margin: 0;
   font-family: var(--app-font-display);
-  font-size: 40px;
+  font-size: var(--app-text-40);
   font-weight: 800;
   line-height: 0.98;
   letter-spacing: -0.045em;
   text-transform: uppercase;
 }
 
-.section-head__copy {
+:where([data-blueprint-screen="launch"]) .section-head__copy {
   margin: 0;
   color: var(--app-color-muted);
-  font-size: 15px;
+  font-size: var(--app-text-15);
   line-height: 1.55;
 }
 
-.bento {
+:where([data-blueprint-screen="launch"]) .bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: 226px 140px;
   gap: 14px;
 }
 
-.trailer {
+:where([data-blueprint-screen="launch"]) .trailer {
   position: relative;
   display: block;
   grid-column: 1 / 8;
@@ -397,7 +380,7 @@
   text-decoration: none;
 }
 
-.trailer__art {
+:where([data-blueprint-screen="launch"]) .trailer__art {
   position: absolute;
   inset: 0;
   z-index: -2;
@@ -410,7 +393,7 @@
   filter: saturate(1.2);
 }
 
-.trailer__shade {
+:where([data-blueprint-screen="launch"]) .trailer__shade {
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -419,7 +402,7 @@
     repeating-linear-gradient(0deg, color-mix(in srgb, var(--app-color-background) 22%, transparent) 0 1px, transparent 1px 3px);
 }
 
-.trailer__play {
+:where([data-blueprint-screen="launch"]) .trailer__play {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -434,14 +417,14 @@
   transform: translate(-50%, -62%);
 }
 
-.trailer__play svg {
+:where([data-blueprint-screen="launch"]) svg.trailer__glyph {
   width: 24px;
   height: 24px;
   margin-left: 3px;
   fill: var(--app-color-foreground);
 }
 
-.trailer__caption {
+:where([data-blueprint-screen="launch"]) .trailer__caption {
   position: absolute;
   bottom: 22px;
   left: 22px;
@@ -449,22 +432,22 @@
   gap: 6px;
 }
 
-.trailer__caption small {
+:where([data-blueprint-screen="launch"]) .trailer__caption small {
   color: var(--app-color-primary);
   font: var(--app-type-label);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.trailer__caption b {
+:where([data-blueprint-screen="launch"]) .trailer__caption b {
   font-family: var(--app-font-display);
-  font-size: 28px;
+  font-size: var(--app-text-28);
   font-weight: 800;
   letter-spacing: -0.03em;
   text-transform: uppercase;
 }
 
-.trailer__frames {
+:where([data-blueprint-screen="launch"]) .trailer__frames {
   position: absolute;
   right: 22px;
   bottom: 28px;
@@ -472,14 +455,14 @@
   gap: 5px;
 }
 
-.trailer__frames i {
+:where([data-blueprint-screen="launch"]) .trailer__frames i {
   width: 18px;
   height: 3px;
   border-radius: var(--app-radius-full);
   background: color-mix(in srgb, var(--app-color-foreground) 26%, transparent);
 }
 
-.trailer__frames .is-on {
+:where([data-blueprint-screen="launch"]) .trailer__frames .is-on {
   width: 34px;
   background: var(--app-color-primary);
 }
@@ -488,17 +471,17 @@
   grid-column: 8 / 13;
 }
 
-.bento [data-blueprint-component="mode-tile"] {
+:where([data-blueprint-screen="launch"]) .bento [data-blueprint-component="mode-tile"] {
   grid-column: span 4;
 }
 
-.editions__cards {
+:where([data-blueprint-screen="launch"]) .editions__cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
-.site-footer {
+:where([data-blueprint-screen="launch"]) .site-footer {
   position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
@@ -508,23 +491,23 @@
   border-top: 1px solid var(--app-color-border);
 }
 
-.patch {
+:where([data-blueprint-screen="launch"]) .patch {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   align-items: start;
   gap: 14px var(--app-space-8);
 }
 
-.patch__version {
+:where([data-blueprint-screen="launch"]) .patch__version {
   margin: 0;
   font-family: var(--app-font-display);
-  font-size: 18px;
+  font-size: var(--app-text-18);
   font-weight: 700;
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
-.patch__version span {
+:where([data-blueprint-screen="launch"]) .patch__version span {
   display: block;
   margin-top: 6px;
   color: var(--app-color-muted);
@@ -532,7 +515,7 @@
   letter-spacing: 0.14em;
 }
 
-.patch__notes {
+:where([data-blueprint-screen="launch"]) .patch__notes {
   grid-row: 1 / span 2;
   display: grid;
   gap: 10px;
@@ -541,7 +524,7 @@
   list-style: none;
 }
 
-.patch__notes li {
+:where([data-blueprint-screen="launch"]) .patch__notes > li {
   display: grid;
   grid-template-columns: 56px 1fr;
   align-items: center;
@@ -549,41 +532,40 @@
   color: color-mix(in srgb, var(--app-color-foreground) 80%, transparent);
 }
 
-[data-blueprint-screen="launch"] .patch__notes [data-blueprint-primitive="badge"] {
-  justify-content: center;
+:where([data-blueprint-screen="launch"]) .patch__change {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.patch__link {
+:where([data-blueprint-screen="launch"]) .patch__link {
   grid-column: 1;
   grid-row: 2;
   justify-self: start;
-  font-size: 13px;
+  font-size: var(--app-text-13);
   color: var(--app-color-primary);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 5px;
 }
 
-.site-footer__links {
+:where([data-blueprint-screen="launch"]) .site-footer__links {
   display: flex;
   gap: var(--app-space-6);
   padding-top: 2px;
 }
 
-.site-footer__links a {
+:where([data-blueprint-screen="launch"]) .site-footer__links a {
   color: var(--app-color-muted);
-  font-size: 13px;
+  font-size: var(--app-text-13);
   text-decoration: none;
 }
 
-.site-footer__mark {
+:where([data-blueprint-screen="launch"]) .site-footer__mark {
   grid-column: 1 / -1;
   margin: 14px 0 0;
   color: transparent;
   font-family: var(--app-font-display);
-  font-size: 300px;
+  font-size: var(--app-text-300);
   font-weight: 800;
   line-height: 0.74;
   letter-spacing: -0.05em;

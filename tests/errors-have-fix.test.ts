@@ -32,7 +32,10 @@ const PROSE_TABLE = 'The prose table in this file runs each error rule of lintPr
 const ALLOW_LIST: readonly FixAllowEntry[] = [
   { file: 'src/core/brand-lint.ts', match: '(error as Error).message', reason: `${RETHROW} The site is the markup scan in src/core/markup.ts.` },
   { file: 'src/core/contract-checks.ts', match: '`${label} ${issue.message}`', reason: `Wrapper: it adds a label to a lintProse error. ${PROSE_TABLE}` },
+  { file: 'src/mcp/migration-validation.ts', match: 'error.issues', reason: 'Each issue comes from agentErrorForIssue in src/core/schemas/issues.ts, which ends it with a Fix.' },
+  { file: 'src/core/candidate-rules.ts', match: '`exploration.${exploration.id} candidate.${candidate.id}: ${error}`', reason: `${WRAPPER} The rule table in tests/rule-fixtures.test.ts runs each rule on a candidate file.` },
   { file: 'src/core/prose-lint.ts', match: 'message(match[0])', reason: `PATTERN_RULES holds error rules and advisory rules. ${PROSE_TABLE}` },
+  { file: 'src/core/style-rules.ts', match: '`${issue.boundary} ${issue.location} ${issue.message}`', reason: `${WRAPPER} The rule table in tests/rule-fixtures.test.ts runs each style rule.` },
   { file: 'src/core/validate.ts', match: '`Prototype source graph ${issue.boundaryId} state "${issue.state}" cannot compile: ${issue.message}`', reason: `${WRAPPER} The messages are compiler errors.` },
   { file: 'src/core/validate.ts', match: '`${label}.target baseline cannot be digested: ${error instanceof Error ? error.message : String(error)}`', reason: `${WRAPPER} The messages come from the digest checks in src/core/exploration.ts.` },
   { file: 'src/prototype/compiler.ts', match: 'error instanceof Error ? error.message : String(error)', reason: `${RETHROW} inspectPrototypeSourceGraph reports a caught compiler error, and it adds a Fix: line when the error has none.` },
@@ -51,7 +54,7 @@ const GUARD_FIX = 'Fix: append "Fix: <exact change>" to this message, or add a n
 function assertNamesAChange(message: string, context: string): void {
   assert.ok(message.includes('Fix:'), `${context} has no Fix: line: ${message}\nFix: append "Fix: <exact change>" to this message where the source throws it.`);
   for (const fix of message.split('Fix:').slice(1)) {
-    assert.ok(!/:\s+[.,]|\b(?:of|ids:|declares)\s+[.,]|: none\b/.test(fix), `${context} has a Fix: line with an empty list: ${fix.trim()}\nFix: leave out the list when it has no entries, where the source writes this line.`);
+    assert.ok(!/:\s+[.,]|\b(?:of|ids:|declares)\s+[.,]|(?<!display): none\b/.test(fix), `${context} has a Fix: line with an empty list: ${fix.trim()}\nFix: leave out the list when it has no entries, where the source writes this line.`);
     const generic = BANNED_FIX_TEXT.find(pattern => pattern.test(fix.trim()));
     assert.ok(!generic, `${context} has a generic Fix: line: ${fix.trim()}\nFix: name the file or field to edit, and the value or action.`);
   }

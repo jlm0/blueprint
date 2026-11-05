@@ -75,3 +75,15 @@
 [data-blueprint-primitive="nav-bar"][data-blueprint-variant="right-only"] .nav-bar__action--back {
   visibility: hidden;
 }
+
+[data-blueprint-primitive="nav-bar"][data-blueprint-variant="overlay"] {
+  border-bottom-color: transparent;
+  background: transparent;
+}
+
+[data-blueprint-primitive="nav-bar"][data-blueprint-variant="overlay"] .nav-bar__title {
+  font: var(--app-type-label);
+  font-size: var(--app-text-12);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}

@@ -1,4 +1,4 @@
-* {
+*:where([data-blueprint-screen="home"], [data-blueprint-screen="home"] *) {
   box-sizing: border-box;
 }
 
@@ -22,7 +22,7 @@
   padding: var(--app-space-1) 14px 0 var(--app-space-5);
 }
 
-.org {
+:where([data-blueprint-screen="home"]) .org {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -30,7 +30,7 @@
   text-decoration: none;
 }
 
-.org__mark {
+:where([data-blueprint-screen="home"]) .org__mark {
   display: grid;
   width: 30px;
   height: 30px;
@@ -39,27 +39,28 @@
   color: var(--app-color-on-primary);
   background: var(--app-color-foreground);
   font-family: var(--app-font-serif);
-  font-size: 19px;
+  font-size: var(--app-text-19);
 }
 
-.org__name {
+:where([data-blueprint-screen="home"]) .org__name {
   font: var(--app-type-heading);
 }
 
-.org svg {
+:where([data-blueprint-screen="home"]) .org__glyph {
   width: 16px;
   height: 16px;
   color: var(--app-color-muted);
 }
 
-[data-blueprint-screen="home"] .home__bell {
+.home__bell-wrap {
   position: relative;
+  display: flex;
 }
 
-[data-blueprint-screen="home"] .home__bell::after {
+.home__bell-wrap::after {
   position: absolute;
-  top: 10px;
-  right: 11px;
+  top: 11px;
+  right: 12px;
   width: 7px;
   height: 7px;
   border: 1.5px solid var(--app-color-background);
@@ -74,12 +75,12 @@
   padding: 26px var(--app-space-5) 0;
 }
 
-.actions {
+:where([data-blueprint-screen="home"]) .actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
 }
 
-.actions__item {
+:where([data-blueprint-screen="home"]) .actions__item {
   display: grid;
   justify-items: center;
   gap: 7px;
@@ -87,20 +88,9 @@
   font: var(--app-type-label);
 }
 
-[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"] {
+[data-blueprint-screen="home"] .actions__item .actions__button {
   width: 54px;
   min-height: 54px;
-  border-radius: var(--app-radius-full);
-}
-
-[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"] .button__icon {
-  width: var(--app-size-icon-md);
-  height: var(--app-size-icon-md);
-}
-
-[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"][data-blueprint-variant="secondary"] {
-  border-color: var(--app-color-border-strong);
-  background: var(--app-color-surface);
 }
 
 .home__accounts {
@@ -131,7 +121,7 @@
 .home__head h2 {
   margin: 0;
   font: var(--app-type-display);
-  font-size: 26px;
+  font-size: var(--app-text-26);
 }
 
 .home__head a {
@@ -144,7 +134,7 @@
   min-height: 58px;
 }
 
-.tabbar {
+:where([data-blueprint-screen="home"]) .tabbar {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -157,21 +147,21 @@
   backdrop-filter: blur(12px);
 }
 
-.tabbar__item {
+:where([data-blueprint-screen="home"]) .tabbar__item {
   display: grid;
   justify-items: center;
   gap: 3px;
   color: var(--app-color-muted);
   font: var(--app-type-label);
-  font-size: 10.5px;
+  font-size: var(--app-text-10-5);
   text-decoration: none;
 }
 
-.tabbar__item svg {
+:where([data-blueprint-screen="home"]) .tabbar__glyph {
   width: 23px;
   height: 23px;
 }
 
-.tabbar__item--active {
+:where([data-blueprint-screen="home"]) .tabbar__item--active {
   color: var(--app-color-foreground);
 }

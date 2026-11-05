@@ -1,6 +1,7 @@
 [data-blueprint-primitive="badge"] {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--app-space-1);
   box-sizing: border-box;
   padding: 2px var(--app-space-2);
@@ -58,4 +59,9 @@
   border-color: var(--app-color-border-strong);
   color: var(--app-color-foreground);
   background: transparent;
+}
+
+[data-blueprint-primitive="badge"][data-blueprint-variant="spaced"] {
+  padding: 3px 10px;
+  letter-spacing: 0.04em;
 }

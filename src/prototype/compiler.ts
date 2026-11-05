@@ -612,6 +612,7 @@ function prepareSource(context: CompilerContext, boundary: SourceBoundary, curre
   }
   const source = requireSource(context.bundle, sourceRef, `${currentBoundaryId} prototype source`);
   assertNoExecutableMarkup(source, sourceRef);
+  assertAssetAttributesDeclared(source, sourceRef);
   if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
     throw new Error(`Prototype source "${sourceRef}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute. Fix: remove ${SLOT_AUTHOR_ATTRIBUTE} from this source, because the compiler writes it.`);
   }
@@ -1389,6 +1390,25 @@ const EXECUTABLE_ELEMENTS = new Set(['script', 'iframe', 'object', 'embed', 'met
 const FORM_TARGET_ATTRIBUTES = new Set(['action', 'formaction']);
 const EVENT_HANDLER_NAME = /^on[a-z]+$/;
 const MEDIA_ELEMENTS = new Set(['video', 'audio']);
+const SVG_RESOURCE_ELEMENTS = new Set(['image', 'feimage', 'use', 'mpath', 'tref']);
+
+function bypassingAssetAttribute(tag: OpenTag): MarkupAttribute | undefined {
+  return tag.attributes.find(attribute => attribute.hasValue && (
+    attribute.name === 'srcset'
+    || attribute.name === 'imagesrcset'
+    || attribute.name === 'background'
+    || ((attribute.name === 'href' || attribute.name === 'xlink:href') && SVG_RESOURCE_ELEMENTS.has(tag.name) && !attribute.value.startsWith('#'))
+  ));
+}
+
+function assertAssetAttributesDeclared(source: string, sourceRef: string): void {
+  for (const tag of listPossibleOpenTags(source)) {
+    const attribute = bypassingAssetAttribute(tag);
+    if (attribute) {
+      throw new Error(`Prototype source "${sourceRef}" has ${attribute.name}="${attribute.value}" on <${tag.name}>, which loads a file without an asset declaration. Fix: delete ${attribute.name} from this tag, and show the file through src on an <img> with the file in prototype.assetRefs.`);
+    }
+  }
+}
 
 function assertNoExecutableMarkup(source: string, sourceRef: string): void {
   const tags = listPossibleOpenTags(source);

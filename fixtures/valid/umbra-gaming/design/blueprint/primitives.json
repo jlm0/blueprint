@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "umbra-gaming",
   "primitives": [
     {
@@ -45,6 +45,36 @@
             "id": "link",
             "name": "Link",
             "description": "An action that reads as inline text."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "A primary action with fully rounded ends."
+          },
+          {
+            "id": "pill-outline",
+            "name": "Pill outline",
+            "description": "A bordered action with fully rounded ends."
+          },
+          {
+            "id": "pill-ghost",
+            "name": "Pill ghost",
+            "description": "A borderless action with fully rounded ends."
+          },
+          {
+            "id": "pill-glass",
+            "name": "Pill glass",
+            "description": "A bordered action with fully rounded ends over a blurred backdrop."
+          },
+          {
+            "id": "pill-glow",
+            "name": "Pill glow",
+            "description": "A primary action with fully rounded ends and a wide glow."
+          },
+          {
+            "id": "pill-glow-tight",
+            "name": "Pill glow tight",
+            "description": "A primary action with fully rounded ends and a tight glow."
           }
         ]
       },
@@ -961,6 +991,11 @@
             "id": "right-only",
             "name": "Right only",
             "description": "Only a trailing action, for the root of a stack."
+          },
+          {
+            "id": "overlay",
+            "name": "Overlay",
+            "description": "A clear bar with no bottom border and a small uppercase title, for art behind it."
           }
         ]
       },
@@ -1391,11 +1426,11 @@
       ],
       "uses": [],
       "variants": {
-        "default": "leading-body-trailing",
+        "default": "default",
         "values": [
           {
-            "id": "leading-body-trailing",
-            "name": "Leading body trailing",
+            "id": "default",
+            "name": "Default",
             "description": "Leading art, body text, and a trailing accessory."
           }
         ]
@@ -1497,7 +1532,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only size."
+            "description": "The standard size."
+          },
+          {
+            "id": "sm",
+            "name": "Small",
+            "description": "A smaller spinner for inline status."
           }
         ]
       },
@@ -1594,6 +1634,11 @@
             "id": "outline",
             "name": "Outline",
             "description": "A border only, for neutral categories."
+          },
+          {
+            "id": "spaced",
+            "name": "Spaced",
+            "description": "A primary badge with roomier padding and letter spacing."
           }
         ]
       },
@@ -1687,6 +1732,11 @@
             "id": "accent",
             "name": "Accent",
             "description": "The accent color, to draw the eye."
+          },
+          {
+            "id": "inherit",
+            "name": "Inherit",
+            "description": "Adds no box, so the glyph takes its size and color from the element around it."
           }
         ]
       },
@@ -1771,6 +1821,31 @@
             "id": "block",
             "name": "Block",
             "description": "A larger block standing in for media or a card."
+          },
+          {
+            "id": "tile",
+            "name": "Tile",
+            "description": "A square tile that stands in for a large badge."
+          },
+          {
+            "id": "glyph",
+            "name": "Glyph",
+            "description": "A small square that stands in for a row glyph."
+          },
+          {
+            "id": "rail",
+            "name": "Rail",
+            "description": "Six equal cells that stand in for a rail of tiles."
+          },
+          {
+            "id": "lines",
+            "name": "Lines",
+            "description": "Two thin bars of different lengths that stand in for a title and a meta line."
+          },
+          {
+            "id": "bar",
+            "name": "Bar",
+            "description": "One full-width bar that stands in for a footer line."
           }
         ]
       },
@@ -2792,7 +2867,17 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A secondary fill with a thin border."
+          },
+          {
+            "id": "solid",
+            "name": "Solid",
+            "description": "A primary fill and ring with heavy display initials."
+          },
+          {
+            "id": "ringed",
+            "name": "Ringed",
+            "description": "A secondary fill with a stronger border."
           }
         ]
       },

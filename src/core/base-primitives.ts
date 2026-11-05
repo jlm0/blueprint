@@ -199,7 +199,7 @@ export const BASE_PRIMITIVE_CONTRACT: BasePrimitiveContractEntry[] = [
     name: 'Row layout',
     group: 'structure',
     platforms: EVERY_PLATFORM,
-    variants: { default: 'leading-body-trailing', values: ['leading-body-trailing'] },
+    variants: ONLY_DEFAULT,
     sizes: APP_CHOSEN,
     states: ONLY_DEFAULT,
     slots: ['title']

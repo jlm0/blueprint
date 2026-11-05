@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "meridian-finance",
   "groups": [
     {
@@ -163,7 +163,22 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Ink figures on the surface, with the label shown."
+          },
+          {
+            "id": "reversed",
+            "name": "Reversed",
+            "description": "Light figures on an ink panel."
+          },
+          {
+            "id": "figure-38",
+            "name": "Figure 38",
+            "description": "A 38px figure."
+          },
+          {
+            "id": "unlabeled",
+            "name": "Unlabeled",
+            "description": "The label stays hidden."
           }
         ]
       },
@@ -445,7 +460,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A bottom rule closes the row."
+          },
+          {
+            "id": "borderless",
+            "name": "Borderless",
+            "description": "The row has no bottom rule."
           }
         ]
       },
@@ -578,8 +598,8 @@
       "uses": [
         {
           "kind": "primitive",
-          "id": "text",
-          "reason": "The account type, masked number, nickname, balance, and note."
+          "id": "icon",
+          "reason": "Holds one inline glyph."
         }
       ],
       "variants": {
@@ -588,7 +608,17 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A bordered tile with no shadow."
+          },
+          {
+            "id": "raised",
+            "name": "Raised",
+            "description": "A bordered tile with a medium shadow."
+          },
+          {
+            "id": "list-row",
+            "name": "List row",
+            "description": "A flat row with a bottom rule, and the name and the balance on one line."
           }
         ]
       },
@@ -737,7 +767,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "The label shows above the figure."
+          },
+          {
+            "id": "unlabeled",
+            "name": "Unlabeled",
+            "description": "The label stays hidden."
           }
         ]
       },
@@ -1012,7 +1047,7 @@
         {
           "kind": "primitive",
           "id": "text",
-          "reason": "The summary eyebrow, the amount, and the settlement note."
+          "reason": "The summary eyebrow."
         }
       ],
       "variants": {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "umbra-gaming",
   "groups": [
     {
@@ -30,8 +30,8 @@
         },
         {
           "kind": "primitive",
-          "id": "progress",
-          "reason": "XP toward the next tier."
+          "id": "icon",
+          "reason": "Holds one inline glyph."
         }
       ],
       "variants": {
@@ -181,7 +181,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A snug queue button."
+          },
+          {
+            "id": "roomy",
+            "name": "Roomy",
+            "description": "A wider queue button for a large tile."
           }
         ]
       },
@@ -294,8 +299,8 @@
       "uses": [
         {
           "kind": "primitive",
-          "id": "progress",
-          "reason": "Objective progress."
+          "id": "text",
+          "reason": "The progress count."
         }
       ],
       "variants": {
@@ -436,7 +441,7 @@
         {
           "kind": "primitive",
           "id": "avatar",
-          "reason": "Player mark with presence."
+          "reason": "Player mark."
         }
       ],
       "variants": {
@@ -445,7 +450,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A plain identity row with no frame of its own."
+          },
+          {
+            "id": "chip",
+            "name": "Chip",
+            "description": "A framed pill with smaller copy, for a row of squadmates."
           }
         ]
       },
@@ -455,7 +465,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only size."
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Tighter padding and a smaller avatar."
           }
         ]
       },
@@ -475,7 +490,7 @@
           {
             "id": "scoreboard",
             "name": "Scoreboard",
-            "description": "A surface row with match stats on the right. The presence dot is hidden."
+            "description": "A surface row with match stats on the right."
           },
           {
             "id": "mvp",
@@ -529,6 +544,7 @@
       "tokenGroupIds": [
         "color",
         "space",
+        "size",
         "shape",
         "typography"
       ],
@@ -580,11 +596,6 @@
           "kind": "primitive",
           "id": "text",
           "reason": "Label, figure, and comparison copy."
-        },
-        {
-          "kind": "primitive",
-          "id": "progress",
-          "reason": "The bar against the player average."
         }
       ],
       "variants": {
@@ -603,7 +614,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only size."
+            "description": "The standard size."
+          },
+          {
+            "id": "compact",
+            "name": "Compact",
+            "description": "Tighter padding, a smaller label and figure, and less space above the bar."
           }
         ]
       },
@@ -1004,8 +1020,8 @@
       "uses": [
         {
           "kind": "primitive",
-          "id": "text",
-          "reason": "The division numeral."
+          "id": "icon",
+          "reason": "Holds one inline glyph."
         }
       ],
       "variants": {

@@ -3,14 +3,14 @@
     <blueprint-use kind="brand-mark" ref="globe" variant="ink" aria-hidden="true" class="web-header__globe"></blueprint-use>
     <blueprint-use kind="brand-mark" ref="wordmark" variant="ink" aria-hidden="true" class="web-header__wordmark"></blueprint-use>
   </a>
-  <blueprint-use kind="primitive" ref="tabs" state="first-selected" class="web-header__tabs web-header__tabs--overview">
+  <blueprint-use kind="primitive" ref="tabs" state="first-selected" variant="flush" class="web-header__tabs web-header__tabs--overview">
     <a class="tabs__tab" href="/" role="tab" aria-selected="true">Overview</a>
     <a class="tabs__tab" href="/transactions" role="tab" aria-selected="false">Transactions</a>
     <a class="tabs__tab" href="/payments" role="tab" aria-selected="false">Payments</a>
     <a class="tabs__tab" href="/cards" role="tab" aria-selected="false">Cards</a>
     <a class="tabs__tab" href="/treasury" role="tab" aria-selected="false">Treasury</a>
   </blueprint-use>
-  <blueprint-use kind="primitive" ref="tabs" state="second-selected" class="web-header__tabs web-header__tabs--transactions">
+  <blueprint-use kind="primitive" ref="tabs" state="second-selected" variant="flush" class="web-header__tabs web-header__tabs--transactions">
     <a class="tabs__tab" href="/" role="tab" aria-selected="false">Overview</a>
     <a class="tabs__tab" href="/transactions" role="tab" aria-selected="true">Transactions</a>
     <a class="tabs__tab" href="/payments" role="tab" aria-selected="false">Payments</a>
@@ -18,15 +18,15 @@
     <a class="tabs__tab" href="/treasury" role="tab" aria-selected="false">Treasury</a>
   </blueprint-use>
   <div class="web-header__actions">
-    <blueprint-use kind="primitive" ref="input" state="empty" variant="filled" class="web-header__search">
+    <blueprint-use kind="primitive" ref="input" state="empty" variant="pill" class="web-header__search">
       <span slot="label">Search</span>
       <span slot="placeholder">Search or jump to</span>
     </blueprint-use>
     <kbd class="web-header__kbd">⌘K</kbd>
-    <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="sm">
+    <blueprint-use kind="primitive" ref="button" state="normal" variant="pill" size="sm">
       <span slot="label">Move money</span>
     </blueprint-use>
-    <blueprint-use kind="primitive" ref="avatar" state="initials" size="sm" class="web-header__avatar">
+    <blueprint-use kind="primitive" ref="avatar" state="initials" variant="accent" size="sm">
       <span slot="initials">AL</span>
     </blueprint-use>
   </div>

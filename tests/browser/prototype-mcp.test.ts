@@ -68,11 +68,11 @@ describe('source-focused prototype MCP contract', () => {
     assert.doesNotMatch(compiled.html, /canvas-toolbar|board-switcher|frame-save/);
     assert.deepEqual(compiled.observedBoundaryIds, [
       'mira-ai/primitive/nav-bar',
+      'mira-ai/primitive/icon',
       'mira-ai/component/insight-chart',
       'mira-ai/primitive/segmented-control',
       'mira-ai/primitive/badge',
       'mira-ai/component/prompt-card',
-      'mira-ai/primitive/icon',
       'mira-ai/component/composer',
       'mira-ai/primitive/button'
     ]);

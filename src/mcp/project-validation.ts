@@ -20,6 +20,8 @@ export interface ValidProject {
   bundle: BlueprintProjectBundle;
   error?: undefined;
   outdatedFiles: BlueprintOutdatedFile[];
+  /** A style error leaves the canvas open, because the finding marks show it to a person. */
+  styleErrors: string[];
   /** Hash of each input of the validation result, so a reload can tell whether anything changed. */
   fingerprint: string;
   assetHashes: Record<string, string>;
@@ -29,6 +31,7 @@ export interface InvalidProject {
   bundle?: undefined;
   error: string;
   outdatedFiles: BlueprintOutdatedFile[];
+  styleErrors: string[];
   fingerprint?: undefined;
   assetHashes?: undefined;
 }
@@ -115,7 +118,7 @@ export const workerProjectValidator = createWorkerValidator();
 export const loadValidatedProject: ProjectReader = (projectRoot, signal) => {
   return runInOrder(diskValidations, path.resolve(projectRoot), signal, () =>
     runProjectTask<ValidatedProject>({ kind: 'read', projectRoot }, signal)
-  ).catch(error => ({ error: errorMessage(error), outdatedFiles: [] }));
+  ).catch(error => ({ error: errorMessage(error), outdatedFiles: [], styleErrors: [] }));
 };
 
 export function reportProjectValidation(project: string, mode: ValidationReportMode, signal?: AbortSignal): Promise<ValidationReport> {

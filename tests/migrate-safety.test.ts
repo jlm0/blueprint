@@ -4,6 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import { loadProjectFromFs } from '../src/core/load';
 import { migrateProjectFiles } from '../src/core/migrate';
 import { MIGRATIONS } from '../src/core/migrations';
@@ -115,7 +116,7 @@ describe('migrate with a symlink that loops', () => {
 });
 
 describe('a schemaVersion that is not a string', () => {
-  const versions: unknown[] = [['2.0.0'], ['1.0.0'], ['99.0.0'], 2, true, {}];
+  const versions: unknown[] = [[BLUEPRINT_SCHEMA_VERSION], ['1.0.0'], ['99.0.0'], 2, true, {}];
 
   for (const version of versions) {
     for (const target of ['tokens.json', 'explorations', 'history']) {
@@ -296,7 +297,7 @@ describe('a saved record with a hidden name', () => {
       const bundle = await loadProjectFromFs(project);
       assert.ok(bundle.manifest.project.id);
       const output = await migrateBlueprint({ project, dryRun: true });
-      assert.equal(output.fromVersion, '2.0.0');
+      assert.equal(output.fromVersion, BLUEPRINT_SCHEMA_VERSION);
     });
   });
 });

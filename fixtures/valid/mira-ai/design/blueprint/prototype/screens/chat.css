@@ -1,4 +1,4 @@
-* {
+*:where([data-blueprint-screen="chat"], [data-blueprint-screen="chat"] *) {
   box-sizing: border-box;
 }
 
@@ -19,108 +19,98 @@
   background: var(--app-color-surface);
 }
 
-[data-blueprint-screen="chat"] .chat__nav {
-  border-bottom-color: transparent;
-}
-
-[data-blueprint-screen="chat"] .chat__nav--new {
+[data-blueprint-screen="chat"]:not([data-blueprint-state="empty"]) .chat__nav--new {
   display: none;
 }
 
-.thread {
+:where([data-blueprint-screen="chat"]) .thread {
   display: grid;
   gap: var(--app-space-5);
   padding: var(--app-space-2) var(--app-space-5) 160px;
 }
 
-.stamp {
+:where([data-blueprint-screen="chat"]) .stamp {
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   letter-spacing: 0.05em;
   text-align: center;
   text-transform: uppercase;
 }
 
-.ask {
+:where([data-blueprint-screen="chat"]) .ask {
   justify-self: end;
   max-width: 290px;
   margin: 0;
   padding: 10px var(--app-space-4);
   border-radius: 20px 20px var(--app-radius-sm) 20px;
   background: var(--app-color-surface-muted);
-  font-size: 15px;
+  font-size: var(--app-text-15);
   line-height: 1.45;
 }
 
-.answer {
+:where([data-blueprint-screen="chat"]) .answer {
   display: grid;
   gap: var(--app-space-4);
 }
 
-.answer__meta {
+:where([data-blueprint-screen="chat"]) .answer__meta {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
 }
 
-.answer__mark {
+:where([data-blueprint-screen="chat"]) .answer__mark {
   width: 22px;
   height: 22px;
 }
 
-.answer__mark rect {
+:where([data-blueprint-screen="chat"]) .answer__mark rect {
   fill: var(--app-color-primary);
 }
 
-.answer__mark path {
+:where([data-blueprint-screen="chat"]) .answer__mark path {
   fill: var(--app-color-on-primary);
 }
 
-.answer__meta b {
+:where([data-blueprint-screen="chat"]) .answer__meta > b {
   font-weight: 600;
 }
 
-.answer__meta span {
+:where([data-blueprint-screen="chat"]) .answer__meta > span {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.answer h1 {
+:where([data-blueprint-screen="chat"]) .answer > h1 {
   margin: 0;
   font: var(--app-type-display);
-  font-size: 25px;
+  font-size: var(--app-text-25);
   line-height: 1.16;
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
-.answer p {
+:where([data-blueprint-screen="chat"]) .answer > p {
   margin: 0;
   color: color-mix(in srgb, var(--app-color-foreground) 86%, var(--app-color-surface));
-  font-size: 15px;
+  font-size: var(--app-text-15);
   line-height: 1.6;
 }
 
-.answer strong {
+:where([data-blueprint-screen="chat"]) .answer > :where(p) > strong {
   color: var(--app-color-foreground);
   font-weight: 600;
 }
 
-.citations {
+:where([data-blueprint-screen="chat"]) .citations {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-[data-blueprint-screen="chat"] .citations [data-blueprint-primitive="badge"] {
-  padding: 3px 10px;
-  border-color: var(--app-color-border);
-  color: var(--app-color-muted);
-}
-
-.dock {
+:where([data-blueprint-screen="chat"]) .dock {
   position: absolute;
   z-index: 3;
   right: 0;
@@ -130,8 +120,11 @@
   background: linear-gradient(to bottom, transparent, var(--app-color-surface) 45%);
 }
 
-.welcome,
-[data-blueprint-screen="chat"] .dock__composer--new {
+:where([data-blueprint-screen="chat"]) .welcome {
+  display: none;
+}
+
+[data-blueprint-screen="chat"]:not([data-blueprint-state="empty"]) .dock__composer--new {
   display: none;
 }
 
@@ -139,17 +132,9 @@
   display: none;
 }
 
-[data-blueprint-screen="chat"][data-blueprint-state="empty"] .dock__composer--new {
-  display: grid;
-}
-
 [data-blueprint-screen="chat"][data-blueprint-state="empty"] .chat__nav--thread,
 [data-blueprint-screen="chat"][data-blueprint-state="empty"] .thread {
   display: none;
-}
-
-[data-blueprint-screen="chat"][data-blueprint-state="empty"] .chat__nav--new {
-  display: grid;
 }
 
 [data-blueprint-screen="chat"][data-blueprint-state="empty"] .welcome {
@@ -160,17 +145,17 @@
   padding: 76px var(--app-space-5) 0;
 }
 
-.welcome__eyebrow {
+:where([data-blueprint-screen="chat"]) .welcome__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-2);
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 12px;
+  font-size: var(--app-text-12);
 }
 
-.welcome__dot {
+:where([data-blueprint-screen="chat"]) .welcome__dot {
   width: 7px;
   height: 7px;
   border-radius: var(--app-radius-full);
@@ -178,24 +163,24 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-success) 18%, transparent);
 }
 
-.welcome__title {
+:where([data-blueprint-screen="chat"]) .welcome__title {
   margin: 14px 0 0;
   font: var(--app-type-display);
-  font-size: 38px;
+  font-size: var(--app-text-38);
   line-height: 1.04;
   letter-spacing: -0.045em;
   text-wrap: balance;
 }
 
-.welcome__lede {
+:where([data-blueprint-screen="chat"]) .welcome__lede {
   max-width: 300px;
   margin: 14px 0 0;
   color: var(--app-color-muted);
-  font-size: 16px;
+  font-size: var(--app-text-16);
   line-height: 1.5;
 }
 
-.welcome__starters {
+:where([data-blueprint-screen="chat"]) .welcome__starters {
   display: grid;
   gap: var(--app-space-2);
   margin-top: auto;

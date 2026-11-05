@@ -98,3 +98,9 @@
     transition: none;
   }
 }
+
+[data-blueprint-primitive="select"]:where([data-blueprint-variant="quiet"]) .select__field {
+  min-height: var(--app-size-control-sm);
+  border-color: transparent;
+  font-weight: 500;
+}

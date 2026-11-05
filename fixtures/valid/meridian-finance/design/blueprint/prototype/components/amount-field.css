@@ -15,7 +15,7 @@
   align-items: baseline;
   color: var(--app-color-foreground);
   font: var(--app-type-display);
-  font-size: 84px;
+  font-size: var(--app-text-84);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -28,7 +28,7 @@
 .amount-field__currency {
   margin-right: 0.06em;
   color: var(--app-color-muted);
-  font-size: 0.5em;
+  font-size: var(--app-text-0-5em);
   align-self: flex-start;
   line-height: 1.3;
 }
@@ -58,12 +58,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-[data-blueprint-component="amount-field"] .amount-field__currency-code {
-  font-family: var(--app-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-}
-
 [data-blueprint-component="amount-field"][data-blueprint-state="error"] {
   border-bottom-color: var(--app-color-destructive);
 }
@@ -86,10 +80,14 @@
 }
 
 [data-blueprint-component="amount-field"][data-blueprint-size="compact"] .amount-field__value {
-  font-size: 72px;
+  font-size: var(--app-text-72);
 }
 
 [data-blueprint-component="amount-field"][data-blueprint-size="compact"] .amount-field__foot {
   flex-direction: column-reverse;
   gap: 10px;
+}
+
+[data-blueprint-component="amount-field"][data-blueprint-variant="unlabeled"] .amount-field__label {
+  display: none;
 }

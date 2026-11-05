@@ -1,4 +1,4 @@
-import { attributeWithValue, listOpenTags, type OpenTag } from './markup';
+import { attributeWithValue, listOpenTags, listTagsOutsideSlots, type OpenTag } from './markup';
 import type { BlueprintProjectBundle, PrototypeAsset } from './types';
 
 export interface HandBuiltControlIssue {
@@ -12,6 +12,15 @@ export interface HandBuiltControlIssue {
 const nativeControls = new Set(['button', 'input', 'select', 'textarea']);
 const buttonInputTypes = new Set(['button', 'submit', 'reset']);
 const ignoredInputTypes = new Set(['hidden', 'file', 'color', 'image']);
+const controlRolePrimitives = new Map([
+  ['button', 'button'],
+  ['checkbox', 'checkbox'],
+  ['combobox', 'select'],
+  ['radio', 'radio'],
+  ['slider', 'slider'],
+  ['switch', 'switch'],
+  ['textbox', 'input']
+]);
 
 /**
  * Screen and component sources must instantiate the app's canonical control primitive
@@ -19,35 +28,44 @@ const ignoredInputTypes = new Set(['hidden', 'file', 'color', 'image']);
  * `data-blueprint-native="<reason>"`.
  */
 export function lintHandBuiltControls(bundle: BlueprintProjectBundle<PrototypeAsset>): HandBuiltControlIssue[] {
-  const primitiveIds = new Set(
-    bundle.primitives.primitives.map(primitive => primitive.id)
-  );
+  const primitiveIds = new Set(bundle.primitives.primitives.map(primitive => primitive.id));
   const boundaries = [
     ...bundle.components.components.map(component => ({ label: `component.${component.id}`, sourceRef: component.prototype.source })),
     ...bundle.screens.screens.map(screen => ({ label: `screen.${screen.id}`, sourceRef: screen.prototype.source }))
   ];
-  const issues: HandBuiltControlIssue[] = [];
-  for (const { label, sourceRef } of boundaries) {
+  return boundaries.flatMap(({ label, sourceRef }) => {
     const source = bundle.prototypeSourceContents[sourceRef];
-    if (source === undefined) continue;
-    for (const tag of listOpenTags(source)) {
-      if (!nativeControls.has(tag.name) || attributeWithValue(tag, 'data-blueprint-native')) continue;
-      const primitiveId = matchingPrimitiveIds(tag).find(candidate => primitiveIds.has(candidate));
-      if (primitiveId) {
-        issues.push({
-          boundary: label,
-          sourceRef,
-          line: source.slice(0, tag.start).split('\n').length,
-          element: tag.name,
-          primitiveId
-        });
-      }
+    return source === undefined ? [] : lintSourceControls(label, sourceRef, source, primitiveIds);
+  });
+}
+
+export function lintSourceControls(label: string, sourceRef: string, source: string, primitiveIds: ReadonlySet<string>): HandBuiltControlIssue[] {
+  const issues: HandBuiltControlIssue[] = [];
+  const outsideSlots = new Set(listTagsOutsideSlots(source).map(tag => tag.start));
+  for (const tag of listOpenTags(source)) {
+    if (attributeWithValue(tag, 'data-blueprint-native')) continue;
+    const role = nativeControls.has(tag.name) || !outsideSlots.has(tag.start) ? undefined : controlRole(tag);
+    const primitiveId = (role ? [controlRolePrimitives.get(role.toLowerCase())!] : matchingPrimitiveIds(tag)).find(candidate => primitiveIds.has(candidate));
+    if (primitiveId) {
+      issues.push({
+        boundary: label,
+        sourceRef,
+        line: source.slice(0, tag.start).split('\n').length,
+        element: role ? `${tag.name} role="${role}"` : tag.name,
+        primitiveId
+      });
     }
   }
   return issues;
 }
 
+function controlRole(tag: OpenTag): string | undefined {
+  const role = attributeWithValue(tag, 'role')?.value.trim().split(/\s+/)[0];
+  return role && controlRolePrimitives.has(role.toLowerCase()) ? role : undefined;
+}
+
 function matchingPrimitiveIds(tag: OpenTag): string[] {
+  if (!nativeControls.has(tag.name)) return [];
   if (tag.name === 'button') return ['button'];
   if (tag.name === 'select') return ['select'];
   if (tag.name === 'textarea') return ['textarea', 'input'];

@@ -1,8 +1,9 @@
 import { BLUEPRINT_SCHEMA_VERSION } from '../schema-version';
 import { step as from1To2 } from './1.0.0-to-2.0.0';
+import { step as from2To3 } from './2.0.0-to-3.0.0';
 import type { MigrationStep } from './step';
 
-export const MIGRATIONS: readonly MigrationStep[] = [from1To2];
+export const MIGRATIONS: readonly MigrationStep[] = [from1To2, from2To3];
 
 export const OLDEST_SCHEMA_VERSION = MIGRATIONS[0].from;
 

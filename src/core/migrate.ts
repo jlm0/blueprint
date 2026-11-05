@@ -54,7 +54,7 @@ export function migrateProjectFiles(input: MigrationInput): MigrationOutput {
   if (stampedRecords.size > 0) {
     changes.push(`explorations and history: ${stampedRecords.size} saved record${stampedRecords.size > 1 ? 's' : ''} now carry schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`);
   }
-  return { fromVersion, toVersion: BLUEPRINT_SCHEMA_VERSION, upToDate: writes.size === 0, writes, changes };
+  return { fromVersion, toVersion: BLUEPRINT_SCHEMA_VERSION, upToDate: writes.size === 0 && changes.length === 0, writes, changes };
 }
 
 function readProjectVersions(files: ReadonlyMap<string, string>): Set<string> {

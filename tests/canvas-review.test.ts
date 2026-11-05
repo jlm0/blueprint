@@ -38,8 +38,8 @@ describe('Blueprint canvas-to-contract review loop', () => {
     assert.equal(conversation.name, 'Conversation');
     assert.match(conversation.description, /compact figure, and citation chips/);
     assert.equal(conversation.prototypeOnly, false);
-    assert.equal(conversation.dependencyCount, 2);
-    assert.deepEqual(conversation.dependencySummary, ['component:insight-chart', 'primitive:badge']);
+    assert.equal(conversation.dependencyCount, 3);
+    assert.deepEqual(conversation.dependencySummary, ['component:insight-chart', 'primitive:badge', 'primitive:icon']);
 
     const prototypeOnly = sections.find(section => section.localId === 'chat/welcome');
     assert.ok(prototypeOnly?.prototypeOnly);

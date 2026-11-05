@@ -28,7 +28,7 @@
 .prompt-card__kicker {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -40,7 +40,7 @@
 
 .prompt-card__title {
   font: var(--app-type-heading);
-  font-size: 15px;
+  font-size: var(--app-text-15);
   letter-spacing: -0.01em;
   text-wrap: balance;
 }
@@ -48,7 +48,7 @@
 .prompt-card__description {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
-  font-size: 13px;
+  font-size: var(--app-text-13);
 }
 
 [data-blueprint-component="prompt-card"][data-blueprint-size="compact"] {

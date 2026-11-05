@@ -26,20 +26,20 @@
 }
 
 [data-blueprint-primitive="badge"][data-blueprint-variant="tonal"],
-[data-blueprint-primitive="badge"][data-blueprint-variant="accent"],
+[data-blueprint-primitive="badge"]:is([data-blueprint-variant="accent"], [data-blueprint-variant="accent-roomy"]),
 [data-blueprint-primitive="badge"][data-blueprint-variant="success"] {
   color: var(--app-color-foreground);
   background: var(--app-color-surface-muted);
 }
 
-[data-blueprint-primitive="badge"][data-blueprint-variant="accent"],
+[data-blueprint-primitive="badge"]:is([data-blueprint-variant="accent"], [data-blueprint-variant="accent-roomy"]),
 [data-blueprint-primitive="badge"][data-blueprint-variant="success"] {
   border-color: var(--app-color-border);
   background: var(--app-color-surface);
 }
 
 [data-blueprint-primitive="badge"][data-blueprint-variant="tonal"] .badge__dot,
-[data-blueprint-primitive="badge"][data-blueprint-variant="accent"] .badge__dot {
+[data-blueprint-primitive="badge"]:is([data-blueprint-variant="accent"], [data-blueprint-variant="accent-roomy"]) .badge__dot {
   display: block;
   background: var(--app-color-accent);
 }
@@ -54,8 +54,18 @@
   background: var(--app-color-destructive);
 }
 
-[data-blueprint-primitive="badge"][data-blueprint-variant="outline"] {
+[data-blueprint-primitive="badge"]:is([data-blueprint-variant="outline"], [data-blueprint-variant="quiet"]) {
   border-color: var(--app-color-border-strong);
   color: var(--app-color-foreground);
   background: transparent;
+}
+
+[data-blueprint-primitive="badge"][data-blueprint-variant="accent-roomy"] {
+  padding: 5px var(--app-space-3);
+}
+
+[data-blueprint-primitive="badge"][data-blueprint-variant="quiet"] {
+  padding: 3px 10px;
+  border-color: var(--app-color-border);
+  color: var(--app-color-muted);
 }

@@ -1,4 +1,4 @@
-* {
+*:where([data-blueprint-screen="transfer-mobile"], [data-blueprint-screen="transfer-mobile"] *) {
   box-sizing: border-box;
 }
 
@@ -15,27 +15,18 @@
   -webkit-font-smoothing: antialiased;
 }
 
-[data-blueprint-screen="transfer-mobile"] .pay__navbar {
-  border-bottom-color: transparent;
-  background: transparent;
-}
-
-[data-blueprint-screen="transfer-mobile"] .pay__navbar--review,
+[data-blueprint-screen="transfer-mobile"]:not([data-blueprint-state="review"]) .pay__navbar--review,
 [data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .pay__navbar--send {
   display: none;
-}
-
-[data-blueprint-screen="transfer-mobile"][data-blueprint-state="review"] .pay__navbar--review {
-  display: grid;
 }
 
 [data-blueprint-screen="transfer-mobile"][data-blueprint-state="success"] .pay__nav {
   visibility: hidden;
 }
 
-.entry,
-.approve,
-.sent {
+:where([data-blueprint-screen="transfer-mobile"]) .entry,
+:where([data-blueprint-screen="transfer-mobile"]) .approve,
+:where([data-blueprint-screen="transfer-mobile"]) .sent {
   display: flex;
   min-height: 0;
   flex: 1;
@@ -43,8 +34,8 @@
   padding: var(--app-space-2) var(--app-space-5) calc(var(--blueprint-safe-area-bottom) + var(--app-space-2));
 }
 
-.approve,
-.sent {
+:where([data-blueprint-screen="transfer-mobile"]) .approve,
+:where([data-blueprint-screen="transfer-mobile"]) .sent {
   display: none;
 }
 
@@ -58,7 +49,7 @@
   display: flex;
 }
 
-.entry__stage {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__stage {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -66,34 +57,22 @@
   padding-bottom: var(--app-space-4);
 }
 
-.entry__to {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__to {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--app-space-3);
 }
 
-[data-blueprint-screen="transfer-mobile"] .entry__mark {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: var(--app-radius-md);
-  color: var(--app-color-on-primary);
-  background: var(--app-color-foreground);
-  font-family: var(--app-font-serif);
-  font-size: 16px;
-  font-weight: 400;
-}
-
-.entry__who {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__who {
   display: grid;
 }
 
-.entry__who b {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__who b {
   font: var(--app-type-heading);
 }
 
-.entry__who small {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__who small {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
@@ -102,43 +81,20 @@
   margin-top: 26px;
 }
 
-[data-blueprint-screen="transfer-mobile"] .entry .amount-field__label {
-  display: none;
-}
-
-.entry__options {
+:where([data-blueprint-screen="transfer-mobile"]) .entry__options {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   margin-top: 22px;
 }
 
-[data-blueprint-screen="transfer-mobile"] .entry__source .select__field {
-  border-radius: var(--app-radius-full);
-  background: var(--app-color-surface);
-}
-
-[data-blueprint-screen="transfer-mobile"] .entry__source .select__list {
-  display: none;
-}
-
-[data-blueprint-screen="transfer-mobile"] .entry__method {
-  border-radius: var(--app-radius-full);
-}
-
-[data-blueprint-screen="transfer-mobile"] .entry__method .segmented-control__option {
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: var(--app-radius-full);
-}
-
-.keypad {
+:where([data-blueprint-screen="transfer-mobile"]) .keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   margin: 0 calc(var(--app-space-2) * -1) var(--app-space-3);
 }
 
-.keypad__key {
+:where([data-blueprint-screen="transfer-mobile"]) .keypad__key {
   height: 58px;
   padding: 0;
   border: 0;
@@ -146,64 +102,58 @@
   color: var(--app-color-foreground);
   background: transparent;
   font-family: var(--app-font-sans);
-  font-size: 26px;
+  font-size: var(--app-text-26);
   font-weight: 400;
   cursor: pointer;
 }
 
-.keypad__key:active {
+:where([data-blueprint-screen="transfer-mobile"]) .keypad__key:active {
   background: var(--app-color-pressed);
 }
 
 [data-blueprint-screen="transfer-mobile"] .pay__cta {
   width: 100%;
   min-height: 54px;
-  border-radius: var(--app-radius-full);
-  font-size: 16px;
 }
 
-.approve {
+:where([data-blueprint-screen="transfer-mobile"]) .approve {
   align-items: stretch;
   gap: var(--app-space-4);
   text-align: center;
 }
 
-.approve__kicker {
+:where([data-blueprint-screen="transfer-mobile"]) .approve__kicker {
   margin: var(--app-space-4) 0 0;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.approve__amount {
+:where([data-blueprint-screen="transfer-mobile"]) .approve__amount {
   margin: calc(var(--app-space-2) * -1) 0 0;
   font: var(--app-type-display);
-  font-size: 68px;
+  font-size: var(--app-text-68);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
   letter-spacing: -0.025em;
 }
 
-.approve__amount span {
+:where([data-blueprint-screen="transfer-mobile"]) .approve__amount span {
   color: var(--app-color-muted);
-  font-size: 0.5em;
+  font-size: var(--app-text-0-5em);
 }
 
-.approve__to {
+:where([data-blueprint-screen="transfer-mobile"]) .approve__to {
   margin: calc(var(--app-space-3) * -1) 0 var(--app-space-2);
   color: var(--app-color-muted);
   font: var(--app-type-display);
-  font-size: 22px;
+  font-size: var(--app-text-22);
   font-style: italic;
 }
 
-[data-blueprint-screen="transfer-mobile"] .approve [data-blueprint-component="transfer-summary"] {
-  text-align: left;
-}
-
-.approve__code {
+:where([data-blueprint-screen="transfer-mobile"]) .approve__code {
   display: grid;
   justify-items: center;
   gap: 10px;
@@ -212,41 +162,41 @@
   font: var(--app-type-caption);
 }
 
-.sent {
+:where([data-blueprint-screen="transfer-mobile"]) .sent {
   align-items: center;
   gap: 14px;
   padding-top: 60px;
   text-align: center;
 }
 
-.sent__seal svg {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__seal-glyph {
   width: 76px;
   height: 76px;
   fill: color-mix(in srgb, var(--app-color-success) 10%, var(--app-color-background));
   stroke: var(--app-color-success);
 }
 
-.sent__seal circle {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__seal-ring {
   stroke-width: 1;
 }
 
-.sent h1 {
+:where([data-blueprint-screen="transfer-mobile"]) .sent > h1 {
   margin: 0;
   font: var(--app-type-display);
-  font-size: 46px;
+  font-size: var(--app-text-46);
   line-height: 1.02;
   text-wrap: balance;
 }
 
-.sent__lede {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__lede {
   max-width: 280px;
   text-wrap: balance;
   margin: 0;
   color: var(--app-color-muted);
-  font-size: 15px;
+  font-size: var(--app-text-15);
 }
 
-.sent__facts {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__facts {
   display: grid;
   width: 100%;
   margin: var(--app-space-4) 0 0;
@@ -254,28 +204,28 @@
   text-align: left;
 }
 
-.sent__facts div {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__facts div {
   display: flex;
   justify-content: space-between;
   padding: 14px 0;
   border-bottom: 1px solid var(--app-color-border);
 }
 
-.sent__facts dt {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__facts dt {
   color: var(--app-color-muted);
 }
 
-.sent__facts dd {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__facts dd {
   margin: 0;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-.sent__facts div:first-child dd {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__facts div:first-child dd {
   font: var(--app-type-code);
 }
 
-.sent__actions {
+:where([data-blueprint-screen="transfer-mobile"]) .sent__actions {
   display: grid;
   width: 100%;
   gap: var(--app-space-2);

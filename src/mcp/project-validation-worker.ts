@@ -12,6 +12,7 @@ import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-ver
 import { selectionSourceFiles } from '../core/selection';
 import type { BlueprintProjectBundle, PrototypeSourceGraphIssue, ValidationResult } from '../core/types';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { validationResult } from '../core/validate';
 import { validateProject, validateProjectReadiness } from '../prototype/validate-project';
 import { withCrashFix } from './crash-text';
 import { loadCurrentProject } from './project-files';
@@ -137,8 +138,8 @@ export class ProjectValidationSession {
     const { baseline, readiness } = this.#run('readiness', () => validateProjectReadiness(this.#bundle, this.sourceGraphIssues, known));
     return {
       projectId: this.#bundle.manifest.project.id,
+      ...baseline,
       ok: baseline.ok && readiness.tier !== 'blocked',
-      errors: baseline.errors,
       ...this.#advisories(),
       readiness
     };
@@ -174,23 +175,26 @@ function proseAdvisories(bundle: BlueprintProjectBundle): ProseAdvisory[] {
 
 export async function readValidatedProject(projectRoot: string, steps: ProjectValidationSteps = {}): Promise<ValidatedProject> {
   let outdatedFiles: BlueprintOutdatedFile[] = [];
+  let styleErrors: string[] = [];
   try {
     const bundle = await (steps.load ?? loadProjectFromFs)(projectRoot);
     outdatedFiles = fileSchemaVersions(bundle)
       .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
       .map(([file, version]) => ({ file, version: String(version) }));
     const validation = (steps.validate ?? validateProject)(bundle);
-    if (!validation.ok) {
-      throw new Error(`Blueprint project failed baseline validation:\n${validation.errors.join('\n')}`);
+    styleErrors = validation.styleErrors;
+    if (validation.contractErrors.length > 0) {
+      throw new Error(`Blueprint project failed baseline validation:\n${validation.contractErrors.join('\n')}`);
     }
     return {
       bundle,
       outdatedFiles: [],
+      styleErrors,
       fingerprint: projectFingerprint(bundle),
       assetHashes: hashProjectAssets(bundle)
     };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error), outdatedFiles };
+    return { error: error instanceof Error ? error.message : String(error), outdatedFiles, styleErrors };
   }
 }
 
@@ -230,7 +234,7 @@ async function runProjectTask(
     }
     case 'persisted': {
       const persisted = await loadProjectFromFs(task.projectRoot);
-      if (projectFingerprint(persisted) === task.projectedFingerprint) return { ok: true, errors: [] };
+      if (projectFingerprint(persisted) === task.projectedFingerprint) return validationResult([], []);
       return validation(persisted).result('baseline');
     }
     case 'canvas-location':

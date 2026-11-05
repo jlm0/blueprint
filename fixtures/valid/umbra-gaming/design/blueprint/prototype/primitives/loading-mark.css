@@ -51,3 +51,8 @@
     animation: none;
   }
 }
+
+[data-blueprint-primitive="loading-mark"][data-blueprint-size="sm"] .loading-mark__arc {
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
+}

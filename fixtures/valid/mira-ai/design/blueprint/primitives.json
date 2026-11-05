@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "mira-ai",
   "primitives": [
     {
@@ -45,6 +45,31 @@
             "id": "link",
             "name": "Link",
             "description": "An action that reads as inline text."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "Rounds the primary fill into a full pill."
+          },
+          {
+            "id": "pill-secondary",
+            "name": "Secondary pill",
+            "description": "Rounds the secondary fill into a full pill."
+          },
+          {
+            "id": "ring",
+            "name": "Ring",
+            "description": "Draws a hairline ring with a full radius around a ghost action."
+          },
+          {
+            "id": "quiet",
+            "name": "Quiet",
+            "description": "Mutes the content of a ghost action."
+          },
+          {
+            "id": "outline-split",
+            "name": "Outline split",
+            "description": "Spreads the label of an outline action across its width, so a hint sits at the far edge."
           }
         ]
       },
@@ -214,6 +239,11 @@
             "id": "underline",
             "name": "Underline",
             "description": "A field drawn as a single bottom rule."
+          },
+          {
+            "id": "filled-hidden-label",
+            "name": "Filled, hidden label",
+            "description": "Tints the field like Filled, and keeps the label for assistive technology only."
           }
         ]
       },
@@ -960,6 +990,16 @@
             "id": "right-only",
             "name": "Right only",
             "description": "Only a trailing action, for the root of a stack."
+          },
+          {
+            "id": "back-and-right-borderless",
+            "name": "Back, right, borderless",
+            "description": "Shows a back action and a trailing action, and hides the bottom rule."
+          },
+          {
+            "id": "right-only-borderless",
+            "name": "Right only, borderless",
+            "description": "Shows only a trailing action, and hides the bottom rule."
           }
         ]
       },
@@ -1390,11 +1430,11 @@
       ],
       "uses": [],
       "variants": {
-        "default": "leading-body-trailing",
+        "default": "default",
         "values": [
           {
-            "id": "leading-body-trailing",
-            "name": "Leading body trailing",
+            "id": "default",
+            "name": "Default",
             "description": "Leading art, body text, and a trailing accessory."
           }
         ]
@@ -1593,6 +1633,16 @@
             "id": "outline",
             "name": "Outline",
             "description": "A border only, for neutral categories."
+          },
+          {
+            "id": "accent-roomy",
+            "name": "Accent roomy",
+            "description": "Adds roomier padding to the accent label."
+          },
+          {
+            "id": "quiet",
+            "name": "Quiet",
+            "description": "Draws a hairline border and a muted label with wider padding."
           }
         ]
       },
@@ -1686,6 +1736,11 @@
             "id": "accent",
             "name": "Accent",
             "description": "The accent color, to draw the eye."
+          },
+          {
+            "id": "inherit",
+            "name": "Inherit",
+            "description": "Adds no box, so the glyph takes its size and color from the element around it."
           }
         ]
       },
@@ -2345,7 +2400,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Draws a bordered field at the standard control height."
+          },
+          {
+            "id": "quiet",
+            "name": "Quiet",
+            "description": "Hides the field border and shortens the field to the small control height."
           }
         ]
       },
@@ -2791,7 +2851,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Draws a round mark with label-sized initials."
+          },
+          {
+            "id": "tile",
+            "name": "Tile",
+            "description": "Sets smaller initials in a rounded square."
           }
         ]
       },
@@ -2896,7 +2961,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Shows a foreground label above the bar."
+          },
+          {
+            "id": "muted-label",
+            "name": "Muted label",
+            "description": "Mutes the label above the bar."
           }
         ]
       },

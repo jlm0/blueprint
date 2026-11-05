@@ -16,7 +16,7 @@
   src: url("../assets/fonts/geist-mono.woff2") format("woff2");
 }
 
-* {
+*:where([data-blueprint-screen="match"], [data-blueprint-screen="match"] *) {
   box-sizing: border-box;
 }
 
@@ -56,24 +56,12 @@
   margin: 0 calc(var(--app-space-2) * -1);
 }
 
-[data-blueprint-screen="match"] .match__nav {
-  border-bottom-color: transparent;
-  background: transparent;
-}
-
-[data-blueprint-screen="match"] .match__nav .nav-bar__title {
-  font: var(--app-type-label);
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.result {
+:where([data-blueprint-screen="match"]) .result {
   display: grid;
   gap: 6px;
 }
 
-.result__meta {
+:where([data-blueprint-screen="match"]) .result__meta {
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-label);
@@ -81,14 +69,14 @@
   text-align: center;
 }
 
-.result__title {
+:where([data-blueprint-screen="match"]) .result__title {
   margin: 0;
   background: linear-gradient(180deg, var(--app-color-foreground) 10%, var(--app-color-primary) 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   font-family: var(--app-font-display);
-  font-size: 60px;
+  font-size: var(--app-text-60);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.06em;
@@ -97,7 +85,7 @@
   filter: drop-shadow(0 0 28px var(--app-color-glow));
 }
 
-.result__row {
+:where([data-blueprint-screen="match"]) .result__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,110 +97,83 @@
   backdrop-filter: blur(14px);
 }
 
-.result__place {
+:where([data-blueprint-screen="match"]) .result__place {
   display: flex;
   align-items: baseline;
   gap: 10px;
   margin: 0;
 }
 
-.result__place b {
+:where([data-blueprint-screen="match"]) .result__place b {
   font-family: var(--app-font-display);
-  font-size: 34px;
+  font-size: var(--app-text-34);
   font-weight: 800;
   letter-spacing: -0.05em;
 }
 
-.result__place sup {
+:where([data-blueprint-screen="match"]) .result__place sup {
   margin-left: 2px;
-  font-size: 13px;
+  font-size: var(--app-text-13);
   letter-spacing: 0;
   vertical-align: 14px;
 }
 
-.result__place span {
+:where([data-blueprint-screen="match"]) .result__place span {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.result__rank {
+:where([data-blueprint-screen="match"]) .result__rank {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.result__rp {
+:where([data-blueprint-screen="match"]) .result__rp {
   display: grid;
   gap: 1px;
 }
 
-.result__rp b {
+:where([data-blueprint-screen="match"]) .result__rp b {
   color: var(--app-color-primary);
   font: var(--app-type-code);
   font-weight: 700;
 }
 
-.result__rp small {
+:where([data-blueprint-screen="match"]) .result__rp small {
   color: var(--app-color-muted);
   font: var(--app-type-label);
-  font-size: 10px;
+  font-size: var(--app-text-10);
 }
 
-.stats {
+:where([data-blueprint-screen="match"]) .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--app-space-2);
 }
 
-[data-blueprint-screen="match"] .stats [data-blueprint-component="stat-meter"] {
-  gap: 2px;
-  padding: 9px var(--app-space-3);
-}
-
-[data-blueprint-screen="match"] .stats .stat-meter__value {
-  font-size: 22px;
-}
-
-[data-blueprint-screen="match"] .stats .stat-meter__bar {
-  margin-top: var(--app-space-1);
-}
-
-[data-blueprint-screen="match"] .stats .stat-meter__label {
-  font-size: 10px;
-}
-
-.board {
+:where([data-blueprint-screen="match"]) .board {
   display: grid;
   gap: 6px;
   margin-top: var(--app-space-1);
 }
 
-[data-blueprint-screen="match"] .board [data-blueprint-component="squad-member"] {
-  padding: 6px 14px 6px 6px;
-}
-
-[data-blueprint-screen="match"] .board .squad-member__avatar {
-  width: var(--app-size-control-sm);
-  height: var(--app-size-control-sm);
-  font-size: 10px;
-}
-
-.board__head {
+:where([data-blueprint-screen="match"]) .board__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--app-space-3) 2px;
 }
 
-.board__head h2 {
+:where([data-blueprint-screen="match"]) .board__head h2 {
   margin: 0;
   font-family: var(--app-font-display);
-  font-size: 13px;
+  font-size: var(--app-text-13);
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.board__head span {
+:where([data-blueprint-screen="match"]) .board__head span {
   display: flex;
   gap: 18px;
   padding-right: 14px;
@@ -220,19 +181,19 @@
   font: var(--app-type-label);
 }
 
-.board__head i {
+:where([data-blueprint-screen="match"]) .board__head i {
   min-width: 36px;
   font-style: normal;
   text-align: right;
 }
 
-[data-blueprint-screen="match"] .board .squad-member__stats i {
+[data-blueprint-screen="match"] .board i.board__figure {
   min-width: 36px;
   font-style: normal;
   text-align: right;
 }
 
-[data-blueprint-screen="match"] .board .squad-member__stats > b {
+[data-blueprint-screen="match"] .board b.board__figures {
   display: flex;
   gap: 18px;
   font-weight: inherit;
@@ -252,13 +213,13 @@
 
 [data-blueprint-screen="match"] .match__again {
   flex: 1;
-  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-screen="match"] .match__again-label {
   font-weight: 700;
-  box-shadow: 0 0 36px -8px var(--app-color-glow);
 }
 
 [data-blueprint-screen="match"] .match__share {
   width: var(--app-size-control-lg);
   min-height: var(--app-size-control-lg);
-  border-radius: var(--app-radius-full);
 }

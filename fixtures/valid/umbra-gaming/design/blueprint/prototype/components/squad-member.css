@@ -6,14 +6,26 @@
   min-width: 0;
 }
 
-[data-blueprint-component="squad-member"] .squad-member__avatar {
-  border-color: var(--app-color-border-strong);
-  font-family: var(--app-font-mono);
+.squad-member__mark {
+  position: relative;
+  display: grid;
+  justify-self: start;
+}
+
+.squad-member__initials {
+  display: block;
   letter-spacing: 0.04em;
 }
 
-.squad-member__avatar i {
-  font-style: normal;
+.squad-member__dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: calc((100% - 2px) / 4);
+  height: calc((100% - 2px) / 4);
+  border: 2px solid var(--app-color-surface);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-success);
 }
 
 .squad-member__body {
@@ -44,7 +56,7 @@
   color: var(--app-color-warning);
 }
 
-[data-blueprint-component="squad-member"][data-blueprint-state="in-match"] .avatar__status {
+[data-blueprint-component="squad-member"][data-blueprint-state="in-match"] .squad-member__dot {
   background: var(--app-color-warning);
 }
 
@@ -70,11 +82,6 @@
   text-align: right;
 }
 
-[data-blueprint-component="squad-member"][data-blueprint-state="scoreboard"] .avatar__status,
-[data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .avatar__status {
-  display: none;
-}
-
 [data-blueprint-component="squad-member"][data-blueprint-state="mvp"] {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--app-color-primary) 16%, transparent), transparent 70%),
@@ -89,4 +96,34 @@
 [data-blueprint-component="squad-member"][data-blueprint-state="mvp"] .squad-member__stats b {
   color: var(--app-color-foreground);
   font-weight: 700;
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-size="compact"],
+[data-blueprint-component="squad-member"][data-blueprint-variant="chip"] {
+  padding: 6px 14px 6px 6px;
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-size="compact"] .squad-member__avatar {
+  width: var(--app-size-control-sm);
+  height: var(--app-size-control-sm);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-size="compact"] .squad-member__initials {
+  font-size: var(--app-text-10);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-variant="chip"] {
+  grid-template-columns: auto auto;
+  gap: 10px;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-surface);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-variant="chip"] .squad-member__name {
+  font-size: var(--app-text-12);
+}
+
+[data-blueprint-component="squad-member"][data-blueprint-variant="chip"] .squad-member__status {
+  font-size: var(--app-text-11);
 }

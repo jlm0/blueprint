@@ -684,7 +684,18 @@ describe('Blueprint data-driven pages and screens canvas', () => {
               if (!primitiveRoot) {
                 return found;
               }
-              const bounds = primitiveRoot.getBoundingClientRect();
+              // A root with `display: contents` draws no box, so its children hold the extent that the cell must fit.
+              const drawn = getComputedStyle(primitiveRoot).display === 'contents' ? [...primitiveRoot.children] : [primitiveRoot];
+              const rects = drawn.map(element => element.getBoundingClientRect());
+              const bounds = {
+                left: Math.min(...rects.map(rect => rect.left)),
+                top: Math.min(...rects.map(rect => rect.top)),
+                right: Math.max(...rects.map(rect => rect.right)),
+                bottom: Math.max(...rects.map(rect => rect.bottom))
+              };
+              if (bounds.left < -1 || bounds.top < -1 || bounds.right > innerWidth + 1 || bounds.bottom > innerHeight + 1) {
+                found.push(`root extent ${Math.round(bounds.left)},${Math.round(bounds.top)} to ${Math.round(bounds.right)},${Math.round(bounds.bottom)} leaves cell ${innerWidth}x${innerHeight}`);
+              }
               for (const element of primitiveRoot.querySelectorAll('*')) {
                 let clipped = false;
                 for (let ancestor = element.parentElement; ancestor && ancestor !== primitiveRoot.parentElement; ancestor = ancestor.parentElement) {
@@ -1270,7 +1281,7 @@ describe('Blueprint data-driven pages and screens canvas', () => {
     const mutatedBundle = mutatePrototypeSource(
       baseBundle,
       'prototype/screens/chat.html',
-      '<blueprint-use kind="primitive" ref="badge" state="default" variant="outline"><span slot="label">+4</span></blueprint-use>',
+      '<blueprint-use kind="primitive" ref="badge" state="default" variant="quiet"><span slot="label">+4</span></blueprint-use>',
       '<blueprint-use kind="primitive" ref="button" state="normal" variant="secondary"><span slot="label">+4</span></blueprint-use>'
     );
     const mutatedChat = mutatedBundle.screens.screens.find(screen => screen.id === 'chat');
@@ -1289,8 +1300,8 @@ describe('Blueprint data-driven pages and screens canvas', () => {
           elements.map(element => `${(element as HTMLElement).dataset.blueprintPrimitive}:${(element as HTMLElement).dataset.blueprintVariant}`)
         );
 
-      assert.deepEqual(await readRenderedPrimitives(basePage), ['segmented-control:default', 'badge:outline', 'badge:outline', 'badge:outline']);
-      assert.deepEqual(await readRenderedPrimitives(mutatedPage), ['segmented-control:default', 'badge:outline', 'badge:outline', 'button:secondary']);
+      assert.deepEqual(await readRenderedPrimitives(basePage), ['icon:inherit', 'segmented-control:default', 'badge:quiet', 'badge:quiet', 'badge:quiet']);
+      assert.deepEqual(await readRenderedPrimitives(mutatedPage), ['icon:inherit', 'segmented-control:default', 'badge:quiet', 'badge:quiet', 'button:secondary']);
     } finally {
       await basePage.close();
       await mutatedPage.close();

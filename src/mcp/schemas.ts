@@ -207,7 +207,7 @@ const archiveExplorationOperationSchema = z
 export const exploreInputSchema = z
   .object({
     project: projectPathSchema,
-    operation: z.union([createExplorationOperationSchema, archiveExplorationOperationSchema])
+    operation: z.discriminatedUnion('type', [createExplorationOperationSchema, archiveExplorationOperationSchema])
   })
   .strict();
 
@@ -223,11 +223,11 @@ const inspoEntryFieldsSchema = {
 export const inspoInputSchema = z
   .object({
     project: projectPathSchema,
-    operation: z.union([
+    operation: z.discriminatedUnion('type', [
       z.object({
         type: z.literal('add'),
         url: nonEmptyString.describe('Image link the person pasted. A cdn.dribbble.com link downloads at full size.'),
-        id: inspoEntryIdSchema.optional().describe('Kebab-case entry id. Defaults to the next free "ref-<n>".'),
+        id: inspoEntryIdSchema.describe('Kebab-case entry id that says what the image shows, such as "warm-paper-ground".'),
         ...inspoEntryFieldsSchema
       }).strict(),
       z.object({ type: z.literal('update'), id: inspoEntryIdSchema, ...inspoEntryFieldsSchema }).strict(),
@@ -351,7 +351,7 @@ const validationOutputBaseSchema = z.object({
   ok: z.boolean(),
   errors: z.array(z.string()),
   findings: z.array(designFindingSchema).describe(
-    'Design findings the canvas marks on boundaries, each fixable in the source named by location. Strict validation rejects them.'
+    'Design findings the canvas marks on boundaries, each fixable in the source named by location. Validation in each mode rejects each one, except a section-marker finding, which only strict validation rejects.'
   ),
   prose: z.array(proseAdvisorySchema).describe(
     'Wording advisories on the prose an app writes for its primitives, components, token groups, pages, screens, and sections. They never fail validation. Rewrite each one, unless the wording is deliberate, such as "selected" used as an adjective.'
@@ -563,6 +563,8 @@ export const serveOutputSchema = z
     port: z.number().int().min(0).max(65535),
     url: z.string().url(),
     runtime: z.enum(['started', 'reused']),
+    styleErrorCount: z.number().int().nonnegative().describe('How many style errors the project has. A style error leaves the canvas open, and refuses validate, explore, promote, and restore.'),
+    styleErrors: z.array(z.string()).describe('The first style errors, at most 20. Call validate to read each one.'),
     focus: z.string().optional(),
     selection: z
       .object({

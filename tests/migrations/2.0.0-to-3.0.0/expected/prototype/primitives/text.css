@@ -1,0 +1,24 @@
+[data-blueprint-primitive="text"] {
+  margin: 0;
+  color: var(--app-color-foreground);
+}
+
+[data-blueprint-primitive="text"][data-blueprint-size="display"] {
+  font: var(--app-type-display);
+}
+
+[data-blueprint-primitive="text"][data-blueprint-size="body"] {
+  font: var(--app-type-body);
+}
+
+[data-blueprint-primitive="text"][data-blueprint-size="label"] {
+  font: var(--app-type-label);
+}
+
+[data-blueprint-primitive="text"][data-blueprint-variant="muted"] {
+  color: var(--app-color-muted);
+}
+
+[data-blueprint-primitive="text"][data-blueprint-variant="primary"] {
+  color: var(--app-color-primary);
+}

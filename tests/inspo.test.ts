@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import { describe, it } from 'node:test';
 import { validateInspoContract } from '../src/core/inspo-contract';
 import type { InspoFile } from '../src/core/types';
@@ -136,7 +137,7 @@ describe('inspo image links', () => {
 
 describe('inspo.json contract', () => {
   const valid: InspoFile = {
-    schemaVersion: '2.0.0',
+    schemaVersion: BLUEPRINT_SCHEMA_VERSION,
     projectId: 'app',
     entries: [{ id: 'ref-1', sourceUrl: 'https://images.example.com/a.png', image: 'inspo/ref-1.png', aspects: ['wordmark'], stance: 'like', note: 'love the tight kerning', reading: 'The wordmark uses tight letter spacing.' }],
     directions: [{ aspect: 'wordmark', statement: 'Set the wordmark with tight letter spacing.', entryIds: ['ref-1'], status: 'proposed' }]
@@ -180,7 +181,7 @@ describe('inspo tool', () => {
       assert.equal(names.includes('brand.json'), false);
       assert.equal(names.includes('brand'), false);
       assert.equal(await readFile(path.join(out, 'inspo', '.gitignore'), 'utf8'), '*\n!.gitignore\n');
-      assert.deepEqual(JSON.parse(await readFile(path.join(out, 'inspo.json'), 'utf8')), { schemaVersion: '2.0.0', projectId: 'app', entries: [], directions: [] });
+      assert.deepEqual(JSON.parse(await readFile(path.join(out, 'inspo.json'), 'utf8')), { schemaVersion: BLUEPRINT_SCHEMA_VERSION, projectId: 'app', entries: [], directions: [] });
       const readiness = await validateBlueprint({ project: out, mode: 'readiness' });
       assert.ok(readiness.mode === 'readiness' && readiness.readiness.items.some(item => item.path === 'inspo.entries'));
     });
@@ -193,7 +194,7 @@ describe('inspo tool', () => {
         'https://images.example.com/b.jpg': image(JPEG, 'image/jpeg')
       });
       const note = 'I like the mark — that chunky, rounded "b"; not the gradient';
-      const added = await inspoBlueprint({ project: out, operation: { type: 'add', url: DRIBBBLE_IMAGE, aspects: ['mark'], note } }, undefined, fetcher);
+      const added = await inspoBlueprint({ project: out, operation: { type: 'add', id: 'ref-1', url: DRIBBBLE_IMAGE, aspects: ['mark'], note } }, undefined, fetcher);
       assert.deepEqual(added.downloaded, ['inspo/ref-1.png']);
       const entry = (added.inspo as unknown as InspoFile).entries[0]!;
       assert.deepEqual(entry, {
@@ -207,7 +208,7 @@ describe('inspo tool', () => {
       });
       assert.deepEqual(await readFile(path.join(out, 'inspo', 'ref-1.png')), PNG);
 
-      const second = await inspoBlueprint({ project: out, operation: { type: 'add', url: 'https://images.example.com/b.jpg', stance: 'avoid' } }, undefined, fetcher);
+      const second = await inspoBlueprint({ project: out, operation: { type: 'add', id: 'ref-2', url: 'https://images.example.com/b.jpg', stance: 'avoid' } }, undefined, fetcher);
       assert.equal((second.inspo as unknown as InspoFile).entries[1]!.image, 'inspo/ref-2.jpg');
       await assert.rejects(inspoBlueprint({ project: out, operation: { type: 'add', url: 'https://images.example.com/b.jpg', id: 'ref-1' } }, undefined, fetcher), /"ref-1" already exists\. Fix:/);
 
@@ -251,8 +252,8 @@ describe('inspo tool', () => {
   it('proposes directions, keeps approval until the statement changes, and gates the brand on approval', async () => {
     await withSidecar('inspo', async out => {
       const fetcher = fakeFetcher({ 'https://images.example.com/a.png': image(PNG), 'https://images.example.com/b.png': image(PNG) });
-      await inspoBlueprint({ project: out, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, fetcher);
-      await inspoBlueprint({ project: out, operation: { type: 'add', url: 'https://images.example.com/b.png', note: 'these colors' } }, undefined, fetcher);
+      await inspoBlueprint({ project: out, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, fetcher);
+      await inspoBlueprint({ project: out, operation: { type: 'add', id: 'ref-2', url: 'https://images.example.com/b.png', note: 'these colors' } }, undefined, fetcher);
 
       await assert.rejects(inspoBlueprint({ project: out, operation: { type: 'direction', aspect: 'mark', status: 'approved' } }), /statement.*entryIds|Fix:/);
       const proposed = await inspoBlueprint({ project: out, operation: { type: 'direction', aspect: 'mark', statement: 'Draw the mark as one heavy, rounded letter.', entryIds: ['ref-1'] } });

@@ -67,3 +67,11 @@
     animation: none;
   }
 }
+
+[data-blueprint-primitive="otp-input"][data-blueprint-variant="tall"] .otp-input__cell {
+  width: 52px;
+  min-width: 0;
+  height: 60px;
+  flex: 0 1 auto;
+  font-size: var(--app-text-24);
+}

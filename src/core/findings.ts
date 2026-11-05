@@ -45,12 +45,30 @@ export function designFindingReference(finding: DesignFinding): string {
   return `${finding.kind}:${finding.localId} ${finding.location} ${finding.message}`;
 }
 
+export function localStyleValueError(issue: LocalStyleValueIssue): string {
+  return `${issue.boundary} ${issue.styleRef} ${localStyleValueMessage(issue)}`;
+}
+
+export function handBuiltControlError(issue: HandBuiltControlIssue): string {
+  return `${issue.boundary} ${issue.sourceRef}:${issue.line} ${handBuiltControlMessage(issue)}`;
+}
+
 export function localStyleValueMessage(issue: LocalStyleValueIssue): string {
   const value = issue.value.length > 80 ? `${issue.value.slice(0, 77)}...` : issue.value;
+  if (issue.rule === 'raw-font-family') {
+    return `${issue.property}: "${value}" names a font family directly. Fix: replace "${value}" with var() of a typography token, or with inherit, in ${issue.styleRef}. Add the token to tokens.json when none has this family.`;
+  }
+  if (issue.rule === 'raw-font-size') {
+    return `${issue.property}: "${value}" sets a raw font size. Fix: replace "${value}" with var() of a typography token, or with inherit, in ${issue.styleRef}. Add the token to tokens.json when none has this value.`;
+  }
+  const exception = `Or add { "property": "${issue.property}", "value": ${JSON.stringify(issue.value)}, "reason": "<why>" } to prototype.localValueExceptions.`;
+  if (issue.rule === 'named-color') {
+    return `${issue.property}: "${value}" uses the named color "${issue.namedColor}". Fix: replace "${issue.namedColor}" with var() of a color token in ${issue.styleRef}. ${exception}`;
+  }
   const remedy = issue.tokenStyleRef
     ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
     : 'uses a literal color; use a token custom property';
-  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace "${value}" with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. Or add { "property": "${issue.property}", "value": ${JSON.stringify(issue.value)}, "reason": "<why>" } to prototype.localValueExceptions.`;
+  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace "${value}" with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. ${exception}`;
 }
 
 export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {

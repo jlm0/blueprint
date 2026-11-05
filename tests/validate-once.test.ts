@@ -86,8 +86,8 @@ describe('mutation validation', () => {
       }, undefined, counter.validate);
       assert.equal(counter.take(), 1, 'restore');
 
-      await exploreBlueprint({ project, operation: launchExploration('launch-copy') }, undefined, counter.validate);
-      await exploreBlueprint({ project, operation: { type: 'archive', explorationId: 'launch-copy' } }, undefined, counter.validate);
+      await exploreBlueprint({ project, operation: launchExploration('launch-wording') }, undefined, counter.validate);
+      await exploreBlueprint({ project, operation: { type: 'archive', explorationId: 'launch-wording' } }, undefined, counter.validate);
       assert.equal(counter.take(), 2, 'explore create and archive');
       assert.equal(validateProject(await loadProjectFromFs(project)).ok, true);
     });
@@ -99,7 +99,7 @@ describe('mutation validation', () => {
       const counter = countingValidator();
       await inspoBlueprint({
         project: out,
-        operation: { type: 'add', url: 'https://images.example.com/a.png', aspects: ['mark'], note: 'this mark' }
+        operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', aspects: ['mark'], note: 'this mark' }
       }, undefined, pngFetcher(), counter.validate);
       assert.equal(counter.take(), 1, 'inspo add');
       await inspoBlueprint({ project: out, operation: { type: 'update', id: 'ref-1', reading: 'A round mark.' } }, undefined, pngFetcher(), counter.validate);

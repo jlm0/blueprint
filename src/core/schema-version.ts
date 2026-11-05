@@ -1,7 +1,7 @@
 import type { BlueprintProjectBundle } from './types';
 
 /** The one schema every structured file and saved record of a project carries; tools refuse a project on any other until `migrate` runs. */
-export const BLUEPRINT_SCHEMA_VERSION = '2.0.0';
+export const BLUEPRINT_SCHEMA_VERSION = '3.0.0';
 
 /** Structured files that carry `schemaVersion`; brand.json and inspo.json only when the project has them. */
 export const VERSIONED_FILES = ['manifest.json', 'tokens.json', 'brand.json', 'inspo.json', 'screens.json', 'primitives.json', 'components.json'] as const;

@@ -31,18 +31,27 @@ import { schemaVersionErrors } from './schema-version';
 import { validateTokenContract } from './token-contract';
 import { hasApprovedInspoDirection, validateInspoContract } from './inspo-contract';
 import { lintHandBuiltControls } from './control-lint';
-import { handBuiltControlMessage, localStyleValueMessage, unmarkedSectionIds } from './findings';
-import { lintLocalStyleValues } from './style-lint';
+import { handBuiltControlError, handBuiltControlMessage, localStyleValueError, localStyleValueMessage, unmarkedSectionIds } from './findings';
+import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
+import { collectStyleRuleIssues, styleRuleMessage } from './style-rules';
+import { validateBrandFonts, validateFontFaces, validateFontFamilyTokens } from './font-rules';
 import { contrastMessage, contrastRatio, lintColorContrast } from './contrast-lint';
 import { BRAND_MARK_ROLES, brandMarkHandoffIssues, brandMarkSourceIssues } from './brand-lint';
 import { parseOpaqueColor } from './color';
+import { collectNamingErrors } from './naming-rules';
 import { screenRoutePath, screenVersionGroupKey } from './screen-naming';
+import { collectCandidateRuleErrors } from './candidate-rules';
 import { computeExplorationBaselineDigest } from './exploration';
 import { storageRecordSegment } from './storage-records';
 
 const supportedHandoffContractVersion = '1.0.0';
 
 export type SourceGraphIssues = () => PrototypeSourceGraphIssue[];
+
+export function validationResult(contractErrors: string[], styleErrors: string[]): ValidationResult {
+  const errors = [...contractErrors, ...styleErrors];
+  return { ok: errors.length === 0, errors, contractErrors, styleErrors };
+}
 
 export function validateProjectWithSourceGraph(
   bundle: BlueprintProjectBundle,
@@ -51,7 +60,7 @@ export function validateProjectWithSourceGraph(
 ): ValidationResult {
   const schemaErrors = schemaVersionErrors(bundle);
   if (schemaErrors.length > 0) {
-    return { ok: false, errors: schemaErrors };
+    return validationResult(schemaErrors, []);
   }
   const errors: string[] = [];
   const projectId = bundle.manifest.project?.id;
@@ -129,16 +138,51 @@ export function validateProjectWithSourceGraph(
 
   validatePrototypeHost(errors, bundle.manifest.prototypeHost);
   validateInspo(errors, bundle);
-  validateBrand(errors, bundle, options.mode ?? 'baseline');
+  validateBrand(errors, bundle, options.mode ?? 'baseline', options.fileExists ?? existsSync);
   validateBasePrimitiveContract(errors, bundle, options.mode ?? 'baseline');
   validatePrototypeContracts(errors, bundle, tokenIds, framePresetIds, options.fileExists ?? existsSync);
+  if (designRulesCanRead(bundle)) validateFontFaces(errors, bundle);
+  const styleErrors = collectDesignRuleErrors(bundle);
+  if (designRulesCanRead(bundle)) styleErrors.push(...collectCandidateRuleErrors(bundle, new Set([...errors, ...styleErrors]), options.onCandidateFileLint));
   recordPrototypeSourceGraphValidation(errors, sourceGraphIssues());
 
   if ((options.mode ?? 'baseline') === 'strict') {
     validateStrictHandoffReadiness(errors, bundle);
   }
 
-  return { ok: errors.length === 0, errors };
+  return validationResult(errors, styleErrors);
+}
+
+function designRulesCanRead(bundle: BlueprintProjectBundle): boolean {
+  const boundaries = [...bundle.primitives.primitives, ...bundle.components.components, ...bundle.screens.screens];
+  return boundaries.every(boundary => typeof boundary.prototype === 'object' && boundary.prototype !== null);
+}
+
+/** The findings that the canvas marks, with the rules that keep each stylesheet in its boundary. */
+function collectDesignRuleErrors(bundle: BlueprintProjectBundle): string[] {
+  const errors: string[] = [];
+  for (const id of primitivesOutsideSet(bundle.primitives.primitives.map(primitive => primitive.id))) {
+    errors.push(primitiveOutsideSetMessage(id, BASE_PRIMITIVE_LOCK_REASON));
+  }
+  if (!designRulesCanRead(bundle)) return errors;
+  const reported = new Set<string>();
+  const reportOnce = (issue: LocalStyleValueIssue): void => {
+    const key = `${issue.styleRef}\n${issue.property}\n${issue.value}`;
+    if (reported.has(key)) return;
+    reported.add(key);
+    errors.push(localStyleValueError(issue));
+  };
+  lintLocalStyleValues(bundle).forEach(reportOnce);
+  for (const issue of lintHandBuiltControls(bundle)) {
+    errors.push(handBuiltControlError(issue));
+  }
+  for (const issue of lintColorContrast(bundle)) {
+    errors.push(`token-group.${issue.groupId} ${contrastMessage(issue)}`);
+  }
+  for (const issue of collectStyleRuleIssues(bundle)) errors.push(styleRuleMessage(issue));
+  validateFontFamilyTokens(errors, bundle);
+  errors.push(...collectNamingErrors(bundle));
+  return errors;
 }
 
 function validateInspo(errors: string[], bundle: BlueprintProjectBundle): void {
@@ -528,11 +572,11 @@ function validateTokenGroup(errors: string[], group: TokenGroup): void {
   }
 }
 
-function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode): void {
+function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode, fileExists: (filePath: string) => boolean): void {
   const brand = bundle.brand;
   if (!brand) {
     if (mode === 'strict') {
-      errors.push('brand.json is required for a strict handoff: declare the brand name, marks, and usage. Fix: add brand.json with schemaVersion, projectId, name, and marks.');
+      errors.push('brand.json is required for a strict handoff: declare the brand name, marks, and usage. Fix: add brand.json with schemaVersion, projectId, name, marks, and fonts.');
     }
     return;
   }
@@ -563,6 +607,7 @@ function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: V
   if (mode === 'strict' && (brand.marks ?? []).length === 0) {
     errors.push('brand.marks must declare at least one mark for a strict handoff. Fix: add one mark to marks in brand.json.');
   }
+  validateBrandFonts(errors, brand, bundle.manifest.prototypeHost?.assetRoots ?? [], ref => fileExists(path.resolve(bundle.sourceRoot, ref)));
 }
 
 function validateBrandMark(
@@ -1081,11 +1126,6 @@ function validateDependency(
 
 function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjectBundle, mode: ValidationMode): void {
   const primitivesById = new Map(bundle.primitives.primitives.map(primitive => [primitive.id, primitive]));
-  if (mode === 'strict') {
-    for (const id of primitivesOutsideSet([...primitivesById.keys()])) {
-      errors.push(primitiveOutsideSetMessage(id, BASE_PRIMITIVE_LOCK_REASON));
-    }
-  }
   for (const base of BASE_PRIMITIVE_CONTRACT) {
     const primitive = primitivesById.get(base.id);
     if (!primitive && (base.enforcement !== 'strict' || mode === 'strict')) {
@@ -1249,16 +1289,6 @@ function collectTokenIds(groups: TokenGroup[]): Set<string> {
 }
 
 function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProjectBundle): void {
-  for (const issue of lintLocalStyleValues(bundle)) {
-    errors.push(`${issue.boundary} ${issue.styleRef} ${localStyleValueMessage(issue)}`);
-  }
-  for (const issue of lintHandBuiltControls(bundle)) {
-    errors.push(`${issue.boundary} ${issue.sourceRef}:${issue.line} ${handBuiltControlMessage(issue)}`);
-  }
-  for (const issue of lintColorContrast(bundle)) {
-    errors.push(`token-group.${issue.groupId} ${contrastMessage(issue)}`);
-  }
-
   if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {
     if (!bundle.manifest.handoffContractVersion) {
       errors.push(`manifest.handoffContractVersion must be "${supportedHandoffContractVersion}" for strict handoff readiness. Fix: set handoffContractVersion in manifest.json to "${supportedHandoffContractVersion}".`);

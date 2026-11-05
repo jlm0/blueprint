@@ -56,7 +56,7 @@
 
 .event-card__title {
   font-family: var(--app-font-display);
-  font-size: 24px;
+  font-size: var(--app-text-24);
   font-weight: 700;
   line-height: 1.02;
   letter-spacing: -0.03em;
@@ -70,8 +70,6 @@
 
 [data-blueprint-component="event-card"] .event-card__cta {
   justify-self: start;
-  border-radius: var(--app-radius-full);
-  padding: 0 var(--app-space-4);
 }
 
 [data-blueprint-component="event-card"][data-blueprint-size="compact"] {
@@ -102,13 +100,17 @@
 }
 
 [data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__title {
-  font-size: 19px;
+  font-size: var(--app-text-19);
 }
 
 [data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__description {
-  font-size: 13px;
+  font-size: var(--app-text-13);
 }
 
 [data-blueprint-component="event-card"][data-blueprint-size="compact"] .event-card__cta {
   justify-self: end;
+}
+
+[data-blueprint-component="event-card"][data-blueprint-variant="roomy"] .event-card__cta-label {
+  padding: 0 var(--app-space-1);
 }

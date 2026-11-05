@@ -1,4 +1,4 @@
-* {
+*:where([data-blueprint-screen="workspace"], [data-blueprint-screen="workspace"] *) {
   box-sizing: border-box;
 }
 
@@ -13,7 +13,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.rail {
+:where([data-blueprint-screen="workspace"]) .rail {
   display: flex;
   min-height: 0;
   flex-direction: column;
@@ -22,42 +22,38 @@
   border-right: 1px solid var(--app-color-border);
 }
 
-.rail__brand {
+:where([data-blueprint-screen="workspace"]) .rail__brand {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-left: var(--app-space-2);
 }
 
-[data-blueprint-screen="workspace"] .rail__brand [data-blueprint-primitive="button"] {
-  color: var(--app-color-muted);
-}
-
-.wordmark {
+:where([data-blueprint-screen="workspace"]) .wordmark {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   color: var(--app-color-foreground);
-  font-size: 17px;
+  font-size: var(--app-text-17);
   font-weight: 650;
   letter-spacing: -0.03em;
   text-decoration: none;
 }
 
-.wordmark__mark,
-.answer__mark {
+:where([data-blueprint-screen="workspace"]) .wordmark__mark,
+:where([data-blueprint-screen="workspace"]) .answer__mark {
   width: 26px;
   height: 26px;
   flex: none;
 }
 
-.wordmark__mark rect,
-.answer__mark rect {
+:where([data-blueprint-screen="workspace"]) .wordmark__mark rect,
+:where([data-blueprint-screen="workspace"]) .answer__mark rect {
   fill: var(--app-color-primary);
 }
 
-.wordmark__mark path,
-.answer__mark path {
+:where([data-blueprint-screen="workspace"]) .wordmark__mark path,
+:where([data-blueprint-screen="workspace"]) .answer__mark path {
   fill: var(--app-color-on-primary);
 }
 
@@ -66,29 +62,13 @@
   margin-top: var(--app-space-2);
 }
 
-.rail__new .button__label,
-.rail__new .button__label > span {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-}
-
-kbd {
+:where([data-blueprint-screen="workspace"]) .rail__kbd {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
 }
 
-.rail__search .input__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.rail__threads {
+:where([data-blueprint-screen="workspace"]) .rail__threads {
   display: flex;
   min-height: 0;
   flex: 1;
@@ -98,18 +78,18 @@ kbd {
   margin-top: var(--app-space-2);
 }
 
-.rail__group {
+:where([data-blueprint-screen="workspace"]) .rail__group {
   margin: var(--app-space-4) 0 var(--app-space-1);
   padding: 0 10px;
   color: var(--app-color-muted);
   font: var(--app-type-label);
 }
 
-.rail__group:first-child {
+:where([data-blueprint-screen="workspace"]) .rail__group:first-child {
   margin-top: 0;
 }
 
-.thread {
+:where([data-blueprint-screen="workspace"]) .thread {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -121,61 +101,57 @@ kbd {
   text-decoration: none;
 }
 
-.thread span {
+:where([data-blueprint-screen="workspace"]) .thread span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.thread small {
+:where([data-blueprint-screen="workspace"]) .thread small {
   flex: none;
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.thread:hover {
+:where([data-blueprint-screen="workspace"]) .thread:hover {
   background: var(--app-color-hover);
 }
 
-.thread--active {
+:where([data-blueprint-screen="workspace"]) .thread--active {
   background: var(--app-color-surface);
   box-shadow: 0 0 0 1px var(--app-color-border), var(--app-shadow-sm);
   font-weight: 500;
 }
 
-.rail__foot {
+:where([data-blueprint-screen="workspace"]) .rail__foot {
   display: grid;
   gap: var(--app-space-4);
   padding: var(--app-space-4) var(--app-space-2) 0;
   border-top: 1px solid var(--app-color-border);
 }
 
-.rail__usage .progress__label {
-  color: var(--app-color-muted);
-}
-
-.account {
+:where([data-blueprint-screen="workspace"]) .account {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.account__name {
+:where([data-blueprint-screen="workspace"]) .account__name {
   display: grid;
   min-width: 0;
   flex: 1;
 }
 
-.account__name b {
+:where([data-blueprint-screen="workspace"]) .account__name b {
   font-weight: 600;
 }
 
-.account__name small {
+:where([data-blueprint-screen="workspace"]) .account__name small {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.stage {
+:where([data-blueprint-screen="workspace"]) .stage {
   position: relative;
   display: grid;
   min-width: 0;
@@ -184,7 +160,7 @@ kbd {
   background: var(--app-color-surface);
 }
 
-.stage__bar {
+:where([data-blueprint-screen="workspace"]) .stage__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -193,7 +169,7 @@ kbd {
   border-bottom: 1px solid var(--app-color-border);
 }
 
-.crumbs {
+:where([data-blueprint-screen="workspace"]) .crumbs {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
@@ -201,19 +177,19 @@ kbd {
   color: var(--app-color-muted);
 }
 
-.crumbs svg {
+:where([data-blueprint-screen="workspace"]) svg.crumbs__glyph {
   width: 14px;
   height: 14px;
 }
 
-.crumbs h1 {
+:where([data-blueprint-screen="workspace"]) .crumbs > h1 {
   margin: 0;
   color: var(--app-color-foreground);
   font: var(--app-type-body);
   font-weight: 600;
 }
 
-.stage__actions {
+:where([data-blueprint-screen="workspace"]) .stage__actions {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
@@ -223,22 +199,12 @@ kbd {
   width: 136px;
 }
 
-.model-select .select__field {
-  min-height: var(--app-size-control-sm);
-  border-color: transparent;
-  font-weight: 500;
-}
-
-.model-select .select__list {
-  display: none;
-}
-
-.thread-view {
+:where([data-blueprint-screen="workspace"]) .thread-view {
   min-height: 0;
   overflow: hidden;
 }
 
-.conversation {
+:where([data-blueprint-screen="workspace"]) .conversation {
   display: grid;
   align-content: start;
   gap: var(--app-space-6);
@@ -247,23 +213,23 @@ kbd {
   padding: var(--app-space-6) var(--app-space-6) 210px;
 }
 
-.stamp {
+:where([data-blueprint-screen="workspace"]) .stamp {
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: uppercase;
 }
 
-.ask {
+:where([data-blueprint-screen="workspace"]) .ask {
   display: grid;
   justify-items: end;
   gap: var(--app-space-2);
 }
 
-.attachment {
+:where([data-blueprint-screen="workspace"]) .attachment {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -272,57 +238,57 @@ kbd {
   border-radius: var(--app-radius-xl);
 }
 
-.attachment svg {
+:where([data-blueprint-screen="workspace"]) svg.attachment__glyph {
   width: var(--app-size-icon-md);
   height: var(--app-size-icon-md);
   color: var(--app-color-muted);
 }
 
-.attachment span {
+:where([data-blueprint-screen="workspace"]) .attachment__name {
   display: grid;
 }
 
-.attachment b {
+:where([data-blueprint-screen="workspace"]) .attachment__name > b {
   font: var(--app-type-label);
-  font-size: 13px;
+  font-size: var(--app-text-13);
 }
 
-.attachment small {
+:where([data-blueprint-screen="workspace"]) .attachment__name > small {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.ask__bubble {
+:where([data-blueprint-screen="workspace"]) .ask__bubble {
   max-width: 520px;
   margin: 0;
   padding: var(--app-space-3) 18px;
   border-radius: 20px 20px var(--app-radius-sm) 20px;
   background: var(--app-color-surface-muted);
-  font-size: 15px;
+  font-size: var(--app-text-15);
   line-height: 1.55;
 }
 
-.answer {
+:where([data-blueprint-screen="workspace"]) .answer {
   display: grid;
   gap: var(--app-space-4);
 }
 
-.answer__meta {
+:where([data-blueprint-screen="workspace"]) .answer__meta {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.answer__mark {
+:where([data-blueprint-screen="workspace"]) .answer__mark {
   width: 24px;
   height: 24px;
 }
 
-.answer__meta b {
+:where([data-blueprint-screen="workspace"]) .answer__meta > b {
   font-weight: 600;
 }
 
-.reasoned {
+:where([data-blueprint-screen="workspace"]) .reasoned {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-1);
@@ -333,32 +299,32 @@ kbd {
   font: var(--app-type-caption);
 }
 
-.reasoned svg {
+:where([data-blueprint-screen="workspace"]) svg.reasoned__glyph {
   width: 14px;
   height: 14px;
 }
 
-.answer h2 {
+:where([data-blueprint-screen="workspace"]) .answer > h2 {
   margin: var(--app-space-2) 0 0;
   font: var(--app-type-display);
-  font-size: 28px;
+  font-size: var(--app-text-28);
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
-.answer p {
+:where([data-blueprint-screen="workspace"]) .answer > p {
   margin: 0;
   color: color-mix(in srgb, var(--app-color-foreground) 86%, var(--app-color-surface));
-  font-size: 15px;
+  font-size: var(--app-text-15);
   line-height: 1.7;
 }
 
-.answer strong {
+:where([data-blueprint-screen="workspace"]) .answer > :where(p) > strong {
   color: var(--app-color-foreground);
   font-weight: 600;
 }
 
-sup {
+:where([data-blueprint-screen="workspace"] .answer > p) > sup {
   display: inline-grid;
   min-width: 18px;
   height: 18px;
@@ -369,12 +335,12 @@ sup {
   color: var(--app-color-muted);
   background: var(--app-color-surface-muted);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   line-height: 1;
   vertical-align: 2px;
 }
 
-.findings {
+:where([data-blueprint-screen="workspace"]) .findings {
   display: grid;
   margin: 0;
   padding: 0;
@@ -382,7 +348,7 @@ sup {
   list-style: none;
 }
 
-.findings li {
+:where([data-blueprint-screen="workspace"]) .findings li {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: baseline;
@@ -391,59 +357,54 @@ sup {
   border-bottom: 1px solid var(--app-color-border);
 }
 
-.findings__index {
+:where([data-blueprint-screen="workspace"]) .findings__index {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 12px;
+  font-size: var(--app-text-12);
 }
 
-.findings__copy {
+:where([data-blueprint-screen="workspace"]) .findings__copy {
   color: var(--app-color-muted);
   line-height: 1.55;
 }
 
-.findings__copy b {
+:where([data-blueprint-screen="workspace"]) .findings__copy b {
   color: var(--app-color-foreground);
   font-weight: 600;
 }
 
-.findings__metric {
+:where([data-blueprint-screen="workspace"]) .findings__metric {
   font: var(--app-type-code);
-  font-size: 14px;
+  font-size: var(--app-text-14);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.answer__actions {
+:where([data-blueprint-screen="workspace"]) .answer__actions {
   display: flex;
   align-items: center;
   gap: 2px;
   margin-top: calc(var(--app-space-2) * -1);
 }
 
-[data-blueprint-screen="workspace"] .answer__actions [data-blueprint-primitive="button"] {
+[data-blueprint-screen="workspace"] .answer__actions .answer__action {
   width: var(--app-size-control-sm);
   min-height: var(--app-size-control-sm);
-  color: var(--app-color-muted);
 }
 
-.answer__usage {
+:where([data-blueprint-screen="workspace"]) .answer__usage {
   margin-left: var(--app-space-2);
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.followups {
+:where([data-blueprint-screen="workspace"]) .followups {
   display: flex;
   flex-wrap: wrap;
   gap: var(--app-space-2);
 }
 
-[data-blueprint-screen="workspace"] .followups [data-blueprint-primitive="button"] {
-  border-radius: var(--app-radius-full);
-}
-
-.dock {
+:where([data-blueprint-screen="workspace"]) .dock {
   position: absolute;
   right: 0;
   bottom: 0;
@@ -455,21 +416,21 @@ sup {
   background: linear-gradient(to bottom, transparent, var(--app-color-surface) 42%);
 }
 
-.dock [data-blueprint-component="composer"] {
+:where([data-blueprint-screen="workspace"]) .dock [data-blueprint-component="composer"] {
   width: min(100%, 672px);
 }
 
-.dock__note {
+:where([data-blueprint-screen="workspace"]) .dock__note {
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.welcome {
+:where([data-blueprint-screen="workspace"]) .welcome {
   display: none;
 }
 
-.sources {
+:where([data-blueprint-screen="workspace"]) .sources {
   display: flex;
   min-height: 0;
   flex-direction: column;
@@ -478,7 +439,7 @@ sup {
   border-left: 1px solid var(--app-color-border);
 }
 
-.sources__head {
+:where([data-blueprint-screen="workspace"]) .sources__head {
   display: flex;
   align-items: center;
   gap: var(--app-space-2);
@@ -486,13 +447,13 @@ sup {
   padding: 0 var(--app-space-3);
 }
 
-.sources__head h2 {
+:where([data-blueprint-screen="workspace"]) .sources__head h2 {
   margin: 0;
   font: var(--app-type-heading);
-  font-size: 15px;
+  font-size: var(--app-text-15);
 }
 
-.sources__count {
+:where([data-blueprint-screen="workspace"]) .sources__count {
   display: grid;
   min-width: 22px;
   height: 20px;
@@ -501,15 +462,15 @@ sup {
   color: var(--app-color-muted);
   background: var(--app-color-surface-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
 }
 
-.sources__list {
+:where([data-blueprint-screen="workspace"]) .sources__list {
   display: grid;
   gap: 2px;
 }
 
-.artifact {
+:where([data-blueprint-screen="workspace"]) .artifact {
   display: grid;
   gap: var(--app-space-3);
   margin-top: auto;
@@ -520,27 +481,27 @@ sup {
   box-shadow: var(--app-shadow-sm);
 }
 
-.artifact__head {
+:where([data-blueprint-screen="workspace"]) .artifact__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.artifact__kind {
+:where([data-blueprint-screen="workspace"]) .artifact__kind {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.artifact__title {
+:where([data-blueprint-screen="workspace"]) .artifact__title {
   font: var(--app-type-heading);
   letter-spacing: -0.01em;
   text-wrap: balance;
 }
 
-.artifact__page {
+:where([data-blueprint-screen="workspace"]) .artifact__page {
   display: grid;
   gap: 7px;
   padding: 18px var(--app-space-4);
@@ -549,17 +510,17 @@ sup {
   background: var(--app-color-surface-2);
 }
 
-.artifact__page i {
+:where([data-blueprint-screen="workspace"]) .artifact__page i {
   height: 5px;
   border-radius: var(--app-radius-full);
   background: var(--app-color-border);
 }
 
-.artifact__page .short {
+:where([data-blueprint-screen="workspace"]) .artifact__page .short {
   width: 58%;
 }
 
-.artifact__page .gap {
+:where([data-blueprint-screen="workspace"]) .artifact__page .gap {
   height: 0;
   margin-top: 5px;
 }
@@ -603,17 +564,17 @@ sup {
   padding: 0 var(--app-space-6);
 }
 
-.welcome__eyebrow {
+:where([data-blueprint-screen="workspace"]) .welcome__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-2);
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 12px;
+  font-size: var(--app-text-12);
 }
 
-.welcome__dot {
+:where([data-blueprint-screen="workspace"]) .welcome__dot {
   width: 7px;
   height: 7px;
   border-radius: var(--app-radius-full);
@@ -621,53 +582,53 @@ sup {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-success) 18%, transparent);
 }
 
-.welcome__title {
+:where([data-blueprint-screen="workspace"]) .welcome__title {
   max-width: 640px;
   margin: calc(var(--app-space-4) * -1) 0 var(--app-space-2);
   font: var(--app-type-display);
-  font-size: 52px;
+  font-size: var(--app-text-52);
   line-height: 1.04;
   letter-spacing: -0.045em;
   text-wrap: balance;
 }
 
-.starters {
+:where([data-blueprint-screen="workspace"]) .starters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--app-space-3);
   margin-top: var(--app-space-2);
 }
 
-.plan {
+:where([data-blueprint-screen="workspace"]) .plan {
   display: grid;
   gap: var(--app-space-3);
   padding: var(--app-space-2) var(--app-space-3) 0;
 }
 
-.plan__title {
+:where([data-blueprint-screen="workspace"]) .plan__title {
   margin: 0;
   color: var(--app-color-muted);
   font: var(--app-type-label);
 }
 
-.plan ol {
+:where([data-blueprint-screen="workspace"]) .plan > ol {
   display: grid;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.plan li {
+:where([data-blueprint-screen="workspace"]) .plan > :where(ol) > li {
   position: relative;
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   min-height: 30px;
-  font-size: 13px;
+  font-size: var(--app-text-13);
 }
 
-.plan li::before {
+:where([data-blueprint-screen="workspace"]) .plan > :where(ol) > li::before {
   position: absolute;
   top: 21px;
   bottom: -9px;
@@ -677,11 +638,11 @@ sup {
   content: '';
 }
 
-.plan li:last-child::before {
+:where([data-blueprint-screen="workspace"]) .plan > :where(ol) > li:last-child::before {
   display: none;
 }
 
-.plan__check {
+:where([data-blueprint-screen="workspace"]) .plan__check {
   display: grid;
   width: 17px;
   height: 17px;
@@ -691,19 +652,19 @@ sup {
   background: var(--app-color-primary);
 }
 
-.plan__check svg {
+:where([data-blueprint-screen="workspace"]) svg.plan__glyph {
   width: 11px;
   height: 11px;
 }
 
-.plan__check--active {
+:where([data-blueprint-screen="workspace"]) .plan__check--active {
   border: 1.5px solid var(--app-color-accent);
   background: var(--app-color-surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-accent) 16%, transparent);
 }
 
-.plan small {
+:where([data-blueprint-screen="workspace"]) .plan > :where(ol) > :where(li) > small {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
 }

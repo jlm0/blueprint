@@ -127,6 +127,7 @@ describe('Blueprint high-fidelity prototype red contract', () => {
             'mira-ai/primitive/nav-bar',
             'mira-ai/component/insight-chart',
             'mira-ai/primitive/badge',
+            'mira-ai/primitive/icon',
             'mira-ai/component/prompt-card',
             'mira-ai/component/composer',
             'mira-ai/token-group/color',
@@ -135,7 +136,6 @@ describe('Blueprint high-fidelity prototype red contract', () => {
             'mira-ai/token-group/space',
             'mira-ai/token-group/typography',
             'mira-ai/primitive/segmented-control',
-            'mira-ai/primitive/icon',
             'mira-ai/primitive/button',
             'mira-ai/token-group/motion'
           ],

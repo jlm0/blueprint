@@ -14,14 +14,14 @@ const baselineDefects = [
   'broken-sidecar/primitive/tooltip state "default" cannot compile',
   'primitive "badge" does not declare prototype state "celebrating"',
   'screen "unknown-component" renders undeclared component "citation-card"',
-  'Prototype resource URL "https://images.example.com/cover.png"'
+  'Prototype resource URL "https://images.example.com/cover.png"',
+  'screen.literal-color prototype/screens/literal-color.css color: "#ff3d7f" uses a literal color',
+  'screen.hand-built-control prototype/screens/hand-built-control.html:4 hand-builds a native <button>',
+  'token-group.color --app-color-muted (#b4b4bb) on --app-color-surface (#ffffff) has contrast 2.06:1'
 ];
 
 const strictDefects = [
   ...baselineDefects,
-  'screen.literal-color prototype/screens/literal-color.css color: "#ff3d7f" uses a literal color',
-  'screen.hand-built-control prototype/screens/hand-built-control.html:4 hand-builds a native <button>',
-  'token-group.color --app-color-muted (#b4b4bb) on --app-color-surface (#ffffff) has contrast 2.06:1',
   'screen.unmarked-section.section.summary needs a data-blueprint-section="summary" marker',
   'brand.json is required for a strict handoff'
 ];

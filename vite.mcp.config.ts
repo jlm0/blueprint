@@ -5,6 +5,9 @@ const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map(moduleNam
 const runtimePackages = new Set(['@modelcontextprotocol/server', '@modelcontextprotocol/server/stdio', 'playwright', 'zod/v4']);
 
 export default defineConfig({
+  resolve: {
+    alias: { 'util-deprecate': 'util-deprecate/node.js' }
+  },
   build: {
     target: 'node20',
     outDir: 'dist/mcp',

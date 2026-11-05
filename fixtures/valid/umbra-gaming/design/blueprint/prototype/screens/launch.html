@@ -1,7 +1,7 @@
 <div class="launch" data-blueprint-screen="launch" data-blueprint-state="default">
   <header class="site-nav" data-blueprint-section="nav">
     <a class="wordmark" href="/" aria-label="Umbra home">
-      <svg class="wordmark__glyph" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="14.5"/></svg>
+      <blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="wordmark__glyph" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="14.5"/></svg></blueprint-use>
       <span>UMBRA</span>
     </a>
     <nav class="site-nav__links" aria-label="Primary">
@@ -12,11 +12,11 @@
       <a href="/esports">Esports</a>
     </nav>
     <div class="site-nav__actions">
-      <blueprint-use kind="primitive" ref="button" state="normal" variant="ghost">
-        <span slot="label">Sign in</span>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-ghost">
+        <span slot="label" class="site-nav__label">Sign in</span>
       </blueprint-use>
-      <blueprint-use kind="primitive" ref="button" state="normal" variant="primary">
-        <span slot="label">Play free</span>
+      <blueprint-use kind="primitive" ref="button" state="normal" variant="pill">
+        <span slot="label" class="site-nav__label">Play free</span>
       </blueprint-use>
     </div>
   </header>
@@ -30,11 +30,11 @@
       <p class="hero__lede">The sun goes dark over Kessler Basin. <em>Every light you carry gives you away.</em></p>
       <p class="hero__body">Night-only maps, a new infiltrator operator, and a ranked ladder rebuilt from zero.</p>
       <div class="hero__ctas">
-        <blueprint-use kind="primitive" ref="button" state="normal" variant="primary" size="lg" class="hero__play">
-          <span slot="label">Play free now</span>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-glow" size="lg">
+          <span slot="label" class="hero__cta-label">Play free now</span>
         </blueprint-use>
-        <blueprint-use kind="primitive" ref="button" state="normal" variant="outline" size="lg" class="hero__watch">
-          <b slot="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5Z"/></svg>Watch trailer</b>
+        <blueprint-use kind="primitive" ref="button" state="normal" variant="pill-glass" size="lg">
+          <b slot="label" class="hero__cta-label hero__watch-label"><svg class="hero__watch-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5Z"/></svg>Watch trailer</b>
         </blueprint-use>
       </div>
     </div>
@@ -83,14 +83,14 @@
       <a class="trailer" href="#trailer" aria-label="Watch the launch trailer, 2 minutes 14 seconds">
         <img class="trailer__art" src="../assets/art/eclipse.svg" alt="">
         <span class="trailer__shade" aria-hidden="true"></span>
-        <span class="trailer__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></span>
+        <span class="trailer__play" aria-hidden="true"><blueprint-use kind="primitive" ref="icon" variant="inherit"><svg class="trailer__glyph" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5Z"/></svg></blueprint-use></span>
         <span class="trailer__caption">
           <small>Launch trailer · 02:14</small>
           <b>Kill the lights.</b>
         </span>
         <span class="trailer__frames" aria-hidden="true"><i></i><i></i><i></i><i class="is-on"></i><i></i><i></i><i></i><i></i></span>
       </a>
-      <blueprint-use kind="component" ref="event-card" state="default" class="bento__event">
+      <blueprint-use kind="component" ref="event-card" state="default" variant="roomy" class="bento__event">
         <span slot="timer">Ends in 1d 04:12</span>
         <span slot="title">Blackout Weekend</span>
         <span slot="description">Double XP across every night map.</span>
@@ -154,9 +154,9 @@
     <div class="patch">
       <p class="patch__version">Patch 4.0.0 <span>Oct 14</span></p>
       <ul class="patch__notes">
-        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="success"><span slot="label">New</span></blueprint-use>Kessler Basin, a night-only map with dynamic blackouts</li>
-        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="accent"><span slot="label">Buff</span></blueprint-use>Suppressed rifles keep full range after dark</li>
-        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="destructive"><span slot="label">Nerf</span></blueprint-use>Flares now reveal the thrower for three seconds</li>
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="success"><span slot="label" class="patch__change">New</span></blueprint-use>Kessler Basin, a night-only map with dynamic blackouts</li>
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="accent"><span slot="label" class="patch__change">Buff</span></blueprint-use>Suppressed rifles keep full range after dark</li>
+        <li><blueprint-use kind="primitive" ref="badge" state="default" variant="destructive"><span slot="label" class="patch__change">Nerf</span></blueprint-use>Flares now reveal the thrower for three seconds</li>
       </ul>
       <a class="patch__link" href="#patch">Read the full notes</a>
     </div>

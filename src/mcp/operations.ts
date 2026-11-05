@@ -1,13 +1,11 @@
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { cp, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type {
   BlueprintProjectBundle,
   ExplorationDefinition,
   ScreenDefinition,
   ScreenHistoryEntry,
-  ValidationResult
 } from '../core/types';
 import { boundaryId } from '../core/address';
 import { canvasLocationParams } from '../core/canvas-location';
@@ -16,8 +14,9 @@ import { loadProjectFromFs } from '../core/load';
 import { migrateProjectFiles } from '../core/migrate';
 import { selectionReference } from '../core/selection';
 import {
+  candidateFileNames,
+  historyFileNames,
   archiveExploration,
-  computeExplorationBaselineDigest,
   createExplorationMetadata,
   inspectExploration,
   inspectScreenHistory,
@@ -52,6 +51,7 @@ import {
   type BlueprintActivityRuntimeDescriptor
 } from './activity';
 import { emptyInspoFile, INSPO_GITIGNORE } from './inspo';
+import { validateMigration, type ToolValidation } from './migration-validation';
 import { normalize, packageRoot, throwIfAborted, withAbort } from './operation-support';
 import {
   applyProjectFileTransaction,
@@ -61,7 +61,6 @@ import {
   jsonFileContent,
   loadCurrentProject,
   withProjectMutation,
-  writeProjectFiles,
   type ProjectFileWrite
 } from './project-files';
 import {
@@ -123,6 +122,7 @@ export interface BlueprintServeHandle extends CaptureServer, ServeOutput {
   ownership: 'owned' | 'borrowed';
   isAvailable: () => Promise<boolean>;
   settledProject?: () => Promise<ServeProjectSnapshot | undefined>;
+  latestProject?: () => ServeProjectSnapshot;
 }
 
 export async function initializeBlueprint(input: InitInput, signal?: AbortSignal): Promise<InitOutput> {
@@ -173,7 +173,7 @@ export async function initializeBlueprint(input: InitInput, signal?: AbortSignal
 export async function validateBlueprint(input: ValidateInput, signal?: AbortSignal): Promise<ValidateOutput> {
   throwIfAborted(signal);
   const { project, mode } = input;
-  const report = await reportProjectValidation(project, mode, signal);
+  const { contractErrors: _contractErrors, styleErrors: _styleErrors, ...report } = await reportProjectValidation(project, mode, signal);
   const output = validateOutputSchema.parse({
     command: 'validate',
     project: normalize(path.resolve(project)),
@@ -196,7 +196,7 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
     });
 
     throwIfAborted(signal);
-    const { bundle, validation } = await validateMigration(projectRoot, migration, signal);
+    const { projectId, validation } = await validateMigration(projectRoot, migration, validateOnWorker, signal);
 
     throwIfAborted(signal);
     if (!input.dryRun && migration.writes.size > 0) {
@@ -205,11 +205,11 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
     return migrateOutputSchema.parse({
       command: 'migrate',
       project: normalize(projectRoot),
-      projectId: bundle.manifest.project.id,
+      projectId,
       dryRun: input.dryRun,
       fromVersion: migration.fromVersion,
       toVersion: migration.toVersion,
-      upToDate: migration.writes.size === 0,
+      upToDate: migration.upToDate && migration.writes.size === 0,
       changes: migration.changes,
       files: [...migration.writes.keys()].sort(),
       validation
@@ -341,6 +341,10 @@ export async function exploreBlueprint(
   });
 }
 
+const SERVE_STYLE_ERROR_LIMIT = 20;
+
+/** What the output of `init` and `migrate` shows. */
+
 export async function promoteBlueprint(
   input: PromoteInput,
   signal?: AbortSignal,
@@ -362,7 +366,7 @@ export async function promoteBlueprint(
       history: result.history,
       prototypeSourceContents: result.prototypeSourceContents
     };
-    const check = await assertValidMutation(projected, validate, signal);
+    const check = await assertValidMutation(projected, validate, signal, 'all-errors', candidateFileNames(bundle, input.explorationId, input.candidateId));
     const output = promoteOutputSchema.parse({
       command: 'promote',
       project: normalize(projectRoot),
@@ -405,7 +409,7 @@ export async function restoreBlueprint(
       history: result.history,
       prototypeSourceContents: result.prototypeSourceContents
     };
-    const check = await assertValidMutation(projected, validate, signal);
+    const check = await assertValidMutation(projected, validate, signal, 'all-errors', historyFileNames(bundle, input.screenId, input.version));
     const output = restoreOutputSchema.parse({
       command: 'restore',
       project: normalize(projectRoot),
@@ -501,12 +505,15 @@ export async function serveBlueprint(
     selectedUrl.searchParams.set(name, value);
   }
   try {
+    const styleErrors = await currentStyleErrors(server, validated, projectRoot, read, signal);
     const output = serveOutputSchema.parse({
       command: 'serve',
       project: normalize(projectRoot),
       port: server.port,
       url: selection || focusParams ? selectedUrl.toString() : baseUrl,
       runtime: acquisition.reused ? 'reused' : 'started',
+      styleErrorCount: styleErrors.length,
+      styleErrors: styleErrors.slice(0, SERVE_STYLE_ERROR_LIMIT),
       ...(input.focus ? { focus: input.focus } : {}),
       ...(selection ? { selection } : {})
     });
@@ -516,7 +523,8 @@ export async function serveBlueprint(
       close: server.close,
       ownership: server.ownership,
       isAvailable: server.isAvailable,
-      ...(server.settledProject ? { settledProject: server.settledProject } : {})
+      ...(server.settledProject ? { settledProject: server.settledProject } : {}),
+      ...(server.latestProject ? { latestProject: server.latestProject } : {})
     };
   } catch (error) {
     if (!acquisition.reused) await server.close();
@@ -552,6 +560,18 @@ export async function readBlueprintSelection(input: SelectionInput, signal?: Abo
       }
       : null
   });
+}
+
+// A borrowed runtime lives in another process, so only a read of the files can answer for it.
+async function currentStyleErrors(
+  server: LocalServeServer,
+  validated: ValidatedProject | undefined,
+  projectRoot: string,
+  read: ProjectReader,
+  signal?: AbortSignal
+): Promise<string[]> {
+  const settled = server.settledProject ? await withAbort(server.settledProject(), signal) : undefined;
+  return (settled ?? server.latestProject?.() ?? validated ?? await read(projectRoot, signal)).styleErrors;
 }
 
 async function settledBundle(server: BlueprintServeHandle | undefined, signal?: AbortSignal): Promise<BlueprintProjectBundle | undefined> {
@@ -694,46 +714,9 @@ async function readProjectTextFiles(projectRoot: string): Promise<Map<string, st
   return files;
 }
 
-async function validateOnWorker(bundle: BlueprintProjectBundle, signal?: AbortSignal): Promise<ValidationResult> {
+async function validateOnWorker(bundle: BlueprintProjectBundle, signal?: AbortSignal): Promise<ToolValidation> {
   const { ok, errors } = await workerProjectValidator.projected(bundle, signal);
   return { ok, errors };
-}
-
-async function validateMigration(
-  projectRoot: string,
-  migration: ReturnType<typeof migrateProjectFiles>,
-  signal?: AbortSignal
-): Promise<{ bundle: BlueprintProjectBundle; validation: ValidationResult }> {
-  if (migration.writes.size === 0) {
-    const bundle = await loadProjectFromFs(projectRoot);
-    const digestsCurrent = bundle.explorations.explorations.every(exploration =>
-      computeExplorationBaselineDigest(bundle, exploration.id) === exploration.target.baseDigest);
-    if (digestsCurrent) return { bundle, validation: await validateOnWorker(bundle, signal) };
-  }
-  const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
-  try {
-    await cp(projectRoot, scratch, { recursive: true, dereference: true });
-    await writeProjectFiles(scratch, migration.writes);
-    let bundle = await loadProjectFromFs(scratch);
-    const digestWrites = new Map<string, string>();
-    for (const exploration of bundle.explorations.explorations) {
-      const baseDigest = computeExplorationBaselineDigest(bundle, exploration.id);
-      if (baseDigest === exploration.target.baseDigest) continue;
-      const recordRef = explorationRecordRef(exploration.id);
-      const record = JSON.parse(await readFile(path.join(scratch, recordRef), 'utf8'));
-      record.exploration.target.baseDigest = baseDigest;
-      digestWrites.set(recordRef, jsonFileContent(record));
-      migration.changes.push(`exploration ${exploration.id}: recomputed target.baseDigest for the migrated baseline.`);
-    }
-    if (digestWrites.size > 0) {
-      await writeProjectFiles(scratch, digestWrites);
-      for (const [fileRef, content] of digestWrites) migration.writes.set(fileRef, content);
-      bundle = await loadProjectFromFs(scratch);
-    }
-    return { bundle, validation: await validateOnWorker(bundle, signal) };
-  } finally {
-    await rm(scratch, { recursive: true, force: true });
-  }
 }
 
 /** The response to a tool call that wrote its full JSON to `out`, so a large report does not cross the agent's context. */

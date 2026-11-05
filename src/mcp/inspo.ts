@@ -53,7 +53,7 @@ async function downloadInspoImages(
 ): Promise<InspoDownloads> {
   const current = currentInspoBoard(await loadCurrentProject(projectRoot));
   if (operation.type === 'add') {
-    assertNewInspoEntry(current, operation.id ?? nextInspoEntryId(current.entries));
+    assertNewInspoEntry(current, operation.id);
     return { added: await downloadInspoImage(operation.url, fetcher, signal), synced: new Map() };
   }
   const synced: InspoDownloads['synced'] = new Map();
@@ -101,7 +101,7 @@ async function mutateInspo(
 
   switch (operation.type) {
     case 'add': {
-      const id = operation.id ?? nextInspoEntryId(current.entries);
+      const id = operation.id;
       assertNewInspoEntry(current, id);
       const sourceUrl = normalizeInspoUrl(operation.url).href;
       const image = downloads.added as DownloadedInspoImage;
@@ -196,12 +196,12 @@ async function mutateInspo(
 
   throwIfAborted(signal);
   const projected = { ...bundle, inspo: next };
-  const check = await assertValidMutation(projected, validate, signal);
+  const check = await assertValidMutation(projected, validate, signal, 'contract-errors');
   writes.push({ fileRef: 'inspo.json', content: jsonFileContent(next) });
   if (!existsSync(path.join(projectRoot, INSPO_IMAGE_DIRECTORY, '.gitignore'))) {
     writes.push({ fileRef: `${INSPO_IMAGE_DIRECTORY}/.gitignore`, content: INSPO_GITIGNORE });
   }
-  await commitProjectMutation(projectRoot, writes, check, validate, signal);
+  await commitProjectMutation(projectRoot, writes, check, validate, signal, 'contract-errors');
   if (removedImage) {
     await removeInspoImage(projectRoot, removedImage);
   }
@@ -219,13 +219,6 @@ async function mutateInspo(
 
 export function emptyInspoFile(projectId: string): InspoFile {
   return { schemaVersion: BLUEPRINT_SCHEMA_VERSION, projectId, entries: [], directions: [] };
-}
-
-function nextInspoEntryId(entries: readonly InspoEntry[]): string {
-  const taken = new Set(entries.map(entry => entry.id));
-  let index = entries.length + 1;
-  while (taken.has(`ref-${index}`)) index += 1;
-  return `ref-${index}`;
 }
 
 function findInspoEntry(inspo: InspoFile, id: string): InspoEntry {

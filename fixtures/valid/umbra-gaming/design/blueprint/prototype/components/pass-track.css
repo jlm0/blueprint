@@ -31,14 +31,14 @@
 
 .pass-track__tier small {
   font: var(--app-type-label);
-  font-size: 8px;
+  font-size: var(--app-text-8);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .pass-track__tier b {
   font-family: var(--app-font-display);
-  font-size: 21px;
+  font-size: var(--app-text-21);
   font-weight: 800;
   line-height: 1;
 }
@@ -57,7 +57,7 @@
 .pass-track__xp {
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 11px;
+  font-size: var(--app-text-11);
 }
 
 .pass-track__rail {
@@ -69,7 +69,7 @@
   list-style: none;
 }
 
-.pass-track__rail li {
+.pass-track__rail > li {
   display: grid;
   height: 46px;
   place-items: center;
@@ -81,13 +81,13 @@
   background: var(--app-color-surface-2);
 }
 
-.pass-track__rail i {
+.pass-track__rail > :where(li) > i {
   font: var(--app-type-label);
-  font-size: 9px;
+  font-size: var(--app-text-9);
   font-style: normal;
 }
 
-.pass-track__rail svg {
+svg.pass-track__glyph {
   width: 14px;
   height: 14px;
   fill: none;
@@ -113,24 +113,29 @@
   background: color-mix(in srgb, var(--app-color-accent) 14%, var(--app-color-surface-2));
 }
 
-.pass-track__rail .is-reward svg {
+:where(.pass-track__rail) .is-reward svg.pass-track__glyph {
   fill: currentColor;
   stroke: none;
 }
 
-[data-blueprint-component="pass-track"] .pass-track__meter .progress__bar {
-  width: 82%;
-  box-shadow: 0 0 12px var(--app-color-glow);
-}
-
-[data-blueprint-component="pass-track"] .pass-track__meter .progress__value,
-[data-blueprint-component="pass-track"] .pass-track__meter .progress__head {
-  display: none;
-}
-
-[data-blueprint-component="pass-track"] .pass-track__meter .progress__track {
+.pass-track__meter {
+  position: relative;
   height: 4px;
+  overflow: hidden;
+  border-radius: var(--app-radius-full);
   background: var(--app-color-surface-4);
+}
+
+.pass-track__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 82%;
+  border-radius: inherit;
+  background: var(--app-color-primary);
+  box-shadow: 0 0 12px var(--app-color-glow);
+  transition: width var(--app-motion-state);
 }
 
 .pass-track__next {
@@ -165,11 +170,22 @@
 }
 
 [data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__tier b {
-  font-size: 17px;
+  font-size: var(--app-text-17);
 }
 
-[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__meter .progress__bar {
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__bar {
   width: 94%;
   background:
     linear-gradient(90deg, var(--app-color-primary) 0 71%, var(--app-color-foreground) 71% 100%);
+}
+
+[data-blueprint-component="pass-track"]:not([data-blueprint-size="compact"]) .pass-track__meter--compact,
+[data-blueprint-component="pass-track"][data-blueprint-size="compact"] .pass-track__meter--regular {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pass-track__bar {
+    transition: none;
+  }
 }

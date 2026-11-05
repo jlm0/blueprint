@@ -70,7 +70,7 @@
   vertical-align: text-bottom;
 }
 
-[data-blueprint-primitive="input"][data-blueprint-variant="filled"] .input__control {
+[data-blueprint-primitive="input"]:is([data-blueprint-variant="filled"], [data-blueprint-variant="pill"]) .input__control {
   border-color: transparent;
   background: var(--app-color-surface-muted);
 }
@@ -80,7 +80,7 @@
   background: transparent;
 }
 
-[data-blueprint-primitive="input"][data-blueprint-variant="outline"] .input__control {
+[data-blueprint-primitive="input"]:is([data-blueprint-variant="outline"], [data-blueprint-variant="unlabeled"], [data-blueprint-variant="tall"]) .input__control {
   background: transparent;
 }
 
@@ -173,4 +173,21 @@
     transition: none;
     animation: none;
   }
+}
+
+[data-blueprint-primitive="input"]:is([data-blueprint-variant="pill"], [data-blueprint-variant="unlabeled"]) .input__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="pill"] .input__control {
+  min-height: var(--app-size-control-sm);
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-primitive="input"][data-blueprint-variant="tall"] .input__control {
+  min-height: 56px;
 }

@@ -1,6 +1,4 @@
 [data-blueprint-component="stat-meter"] {
-  --meter: 50%;
-  --meter-tone: var(--app-color-foreground);
   display: grid;
   align-content: start;
   gap: 6px;
@@ -12,12 +10,14 @@
 }
 
 .stat-meter__label {
+  display: block;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-[data-blueprint-component="stat-meter"] p.stat-meter__value {
-  font-size: 28px;
+.stat-meter__figure {
+  display: block;
+  font-size: var(--app-text-28);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -25,54 +25,45 @@
 }
 
 .stat-meter__bar {
-  margin-top: 6px;
-}
-
-[data-blueprint-component="stat-meter"] .progress__head {
-  display: none;
-}
-
-[data-blueprint-component="stat-meter"] .progress__track {
+  position: relative;
   height: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: var(--app-radius-full);
   background: var(--app-color-surface-4);
 }
 
-[data-blueprint-component="stat-meter"] .progress__bar {
-  width: var(--meter);
-  background: var(--meter-tone);
+.stat-meter__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  border-radius: inherit;
+  background: var(--app-color-foreground);
+  transition: width var(--app-motion-state);
 }
 
-[data-blueprint-component="stat-meter"] p.stat-meter__delta {
+.stat-meter__comparison {
+  display: block;
   font: var(--app-type-caption);
-  font-size: 11px;
+  font-size: var(--app-text-11);
 }
 
-[data-blueprint-component="stat-meter"][data-blueprint-state="above"] {
-  --meter: 74%;
-  --meter-tone: var(--app-color-primary);
-}
-
-[data-blueprint-component="stat-meter"][data-blueprint-state="above"] .stat-meter__delta {
+[data-blueprint-component="stat-meter"][data-blueprint-state="above"] .stat-meter__comparison {
   color: var(--app-color-primary);
 }
 
-[data-blueprint-component="stat-meter"][data-blueprint-state="average"] {
-  --meter: 52%;
-}
-
-[data-blueprint-component="stat-meter"][data-blueprint-state="below"] {
-  --meter: 28%;
-  --meter-tone: var(--app-color-muted);
+[data-blueprint-component="stat-meter"][data-blueprint-state="average"] .stat-meter__fill {
+  width: 52%;
 }
 
 [data-blueprint-component="stat-meter"][data-blueprint-state="record"] {
-  --meter: 100%;
-  --meter-tone: var(--app-color-primary);
   border-color: color-mix(in srgb, var(--app-color-primary) 45%, transparent);
   box-shadow: 0 0 32px -12px var(--app-color-glow);
 }
 
-[data-blueprint-component="stat-meter"][data-blueprint-state="record"] .stat-meter__delta {
+[data-blueprint-component="stat-meter"][data-blueprint-state="record"] .stat-meter__comparison {
   color: var(--app-color-primary);
 }
 
@@ -90,5 +81,53 @@
 
 [data-blueprint-component="stat-meter"][data-blueprint-state="plain"] .stat-meter__value {
   order: -1;
-  font-size: 34px;
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="plain"] .stat-meter__figure {
+  font-size: var(--app-text-34);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="above"] .stat-meter__fill {
+  width: 74%;
+  background: var(--app-color-primary);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="below"] .stat-meter__fill {
+  width: 28%;
+  background: var(--app-color-muted);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-state="record"] .stat-meter__fill {
+  width: 100%;
+  background: var(--app-color-primary);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-size="compact"] {
+  gap: 2px;
+  padding: 9px var(--app-space-3);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-size="compact"] .stat-meter__label {
+  font-size: var(--app-text-10);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-size="compact"] .stat-meter__figure {
+  font-size: var(--app-text-22);
+}
+
+[data-blueprint-component="stat-meter"][data-blueprint-size="compact"] .stat-meter__bar {
+  margin-top: var(--app-space-1);
+}
+
+[data-blueprint-component="stat-meter"]:not([data-blueprint-state="above"]) .stat-meter__bar--above,
+[data-blueprint-component="stat-meter"]:not([data-blueprint-state="average"]) .stat-meter__bar--average,
+[data-blueprint-component="stat-meter"]:not([data-blueprint-state="below"]) .stat-meter__bar--below,
+[data-blueprint-component="stat-meter"]:not([data-blueprint-state="record"]) .stat-meter__bar--record {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-meter__fill {
+    transition: none;
+  }
 }

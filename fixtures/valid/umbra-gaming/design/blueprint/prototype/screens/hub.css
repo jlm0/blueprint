@@ -16,7 +16,7 @@
   src: url("../assets/fonts/geist-mono.woff2") format("woff2");
 }
 
-* {
+*:where([data-blueprint-screen="hub"], [data-blueprint-screen="hub"] *) {
   box-sizing: border-box;
 }
 
@@ -62,7 +62,7 @@
     linear-gradient(90deg, color-mix(in srgb, var(--app-color-background) 70%, transparent), transparent 70%);
 }
 
-.player {
+:where([data-blueprint-screen="hub"]) .player {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
@@ -70,36 +70,24 @@
   height: 48px;
 }
 
-[data-blueprint-screen="hub"] .player__avatar {
-  border: 2px solid var(--app-color-primary);
-  color: var(--app-color-on-primary);
-  background: var(--app-color-primary);
-  font-family: var(--app-font-display);
-  font-weight: 800;
-}
-
-[data-blueprint-screen="hub"] .player__avatar .avatar__status {
-  border-color: var(--app-color-background);
-}
-
-.player__id {
+:where([data-blueprint-screen="hub"]) .player__id {
   display: grid;
   gap: 1px;
 }
 
-.player__id b {
-  font-size: 15px;
+:where([data-blueprint-screen="hub"]) .player__id b {
+  font-size: var(--app-text-15);
   font-weight: 650;
   letter-spacing: 0.02em;
 }
 
-.player__id span {
+:where([data-blueprint-screen="hub"]) .player__id span {
   color: var(--app-color-muted);
   font: var(--app-type-label);
   letter-spacing: 0.04em;
 }
 
-.player__coins {
+:where([data-blueprint-screen="hub"]) .player__coins {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -110,27 +98,27 @@
   background: color-mix(in srgb, var(--app-color-background) 50%, transparent);
   backdrop-filter: blur(12px);
   font: var(--app-type-code);
-  font-size: 12px;
+  font-size: var(--app-text-12);
   font-weight: 600;
 }
 
-.player__coins svg {
+:where([data-blueprint-screen="hub"]) svg.player__coin {
   width: 13px;
   height: 13px;
   fill: var(--app-color-primary);
 }
 
-.player__sync {
+:where([data-blueprint-screen="hub"]) .player__sync {
   display: none;
 }
 
-.season {
+:where([data-blueprint-screen="hub"]) .season {
   display: grid;
   gap: var(--app-space-1);
   margin-top: var(--app-space-3);
 }
 
-.season__meta {
+:where([data-blueprint-screen="hub"]) .season__meta {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-2);
@@ -141,7 +129,7 @@
   text-transform: uppercase;
 }
 
-.season__dot {
+:where([data-blueprint-screen="hub"]) .season__dot {
   width: 6px;
   height: 6px;
   border-radius: var(--app-radius-full);
@@ -149,17 +137,17 @@
   box-shadow: 0 0 0 3px var(--app-color-glow);
 }
 
-.season__title {
+:where([data-blueprint-screen="hub"]) .season__title {
   margin: 0 0 var(--app-space-3);
   font-family: var(--app-font-display);
-  font-size: 42px;
+  font-size: var(--app-text-42);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.05em;
   text-transform: uppercase;
 }
 
-.squad {
+:where([data-blueprint-screen="hub"]) .squad {
   display: flex;
   gap: 10px;
   margin: 0 calc(var(--app-space-4) * -1);
@@ -167,69 +155,46 @@
   padding: 0 var(--app-space-4);
 }
 
-.squad [data-blueprint-component="squad-member"] {
+:where([data-blueprint-screen="hub"]) .squad__item {
   flex: none;
-  padding: 6px 14px 6px 6px;
-  border: 1px solid var(--app-color-border);
-  border-radius: var(--app-radius-full);
-  background: var(--app-color-surface);
 }
 
-[data-blueprint-screen="hub"] .squad [data-blueprint-component="squad-member"] {
-  grid-template-columns: auto auto;
-  gap: 10px;
-}
-
-[data-blueprint-screen="hub"] .squad .squad-member__avatar {
-  width: var(--app-size-control-sm);
-  height: var(--app-size-control-sm);
-  font-size: 10px;
-}
-
-[data-blueprint-screen="hub"] .squad .squad-member__name {
-  font-size: 12px;
-}
-
-[data-blueprint-screen="hub"] .squad .squad-member__status {
-  font-size: 11px;
-}
-
-.challenges {
+:where([data-blueprint-screen="hub"]) .challenges {
   display: grid;
   gap: 10px;
   margin-top: var(--app-space-1);
 }
 
-.challenges__head {
+:where([data-blueprint-screen="hub"]) .challenges__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
 }
 
-.challenges__head h2 {
+:where([data-blueprint-screen="hub"]) .challenges__head h2 {
   margin: 0;
   font-family: var(--app-font-display);
-  font-size: 14px;
+  font-size: var(--app-text-14);
   font-weight: 700;
   letter-spacing: -0.01em;
   text-transform: uppercase;
 }
 
-.challenges__head span {
+:where([data-blueprint-screen="hub"]) .challenges__head span {
   color: var(--app-color-muted);
   font: var(--app-type-label);
 }
 
-.challenges__list {
+:where([data-blueprint-screen="hub"]) .challenges__list {
   display: grid;
   gap: var(--app-space-2);
 }
 
-.skel {
+:where([data-blueprint-screen="hub"]) .skel {
   display: none;
 }
 
-.tabbar {
+:where([data-blueprint-screen="hub"]) .tabbar {
   position: absolute;
   right: var(--app-space-3);
   bottom: calc(var(--blueprint-safe-area-bottom) - 6px);
@@ -246,7 +211,7 @@
   backdrop-filter: blur(20px);
 }
 
-.tabbar::before {
+:where([data-blueprint-screen="hub"]) .tabbar::before {
   position: absolute;
   right: calc(var(--app-space-3) * -1);
   bottom: calc(var(--blueprint-safe-area-bottom) * -1);
@@ -258,7 +223,7 @@
   pointer-events: none;
 }
 
-.tabbar__item {
+:where([data-blueprint-screen="hub"]) .tabbar__item {
   display: grid;
   place-items: center;
   align-content: center;
@@ -266,11 +231,11 @@
   border-radius: var(--app-radius-xl);
   color: var(--app-color-muted);
   font: var(--app-type-label);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   text-decoration: none;
 }
 
-.tabbar__item svg {
+:where([data-blueprint-screen="hub"]) svg.tabbar__glyph {
   width: 20px;
   height: 20px;
   fill: none;
@@ -280,13 +245,13 @@
   stroke-linecap: round;
 }
 
-.tabbar__item.is-active {
+:where([data-blueprint-screen="hub"]) .tabbar__item.is-active {
   color: var(--app-color-on-primary);
   background: var(--app-color-primary);
   box-shadow: 0 0 24px -4px var(--app-color-glow);
 }
 
-.tabbar__item.is-active svg {
+:where([data-blueprint-screen="hub"]) :where(.tabbar__item).is-active svg.tabbar__glyph {
   fill: currentColor;
   stroke: none;
 }
@@ -307,11 +272,6 @@
   gap: var(--app-space-2);
 }
 
-[data-blueprint-screen="hub"] .skel .skeleton__block,
-[data-blueprint-screen="hub"] .skel .skeleton__line {
-  background: var(--app-color-surface-4);
-}
-
 [data-blueprint-screen="hub"] .skel--pass,
 [data-blueprint-screen="hub"] .skel--event,
 [data-blueprint-screen="hub"] .skel__row {
@@ -325,40 +285,12 @@
   border-radius: var(--app-radius-xl);
 }
 
-.skel__head,
-.skel__row {
+:where([data-blueprint-screen="hub"]) .skel__head,
+:where([data-blueprint-screen="hub"]) .skel__row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--app-space-3);
-}
-
-[data-blueprint-screen="hub"] .skel__tile .skeleton__block {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-}
-
-[data-blueprint-screen="hub"] .skel__text .skeleton__line {
-  height: 10px;
-}
-
-[data-blueprint-screen="hub"] .skel__text .skeleton__line:first-child {
-  width: 62%;
-}
-
-[data-blueprint-screen="hub"] .skel__text .skeleton__line--short {
-  width: 38%;
-}
-
-[data-blueprint-screen="hub"] .skel__rail .skeleton__block {
-  height: 46px;
-  background:
-    repeating-linear-gradient(90deg, var(--app-color-surface-4) 0 calc((100% - 30px) / 6), transparent 0 calc((100% - 30px) / 6 + 6px));
-}
-
-[data-blueprint-screen="hub"] .skel__foot .skeleton__line--short {
-  display: none;
 }
 
 [data-blueprint-screen="hub"][data-blueprint-state="loading"] .skel--event {
@@ -371,18 +303,12 @@
     var(--app-color-surface);
 }
 
-.skel__row {
+:where([data-blueprint-screen="hub"]) .skel__row {
   padding: var(--app-space-3);
   border-radius: var(--app-radius-lg);
 }
 
-[data-blueprint-screen="hub"] .skel__glyph .skeleton__block {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--app-radius-lg);
-}
-
-.player__sync {
+:where([data-blueprint-screen="hub"]) .player__sync {
   align-items: center;
   gap: 6px;
   grid-auto-flow: column;
@@ -398,11 +324,6 @@
   text-transform: uppercase;
 }
 
-[data-blueprint-screen="hub"] .player__sync .loading-mark__arc {
-  width: var(--app-size-icon-md);
-  height: var(--app-size-icon-md);
-}
-
-[data-blueprint-screen="hub"][data-blueprint-state="loading"] .squad [data-blueprint-component="squad-member"] {
+[data-blueprint-screen="hub"][data-blueprint-state="loading"] .squad__item {
   opacity: 0.35;
 }

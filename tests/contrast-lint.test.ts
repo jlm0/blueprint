@@ -13,7 +13,7 @@ describe('color contrast lint', () => {
     assert.deepEqual(lintColorContrast(await loadProjectFromFs(starterRoot)), []);
   });
 
-  it('reports text and focus role pairs below the WCAG minimum through strict, readiness, and canvas findings', async () => {
+  it('reports text and focus role pairs below the WCAG minimum through baseline, strict, readiness, and canvas findings', async () => {
     const bundle = await loadProjectFromFs(starterRoot);
     setColor(bundle, 'muted', '#d4d4d8');
     setColor(bundle, 'focus-ring', 'rgb(228, 228, 231)');
@@ -30,7 +30,7 @@ describe('color contrast lint', () => {
       strict.errors.join('\n'),
       /token-group\.color --app-color-muted \(#d4d4d8\) on --app-color-surface \(#ffffff\) has contrast 1\.47:1; text needs at least 4\.5:1\./
     );
-    assert.equal(validateProject(bundle).ok, true);
+    assert.deepEqual(validateProject(bundle).errors, strict.errors.filter(error => error.startsWith('token-group.color ')));
     assert.ok(createReadinessReport(bundle).blockers.some(item => item.path === 'tokenGroup.color.contrast.--app-color-muted.--app-color-surface'));
     const finding = collectDesignFindings(bundle).find(candidate => candidate.rule === 'contrast');
     assert.deepEqual(finding && [finding.boundaryId, finding.kind, finding.location], ['starter-app/token-group/color', 'token-group', 'tokens.json']);

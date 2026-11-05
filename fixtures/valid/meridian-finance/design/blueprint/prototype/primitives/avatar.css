@@ -68,3 +68,26 @@
   width: var(--app-size-icon-lg);
   height: var(--app-size-icon-lg);
 }
+
+[data-blueprint-primitive="avatar"][data-blueprint-variant="tile-mono"] {
+  border: 0;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-foreground);
+  background: var(--app-color-surface-muted);
+  font-family: var(--app-font-mono);
+  font-size: var(--app-text-10-5);
+  letter-spacing: 0.02em;
+}
+
+[data-blueprint-primitive="avatar"][data-blueprint-variant="tile-ink"] {
+  border: 0;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+}
+
+[data-blueprint-primitive="avatar"][data-blueprint-variant="accent"] {
+  border-color: transparent;
+  color: var(--app-color-on-primary);
+  background: var(--app-color-accent);
+}

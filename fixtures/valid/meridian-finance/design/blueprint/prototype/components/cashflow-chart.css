@@ -9,55 +9,44 @@
   background: var(--app-color-surface);
 }
 
-.cashflow__head {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--app-space-4);
 }
 
-.cashflow__titles {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__titles {
   display: grid;
   gap: 6px;
 }
 
-.cashflow__eyebrow {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__eyebrow {
   color: var(--app-color-muted);
   font: var(--app-type-label);
 }
 
-.cashflow__figure {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__figure {
   font: var(--app-type-display);
-  font-size: 40px;
+  font-size: var(--app-text-40);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
-.cashflow__caption {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__caption {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
   font-variant-numeric: tabular-nums;
 }
 
-[data-blueprint-component="cashflow-chart"] .cashflow__range {
-  font: var(--app-type-label);
-}
-
-[data-blueprint-component="cashflow-chart"] .cashflow__range .segmented-control__option {
-  min-height: 26px;
-  padding: 0 10px;
-  font-family: var(--app-font-mono);
-  font-size: 11px;
-}
-
-.cashflow__plot {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__plot {
   position: relative;
   min-height: 200px;
   padding: 0 0 22px 44px;
 }
 
-.cashflow__scale {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__scale {
   position: absolute;
   inset: 0 0 22px;
   display: flex;
@@ -65,33 +54,33 @@
   justify-content: space-between;
 }
 
-.cashflow__scale i {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__scale i {
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   font-style: normal;
   line-height: 0;
 }
 
-.cashflow__scale i::after {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__scale i::after {
   flex: 1;
   height: 1px;
   background: var(--app-color-border);
   content: '';
 }
 
-.cashflow__scale i:nth-child(2)::after {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__scale i:nth-child(2)::after {
   background: var(--app-color-foreground);
 }
 
-.cashflow__scale i:nth-child(2) {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__scale i:nth-child(2) {
   padding-left: 22px;
 }
 
-.cashflow__months {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months {
   position: relative;
   display: grid;
   height: 100%;
@@ -102,53 +91,51 @@
   list-style: none;
 }
 
-.cashflow__months li {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li {
   position: relative;
   display: grid;
   grid-template-rows: 1fr 1fr;
 }
 
-.cashflow__in,
-.cashflow__out {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__in,
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__out {
   position: relative;
   display: flex;
 }
 
-.cashflow__in {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__in {
   align-items: flex-end;
 }
 
-.cashflow__out {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__out {
   align-items: flex-start;
 }
 
-.cashflow__in::before,
-.cashflow__out::before {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__in::before,
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__out::before {
   width: 100%;
   content: '';
 }
 
-.cashflow__in::before {
-  height: calc(var(--in) * 100%);
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__in::before {
   border-radius: 2px 2px 0 0;
   background: color-mix(in srgb, var(--app-color-foreground) 78%, var(--app-color-surface));
 }
 
-.cashflow__out::before {
-  height: calc(var(--out) * 100%);
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__out::before {
   border-radius: 0 0 2px 2px;
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-foreground) 22%, transparent) 0 1px, transparent 1px 4px), color-mix(in srgb, var(--app-color-foreground) 7%, var(--app-color-surface));
 }
 
-.cashflow__months .is-current .cashflow__in::before {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months .is-current .cashflow__in::before {
   background: var(--app-color-accent);
 }
 
-.cashflow__months .is-current .cashflow__out::before {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months .is-current .cashflow__out::before {
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-accent) 45%, transparent) 0 1px, transparent 1px 4px), color-mix(in srgb, var(--app-color-accent) 10%, var(--app-color-surface));
 }
 
-.cashflow__months b {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months b {
   position: absolute;
   left: 50%;
   padding: 2px 6px;
@@ -156,41 +143,39 @@
   color: var(--app-color-on-primary);
   background: var(--app-color-foreground);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   white-space: nowrap;
   transform: translateX(-50%);
 }
 
-.cashflow__in b {
-  bottom: calc(var(--in) * 100% + 6px);
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__in b {
   background: var(--app-color-accent);
 }
 
-.cashflow__out b {
-  top: calc(var(--out) * 100% + 6px);
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__out b {
   color: var(--app-color-accent);
   background: var(--app-color-surface);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-color-accent) 40%, transparent);
 }
 
-.cashflow__months em {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months em {
   position: absolute;
   bottom: -22px;
   left: 0;
   width: 100%;
   color: var(--app-color-muted);
   font: var(--app-type-code);
-  font-size: 10px;
+  font-size: var(--app-text-10);
   font-style: normal;
   text-align: center;
 }
 
-.cashflow__months .is-current em {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months .is-current em {
   color: var(--app-color-foreground);
   font-weight: 600;
 }
 
-.cashflow__legend {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__legend {
   display: flex;
   gap: var(--app-space-5);
   margin: 0;
@@ -198,23 +183,23 @@
   font: var(--app-type-caption);
 }
 
-.cashflow__legend span {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__legend span {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-2);
 }
 
-.cashflow__key {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__key {
   width: 10px;
   height: 10px;
   border-radius: 2px;
 }
 
-.cashflow__key--in {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__key--in {
   background: color-mix(in srgb, var(--app-color-foreground) 78%, var(--app-color-surface));
 }
 
-.cashflow__key--out {
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__key--out {
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--app-color-foreground) 30%, transparent) 0 1px, transparent 1px 3px), color-mix(in srgb, var(--app-color-foreground) 7%, var(--app-color-surface));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-color-foreground) 18%, transparent);
 }
@@ -224,9 +209,8 @@
   padding: var(--app-space-4);
 }
 
-[data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__range,
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__scale i {
-  font-size: 0;
+  font-size: var(--app-text-0);
 }
 
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__range {
@@ -234,7 +218,7 @@
 }
 
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__figure {
-  font-size: 30px;
+  font-size: var(--app-text-30);
 }
 
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__plot {
@@ -256,4 +240,108 @@
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__months b,
 [data-blueprint-component="cashflow-chart"][data-blueprint-size="compact"] .cashflow__legend {
   display: none;
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(1) .cashflow__in::before {
+  height: calc(0.587 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(1) .cashflow__out::before {
+  height: calc(0.507 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(2) .cashflow__in::before {
+  height: calc(0.613 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(2) .cashflow__out::before {
+  height: calc(0.54 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(3) .cashflow__in::before {
+  height: calc(0.673 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(3) .cashflow__out::before {
+  height: calc(0.66 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(4) .cashflow__in::before {
+  height: calc(0.56 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(4) .cashflow__out::before {
+  height: calc(0.58 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(5) .cashflow__in::before {
+  height: calc(0.62 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(5) .cashflow__out::before {
+  height: calc(0.573 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(6) .cashflow__in::before {
+  height: calc(0.72 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(6) .cashflow__out::before {
+  height: calc(0.6 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(7) .cashflow__in::before {
+  height: calc(0.66 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(7) .cashflow__out::before {
+  height: calc(0.627 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(8) .cashflow__in::before {
+  height: calc(0.747 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(8) .cashflow__out::before {
+  height: calc(0.64 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(9) .cashflow__in::before {
+  height: calc(0.707 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(9) .cashflow__out::before {
+  height: calc(0.673 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(10) .cashflow__in::before {
+  height: calc(0.767 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(10) .cashflow__out::before {
+  height: calc(0.653 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(11) .cashflow__in::before {
+  height: calc(0.793 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(11) .cashflow__out::before {
+  height: calc(0.68 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(12) .cashflow__in::before {
+  height: calc(0.827 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(12) .cashflow__out::before {
+  height: calc(0.655 * 100%);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(12) .cashflow__in b {
+  bottom: calc(0.827 * 100% + 6px);
+}
+
+:where([data-blueprint-component="cashflow-chart"]) .cashflow__months li:nth-child(12) .cashflow__out b {
+  top: calc(0.655 * 100% + 6px);
 }

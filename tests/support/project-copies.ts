@@ -16,6 +16,12 @@ export async function withProjectCopy<T>(run: (project: string) => Promise<T>, f
   }
 }
 
+/** An id cannot end in a number, so the index of a grown screen reads as letters. */
+export function grownScreenId(index: number): string {
+  const letters = index.toString(26).replace(/./g, digit => String.fromCharCode(97 + parseInt(digit, 26)));
+  return `grown-${letters}-screen`;
+}
+
 /** Adds screens with their own large sources, so that one validation takes long enough to show a stall of the event loop. */
 export async function growProject(project: string, screenCopies: number): Promise<void> {
   const screensPath = path.join(project, 'screens.json');
@@ -23,12 +29,13 @@ export async function growProject(project: string, screenCopies: number): Promis
   const launch = screens.screens.find((screen: { id: string }) => screen.id === 'launch');
   const markup = (await readFile(path.join(project, launch.prototype.source), 'utf8')).replaceAll(/\s*data-blueprint-section="[^"]*"/g, '');
   for (let index = 0; index < screenCopies; index += 1) {
-    const source = `prototype/screens/launch-copy-${index}.html`;
+    const id = grownScreenId(index);
+    const source = `prototype/screens/${id}.html`;
     await writeFile(path.join(project, source), `${markup.repeat(12)}\n<!-- ${index} -->\n`);
     screens.screens.push({
       ...structuredClone(launch),
-      id: `launch-copy-${index}`,
-      name: `Launch copy ${index}`,
+      id,
+      name: `Launch ${id}`,
       prototype: { ...structuredClone(launch.prototype), source }
     });
   }

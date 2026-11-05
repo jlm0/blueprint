@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "meridian-finance",
   "primitives": [
     {
@@ -45,6 +45,46 @@
             "id": "link",
             "name": "Link",
             "description": "An action that reads as inline text."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "A primary action with fully round corners."
+          },
+          {
+            "id": "pill-wide",
+            "name": "Pill wide",
+            "description": "A primary pill with more inline padding at the small size."
+          },
+          {
+            "id": "pill-outline",
+            "name": "Pill outline",
+            "description": "An outline action with fully round corners."
+          },
+          {
+            "id": "pill-ghost",
+            "name": "Pill ghost",
+            "description": "A ghost action with fully round corners."
+          },
+          {
+            "id": "pill-reversed",
+            "name": "Pill reversed",
+            "description": "A light pill with ink text, for an ink panel."
+          },
+          {
+            "id": "pill-reversed-outline",
+            "name": "Pill reversed outline",
+            "description": "A clear pill with light text and a light border, for an ink panel."
+          },
+          {
+            "id": "ghost-muted",
+            "name": "Ghost muted",
+            "description": "A ghost action with muted text."
+          },
+          {
+            "id": "ghost-reversed",
+            "name": "Ghost reversed",
+            "description": "A ghost action with light text, for an ink panel."
           }
         ]
       },
@@ -245,6 +285,21 @@
             "id": "underline",
             "name": "Underline",
             "description": "A field drawn as a single bottom rule."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "A filled round field with a hidden label."
+          },
+          {
+            "id": "unlabeled",
+            "name": "Unlabeled",
+            "description": "An outline field with a visually hidden label."
+          },
+          {
+            "id": "tall",
+            "name": "Tall",
+            "description": "An outline field with a 56px control."
           }
         ]
       },
@@ -672,7 +727,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Cells at control size."
+          },
+          {
+            "id": "tall",
+            "name": "Tall",
+            "description": "Cells of 52px by 60px with 24px digits."
           }
         ]
       },
@@ -1185,6 +1245,11 @@
             "id": "right-only",
             "name": "Right only",
             "description": "Only a trailing action, for the root of a stack."
+          },
+          {
+            "id": "back-only-clear",
+            "name": "Back only clear",
+            "description": "Only a back action, on a clear bar with no rule."
           }
         ]
       },
@@ -1744,11 +1809,11 @@
       ],
       "uses": [],
       "variants": {
-        "default": "leading-body-trailing",
+        "default": "default",
         "values": [
           {
-            "id": "leading-body-trailing",
-            "name": "Leading body trailing",
+            "id": "default",
+            "name": "Default",
             "description": "Leading art, body text, and a trailing accessory."
           }
         ]
@@ -1996,6 +2061,41 @@
             "id": "outline",
             "name": "Outline",
             "description": "A border only, for neutral categories."
+          },
+          {
+            "id": "tonal-tight",
+            "name": "Tonal tight",
+            "description": "A tonal label with no block padding and 11px text."
+          },
+          {
+            "id": "warning-tint",
+            "name": "Warning tint",
+            "description": "Warning text and a warning dot on a warning tint."
+          },
+          {
+            "id": "success-figure",
+            "name": "Success tint",
+            "description": "A success label with tabular figures."
+          },
+          {
+            "id": "success-wide",
+            "name": "Success tint wide",
+            "description": "A success label with more inline padding."
+          },
+          {
+            "id": "reversed",
+            "name": "Reversed",
+            "description": "A light fill with ink text and a success dot, for an ink panel."
+          },
+          {
+            "id": "outline-mono",
+            "name": "Outline mono",
+            "description": "An outline label in small mono text."
+          },
+          {
+            "id": "outline-chip",
+            "name": "Outline chip",
+            "description": "An outline label at control height, in body text."
           }
         ]
       },
@@ -2120,6 +2220,11 @@
             "id": "accent",
             "name": "Accent",
             "description": "The accent color, to draw the eye."
+          },
+          {
+            "id": "inherit",
+            "name": "Inherit",
+            "description": "Adds no box, so the glyph takes its size and color from the element around it."
           }
         ]
       },
@@ -2963,7 +3068,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A bordered field with medium corners."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "A bordered field with fully round corners."
           }
         ]
       },
@@ -3108,7 +3218,12 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Rounded tabs over a bottom rule."
+          },
+          {
+            "id": "flush",
+            "name": "Flush",
+            "description": "Square tabs with no bottom rule and a thin selected line."
           }
         ]
       },
@@ -3533,7 +3648,22 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "A round mark on the secondary color."
+          },
+          {
+            "id": "tile-mono",
+            "name": "Mono tile",
+            "description": "A square muted tile with small mono initials."
+          },
+          {
+            "id": "tile-ink",
+            "name": "Ink tile",
+            "description": "A square ink tile with light initials."
+          },
+          {
+            "id": "accent",
+            "name": "Accent",
+            "description": "A round mark on the accent color."
           }
         ]
       },
@@ -4042,7 +4172,27 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Body text in options at control height."
+          },
+          {
+            "id": "mono",
+            "name": "Mono",
+            "description": "Small mono options in a short track."
+          },
+          {
+            "id": "short",
+            "name": "Short",
+            "description": "Options with a 30px height."
+          },
+          {
+            "id": "stacked",
+            "name": "Stacked",
+            "description": "Tall options that stack a label over a note."
+          },
+          {
+            "id": "pill",
+            "name": "Pill",
+            "description": "Fully round options in a round track."
           }
         ]
       },
@@ -4176,7 +4326,22 @@
           {
             "id": "default",
             "name": "Default",
-            "description": "The only variant."
+            "description": "Four equal columns."
+          },
+          {
+            "id": "columns-six",
+            "name": "Six columns",
+            "description": "Six ledger columns and an accent edge on the selected row."
+          },
+          {
+            "id": "columns-five",
+            "name": "Five columns",
+            "description": "Five ledger columns and an accent edge on the selected row."
+          },
+          {
+            "id": "columns-six-tight",
+            "name": "Six tight columns",
+            "description": "Six ledger columns with 13px text and no cell block padding."
           }
         ]
       },

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0.0",
+  "schemaVersion": "3.0.0",
   "projectId": "starter-app",
   "primitives": [
     {
@@ -1390,11 +1390,11 @@
       ],
       "uses": [],
       "variants": {
-        "default": "leading-body-trailing",
+        "default": "default",
         "values": [
           {
-            "id": "leading-body-trailing",
-            "name": "Leading body trailing",
+            "id": "default",
+            "name": "Default",
             "description": "Leading art, body text, and a trailing accessory."
           }
         ]

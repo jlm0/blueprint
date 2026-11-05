@@ -33,7 +33,9 @@ describe('local style value lint', () => {
     assert.equal(strict.ok, false);
     assert.match(strict.errors.join('\n'), /screen\.transactions prototype\/screens\/transactions\.css color: "#ff0000" uses a literal color/);
     assert.match(strict.errors.join('\n'), /padding: "20px 3px" restates token --app-space-5; use var\(--app-space-5\)/);
-    assert.equal(validateProject(bundle).ok, true);
+    const baseline = validateProject(bundle);
+    assert.match(baseline.errors.join('\n'), /color: "#ff0000" uses a literal color/);
+    assert.doesNotMatch(baseline.errors.join('\n'), /border-radius|gap: "5px"/);
     const readiness = createReadinessReport(bundle);
     assert.equal(readiness.tier, 'blocked');
     assert.ok(readiness.blockers.some(item => item.path === `screen.transactions.localValues.${screenCss}.color`));
@@ -104,7 +106,7 @@ describe('local style value lint', () => {
       lintLocalStyleValues(bundle).map(issue => [issue.property, issue.value, issue.category]),
       [['color', '#ff0000', 'color'], ['gap', '8px', 'spacing'], ['padding', '20px', 'spacing']]
     );
-    assert.equal(validateProject(bundle).ok, true);
+    assert.match(validateProject(bundle).errors.join('\n'), /prototype\/screens\/transactions\.css cannot be parsed, so Blueprint cannot check its rules\./);
     assert.equal(validateProject(bundle, { mode: 'strict' }).ok, false);
   });
 });

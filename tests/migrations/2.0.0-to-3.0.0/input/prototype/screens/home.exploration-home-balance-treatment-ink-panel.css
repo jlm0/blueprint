@@ -1,0 +1,232 @@
+* {
+  box-sizing: border-box;
+}
+
+[data-blueprint-screen="home"] {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--blueprint-safe-area-top);
+  color: var(--app-color-foreground);
+  background: var(--app-color-background);
+  font: var(--app-type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.home__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--app-space-1) 14px 0 var(--app-space-5);
+}
+
+.org {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--app-color-foreground);
+  text-decoration: none;
+}
+
+.org__mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-on-primary);
+  background: var(--app-color-foreground);
+  font-family: var(--app-font-serif);
+  font-size: 19px;
+}
+
+.org__name {
+  font: var(--app-type-heading);
+}
+
+.org svg {
+  width: 16px;
+  height: 16px;
+  color: var(--app-color-muted);
+}
+
+[data-blueprint-screen="home"] .home__bell {
+  position: relative;
+}
+
+[data-blueprint-screen="home"] .home__bell::after {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--app-color-background);
+  border-radius: var(--app-radius-full);
+  background: var(--app-color-accent);
+  content: '';
+}
+
+.home__balance {
+  display: grid;
+  gap: 22px;
+  padding: 26px var(--app-space-5) 0;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.actions__item {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  color: var(--app-color-foreground);
+  font: var(--app-type-label);
+}
+
+[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"] {
+  width: 54px;
+  min-height: 54px;
+  border-radius: var(--app-radius-full);
+}
+
+[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"] .button__icon {
+  width: var(--app-size-icon-md);
+  height: var(--app-size-icon-md);
+}
+
+[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"][data-blueprint-variant="secondary"] {
+  border-color: var(--app-color-border-strong);
+  background: var(--app-color-surface);
+}
+
+.home__accounts {
+  display: grid;
+  grid-template-columns: repeat(3, 158px);
+  gap: 10px;
+  margin-top: 26px;
+  padding: 0 var(--app-space-5);
+  overflow: hidden;
+}
+
+.home__activity {
+  margin-top: var(--app-space-6);
+  padding: var(--app-space-4) var(--app-space-5) 0;
+  border-radius: var(--app-radius-xl) var(--app-radius-xl) 0 0;
+  background: var(--app-color-surface);
+  box-shadow: 0 -1px 0 var(--app-color-border);
+  flex: 1;
+}
+
+.home__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: var(--app-space-1);
+}
+
+.home__head h2 {
+  margin: 0;
+  font: var(--app-type-display);
+  font-size: 26px;
+}
+
+.home__head a {
+  color: var(--app-color-accent);
+  font: var(--app-type-label);
+  text-decoration: none;
+}
+
+[data-blueprint-screen="home"] .home__activity [data-blueprint-component="transaction-row"] {
+  min-height: 58px;
+}
+
+.tabbar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 10px var(--app-space-3) calc(var(--blueprint-safe-area-bottom) + 2px);
+  border-top: 1px solid var(--app-color-border);
+  background: color-mix(in srgb, var(--app-color-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.tabbar__item {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  color: var(--app-color-muted);
+  font: var(--app-type-label);
+  font-size: 10.5px;
+  text-decoration: none;
+}
+
+.tabbar__item svg {
+  width: 23px;
+  height: 23px;
+}
+
+.tabbar__item--active {
+  color: var(--app-color-foreground);
+}
+
+[data-blueprint-screen="home"] {
+  background: linear-gradient(to bottom, var(--app-color-foreground) 0 436px, var(--app-color-background) 436px);
+}
+
+.org,
+.actions__item {
+  color: var(--app-color-on-primary);
+}
+
+.org__mark {
+  color: var(--app-color-foreground);
+  background: var(--app-color-on-primary);
+}
+
+.org svg,
+[data-blueprint-screen="home"] .home__top .home__bell {
+  color: color-mix(in srgb, var(--app-color-on-primary) 70%, transparent);
+}
+
+[data-blueprint-screen="home"] .home__bell::after {
+  border-color: var(--app-color-foreground);
+}
+
+[data-blueprint-screen="home"] .home__balance .balance-card__label,
+[data-blueprint-screen="home"] .home__balance .balance-card__delta,
+[data-blueprint-screen="home"] .home__balance .balance-card__currency,
+[data-blueprint-screen="home"] .home__balance .balance-card__cents {
+  color: color-mix(in srgb, var(--app-color-on-primary) 62%, transparent);
+}
+
+[data-blueprint-screen="home"] .home__balance .balance-card__amount {
+  color: var(--app-color-on-primary);
+}
+
+[data-blueprint-screen="home"] .home__balance .balance-card__change {
+  border-color: transparent;
+  color: var(--app-color-foreground);
+  background: var(--app-color-on-primary);
+}
+
+[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"][data-blueprint-variant="primary"] {
+  color: var(--app-color-foreground);
+  background: var(--app-color-on-primary);
+}
+
+[data-blueprint-screen="home"] .actions__item [data-blueprint-primitive="button"][data-blueprint-variant="secondary"] {
+  border-color: color-mix(in srgb, var(--app-color-on-primary) 22%, transparent);
+  color: var(--app-color-on-primary);
+  background: color-mix(in srgb, var(--app-color-on-primary) 8%, transparent);
+}
+
+[data-blueprint-screen="home"] .home__accounts [data-blueprint-component="account-tile"] {
+  box-shadow: var(--app-shadow-md);
+}

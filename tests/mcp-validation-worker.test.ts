@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import { setTimeout as delay } from 'node:timers/promises';
 import { describe, it } from 'node:test';
 import type { Worker } from 'node:worker_threads';
@@ -45,7 +46,7 @@ import { runInOrder } from '../src/mcp/operation-support';
 import { withProjectMutation } from '../src/mcp/project-files';
 import type { QueryInput } from '../src/mcp/schemas';
 import { inProcessValidator } from './support/in-process-validator';
-import { fileDigests, growProject, umbraRoot, withProjectCopy } from './support/project-copies';
+import { fileDigests, grownScreenId, growProject, umbraRoot, withProjectCopy } from './support/project-copies';
 
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
@@ -150,7 +151,7 @@ describe('transaction order of worker checks', () => {
       const crash: ProjectValidator = { ...workerProjectValidator, persisted: createWorkerValidator({ url: supportWorker('crashing-worker.mjs') }).persisted };
       const before = await fileDigests(project);
       await assert.rejects(
-        inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, pngFetcher(), crash),
+        inspoBlueprint({ project, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, pngFetcher(), crash),
         WORKER_FAILURE
       );
       assert.deepEqual(await fileDigests(project), before);
@@ -252,7 +253,7 @@ describe('mutations of one project in one process', () => {
       });
       const firstMutation = exploreBlueprint({ project, operation: launchExploration('launch-hero') }, undefined, held);
       await firstStarted;
-      const secondMutation = exploreBlueprint({ project, operation: hubExploration('hub-copy') }, undefined, second);
+      const secondMutation = exploreBlueprint({ project, operation: hubExploration('hub-wording') }, undefined, second);
       await delay(100);
       assert.deepEqual(events, ['first check starts']);
       releaseFirst();
@@ -289,7 +290,7 @@ describe('mutations of one project in one process', () => {
         }
       });
       const controller = new AbortController();
-      const waiting = exploreBlueprint({ project, operation: launchExploration('launch-copy') }, controller.signal, {
+      const waiting = exploreBlueprint({ project, operation: launchExploration('launch-wording') }, controller.signal, {
         ...inner,
         projected: async bundle => {
           checks += 1;
@@ -302,7 +303,7 @@ describe('mutations of one project in one process', () => {
       release();
       await first;
       assert.equal(checks, 1);
-      assert.equal(existsSync(path.join(project, 'explorations', 'launch-copy.json')), false);
+      assert.equal(existsSync(path.join(project, 'explorations', 'launch-wording.json')), false);
     });
   });
 });
@@ -331,7 +332,7 @@ describe('one validation per mutation', () => {
         try {
           await assertOneValidation(project, served, () => inspoBlueprint({
             project,
-            operation: { type: 'add', url: 'https://images.example.com/a.png', aspects: ['mark'], note: 'this mark' }
+            operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', aspects: ['mark'], note: 'this mark' }
           }, undefined, pngFetcher()));
           await assertOneValidation(project, served, () => inspoBlueprint({ project, operation: { type: 'update', id: 'ref-1', reading: 'A round mark.' } }));
         } finally {
@@ -490,8 +491,8 @@ describe('a memo result is never stale', () => {
         ['screens', changed => { changed.screens.screens[0]!.id += 'x'; }],
         ['explorations', changed => { changed.explorations.projectId += 'x'; }],
         ['history', changed => { changed.history.projectId += 'x'; }],
-        ['brand', changed => { changed.brand = { schemaVersion: '2.0.0' } as unknown as BlueprintProjectBundle['brand']; }],
-        ['inspo', changed => { changed.inspo = { schemaVersion: '2.0.0' } as unknown as BlueprintProjectBundle['inspo']; }],
+        ['brand', changed => { changed.brand = { schemaVersion: BLUEPRINT_SCHEMA_VERSION } as unknown as BlueprintProjectBundle['brand']; }],
+        ['inspo', changed => { changed.inspo = { schemaVersion: BLUEPRINT_SCHEMA_VERSION } as unknown as BlueprintProjectBundle['inspo']; }],
         ['source text', changed => { changed.prototypeSourceContents[sourceRef] += 'x'; }],
         ['source added', changed => { changed.prototypeSourceContents['prototype/screens/added.css'] = ''; }],
         ['asset bytes', changed => { changed.prototypeAssetContents[assetRef]!.base64 += 'A'; }],
@@ -521,7 +522,7 @@ describe('a memo result is never stale', () => {
   it('keeps the fingerprint across the order of records and the source file index, which a projection does not keep', async () => {
     await withProjectCopy(async project => {
       await exploreBlueprint({ project, operation: launchExploration('launch-hero') });
-      await exploreBlueprint({ project, operation: hubExploration('hub-copy') });
+      await exploreBlueprint({ project, operation: hubExploration('hub-wording') });
       const bundle = await loadProjectFromFs(project);
       const first = projectFingerprint(bundle);
       const reordered: BlueprintProjectBundle = {
@@ -535,7 +536,7 @@ describe('a memo result is never stale', () => {
 
   it('reads the inspo image of a readiness report from the disk each time', async () => {
     await withInspoProject(async project => {
-      await inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, pngFetcher());
+      await inspoBlueprint({ project, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'this mark' } }, undefined, pngFetcher());
       const imagePath = path.join(project, 'inspo', 'ref-1.png');
       const readinessPaths = async (): Promise<string[]> => {
         const report = await validateBlueprint({ project, mode: 'readiness' });
@@ -756,7 +757,7 @@ describe('the event loop during validation', () => {
         await assertEventLoopRuns('validate readiness', newContent, callTool('validate', { mode: 'readiness' }));
         await assertEventLoopRuns('migrate', newContent, callTool('migrate', { dryRun: true }));
         await assertEventLoopRuns('explore', newContent, () => callTool('explore', {
-          operation: { ...launchExploration(`stall-${round}`), screenId: `launch-copy-${round}` }
+          operation: { ...launchExploration(`stall-${grownScreenId(round)}`), screenId: grownScreenId(round) }
         })());
       } finally {
         await client.close();
@@ -870,7 +871,7 @@ describe('project mutation queue', () => {
 
   it('does not hold the project queue during an inspo download, and keeps both changes', async () => {
     await withInspoProject(async project => {
-      await inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'first' } }, undefined, pngFetcher());
+      await inspoBlueprint({ project, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'first' } }, undefined, pngFetcher());
       let releaseDownload: () => void = () => undefined;
       const download = new Promise<void>(resolve => {
         releaseDownload = resolve;
@@ -882,7 +883,7 @@ describe('project mutation queue', () => {
           return pngFetcher().fetch(url, init);
         }
       };
-      const adding = inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/b.png', note: 'second' } }, undefined, stalled);
+      const adding = inspoBlueprint({ project, operation: { type: 'add', id: 'ref-2', url: 'https://images.example.com/b.png', note: 'second' } }, undefined, stalled);
       await delay(50);
       await inspoBlueprint({ project, operation: { type: 'update', id: 'ref-1', note: 'changed during the download' } }, undefined, pngFetcher());
       releaseDownload();
@@ -894,7 +895,7 @@ describe('project mutation queue', () => {
 
   it('does not hold the project queue during an inspo sync, and keeps both changes', async () => {
     await withInspoProject(async project => {
-      await inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'first' } }, undefined, pngFetcher());
+      await inspoBlueprint({ project, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'first' } }, undefined, pngFetcher());
       const imagePath = path.join(project, 'inspo', 'ref-1.png');
       await rm(imagePath);
       let releaseDownload: () => void = () => undefined;
@@ -945,11 +946,11 @@ describe('project mutation queue', () => {
     await withInspoProject(async project => {
       const controller = new AbortController();
       const hung: InspoFetcher = { ...pngFetcher(), lookup: () => new Promise<string[]>(() => undefined) };
-      const adding = inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/a.png', note: 'first' } }, controller.signal, hung);
+      const adding = inspoBlueprint({ project, operation: { type: 'add', id: 'ref-1', url: 'https://images.example.com/a.png', note: 'first' } }, controller.signal, hung);
       await delay(50);
       controller.abort();
       await assert.rejects(adding, /abort/i);
-      await inspoBlueprint({ project, operation: { type: 'add', url: 'https://images.example.com/b.png', note: 'second' } }, undefined, pngFetcher());
+      await inspoBlueprint({ project, operation: { type: 'add', id: 'ref-2', url: 'https://images.example.com/b.png', note: 'second' } }, undefined, pngFetcher());
     });
   });
 });

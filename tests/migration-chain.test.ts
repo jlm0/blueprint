@@ -101,7 +101,7 @@ describe('migration chain', () => {
 
   it('holds a frozen input and golden for each step, and no folder without a step', () => {
     assert.deepEqual(frozenFixtureErrors(MIGRATIONS, frozenRoot), []);
-    assert.match(frozenFixtureErrors([{ from: '2.0.0', to: '3.0.0' }], frozenRoot).join('\n'), /2\.0\.0-to-3\.0\.0\/input\/manifest\.json does not exist\. Fix: freeze/);
+    assert.match(frozenFixtureErrors([{ from: '3.0.0', to: '4.0.0' }], frozenRoot).join('\n'), /3\.0\.0-to-4\.0\.0\/input\/manifest\.json does not exist\. Fix: freeze/);
     assert.deepEqual(
       readdirSync(frozenRoot).filter(name => !name.startsWith('.')).sort(),
       MIGRATIONS.map(step => `${step.from}-to-${step.to}`).sort()

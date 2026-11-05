@@ -38,6 +38,7 @@ import { inspoDirectionSchema, inspoEntrySchema, inspoFileSchema } from '../src/
 import { agentErrorForIssue } from '../src/core/schemas/issues';
 import { primitiveFileSchema } from '../src/core/schemas/primitives';
 import { generateProjectJsonSchema, STRUCTURED_FILE_SCHEMAS } from '../src/core/schemas/project';
+import { exploreInputSchema, inspoInputSchema, withArgumentFixes } from '../src/mcp/schemas';
 import {
   reusableAxisSchema,
   reusableAxisValueSchema,
@@ -451,42 +452,57 @@ describe('structured files at load', () => {
     }
   });
 
-  it('accepts a saved screen that has flow and no page, as older snapshots do', async () => {
+  it('accepts a saved screen with no page, and refuses flow', async () => {
     await withCopy(meridianRoot, async copy => {
       const exploration = await firstRecord(copy, 'explorations');
       const history = await firstRecord(copy, 'history');
-      await editJson(copy, exploration, value => {
-        delete value.exploration.target.baseline.screen.page;
-        value.exploration.target.baseline.screen.flow = 'Home';
-      });
       await editJson(copy, history, value => {
         delete value.entry.screen.page;
       });
+      await editJson(copy, exploration, value => {
+        delete value.exploration.target.baseline.screen.page;
+      });
       await assert.doesNotReject(loadProjectFromFs(copy));
+      await editJson(copy, exploration, value => {
+        value.exploration.target.baseline.screen.flow = 'Home';
+      });
+      await assert.rejects(loadProjectFromFs(copy), /exploration\.target\.baseline\.screen has the unknown field "flow"\. Fix: remove it/);
     });
   });
 
-  it('keeps the rules of validate on a project with a long name, an unknown field, and no description', async () => {
+  it('keeps the rule of validate that the schema does not cover', async () => {
     await withCopy(starterRoot, async copy => {
       await editJson(copy, 'screens.json', value => {
         value.pages[0].name = 'x'.repeat(40);
-        delete value.pages[0].description;
-        value.pages[0].stray = true;
       });
       const errors = validateProject(await loadProjectFromFs(copy)).errors.join('\n');
-      assert.match(errors, /has unknown field "stray"/);
-      assert.match(errors, /description is missing\. Fix: say which screens the page holds/);
       assert.match(errors, /is 40 characters\. Fix: shorten it to 24 or fewer/);
     });
   });
 
-  it('returns each file as it is written, with its key order and its unknown fields', async () => {
+  it('refuses an unknown field and a missing description at load', async () => {
+    await withCopy(starterRoot, async copy => {
+      await editJson(copy, 'screens.json', value => {
+        delete value.pages[0].description;
+        value.pages[0].stray = true;
+      });
+      await assert.rejects(loadProjectFromFs(copy), (error: Error) => {
+        assert.match(error.message, /pages\[0\] has the unknown field "stray"\. Fix: remove it/);
+        assert.match(error.message, /pages\[0\]\.description is missing\. Fix: add pages\[0\]\.description/);
+        return true;
+      });
+    });
+  });
+
+  it('returns each file as it is written, with its key order', async () => {
     await withCopy(starterRoot, async copy => {
       await editJson(copy, 'tokens.json', value => {
-        value.stray = { z: 1, a: 2 };
+        const { tokenGroups, ...rest } = value;
+        for (const key of Object.keys(value)) delete value[key];
+        Object.assign(value, { tokenGroups }, rest);
       });
       const bundle = await loadProjectFromFs(copy);
-      for (const [file, content] of [['manifest.json', bundle.manifest], ['tokens.json', bundle.tokens], ['screens.json', bundle.screens], ['primitives.json', bundle.primitives]] as const) {
+      for (const [file, content] of [['manifest.json', bundle.manifest], ['tokens.json', bundle.tokens], ['screens.json', bundle.screens], ['primitives.json', bundle.primitives], ['components.json', bundle.components]] as const) {
         assert.equal(JSON.stringify(content), JSON.stringify(JSON.parse(await readFile(path.join(copy, file), 'utf8'))), file);
       }
     });
@@ -571,5 +587,32 @@ describe('structured files at load', () => {
     await withCopy('fixtures/valid/mira-ai/design/blueprint', async copy => {
       assert.deepEqual(await readerCrashes(copy, ['screens.json', 'components.json', 'primitives.json']), []);
     });
+  });
+});
+
+describe('tool operation arguments', () => {
+  const issuesFor = async (schema: z.ZodType, tool: string, args: unknown): Promise<string[]> => {
+    const result = await withArgumentFixes(tool, schema)['~standard'].validate(args);
+    return (result.issues ?? []).map(issue => issue.message);
+  };
+
+  it('names the field that an operation leaves out', async () => {
+    const messages = await issuesFor(inspoInputSchema, 'inspo', { project: 'design/blueprint', operation: { type: 'add', url: 'https://example.invalid/a.png' } });
+    assert.equal(messages.length, 1);
+    assert.match(messages[0]!, /Fix: add operation\.id as a JSON string\.$/);
+  });
+
+  it('names the allowed types of an operation', async () => {
+    for (const operation of [{ type: 'nope' }, {}]) {
+      const messages = await issuesFor(inspoInputSchema, 'inspo', { project: 'design/blueprint', operation });
+      assert.equal(messages.length, 1);
+      assert.match(messages[0]!, /Fix: set operation\.type to one of "add", "update", "remove", "sync", "direction"\.$/);
+    }
+  });
+
+  it('names the field that an explore operation leaves out', async () => {
+    const messages = await issuesFor(exploreInputSchema, 'explore', { project: 'design/blueprint', operation: { type: 'archive' } });
+    assert.ok(messages.length > 0);
+    assert.ok(messages.every(message => /Fix: add operation\.\w+ as /.test(message)), messages.join('\n'));
   });
 });

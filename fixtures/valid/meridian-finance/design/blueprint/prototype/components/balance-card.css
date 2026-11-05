@@ -25,7 +25,7 @@
   align-items: baseline;
   color: var(--app-color-foreground);
   font: var(--app-type-display);
-  font-size: 46px;
+  font-size: var(--app-text-46);
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -38,7 +38,7 @@
 .balance-card__currency {
   margin-right: 0.04em;
   color: var(--app-color-muted);
-  font-size: 0.62em;
+  font-size: var(--app-text-0-62em);
   align-self: flex-start;
   line-height: 1.35;
 }
@@ -46,7 +46,7 @@
 .balance-card__cents {
   margin-left: 0.04em;
   color: var(--app-color-muted);
-  font-size: 0.5em;
+  font-size: var(--app-text-0-5em);
 }
 
 .balance-card__delta {
@@ -58,16 +58,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-[data-blueprint-component="balance-card"] .balance-card__change {
-  padding: 2px var(--app-space-2) 2px 7px;
-  border-color: color-mix(in srgb, var(--app-color-success) 22%, transparent);
-  color: var(--app-color-success);
-  background: color-mix(in srgb, var(--app-color-success) 9%, var(--app-color-surface));
-  font-variant-numeric: tabular-nums;
+[data-blueprint-component="balance-card"]:not([data-blueprint-variant="reversed"]) .balance-card__change--reversed,
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__change--tint {
+  display: none;
 }
 
-.balance-card__change i {
+.balance-card__change-value {
   font-style: normal;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] {
+  background: var(--app-color-foreground);
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-state="hero"] {
@@ -78,19 +79,19 @@
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__amount {
-  font-size: 112px;
+  font-size: var(--app-text-112);
   line-height: 0.92;
   letter-spacing: -0.035em;
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__currency {
-  font-size: 0.42em;
+  font-size: var(--app-text-0-42em);
   line-height: 1.2;
   margin-right: 0.08em;
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__cents {
-  font-size: 0.36em;
+  font-size: var(--app-text-0-36em);
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-state="hero"] .balance-card__delta {
@@ -105,6 +106,25 @@
 }
 
 [data-blueprint-component="balance-card"][data-blueprint-size="compact"] .balance-card__amount {
-  font-size: 56px;
+  font-size: var(--app-text-56);
   line-height: 1;
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__label,
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__delta,
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__currency,
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__cents {
+  color: color-mix(in srgb, var(--app-color-on-primary) 62%, transparent);
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-variant="reversed"] .balance-card__amount {
+  color: var(--app-color-on-primary);
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-variant="figure-38"] .balance-card__amount {
+  font-size: var(--app-text-38);
+}
+
+[data-blueprint-component="balance-card"][data-blueprint-variant="unlabeled"] .balance-card__label {
+  display: none;
 }

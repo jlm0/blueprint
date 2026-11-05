@@ -190,10 +190,10 @@ describe('serve with an exploration', () => {
         assert.equal(reads, 1);
 
         await exploreBlueprint({ project, operation: { type: 'archive', explorationId: 'launch-hero' } });
-        await exploreBlueprint({ project, operation: launchExploration('launch-copy') });
-        const added = await serveBlueprint({ project, port: 0, explorationId: 'launch-copy' }, undefined, started, read);
+        await exploreBlueprint({ project, operation: launchExploration('launch-wording') });
+        const added = await serveBlueprint({ project, port: 0, explorationId: 'launch-wording' }, undefined, started, read);
         assert.equal(added.runtime, 'reused');
-        assert.equal(added.selection?.explorationId, 'launch-copy');
+        assert.equal(added.selection?.explorationId, 'launch-wording');
 
         await assert.rejects(
           serveBlueprint({ project, port: 0, explorationId: 'missing-exploration' }, undefined, started, read),

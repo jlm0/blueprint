@@ -10,74 +10,58 @@
   text-decoration: none;
 }
 
-[data-blueprint-component="transaction-row"] .txn__mark {
-  border: 0;
-  border-radius: var(--app-radius-md);
-  color: var(--app-color-foreground);
-  background: var(--app-color-surface-muted);
-  font-family: var(--app-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.02em;
-}
-
-.txn__mark i {
+:where([data-blueprint-component="transaction-row"]) .txn__mark-glyph {
   font-style: normal;
   font-weight: 600;
 }
 
-.txn__body,
-.txn__figures {
+:where([data-blueprint-component="transaction-row"]) .txn__body,
+:where([data-blueprint-component="transaction-row"]) .txn__figures {
   display: grid;
   min-width: 0;
   gap: 1px;
 }
 
-.txn__name,
-.txn__meta {
+:where([data-blueprint-component="transaction-row"]) .txn__name,
+:where([data-blueprint-component="transaction-row"]) .txn__meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.txn__name {
+:where([data-blueprint-component="transaction-row"]) .txn__name {
   font: var(--app-type-body);
   font-weight: 550;
 }
 
-.txn__meta,
-.txn__date {
+:where([data-blueprint-component="transaction-row"]) .txn__meta,
+:where([data-blueprint-component="transaction-row"]) .txn__date {
   color: var(--app-color-muted);
   font: var(--app-type-caption);
 }
 
-.txn__figures {
+:where([data-blueprint-component="transaction-row"]) .txn__figures {
   justify-items: end;
   text-align: right;
 }
 
-.txn__amount {
+:where([data-blueprint-component="transaction-row"]) .txn__amount {
   font: var(--app-type-body);
   font-weight: 550;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.txn__amount .is-in {
+:where([data-blueprint-component="transaction-row"]) .txn__amount .is-in {
   color: var(--app-color-success);
 }
 
-.txn__date {
+:where([data-blueprint-component="transaction-row"]) .txn__date {
   font-variant-numeric: tabular-nums;
 }
 
-[data-blueprint-component="transaction-row"] .txn__pending {
+[data-blueprint-component="transaction-row"]:not([data-blueprint-state="pending"]) .txn__pending {
   display: none;
-}
-
-[data-blueprint-component="transaction-row"][data-blueprint-state="pending"] .txn__pending {
-  display: inline-flex;
-  padding: 0 6px;
-  font-size: 11px;
 }
 
 [data-blueprint-component="transaction-row"][data-blueprint-state="pending"] .txn__date {
@@ -86,4 +70,8 @@
 
 [data-blueprint-component="transaction-row"][data-blueprint-state="pending"] .txn__amount {
   color: var(--app-color-muted);
+}
+
+[data-blueprint-component="transaction-row"][data-blueprint-variant="borderless"] {
+  border-bottom: 0;
 }

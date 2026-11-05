@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { ID_LENGTH_CAP } from './naming-rules';
 import { storageRecordSegment } from './storage-records';
 import type {
   BlueprintProjectBundle,
@@ -251,12 +252,14 @@ export function createExplorationMetadata(
   if (requestedId !== undefined) {
     assertSafeId('Exploration id', requestedId);
     if (existingIds.has(requestedId)) {
-      throw new Error(`Exploration id "${requestedId}" already exists. Fix: pass another id, or omit id so that Blueprint makes one.`);
+      throw new Error(`Exploration id "${requestedId}" already exists. Fix: pass another descriptive id.`);
     }
   }
-  const explorationId = requestedId ?? nextAvailableId(
-    `${safeIdSegment(screen.id)}-${safeIdSegment(input.title)}`,
-    existingIds
+  const explorationId = requestedId ?? descriptiveId(
+    'Exploration id',
+    `${slugOf(screen.id)}-${requireSlug('Exploration title', input.title)}`,
+    existingIds,
+    'title, or pass id'
   );
   const baseDigest = computeScreenDigest(bundle, screen, screenPrototype(screen));
   const baselinePrototype = snapshotPrototype(
@@ -265,7 +268,7 @@ export function createExplorationMetadata(
   );
   const candidateIds = new Set<string>();
   const candidates = input.candidateLabels.map(label => {
-    const id = nextAvailableId(safeIdSegment(label), candidateIds);
+    const id = descriptiveId('Candidate id', requireSlug('Candidate label', label), candidateIds, 'candidate label');
     candidateIds.add(id);
     return {
       id,
@@ -423,6 +426,26 @@ export function promoteExploration(
   };
 }
 
+/** Promotion copies candidate files over canonical files, so a refusal must name the candidate file that holds the failing content. */
+export function candidateFileNames(bundle: BlueprintProjectBundle, explorationId: string, candidateId: string): (error: string) => string {
+  const exploration = requireExploration(bundle, explorationId);
+  return fileNames(prototypeOfScreen(bundle, exploration.target.screenId), requireCandidate(exploration, candidateId).prototype);
+}
+
+/** Restore copies history files over canonical files, so a refusal must name the history file that holds the failing content. */
+export function historyFileNames(bundle: BlueprintProjectBundle, screenId: string, version: number): (error: string) => string {
+  return fileNames(prototypeOfScreen(bundle, screenId), screenPrototype(requireHistoryVersion(bundle, screenId, version).screen));
+}
+
+function prototypeOfScreen(bundle: BlueprintProjectBundle, screenId: string): ExplorationPrototypeSource {
+  return screenPrototype(bundle.screens.screens.find(screen => screen.id === screenId)!);
+}
+
+function fileNames(current: ExplorationPrototypeSource, prototype: ExplorationPrototypeSource): (error: string) => string {
+  const copies = prototypeFileCopies(current, prototype);
+  return error => nameCopiedFiles(copies, error);
+}
+
 /**
  * Restores a prior canonical version as a new current revision. The outgoing current
  * screen is preserved as the next immutable history entry before any canonical bytes change.
@@ -470,7 +493,6 @@ export function restoreScreenHistory(
     assetRefs: [...selectedPrototype.assetRefs]
   };
   const snapshot = withPrototypeRefs(structuredClone(selectedVersion.screen), canonicalPrototype);
-  delete snapshot.flow;
   const restoredScreen: ScreenDefinition = { ...snapshot, id: current.id, page: current.page };
   if (current.version === undefined) {
     delete restoredScreen.version;
@@ -571,13 +593,14 @@ function digest(value: unknown): string {
   return createHash('sha256').update(stableStringify(value)).digest('hex');
 }
 
-function stableStringify(value: unknown): string {
+/** Sorts keys by code unit, because a digest must not change with the locale of the process. */
+export function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(',')}]`;
   }
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`);
     return `{${entries.join(',')}}`;
   }
@@ -654,8 +677,18 @@ function copyPrototypeIntoCanonical(
   });
 }
 
-function canonicalStyleTargets(current: ExplorationPrototypeSource, candidateStyles: string[]): string[] {
+export function canonicalStyleTargets(current: Pick<ExplorationPrototypeSource, 'source' | 'styles'>, candidateStyles: string[]): string[] {
   return candidateStyles.map((_, index) => current.styles[index] ?? insertFileSuffix(current.source, `style-${index + 1}`));
+}
+
+/** Each canonical file that this prototype overwrites, with the file that holds its content. */
+export function prototypeFileCopies(current: Pick<ExplorationPrototypeSource, 'source' | 'styles'>, prototype: Pick<ExplorationPrototypeSource, 'source' | 'styles'>): Array<[target: string, written: string]> {
+  const styles = canonicalStyleTargets(current, prototype.styles);
+  return [[current.source, prototype.source], ...styles.map((target, index): [string, string] => [target, prototype.styles[index]])];
+}
+
+export function nameCopiedFiles(copies: ReadonlyArray<[target: string, written: string]>, error: string): string {
+  return copies.reduce((text, [target, written]) => text.replaceAll(target, written), error);
 }
 
 function withPrototypeRefs<T extends SavedScreen>(screen: T, prototype: ExplorationPrototypeSource): T {
@@ -736,32 +769,27 @@ function requireCandidate(exploration: ExplorationDefinition, candidateId: strin
   return candidate;
 }
 
-function nextAvailableId(baseInput: string, existing: Set<string>): string {
-  const unbounded = baseInput.length > 0 ? baseInput : 'exploration';
-  const base = unbounded.slice(0, 64).replace(/-+$/g, '') || 'exploration';
-  if (!existing.has(base)) {
-    return base;
-  }
-  let index = 2;
-  while (true) {
-    const suffix = `-${index}`;
-    const candidate = `${base.slice(0, 64 - suffix.length).replace(/-+$/g, '')}${suffix}`;
-    if (!existing.has(candidate)) {
-      return candidate;
-    }
-    index += 1;
-  }
+function slugOf(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-function safeIdSegment(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
-    .replace(/-+$/g, '');
-  return normalized || createHash('sha256').update(value).digest('hex').slice(0, 12);
+/** Blueprint makes an id only from a name that the agent passes, because a number or a hash does not say what the id holds. */
+function descriptiveId(label: string, id: string, taken: ReadonlySet<string>, nameField: string): string {
+  if (id.length > ID_LENGTH_CAP) {
+    throw new Error(`${label} "${id}" is ${id.length} characters, over the limit of ${ID_LENGTH_CAP}. Fix: pass a shorter ${nameField}.`);
+  }
+  if (taken.has(id)) {
+    throw new Error(`${label} "${id}" already exists. Fix: pass another descriptive ${nameField}.`);
+  }
+  return id;
+}
+
+function requireSlug(label: string, value: string): string {
+  const slug = slugOf(value);
+  if (!slug) {
+    throw new Error(`${label} "${value}" has no letter or digit, so Blueprint cannot make an id from it. Fix: pass a name with words that say what it holds.`);
+  }
+  return slug;
 }
 
 function assertSafeId(label: string, value: string): void {
