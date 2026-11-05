@@ -11,6 +11,7 @@ import { exploreBlueprint, serveBlueprint } from '../src/mcp/operations';
 import { loadValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
 import { readValidatedProject } from '../src/mcp/project-validation-worker';
 import { ServeProjectSnapshots, type ServeProjectSnapshotOptions } from '../src/mcp/serve-snapshot';
+import { settleFileEvents } from './support/serve-watched';
 
 const umbraRoot = 'fixtures/valid/umbra-gaming/design/blueprint';
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
@@ -178,6 +179,7 @@ describe('serve with an exploration', () => {
         reads += 1;
         return readValidatedProject(root);
       };
+      await settleFileEvents(project);
       const started = await serveBlueprint({ project, port: 0, explorationId: 'launch-hero' }, undefined, undefined, read);
       try {
         assert.equal(started.runtime, 'started');

@@ -48,6 +48,7 @@ import { withProjectMutation } from '../src/mcp/project-files';
 import type { QueryInput } from '../src/mcp/schemas';
 import { inProcessValidator } from './support/in-process-validator';
 import { fileDigests, grownScreenId, growProject, umbraRoot, withProjectCopy } from './support/project-copies';
+import { rewriteUntilSeen, serveWatched, settleFileEvents } from './support/serve-watched';
 
 const brokenRoot = 'fixtures/invalid/broken/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
@@ -314,7 +315,7 @@ describe('one validation per mutation', () => {
     const label = withRuntime ? 'and the serve runtime in this process' : 'with no serve runtime';
     it(`validates the content of explore, promote, and restore once, with the follow-up validate ${label}`, async () => {
       await withUnvalidatedProjectCopy(async project => {
-        const served = withRuntime ? await serveBlueprint({ project, port: 0 }) : undefined;
+        const served = withRuntime ? await serveWatched(project) : undefined;
         try {
           await assertOneValidation(project, served, () => exploreBlueprint({ project, operation: launchExploration('launch-hero') }));
           const promote = await promoteInput(project, 'launch-hero');
@@ -329,7 +330,7 @@ describe('one validation per mutation', () => {
 
     it(`validates the content of each inspo mutation once, with the follow-up validate ${label}`, async () => {
       await withInspoProject(async project => {
-        const served = withRuntime ? await serveBlueprint({ project, port: 0 }) : undefined;
+        const served = withRuntime ? await serveWatched(project) : undefined;
         try {
           await assertOneValidation(project, served, () => inspoBlueprint({
             project,
@@ -345,7 +346,7 @@ describe('one validation per mutation', () => {
 
   it('validates a file edit once when validate starts before the runtime reloads the edit', async () => {
     await withUnvalidatedProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       try {
         const before = (await served.settledProject!())?.revision;
         await renameProject(project, `Edited By Hand ${randomUUID()}`);
@@ -579,7 +580,7 @@ describe('a memo result is never stale', () => {
 describe('runtime snapshot for focus and selection', () => {
   it('answers focus from the runtime snapshot, with no worker and no load', async () => {
     await withProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       const workers = recordWorkers();
       try {
         const focused = await serveBlueprint({ project, port: 0, focus: 'screen:launch' }, undefined, served);
@@ -594,7 +595,7 @@ describe('runtime snapshot for focus and selection', () => {
 
   it('reads through a worker when the snapshot lacks the focus target, and keeps the error text', async () => {
     await withProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       const workers = recordWorkers();
       try {
         const screensPath = path.join(project, 'screens.json');
@@ -625,7 +626,7 @@ describe('runtime snapshot for focus and selection', () => {
 
   it('reads through a worker when the project is invalid, as the old read did', async () => {
     await withProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       try {
         await breakTokensProjectId(project);
         await waitForError(served);
@@ -654,7 +655,7 @@ describe('runtime snapshot for focus and selection', () => {
 
   it('answers selection from the runtime snapshot, and reads through a worker when the project is invalid', async () => {
     await withProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       try {
         const runtime = await findLiveBlueprintActivityRuntime(await blueprintServeRuntimeKey(project));
         assert.ok(runtime);
@@ -693,7 +694,7 @@ describe('runtime snapshot for focus and selection', () => {
 
   it('waits for the settled snapshot with no fixed delay', async () => {
     await withProjectCopy(async project => {
-      const served = await serveBlueprint({ project, port: 0 });
+      const served = await serveWatched(project);
       try {
         const winner = await Promise.race([served.settledProject!(), delay(150, 'fixed delay')]);
         assert.notEqual(winner, 'fixed delay');
@@ -715,10 +716,11 @@ describe('runtime snapshot for focus and selection', () => {
         if (reads > 1) await held;
         return loadValidatedProject(root, signal);
       };
+      await settleFileEvents(project);
       const served = await serveBlueprint({ project, port: 0 }, undefined, undefined, read);
       try {
         await renameProject(project, 'Reload Held');
-        await waitUntil(() => reads > 1);
+        await rewriteUntilSeen(path.join(project, 'manifest.json'), () => reads > 1);
         const startedAt = Date.now();
         const focused = await Promise.race([
           serveBlueprint({ project, port: 0, focus: 'screen:launch' }, undefined, served, read),

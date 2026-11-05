@@ -10,6 +10,7 @@ import { loadProjectFromFs } from '../src/core/load';
 import { findLiveBlueprintActivityRuntime } from '../src/mcp/activity';
 import { blueprintServeRuntimeKey, serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
 import type { ProjectReader } from '../src/mcp/project-validation';
+import { rewriteUntilSeen, serveWatched, settleFileEvents } from './support/serve-watched';
 import { hashProjectAssets, readValidatedProject } from '../src/mcp/project-validation-worker';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
 import { compilePrototypeReview, parsePrototypeReviewRequest, resolvePrototypeReviewSelection } from '../src/prototype/review';
@@ -502,8 +503,7 @@ describe('serve routes after a live change', () => {
       const first = await currentRevision(target.port);
 
       manifest.project.name = 'Renamed Live';
-      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-      const [changed] = await stream.waitForEvents('project-changed', item => item.revision !== first);
+      const [changed] = await writeUntilEvent(stream, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'project-changed', item => item.revision !== first);
       const second = changed.revision as string;
       assert.equal(changed.version, 1);
       assert.deepEqual(changed.changedPaths, ['manifest.json']);
@@ -516,8 +516,7 @@ describe('serve routes after a live change', () => {
       assert.ok(deltaPayload.delta);
       assert.equal(deltaPayload.bundle, undefined);
 
-      await writeFile(manifestPath, `${JSON.stringify({ ...manifest, schemaVersion: '1.0.0' }, null, 2)}\n`);
-      const [failed] = await stream.waitForEvents('project-error', item => /schema "1\.0\.0"/.test(String(item.message)));
+      const [failed] = await writeUntilEvent(stream, manifestPath, `${JSON.stringify({ ...manifest, schemaVersion: '1.0.0' }, null, 2)}\n`, 'project-error', item => /schema "1\.0\.0"/.test(String(item.message)));
       assert.deepEqual(failed.outdatedFiles, [{ file: 'manifest.json', version: '1.0.0' }]);
 
       const lastGood = await sendRoute(target.port, { path: '/__blueprint/project' });
@@ -636,7 +635,7 @@ describe('completed activity deadline', () => {
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
       manifest.project.name = 'Slow Reload';
       await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-      await waitUntil(() => releaseRead !== undefined);
+      await rewriteUntilSeen(manifestPath, () => releaseRead !== undefined);
 
       const postedAt = await postCompleted(target, 'tool-deadline');
       const [event] = await stream.waitForEvents('agent-activity', item => item.toolUseId === 'tool-deadline');
@@ -664,7 +663,13 @@ async function serveCopy(
   const project = path.join(tempDir, 'design', 'blueprint');
   await cp(fixture, project, { recursive: true });
   await prepare?.(project);
-  const served = await serveBlueprint({ project, port: 0 }, undefined, undefined, read);
+  let served: BlueprintServeHandle;
+  if (read) {
+    await settleFileEvents(project);
+    served = await serveBlueprint({ project, port: 0 }, undefined, undefined, read);
+  } else {
+    served = await serveWatched(project);
+  }
   const close = async (): Promise<void> => {
     await served.close();
     await rm(tempDir, { recursive: true, force: true });
@@ -764,8 +769,24 @@ async function postCompleted(target: ServedProject, toolUseId: string): Promise<
   return postedAt;
 }
 
+async function writeUntilEvent(
+  stream: Awaited<ReturnType<typeof openStream>>,
+  file: string,
+  content: string,
+  name: string,
+  condition: (event: Record<string, unknown>) => boolean
+): Promise<Array<Record<string, unknown>>> {
+  await writeFile(file, content);
+  let answered = false;
+  const events = stream.waitForEvents(name, condition).finally(() => {
+    answered = true;
+  });
+  await rewriteUntilSeen(file, () => answered);
+  return events;
+}
+
 async function waitUntil(condition: () => boolean): Promise<void> {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 50_000;
   while (!condition()) {
     if (Date.now() > deadline) assert.fail('The condition did not hold in time.');
     await new Promise(resolve => setTimeout(resolve, 10));

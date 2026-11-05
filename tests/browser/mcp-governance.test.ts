@@ -969,6 +969,7 @@ describe('Blueprint MCP and template governance', () => {
               candidateLabels: ['Calm', 'Bold']
             }
           });
+          await assertEventually(async () => (await (await fetch(new URL('/__blueprint/project', url))).text()).includes('"workspace-hero"'));
           await page.goto(`${url}?board=screens&exploration=workspace-hero`);
           const boldFrame = page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] iframe.canonical-prototype-iframe');
           await boldFrame.waitFor();
