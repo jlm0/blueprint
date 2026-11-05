@@ -44,7 +44,7 @@ export class ContainedBlueprintReader {
     const canonicalRoot = await realpath(path.resolve(sourceRoot));
     const rootStats = await stat(canonicalRoot);
     if (!rootStats.isDirectory()) {
-      throw new Error(`Blueprint source root "${normalizeRef(sourceRoot)}" must resolve to a directory.`);
+      throw new Error(`Blueprint source root "${normalizeRef(sourceRoot)}" must resolve to a directory. Fix: pass the path of the project directory.`);
     }
     return new ContainedBlueprintReader(canonicalRoot, limits);
   }
@@ -77,12 +77,12 @@ export class ContainedBlueprintReader {
     }
     assertContained(this.canonicalRoot, canonicalTarget, 'fixed JSON', normalizedRef);
     if (!(await stat(canonicalTarget)).isDirectory()) {
-      throw new Error(`fixed JSON record directory "${normalizedRef}" must resolve to a directory.`);
+      throw new Error(`fixed JSON record directory "${normalizedRef}" must resolve to a directory. Fix: replace "${normalizedRef}" with a directory.`);
     }
 
     const entries = await readdir(canonicalTarget, { withFileTypes: true });
     if (entries.length > 1024) {
-      throw new Error(`fixed JSON record directory "${normalizedRef}" exceeds the 1024-record limit.`);
+      throw new Error(`fixed JSON record directory "${normalizedRef}" exceeds the 1024-record limit. Fix: delete old records from "${normalizedRef}" until it holds 1024 or fewer.`);
     }
     return entries
       .filter(entry => (entry.isFile() || entry.isSymbolicLink()) && (!options.suffix || entry.name.endsWith(options.suffix)))
@@ -109,7 +109,9 @@ export class ContainedBlueprintReader {
         return undefined;
       }
       if (isNodeError(error) && error.code === 'ENOENT') {
-        throw new Error(`${options.kind} "${normalizedRef}" does not exist.`);
+        throw new Error(options.kind === 'fixed JSON'
+          ? `${options.kind} "${normalizedRef}" does not exist. Fix: add the file "${normalizedRef}" to the project.`
+          : `${options.kind} "${normalizedRef}" does not exist. Fix: add the file "${normalizedRef}" to the project, or remove the ref that names it.`);
       }
       throw error;
     }
@@ -117,18 +119,18 @@ export class ContainedBlueprintReader {
 
     const targetStats = await stat(canonicalTarget);
     if (!targetStats.isFile()) {
-      throw new Error(`${options.kind} "${normalizedRef}" must resolve to a regular file.`);
+      throw new Error(`${options.kind} "${normalizedRef}" must resolve to a regular file. Fix: replace "${normalizedRef}" with a regular file.`);
     }
     const handle = await open(canonicalTarget, 'r');
     try {
       const fileStats = await handle.stat();
       if (!fileStats.isFile()) {
-        throw new Error(`${options.kind} "${normalizedRef}" must resolve to a regular file.`);
+        throw new Error(`${options.kind} "${normalizedRef}" must resolve to a regular file. Fix: replace "${normalizedRef}" with a regular file.`);
       }
 
       const perFileLimit = limitFor(options.kind, this.limits);
       if (fileStats.size > perFileLimit) {
-        throw new Error(`${options.kind} "${normalizedRef}" exceeds the ${perFileLimit}-byte per-file limit.`);
+        throw new Error(`${options.kind} "${normalizedRef}" exceeds the ${perFileLimit}-byte per-file limit. Fix: make "${normalizedRef}" ${perFileLimit} bytes or smaller.`);
       }
       if (this.loadedBytes + fileStats.size > this.limits.projectBytes) {
         throw aggregateLimitError(this.limits.projectBytes, options.kind, normalizedRef);
@@ -147,7 +149,7 @@ export class ContainedBlueprintReader {
         }
         fileBytes += bytesRead;
         if (fileBytes > perFileLimit) {
-          throw new Error(`${options.kind} "${normalizedRef}" exceeds the ${perFileLimit}-byte per-file limit.`);
+          throw new Error(`${options.kind} "${normalizedRef}" exceeds the ${perFileLimit}-byte per-file limit. Fix: make "${normalizedRef}" ${perFileLimit} bytes or smaller.`);
         }
         if (this.loadedBytes + fileBytes > this.limits.projectBytes) {
           throw aggregateLimitError(this.limits.projectBytes, options.kind, normalizedRef);
@@ -166,7 +168,7 @@ export class ContainedBlueprintReader {
 function assertContained(root: string, target: string, kind: BlueprintInputKind, fileRef: string): void {
   const relative = path.relative(root, target);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`${kind} "${fileRef}" resolves outside the canonical Blueprint source root.`);
+    throw new Error(`${kind} "${fileRef}" resolves outside the canonical Blueprint source root. Fix: move "${fileRef}" inside the project, and replace each symbolic link in its path with the real file or directory.`);
   }
 }
 
@@ -181,7 +183,7 @@ function limitFor(kind: BlueprintInputKind, limits: BlueprintInputLimits): numbe
 }
 
 function aggregateLimitError(limit: number, kind: BlueprintInputKind, fileRef: string): Error {
-  return new Error(`The total loaded Blueprint input exceeds the ${limit}-byte aggregate limit while reading ${kind} "${fileRef}".`);
+  return new Error(`The total loaded Blueprint input exceeds the ${limit}-byte aggregate limit while reading ${kind} "${fileRef}". Fix: delete unused prototype files and assets until the project is under ${limit} bytes.`);
 }
 
 function normalizeRef(fileRef: string): string {

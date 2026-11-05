@@ -16,8 +16,8 @@ import { isObject } from './raw-json';
 import { structuredFileErrors } from './schemas/issues';
 import { STRUCTURED_FILE_SCHEMAS } from './schemas/project';
 import { explorationRecordFileSchema, screenHistoryRecordFileSchema } from './schemas/records';
-import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions, schemaVersionErrors } from './schema-version';
-import { explorationRecordRef, historyRecordRef } from './storage-records';
+import { assertNoNewerSchema, BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions, schemaVersionErrors, schemaVersionText } from './schema-version';
+import { explorationRecordRef, historyRecordRef, isSavedRecordFile } from './storage-records';
 import type {
   BlueprintManifest,
   BlueprintProjectBundle,
@@ -85,8 +85,8 @@ async function readBundle(
   recordSchemaVersions: Record<string, string>
 ): Promise<BlueprintProjectBundle> {
   const { manifest, primitives, components, screens, brand } = files;
-  const explorationRecordRefs = await reader.listFileRefs('explorations', { optional: true, suffix: '.json' });
-  const historyRecordRefs = await reader.listFileRefs('history', { optional: true, suffix: '.json' });
+  const explorationRecordRefs = (await reader.listFileRefs('explorations', { optional: true, suffix: '.json' })).filter(isSavedRecordFile);
+  const historyRecordRefs = (await reader.listFileRefs('history', { optional: true, suffix: '.json' })).filter(isSavedRecordFile);
   const explorations = await readExplorationCollection(reader, manifest.project.id, explorationRecordRefs, recordSchemaVersions);
   const history = await readHistoryCollection(reader, manifest.project.id, historyRecordRefs, recordSchemaVersions);
   const sourceRefs = [
@@ -97,6 +97,9 @@ async function readBundle(
   ];
   const prototypeSourceContents: Record<string, string> = {};
   for (const sourceRef of new Set(sourceRefs)) {
+    if (sourceRef in Object.prototype) {
+      throw new Error(`Prototype source ref "${sourceRef}" is the name of a built-in object property, which Blueprint cannot store. Fix: name a file with its folder and extension, such as "prototype/screens/home.html".`);
+    }
     const content = await reader.readText(sourceRef, { kind: 'prototype source', optional: true });
     if (content !== undefined) {
       prototypeSourceContents[sourceRef] = content;
@@ -140,13 +143,13 @@ async function readExplorationCollection(
   for (const recordRef of recordRefs) {
     const record = await readRecord<ExplorationRecordFile>(reader, recordRef, explorationRecordFileSchema, recordSchemaVersions);
     if (record.projectId !== projectId) {
-      throw new RecordIdentityError(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+      throw new RecordIdentityError(`Exploration record "${recordRef}" projectId must match manifest project id "${projectId}". Fix: set projectId in ${recordRef} to "${projectId}".`);
     }
     if (recordRef !== explorationRecordRef(record.exploration.id)) {
-      throw new RecordIdentityError(`Exploration record "${recordRef}" does not match exploration id "${record.exploration.id}".`);
+      throw new RecordIdentityError(`Exploration record "${recordRef}" does not match exploration id "${record.exploration.id}". Fix: rename the file to ${explorationRecordRef(record.exploration.id)}, or set exploration.id in it to match its file name.`);
     }
     if (byId.has(record.exploration.id)) {
-      throw new RecordIdentityError(`Exploration record id "${record.exploration.id}" is duplicated.`);
+      throw new RecordIdentityError(`Exploration record id "${record.exploration.id}" is duplicated. Fix: delete ${recordRef}, or give it another exploration id.`);
     }
     byId.set(record.exploration.id, record.exploration);
   }
@@ -168,16 +171,16 @@ async function readHistoryCollection(
   for (const recordRef of recordRefs) {
     const record = await readRecord<ScreenHistoryRecordFile>(reader, recordRef, screenHistoryRecordFileSchema, recordSchemaVersions);
     if (record.projectId !== projectId) {
-      throw new RecordIdentityError(`History record "${recordRef}" projectId must match manifest project id "${projectId}".`);
+      throw new RecordIdentityError(`History record "${recordRef}" projectId must match manifest project id "${projectId}". Fix: set projectId in ${recordRef} to "${projectId}".`);
     }
     if (recordRef !== historyRecordRef(record.entry.screenId, record.entry.version)) {
       throw new RecordIdentityError(
-        `History record "${recordRef}" does not match screen "${record.entry.screenId}" V${record.entry.version}.`
+        `History record "${recordRef}" does not match screen "${record.entry.screenId}" V${record.entry.version}. Fix: rename the file to ${historyRecordRef(record.entry.screenId, record.entry.version)}, or set entry.screenId and entry.version in it to match its file name.`
       );
     }
     const key = `${record.entry.screenId}\u0000${record.entry.version}`;
     if (keys.has(key)) {
-      throw new RecordIdentityError(`History record for screen "${record.entry.screenId}" V${record.entry.version} is duplicated.`);
+      throw new RecordIdentityError(`History record for screen "${record.entry.screenId}" V${record.entry.version} is duplicated. Fix: delete ${recordRef}, or give it another version.`);
     }
     keys.add(key);
     entries.push(record.entry);
@@ -204,7 +207,7 @@ async function readRecord<T extends { schemaVersion: string }>(
   const record = await readJson<T>(reader, recordRef);
   const version = record?.schemaVersion;
   assertNoNewerSchema([[recordRef, version]]);
-  if (version !== BLUEPRINT_SCHEMA_VERSION) recordSchemaVersions[recordRef] = String(version);
+  if (version !== BLUEPRINT_SCHEMA_VERSION) recordSchemaVersions[recordRef] = schemaVersionText(version);
   if (isOnOtherSchema(record)) return record;
   const errors = structuredFileErrors(recordRef, schema, record);
   if (errors.length > 0) throw new Error(errors.join('\n'));
@@ -214,7 +217,7 @@ async function readRecord<T extends { schemaVersion: string }>(
 async function readJson<T>(reader: ContainedBlueprintReader, fileRef: string): Promise<T> {
   const raw = await reader.readText(fileRef, { kind: 'fixed JSON' });
   if (raw === undefined) {
-    throw new Error(`fixed JSON "${fileRef}" does not exist.`);
+    throw new Error(`fixed JSON "${fileRef}" does not exist. Fix: restore ${fileRef} from git, or pass the directory of a complete project.`);
   }
   return parseJson<T>(fileRef, raw);
 }
@@ -237,7 +240,7 @@ function parseJson<T>(fileRef: string, raw: string): T {
   try {
     return JSON.parse(raw) as T;
   } catch (error) {
-    throw new Error(`${fileRef} is not valid JSON: ${(error as Error).message}. Fix: correct the JSON syntax of ${fileRef}.`);
+    throw new Error(`${fileRef} is not valid JSON: ${(error as Error).message}. Fix: make ${fileRef} valid JSON at the position that this message names.`);
   }
 }
 

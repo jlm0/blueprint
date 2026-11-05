@@ -27,7 +27,7 @@ describe('reusable prose linting', () => {
   });
 
   it('says how to turn a bare path or a lowercase id label into a sentence', () => {
-    assert.match(lintProse('packages/ui/src/button.tsx')[0].message, /names a file but does not say what it holds\. Fix: write a sentence, such as "`packages\/ui\/src\/button\.tsx` renders it\.", or record the path in implementationTargets\./);
+    assert.match(lintProse('packages/ui/src/button.tsx')[0].message, /names a file but does not say what it holds\. Fix: record the path in implementationTargets, or write a sentence such as: `packages\/ui\/src\/button\.tsx` renders it\./);
     assert.match(lintProse('starting: only feed sessions dispatch it.')[0].message, /starts with the id "starting" outside backticks\. Fix: write it as "`starting`: …"/);
     assert.deepEqual(lintProse('`starting`: Only feed sessions dispatch it.'), []);
   });

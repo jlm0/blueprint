@@ -139,7 +139,7 @@ export function inspectExploration(bundle: BlueprintProjectBundle, explorationId
 export function computeCanonicalScreenDigest(bundle: BlueprintProjectBundle, screenId: string): string {
   const screen = bundle.screens.screens.find(candidate => candidate.id === screenId);
   if (!screen) {
-    throw new Error(`Canonical screen "${screenId}" does not exist.`);
+    throw new Error(`Canonical screen "${screenId}" does not exist. Fix: pass one of these screen ids: ${declaredScreenIds(bundle)}.`);
   }
   return computeScreenDigest(bundle, screen, screenPrototype(screen));
 }
@@ -216,16 +216,16 @@ export function createExplorationMetadata(
 ): ExplorationMutationResult {
   const screen = bundle.screens.screens.find(candidate => candidate.id === input.screenId);
   if (!screen) {
-    throw new Error(`Canonical screen "${input.screenId}" does not exist.`);
+    throw new Error(`Canonical screen "${input.screenId}" does not exist. Fix: pass one of these screen ids: ${declaredScreenIds(bundle)}.`);
   }
   if (!screen.prototype) {
-    throw new Error(`Canonical screen "${input.screenId}" does not have a governed prototype source.`);
+    throw new Error(`Canonical screen "${input.screenId}" does not have a governed prototype source. Fix: add prototype to screen "${input.screenId}" in screens.json, then call the tool again.`);
   }
   if (!screen.prototype.reviewConditions.some(condition => (
     condition.state === input.state && condition.framePresetId === input.framePresetId
   ))) {
     throw new Error(
-      `Canonical screen "${input.screenId}" does not declare review state "${input.state}" at frame preset "${input.framePresetId}".`
+      `Canonical screen "${input.screenId}" does not declare review state "${input.state}" at frame preset "${input.framePresetId}". Fix: ${screen.prototype.reviewConditions.length > 0 ? `pass a state and frame preset from this list: ${screen.prototype.reviewConditions.map(condition => `${condition.state} at ${condition.framePresetId}`).join(', ')}. Or add` : 'add'} the pair to prototype.reviewConditions of this screen.`
     );
   }
   const activeForTarget = bundle.explorations.explorations.find(exploration => (
@@ -236,13 +236,13 @@ export function createExplorationMetadata(
   ));
   if (activeForTarget) {
     throw new Error(
-      `Canonical screen "${input.screenId}" already has active exploration "${activeForTarget.id}" for state "${input.state}" at frame preset "${input.framePresetId}".`
+      `Canonical screen "${input.screenId}" already has active exploration "${activeForTarget.id}" for state "${input.state}" at frame preset "${input.framePresetId}". Fix: promote or archive exploration "${activeForTarget.id}", or pass another state or frame preset.`
     );
   }
   assertHumanText('Exploration title', input.title);
   assertHumanText('Exploration intent', input.intent);
   if (input.candidateLabels.length < 2 || input.candidateLabels.length > 5) {
-    throw new Error('An exploration must contain between 2 and 5 candidates.');
+    throw new Error('An exploration must contain between 2 and 5 candidates. Fix: pass 2 to 5 candidate labels.');
   }
   assertUniqueLabels(input.candidateLabels);
 
@@ -251,7 +251,7 @@ export function createExplorationMetadata(
   if (requestedId !== undefined) {
     assertSafeId('Exploration id', requestedId);
     if (existingIds.has(requestedId)) {
-      throw new Error(`Exploration id "${requestedId}" already exists.`);
+      throw new Error(`Exploration id "${requestedId}" already exists. Fix: pass another id, or omit id so that Blueprint makes one.`);
     }
   }
   const explorationId = requestedId ?? nextAvailableId(
@@ -316,7 +316,7 @@ export function createExplorationMetadata(
 export function archiveExploration(bundle: BlueprintProjectBundle, explorationId: string): ExplorationMutationResult {
   const exploration = requireExploration(bundle, explorationId);
   if (exploration.lifecycle === 'promoted') {
-    throw new Error(`Promoted exploration "${explorationId}" cannot be archived.`);
+    throw new Error(`Promoted exploration "${explorationId}" cannot be archived. Fix: remove this archive call, because a promoted exploration stays on record.`);
   }
   const archived: ExplorationDefinition = { ...structuredClone(exploration), lifecycle: 'archived' };
   return {
@@ -337,7 +337,7 @@ export function promoteExploration(
 ): PromotionResult {
   const exploration = requireExploration(bundle, input.explorationId);
   if (exploration.lifecycle !== 'active') {
-    throw new Error(`Exploration "${exploration.id}" must be active before promotion.`);
+    throw new Error(`Exploration "${exploration.id}" must be active before promotion. Fix: create a new exploration of this screen, then promote one of its candidates.`);
   }
   const candidate = requireCandidate(exploration, input.candidateId);
   assertDigest('expectedBaseDigest', input.expectedBaseDigest, exploration.target.baseDigest);
@@ -433,7 +433,7 @@ export function restoreScreenHistory(
 ): RestoreHistoryResult {
   const current = bundle.screens.screens.find(screen => screen.id === input.screenId);
   if (!current) {
-    throw new Error(`Canonical screen "${input.screenId}" does not exist.`);
+    throw new Error(`Canonical screen "${input.screenId}" does not exist. Fix: pass one of these screen ids: ${declaredScreenIds(bundle)}.`);
   }
   const selectedVersion = requireHistoryVersion(bundle, input.screenId, input.version);
   assertDigest(
@@ -508,7 +508,7 @@ export function restoreScreenHistory(
 function currentScreenForExploration(bundle: BlueprintProjectBundle, exploration: ExplorationDefinition): ScreenDefinition {
   const current = bundle.screens.screens.find(screen => screen.id === exploration.target.screenId);
   if (!current) {
-    throw new Error(`Exploration "${exploration.id}" no longer has a canonical screen target.`);
+    throw new Error(`Exploration "${exploration.id}" no longer has a canonical screen target. Fix: restore screen "${exploration.target.screenId}" in screens.json, or delete this exploration record and its prototype files.`);
   }
   return current;
 }
@@ -551,7 +551,7 @@ function prototypeText(prototype: ExplorationPrototypeSource, contents: Record<s
   return [prototype.source, ...prototype.styles].map(sourceRef => {
     const content = contents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
-      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty.`);
+      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty. Fix: restore "${sourceRef}" from git, or write its content, then call the tool again.`);
     }
     return content;
   });
@@ -561,7 +561,7 @@ function prototypeAssets(prototype: ExplorationPrototypeSource, bundle: Blueprin
   return prototype.assetRefs.map(assetRef => {
     const asset = bundle.prototypeAssetContents[assetRef];
     if (!asset) {
-      throw new Error(`Governed prototype asset "${assetRef}" is missing.`);
+      throw new Error(`Governed prototype asset "${assetRef}" is missing. Fix: restore "${assetRef}" from git, or remove it from prototype.assetRefs.`);
     }
     return asset;
   });
@@ -586,7 +586,7 @@ function stableStringify(value: unknown): string {
 
 function screenPrototype(screen: SavedScreen): ScreenPrototypeSource {
   if (!screen.prototype) {
-    throw new Error(`Canonical screen "${screen.id}" does not have a governed prototype source.`);
+    throw new Error(`Canonical screen "${screen.id}" does not have a governed prototype source. Fix: add prototype to screen "${screen.id}" in screens.json, then call the tool again.`);
   }
   return screen.prototype;
 }
@@ -618,12 +618,12 @@ function copyPrototypeSources(
   const fromRefs = [from.source, ...from.styles];
   const toRefs = [to.source, ...to.styles];
   if (fromRefs.length !== toRefs.length) {
-    throw new Error('Prototype source snapshots must preserve the source/style shape.');
+    throw new Error('Prototype source snapshots must preserve the source/style shape. Fix: give both prototypes the same number of styles in their records, then call the tool again.');
   }
   fromRefs.forEach((sourceRef, index) => {
     const content = bundle.prototypeSourceContents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
-      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty.`);
+      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty. Fix: restore "${sourceRef}" from git, or write its content, then call the tool again.`);
     }
     const targetRef = toRefs[index]!;
     contents[targetRef] = content;
@@ -643,11 +643,11 @@ function copyPrototypeIntoCanonical(
   sourceRefs.forEach((sourceRef, index) => {
     const content = bundle.prototypeSourceContents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
-      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty.`);
+      throw new Error(`Governed prototype source "${sourceRef}" is missing or empty. Fix: restore "${sourceRef}" from git, or write its content, then call the tool again.`);
     }
     const targetRef = targetRefs[index];
     if (!targetRef) {
-      throw new Error('Candidate styles could not be mapped to canonical screen source paths.');
+      throw new Error('Candidate styles could not be mapped to canonical screen source paths. Fix: give the candidate the same number of styles as the screen, then call the tool again.');
     }
     contents[targetRef] = content;
     writes.push({ path: targetRef, content });
@@ -702,7 +702,7 @@ function requireHistoryVersion(
     candidate.screenId === screenId && candidate.version === version
   ));
   if (!entry) {
-    throw new Error(`History for canonical screen "${screenId}" does not contain V${version}.`);
+    throw new Error(`History for canonical screen "${screenId}" does not contain V${version}. Fix: pass one of these versions: ${bundle.history.entries.filter(candidate => candidate.screenId === screenId).map(candidate => candidate.version).join(', ') || 'none, because this screen has no history'}.`);
   }
   return entry;
 }
@@ -716,10 +716,14 @@ function replaceExploration(file: ExplorationFile, replacement: ExplorationDefin
   };
 }
 
+function declaredScreenIds(bundle: BlueprintProjectBundle): string {
+  return bundle.screens.screens.map(screen => screen.id).join(', ') || 'none, so add a screen first';
+}
+
 function requireExploration(bundle: BlueprintProjectBundle, explorationId: string): ExplorationDefinition {
   const exploration = bundle.explorations.explorations.find(candidate => candidate.id === explorationId);
   if (!exploration) {
-    throw new Error(`Exploration "${explorationId}" does not exist.`);
+    throw new Error(`Exploration "${explorationId}" does not exist. Fix: pass one of these exploration ids: ${bundle.explorations.explorations.map(candidate => candidate.id).join(', ') || 'none, so create one with the explore tool'}.`);
   }
   return exploration;
 }
@@ -727,7 +731,7 @@ function requireExploration(bundle: BlueprintProjectBundle, explorationId: strin
 function requireCandidate(exploration: ExplorationDefinition, candidateId: string): ExplorationCandidate {
   const candidate = exploration.candidates.find(item => item.id === candidateId);
   if (!candidate) {
-    throw new Error(`Exploration "${exploration.id}" does not contain candidate "${candidateId}".`);
+    throw new Error(`Exploration "${exploration.id}" does not contain candidate "${candidateId}". Fix: pass one of these candidate ids: ${exploration.candidates.map(item => item.id).join(', ')}.`);
   }
   return candidate;
 }
@@ -762,13 +766,13 @@ function safeIdSegment(value: string): string {
 
 function assertSafeId(label: string, value: string): void {
   if (!SAFE_ID.test(value)) {
-    throw new Error(`${label} "${value}" must use 1-64 lowercase letters, numbers, or internal hyphens.`);
+    throw new Error(`${label} "${value}" must use 1-64 lowercase letters, numbers, or internal hyphens. Fix: rewrite it in that form, such as "option-a".`);
   }
 }
 
 function assertHumanText(label: string, value: string): void {
   if (typeof value !== 'string' || value.trim().length === 0 || value.length > 160 || /[\u0000-\u001f\u007f]/.test(value)) {
-    throw new Error(`${label} must be non-empty, at most 160 characters, and contain no control characters.`);
+    throw new Error(`${label} must be non-empty, at most 160 characters, and contain no control characters. Fix: pass one line of text with 1 to 160 characters.`);
   }
 }
 
@@ -778,7 +782,7 @@ function assertUniqueLabels(labels: string[]): void {
     assertHumanText('Candidate label', label);
     const key = label.trim().toLocaleLowerCase();
     if (seen.has(key)) {
-      throw new Error(`Duplicate candidate label "${label}".`);
+      throw new Error(`Duplicate candidate label "${label}". Fix: give each candidate its own label.`);
     }
     seen.add(key);
   }
@@ -786,6 +790,6 @@ function assertUniqueLabels(labels: string[]): void {
 
 function assertDigest(label: string, expected: string, actual: string): void {
   if (expected !== actual) {
-    throw new Error(`${label} is stale; expected "${expected}" but current digest is "${actual}".`);
+    throw new Error(`${label} is stale; expected "${expected}" but current digest is "${actual}". Fix: read the current state again, confirm that this change still applies, then pass digest "${actual}" as ${label}.`);
   }
 }

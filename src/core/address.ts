@@ -11,7 +11,7 @@ export function selectorKey(selector: BoundarySelector): string {
 export function parseBoundarySelector(input: string): BoundarySelector {
   const divider = input.indexOf(':');
   if (divider === -1) {
-    throw new Error(`Boundary selector "${input}" must use kind:id format.`);
+    throw new Error(`Boundary selector "${input}" must use kind:id format. Fix: write it as kind:id, such as screen:home or component:web-header.`);
   }
 
   const kind = input.slice(0, divider) as BoundaryKind;
@@ -19,11 +19,11 @@ export function parseBoundarySelector(input: string): BoundarySelector {
   const allowed: BoundaryKind[] = ['project', 'board', 'token-group', 'primitive', 'component', 'screen', 'section'];
 
   if (!allowed.includes(kind)) {
-    throw new Error(`Boundary selector "${input}" uses unsupported kind "${kind}".`);
+    throw new Error(`Boundary selector "${input}" uses unsupported kind "${kind}". Fix: start it with one of these kinds: ${allowed.join(', ')}.`);
   }
 
   if (!id) {
-    throw new Error(`Boundary selector "${input}" is missing an id.`);
+    throw new Error(`Boundary selector "${input}" is missing an id. Fix: add the id after the colon, such as ${kind}:my-id.`);
   }
 
   return { kind, id };

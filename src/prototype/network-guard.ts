@@ -41,7 +41,7 @@ export async function installPrototypeNetworkGuard(page: PrototypeNetworkGuardPa
       }
       if (blocked.size > 0) {
         throw new Error(
-          `Canonical prototype capture blocked undeclared network or navigation access: ${[...blocked].sort().join(', ')}.`
+          `Canonical prototype capture blocked undeclared network or navigation access: ${[...blocked].sort().join(', ')}. Fix: remove these URLs from the source, and link only to files inside a prototypeHost.assetRoots directory.`
         );
       }
     }

@@ -6,7 +6,7 @@ export const CHROMIUM_INSTALL_COMMAND = 'npx playwright install chromium';
 /** Creates the stable user-facing browser dependency error used before capture side effects. */
 export function createChromiumDependencyError(): Error {
   return new Error(
-    `Blueprint capture requires a local Playwright Chromium browser. Run \`${CHROMIUM_INSTALL_COMMAND}\` and try again.`
+    `Blueprint capture requires a local Playwright Chromium browser. Run \`${CHROMIUM_INSTALL_COMMAND}\` and try again. Fix: run ${CHROMIUM_INSTALL_COMMAND}, then call capture again.`
   );
 }
 

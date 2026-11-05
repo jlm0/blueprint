@@ -51,10 +51,10 @@ export function resolvePrototypeReviewSelection(
 ): PrototypeReviewSelection {
   const screen = bundle.screens.screens.find(candidate => candidate.id === request.screenId);
   if (!screen) {
-    throw new Error(`Screen not found: ${request.screenId}.`);
+    throw new Error(`Screen not found: ${request.screenId}. Fix: pass one of these screen ids: ${bundle.screens.screens.map(candidate => candidate.id).join(', ')}.`);
   }
   if (!screen.prototype) {
-    throw new Error(`Screen "${screen.id}" has no browser-native prototype review source.`);
+    throw new Error(`Screen "${screen.id}" has no browser-native prototype review source. Fix: add prototype with source, styles, states, assetRefs, and reviewConditions to screen "${screen.id}" in screens.json.`);
   }
 
   const condition = selectPrototypeReviewCondition(screen, {
@@ -64,11 +64,11 @@ export function resolvePrototypeReviewSelection(
   const framePreset = bundle.manifest.framePresets.find(candidate => candidate.id === condition.framePresetId);
   if (!framePreset) {
     throw new Error(
-      `Screen "${screen.id}" review condition "${condition.conditionId}" references missing frame preset "${condition.framePresetId}".`
+      `Screen "${screen.id}" review condition "${condition.conditionId}" references missing frame preset "${condition.framePresetId}". Fix: add "${condition.framePresetId}" to framePresets in manifest.json, or set framePresetId of this review condition to a declared preset.`
     );
   }
   if (!Number.isInteger(framePreset.width) || framePreset.width <= 0 || !Number.isInteger(framePreset.height) || framePreset.height <= 0) {
-    throw new Error(`Frame preset "${framePreset.id}" must declare positive integer CSS-pixel dimensions.`);
+    throw new Error(`Frame preset "${framePreset.id}" must declare positive integer CSS-pixel dimensions. Fix: set width and height of this preset in manifest.json to whole numbers above 0.`);
   }
 
   return {
@@ -117,10 +117,10 @@ export function parsePrototypeReviewRequest(requestUrl: URL): PrototypeReviewReq
   const allowed = new Set(['screen', 'state', 'viewport']);
   for (const key of requestUrl.searchParams.keys()) {
     if (!allowed.has(key)) {
-      throw new Error(`Unsupported prototype review parameter "${key}".`);
+      throw new Error(`Unsupported prototype review parameter "${key}". Fix: remove "${key}" from the URL. The route takes screen, state, and viewport.`);
     }
     if (requestUrl.searchParams.getAll(key).length !== 1) {
-      throw new Error(`Prototype review parameter "${key}" must appear exactly once.`);
+      throw new Error(`Prototype review parameter "${key}" must appear exactly once. Fix: keep one "${key}" parameter in the URL.`);
     }
   }
 
@@ -133,7 +133,7 @@ export function parsePrototypeReviewRequest(requestUrl: URL): PrototypeReviewReq
 function requireNonEmptySearchParam(requestUrl: URL, key: string): string {
   const value = requestUrl.searchParams.get(key);
   if (!value?.trim()) {
-    throw new Error(`Missing prototype review parameter "${key}".`);
+    throw new Error(`Missing prototype review parameter "${key}". Fix: add ${key}=<id> to the URL.`);
   }
   return value;
 }
@@ -144,7 +144,7 @@ function optionalNonEmptySearchParam(requestUrl: URL, key: string): string | und
   }
   const value = requestUrl.searchParams.get(key);
   if (!value?.trim()) {
-    throw new Error(`Prototype review parameter "${key}" must not be empty.`);
+    throw new Error(`Prototype review parameter "${key}" must not be empty. Fix: set ${key} to an id, or remove it from the URL.`);
   }
   return value;
 }

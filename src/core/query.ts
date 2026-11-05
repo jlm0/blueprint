@@ -117,7 +117,7 @@ export function showBoundary(bundle: BlueprintProjectBundle<PrototypeAsset>, sel
       return sectionPacket(bundle, screen, section);
     }
     default:
-      throw new Error(`Unsupported boundary kind "${String(selector.kind)}".`);
+      throw new Error(`Unsupported boundary kind "${String(selector.kind)}". Fix: pass a boundary that starts with project:, board:, token-group:, primitive:, component:, screen:, or section:.`);
   }
 }
 
@@ -126,7 +126,7 @@ function parseQueryBoundarySelector(input: string): BoundarySelector {
   if (separatorIndex > 0 && input.slice(0, separatorIndex) === 'component') {
     const id = input.slice(separatorIndex + 1);
     if (!id) {
-      throw new Error(`Boundary selector "${input}" must include a non-empty id.`);
+      throw new Error(`Boundary selector "${input}" must include a non-empty id. Fix: write it as component:<id>.`);
     }
     return { kind: 'component', id };
   }
@@ -532,7 +532,7 @@ function styleEvidenceFor(styleRefs: string[], evidence: StyleEvidence[] = []): 
 function referenceForPacket(bundle: BlueprintProjectBundle<PrototypeAsset>, packet: BoundaryPacket): BoundaryReference {
   const ref = listBoundaryReferences(bundle).find(item => item.id === packet.id);
   if (!ref) {
-    throw new Error(`No boundary reference found for packet "${packet.id}".`);
+    throw new Error(`No boundary reference found for packet "${packet.id}". Fix: call the index tool and use a reference that it lists.`);
   }
   return ref;
 }
@@ -576,7 +576,7 @@ function dependenciesToReferences(bundle: BlueprintProjectBundle<PrototypeAsset>
       return reference(bundle.manifest.project.id, 'section', `${screen.id}/${section.id}`, section.name);
     }
 
-    throw new Error(`Unsupported dependency kind "${String((dependency as { kind: unknown }).kind)}".`);
+    throw new Error(`Unsupported dependency kind "${String((dependency as { kind: unknown }).kind)}". Fix: set kind on this use to token-group, primitive, component, screen, or section.`);
   });
 }
 
@@ -654,7 +654,7 @@ function findScreen(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string):
 function findSection(bundle: BlueprintProjectBundle<PrototypeAsset>, id: string): { screen: ScreenDefinition; section: ScreenSection } {
   const [screenId, sectionId] = id.split('/');
   if (!screenId || !sectionId) {
-    throw new Error(`Section selector "${id}" must use screenId/sectionId.`);
+    throw new Error(`Section selector "${id}" must use screenId/sectionId. Fix: write it as section:<screenId>/<sectionId>.`);
   }
 
   const screen = findScreen(bundle, screenId);

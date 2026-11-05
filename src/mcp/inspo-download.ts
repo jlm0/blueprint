@@ -51,8 +51,17 @@ export function normalizeInspoUrl(raw: string): URL {
   return url;
 }
 
-/** @throws {Error} When the link resolves to a private address, is not an image, or is too large. */
+/** @throws {Error} When the link resolves to a private address, is not an image, is too large, or the network fails. */
 export async function downloadInspoImage(raw: string, fetcher: InspoFetcher, signal?: AbortSignal): Promise<DownloadedInspoImage> {
+  try {
+    return await fetchInspoImage(raw, fetcher, signal);
+  } catch (error) {
+    if (signal?.aborted || !(error instanceof Error) || error.message.includes('Fix:')) throw error;
+    throw new Error(`"${raw}" could not be downloaded: ${error.message}. Fix: open the link in a browser to check it, then paste the image address again.`);
+  }
+}
+
+async function fetchInspoImage(raw: string, fetcher: InspoFetcher, signal?: AbortSignal): Promise<DownloadedInspoImage> {
   let url = normalizeInspoUrl(raw);
   const timeout = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;

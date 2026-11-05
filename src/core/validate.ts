@@ -62,32 +62,32 @@ export function validateProjectWithSourceGraph(
   requireString(errors, 'manifest.defaultBoardId', bundle.manifest.defaultBoardId);
 
   if (bundle.tokens.projectId !== projectId) {
-    errors.push(`tokens.projectId "${bundle.tokens.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`tokens.projectId "${bundle.tokens.projectId}" must match manifest project id "${projectId}". Fix: set projectId in tokens.json to "${projectId}".`);
   }
 
   if (bundle.primitives.projectId !== projectId) {
-    errors.push(`primitives.projectId "${bundle.primitives.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`primitives.projectId "${bundle.primitives.projectId}" must match manifest project id "${projectId}". Fix: set projectId in primitives.json to "${projectId}".`);
   }
 
   if (bundle.components.projectId !== projectId) {
-    errors.push(`components.projectId "${bundle.components.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`components.projectId "${bundle.components.projectId}" must match manifest project id "${projectId}". Fix: set projectId in components.json to "${projectId}".`);
   }
 
   if (bundle.screens.projectId !== projectId) {
-    errors.push(`screens.projectId "${bundle.screens.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`screens.projectId "${bundle.screens.projectId}" must match manifest project id "${projectId}". Fix: set projectId in screens.json to "${projectId}".`);
   }
 
   if (bundle.explorations.projectId !== projectId) {
-    errors.push(`explorations.projectId "${bundle.explorations.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`explorations.projectId "${bundle.explorations.projectId}" must match manifest project id "${projectId}". Fix: set projectId in each file under explorations/ to "${projectId}".`);
   }
 
   if (bundle.history.projectId !== projectId) {
-    errors.push(`history.projectId "${bundle.history.projectId}" must match manifest project id "${projectId}".`);
+    errors.push(`history.projectId "${bundle.history.projectId}" must match manifest project id "${projectId}". Fix: set projectId in each file under history/ to "${projectId}".`);
   }
 
   const boardIds = collectIds(errors, 'manifest.boards', bundle.manifest.boards, board => validateBoard(errors, board));
   if (!boardIds.has(bundle.manifest.defaultBoardId)) {
-    errors.push(`manifest.defaultBoardId "${bundle.manifest.defaultBoardId}" does not match a board id.`);
+    errors.push(`manifest.defaultBoardId "${bundle.manifest.defaultBoardId}" does not match a board id. Fix: set defaultBoardId in manifest.json to one of these board ids: ${[...boardIds].join(', ') || 'none, so add a board first'}.`);
   }
 
   const framePresetIds = collectIds(errors, 'manifest.framePresets', bundle.manifest.framePresets, framePreset => validateFramePreset(errors, framePreset));
@@ -145,7 +145,7 @@ function validateInspo(errors: string[], bundle: BlueprintProjectBundle): void {
   if (!bundle.inspo) return;
   validateInspoContract(errors, bundle.inspo, bundle.manifest.project?.id);
   if (bundle.brand && !hasApprovedInspoDirection(bundle.inspo)) {
-    errors.push('brand.json exists, but inspo.json has no approved direction. Fix: propose directions from the inspo notes and set status "approved" after the person agrees, or delete brand.json until then.');
+    errors.push('brand.json exists, but inspo.json has no approved direction. Fix: propose directions from the inspo notes and set status "approved" after the person agrees.');
   }
 }
 
@@ -212,7 +212,7 @@ export function createReadinessReportWithSourceGraph(
         path: `prototypeSources.${sourceRef}`,
         severity: 'blocker',
         source: 'synthesized-missing',
-        message: `Declared prototype source "${sourceRef}" does not exist or could not be loaded.`
+        message: `Declared prototype source "${sourceRef}" does not exist or could not be loaded. Fix: add the file "${sourceRef}" to the project, or remove the ref that names it.`
       });
     }
   }
@@ -273,7 +273,7 @@ export function createReadinessReportWithSourceGraph(
         path: `screen.${screen.id}.section.${sectionId}.marker`,
         severity: 'blocker',
         source: 'synthesized-missing',
-        message: `Prototype source has no data-blueprint-section="${sectionId}" marker, so the section cannot be addressed on the canvas.`
+        message: `Prototype source has no data-blueprint-section="${sectionId}" marker, so the section cannot be addressed on the canvas. Fix: add data-blueprint-section="${sectionId}" to the root element of this section in ${screen.prototype.source}.`
       });
     }
   }
@@ -365,7 +365,7 @@ function recordImplementationTargetReadiness(
       path: label,
       severity: 'blocker',
       source: 'synthesized-missing',
-      message: 'Production handoff is missing implementation target metadata.'
+      message: `Production handoff is missing implementation target metadata. Fix: ${implementationTargetFix(label)}`
     });
     return;
   }
@@ -402,7 +402,7 @@ function recordStyleEvidenceReadiness(
         path: label,
         severity: 'blocker',
         source: 'synthesized-missing',
-        message: `No explicit style evidence has been recorded for "${styleRef}".`
+        message: `No explicit style evidence has been recorded for "${styleRef}". Fix: ${styleEvidenceFix(label, styleRef)}`
       });
     }
     return;
@@ -416,7 +416,7 @@ function recordStyleEvidenceReadiness(
         path: label,
         severity: 'blocker',
         source: 'synthesized-missing',
-        message: `Style evidence is missing for "${styleRef}".`
+        message: `Style evidence is missing for "${styleRef}". Fix: ${styleEvidenceFix(label, styleRef)}`
       });
       continue;
     }
@@ -462,8 +462,8 @@ function recordStyleEvidenceReadiness(
         severity: 'blocker',
         source: 'declared-missing-artifact',
         message: artifactRef
-          ? `Style evidence artifact for "${styleRef}" does not exist.`
-          : `Style evidence artifact for "${styleRef}" is not declared.`,
+          ? `Style evidence artifact for "${styleRef}" does not exist. Fix: add the artifact at "${artifactRef}", or set artifactRef of this style evidence to a file that exists.`
+          : `Style evidence artifact for "${styleRef}" is not declared. Fix: set artifactRef of this style evidence in ${label} to the artifact path.`,
         artifactRef,
         artifactExists
       });
@@ -474,7 +474,7 @@ function recordStyleEvidenceReadiness(
       path: label,
       severity: 'blocker',
       source: 'declared',
-      message: `Style evidence for "${styleRef}" has unsupported status "${status}".`
+      message: `Style evidence for "${styleRef}" has unsupported status "${status}". Fix: set status of this style evidence in ${label} to "source", "linked-artifact-pending", or "unresolved".`
     });
   }
 }
@@ -501,7 +501,7 @@ function validateFramePreset(errors: string[], framePreset: FramePreset): void {
   requireString(errors, 'framePreset.id', framePreset.id);
   requireString(errors, `framePreset.${framePreset.id}.name`, framePreset.name);
   if (framePreset.type !== 'mobile' && framePreset.type !== 'desktop') {
-    errors.push(`framePreset.${framePreset.id}.type must be "mobile" or "desktop".`);
+    errors.push(`framePreset.${framePreset.id}.type must be "mobile" or "desktop". Fix: set framePreset.${framePreset.id}.type to "mobile" or "desktop" in manifest.json.`);
   }
   requireNumber(errors, `framePreset.${framePreset.id}.width`, framePreset.width);
   requireNumber(errors, `framePreset.${framePreset.id}.height`, framePreset.height);
@@ -532,12 +532,12 @@ function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: V
   const brand = bundle.brand;
   if (!brand) {
     if (mode === 'strict') {
-      errors.push('brand.json is required for a strict handoff: declare the brand name, marks, and usage.');
+      errors.push('brand.json is required for a strict handoff: declare the brand name, marks, and usage. Fix: add brand.json with schemaVersion, projectId, name, and marks.');
     }
     return;
   }
   if (brand.projectId !== bundle.manifest.project.id) {
-    errors.push(`brand.projectId "${brand.projectId}" must match manifest project id "${bundle.manifest.project.id}".`);
+    errors.push(`brand.projectId "${brand.projectId}" must match manifest project id "${bundle.manifest.project.id}". Fix: set projectId in brand.json to "${bundle.manifest.project.id}".`);
   }
   requireString(errors, 'brand.name', brand.name);
   if (brand.tagline !== undefined) {
@@ -561,7 +561,7 @@ function validateBrand(errors: string[], bundle: BlueprintProjectBundle, mode: V
     .map(token => [`${group.id}.${token.id}`, token.value] as const)));
   collectIds(errors, 'brand.marks', brand.marks, mark => validateBrandMark(errors, bundle, mark, colors, mode));
   if (mode === 'strict' && (brand.marks ?? []).length === 0) {
-    errors.push('brand.marks must declare at least one mark for a strict handoff.');
+    errors.push('brand.marks must declare at least one mark for a strict handoff. Fix: add one mark to marks in brand.json.');
   }
 }
 
@@ -577,15 +577,15 @@ function validateBrandMark(
   requireString(errors, `${label}.name`, mark.name);
   requireString(errors, `${label}.description`, mark.description);
   if (!BRAND_MARK_ROLES.includes(mark.role)) {
-    errors.push(`${label}.role must be one of ${BRAND_MARK_ROLES.map(role => `"${role}"`).join(', ')}.`);
+    errors.push(`${label}.role must be one of ${BRAND_MARK_ROLES.map(role => `"${role}"`).join(', ')}. Fix: set ${label}.role to one of those values.`);
   }
   requireString(errors, `${label}.source`, mark.source);
   if (typeof mark.source === 'string' && mark.source.length > 0) {
     const svg = bundle.prototypeSourceContents[mark.source];
     if (!mark.source.endsWith('.svg')) {
-      errors.push(`${label}.source must be an .svg file.`);
+      errors.push(`${label}.source must be an .svg file. Fix: set ${label}.source to the path of an .svg file in the project.`);
     } else if (svg === undefined) {
-      errors.push(`${label}.source "${mark.source}" does not exist or could not be loaded.`);
+      errors.push(`${label}.source "${mark.source}" does not exist or could not be loaded. Fix: add the file "${mark.source}" to the project, or set ${label}.source to a file that exists.`);
     } else {
       const issues = [...brandMarkSourceIssues(svg), ...(mode === 'strict' ? brandMarkHandoffIssues(svg) : [])];
       errors.push(...issues.map(issue => `${label}.source ${issue}`));
@@ -599,7 +599,7 @@ function validateBrandMark(
       const ref = variant[role];
       if (role === 'accent' && ref === undefined) continue;
       if (typeof ref !== 'string' || !colors.has(ref)) {
-        errors.push(`${label}.variant.${variant.id}.${role} "${ref}" must reference a declared color token, such as "color.background".`);
+        errors.push(`${label}.variant.${variant.id}.${role} "${ref}" must reference a declared color token, such as "color.background". Fix: set ${role} of this variant in brand.json to a color token in tokens.json, written as group.token.`);
       }
     }
     if (mode !== 'strict') return;
@@ -609,12 +609,12 @@ function validateBrandMark(
       const ink = ref ? parseOpaqueColor(colors.get(ref) ?? '') : undefined;
       const ratio = ink && background ? contrastRatio(ink, background) : undefined;
       if (ratio !== undefined && ratio < 3) {
-        errors.push(`${label}.variant.${variant.id}.${role} ${ref} on ${variant.background} has contrast ${Math.floor(ratio * 100) / 100}:1; a mark needs at least 3:1.`);
+        errors.push(`${label}.variant.${variant.id}.${role} ${ref} on ${variant.background} has contrast ${Math.floor(ratio * 100) / 100}:1; a mark needs at least 3:1. Fix: in brand.json, set ${role} or background of variant "${variant.id}" of ${label} to color tokens whose contrast reaches 3:1.`);
       }
     }
   });
   if (Array.isArray(mark.variants) && mark.variants.length === 0) {
-    errors.push(`${label}.variants must declare at least one approved treatment.`);
+    errors.push(`${label}.variants must declare at least one approved treatment. Fix: add one variant with id, name, background, and foreground to ${label}.variants.`);
   }
 
   requireObject(errors, `${label}.clearSpace`, mark.clearSpace);
@@ -638,7 +638,7 @@ function requireStringList(errors: string[], label: string, value: unknown): voi
 
 function requireAxis(errors: string[], label: string, value: unknown): void {
   if (value !== 'height' && value !== 'width') {
-    errors.push(`${label} must be "height" or "width".`);
+    errors.push(`${label} must be "height" or "width". Fix: set ${label} to "height" or "width".`);
   }
 }
 
@@ -706,7 +706,7 @@ function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): 
 
     if (group.length === 1) {
       if (first.version !== undefined) {
-        errors.push(`screen.${first.id}.version must be omitted because ${identity} has only one screen.`);
+        errors.push(`screen.${first.id}.version must be omitted because ${identity} has only one screen. Fix: remove version from screen "${first.id}" in screens.json.`);
       }
       continue;
     }
@@ -714,7 +714,7 @@ function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): 
     const unversioned = group.filter(screen => screen.version === undefined);
     if (unversioned.length > 0) {
       errors.push(
-        `Screens sharing ${identity} must each declare a unique consecutive version starting at 1; missing on ${unversioned.map(screen => `"${screen.id}"`).join(', ')}.`
+        `Screens sharing ${identity} must each declare a unique consecutive version starting at 1; missing on ${unversioned.map(screen => `"${screen.id}"`).join(', ')}. Fix: set version on each of these screens in screens.json, counting from 1.`
       );
       continue;
     }
@@ -729,7 +729,7 @@ function validateScreenVersions(errors: string[], screens: ScreenDefinition[]): 
     const expected = Array.from({ length: group.length }, (_, index) => index + 1);
     if (versions.some((version, index) => version !== expected[index])) {
       errors.push(
-        `Screens sharing ${identity} must use unique consecutive versions ${expected.join(', ')}; received ${versions.join(', ')}.`
+        `Screens sharing ${identity} must use unique consecutive versions ${expected.join(', ')}; received ${versions.join(', ')}. Fix: set the versions of these screens in screens.json to ${expected.join(', ')}.`
       );
     }
   }
@@ -758,7 +758,7 @@ function validateScreenHistory(
     );
     const key = `${entry.screenId}\u0000${entry.version}`;
     if (keys.has(key)) {
-      errors.push(`History for screen "${entry.screenId}" contains duplicate V${entry.version}.`);
+      errors.push(`History for screen "${entry.screenId}" contains duplicate V${entry.version}. Fix: keep one record of this version, and delete the other from history/.`);
     }
     keys.add(key);
     versionsByScreen.set(entry.screenId, [...(versionsByScreen.get(entry.screenId) ?? []), entry.version]);
@@ -768,7 +768,7 @@ function validateScreenHistory(
     const expected = Array.from({ length: ordered.length }, (_, index) => index + 1);
     if (ordered.some((version, index) => version !== expected[index])) {
       errors.push(
-        `History for screen "${screenId}" must use consecutive immutable versions ${expected.join(', ')}; received ${ordered.join(', ')}.`
+        `History for screen "${screenId}" must use consecutive immutable versions ${expected.join(', ')}; received ${ordered.join(', ')}. Fix: restore the missing records under history/ from git, so that the versions run ${expected.join(', ')}.`
       );
     }
   }
@@ -786,66 +786,66 @@ function validateScreenHistoryEntry(
   const label = `history.${entry.screenId}.v${entry.version}`;
   requireString(errors, `${label}.screenId`, entry.screenId);
   if (!Number.isSafeInteger(entry.version) || entry.version < 1) {
-    errors.push(`${label}.version must be a positive integer.`);
+    errors.push(`${label}.version must be a positive integer. Fix: set version in this history record to a whole number of 1 or more.`);
   }
   requireString(errors, `${label}.state`, entry.state);
   requireString(errors, `${label}.framePresetId`, entry.framePresetId);
   if (!screenIds.has(entry.screenId)) {
-    errors.push(`${label} references missing canonical screen "${entry.screenId}".`);
+    errors.push(`${label} references missing canonical screen "${entry.screenId}". Fix: restore screen "${entry.screenId}" in screens.json, or delete this history record.`);
   }
   if (!framePresetIds.has(entry.framePresetId)) {
-    errors.push(`${label} references missing frame preset "${entry.framePresetId}".`);
+    errors.push(`${label} references missing frame preset "${entry.framePresetId}". Fix: add "${entry.framePresetId}" to framePresets in manifest.json, or set framePresetId in this record to a declared preset.`);
   }
   requireObject(errors, `${label}.screen`, entry.screen);
   if (entry.screen?.id !== entry.screenId) {
-    errors.push(`${label}.screen.id must match canonical screen "${entry.screenId}".`);
+    errors.push(`${label}.screen.id must match canonical screen "${entry.screenId}". Fix: set screen.id in this history record to "${entry.screenId}".`);
   }
   if (entry.screen) {
     validateScreen(errors, entry.screen, framePresetIds, primitiveIds, componentIds, true);
   }
   const prototype = entry.screen?.prototype;
   if (!prototype) {
-    errors.push(`${label}.screen must retain a governed prototype source.`);
+    errors.push(`${label}.screen must retain a governed prototype source. Fix: restore this history record from git.`);
     return;
   }
   const hasReviewPair = prototype.reviewConditions?.some(condition => (
     condition.state === entry.state && condition.framePresetId === entry.framePresetId
   ));
   if (!hasReviewPair) {
-    errors.push(`${label} state and frame preset must remain a declared historical review condition.`);
+    errors.push(`${label} state and frame preset must remain a declared historical review condition. Fix: add this state and frame preset to screen.prototype.reviewConditions in this record, or restore the record from git.`);
   }
   const ownedMarker = `.history-${storageRecordSegment(entry.screenId)}-v${entry.version}`;
   for (const sourceRef of [prototype.source, ...(prototype.styles ?? [])]) {
     const extension = path.posix.extname(sourceRef.replace(/\\/g, '/'));
     const withoutExtension = extension ? sourceRef.slice(0, -extension.length) : sourceRef;
     if (!isSafeRelativeRef(sourceRef) || !withoutExtension.endsWith(ownedMarker)) {
-      errors.push(`${label} source "${sourceRef}" must carry immutable marker "${ownedMarker}".`);
+      errors.push(`${label} source "${sourceRef}" must carry immutable marker "${ownedMarker}". Fix: rename the file so that its name ends with "${ownedMarker}" before the extension, and update this ref.`);
       continue;
     }
     const content = bundle.prototypeSourceContents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
-      errors.push(`${label} source "${sourceRef}" is missing or empty.`);
+      errors.push(`${label} source "${sourceRef}" is missing or empty. Fix: restore "${sourceRef}" from git.`);
     }
   }
   for (const assetRef of prototype.assetRefs ?? []) {
     if (!isSafeRelativeRef(assetRef) || !isControlledAssetRef(bundle, assetRef)) {
-      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory. ${assetRootsFix(bundle, assetRef)}`);
     } else if (!(assetRef in bundle.prototypeAssetContents)) {
-      errors.push(`${label} asset "${assetRef}" is missing.`);
+      errors.push(`${label} asset "${assetRef}" is missing. Fix: restore "${assetRef}" from git, or remove it from assetRefs in this record.`);
     }
   }
   if (entry.replacedBy?.type === 'exploration-candidate') {
     const replacement = entry.replacedBy;
     const exploration = bundle.explorations.explorations.find(candidate => candidate.id === replacement.explorationId);
     if (!exploration?.candidates.some(candidate => candidate.id === replacement.candidateId)) {
-      errors.push(`${label}.replacedBy must reference a saved exploration candidate.`);
+      errors.push(`${label}.replacedBy must reference a saved exploration candidate. Fix: set replacedBy.explorationId and replacedBy.candidateId in this record to a saved candidate, or restore the record from git.`);
     }
   } else if (entry.replacedBy?.type === 'history-restore') {
     if (!Number.isSafeInteger(entry.replacedBy.version) || entry.replacedBy.version < 1) {
-      errors.push(`${label}.replacedBy.version must be a positive integer.`);
+      errors.push(`${label}.replacedBy.version must be a positive integer. Fix: set replacedBy.version in this record to a whole number of 1 or more.`);
     }
   } else {
-    errors.push(`${label}.replacedBy must describe an exploration candidate or history restoration.`);
+    errors.push(`${label}.replacedBy must describe an exploration candidate or history restoration. Fix: set replacedBy.type in this record to "exploration-candidate" or "history-restore", with the fields of that type.`);
   }
 }
 
@@ -871,7 +871,7 @@ function validateExplorations(
     const existing = activeTargets.get(targetKey);
     if (existing) {
       errors.push(
-        `Active explorations "${existing}" and "${exploration.id}" target the same canonical screen, state, and frame preset.`
+        `Active explorations "${existing}" and "${exploration.id}" target the same canonical screen, state, and frame preset. Fix: archive or promote one of these explorations.`
       );
     } else {
       activeTargets.set(targetKey, exploration.id);
@@ -889,12 +889,12 @@ function validateExploration(
   const label = `exploration.${exploration.id}`;
   requireString(errors, 'exploration.id', exploration.id);
   if (!isSafeExplorationId(exploration.id)) {
-    errors.push(`${label}.id must use 1-64 lowercase letters, numbers, or internal hyphens.`);
+    errors.push(`${label}.id must use 1-64 lowercase letters, numbers, or internal hyphens. Fix: rename this exploration in that form, such as "option-a", and rename its record file to match.`);
   }
   requireSafeHumanLabel(errors, `${label}.title`, exploration.title);
   requireSafeHumanLabel(errors, `${label}.intent`, exploration.intent);
   if (!['active', 'archived', 'promoted'].includes(String(exploration.lifecycle))) {
-    errors.push(`${label}.lifecycle must be "active", "archived", or "promoted".`);
+    errors.push(`${label}.lifecycle must be "active", "archived", or "promoted". Fix: set ${label}.lifecycle to "active", "archived", or "promoted".`);
   }
   requireObject(errors, `${label}.target`, exploration.target);
   requireString(errors, `${label}.target.screenId`, exploration.target?.screenId);
@@ -902,13 +902,13 @@ function validateExploration(
   requireString(errors, `${label}.target.framePresetId`, exploration.target?.framePresetId);
   requireString(errors, `${label}.target.baseDigest`, exploration.target?.baseDigest);
   if (!/^[a-f0-9]{64}$/.test(exploration.target?.baseDigest ?? '')) {
-    errors.push(`${label}.target.baseDigest must be a lowercase SHA-256 digest.`);
+    errors.push(`${label}.target.baseDigest must be a lowercase SHA-256 digest. Fix: restore this exploration record from git, because Blueprint writes this digest.`);
   }
   if (!screenIds.has(exploration.target?.screenId)) {
-    errors.push(`${label}.target references missing canonical screen "${exploration.target?.screenId}".`);
+    errors.push(`${label}.target references missing canonical screen "${exploration.target?.screenId}". Fix: restore screen "${exploration.target?.screenId}" in screens.json, or delete this exploration record and its prototype files.`);
   }
   if (!framePresetIds.has(exploration.target?.framePresetId)) {
-    errors.push(`${label}.target references missing frame preset "${exploration.target?.framePresetId}".`);
+    errors.push(`${label}.target references missing frame preset "${exploration.target?.framePresetId}". Fix: add "${exploration.target?.framePresetId}" to framePresets in manifest.json, or delete this exploration record and its prototype files.`);
   }
 
   const baseline = exploration.target?.baseline;
@@ -916,7 +916,7 @@ function validateExploration(
   requireObject(errors, `${label}.target.baseline.screen`, baseline?.screen);
   requireObject(errors, `${label}.target.baseline.prototype`, baseline?.prototype);
   if (baseline?.screen?.id !== exploration.target?.screenId) {
-    errors.push(`${label}.target.baseline.screen.id must match target screen "${exploration.target?.screenId}".`);
+    errors.push(`${label}.target.baseline.screen.id must match target screen "${exploration.target?.screenId}". Fix: set target.baseline.screen.id in this record to "${exploration.target?.screenId}".`);
   }
   const baselineScreenPrototype = baseline?.screen?.prototype;
   const hasReviewPair = baselineScreenPrototype?.reviewConditions?.some(condition => (
@@ -925,11 +925,11 @@ function validateExploration(
   ));
   if (!hasReviewPair) {
     errors.push(
-      `${label}.target state "${exploration.target?.state}" and frame preset "${exploration.target?.framePresetId}" are not a declared baseline review condition.`
+      `${label}.target state "${exploration.target?.state}" and frame preset "${exploration.target?.framePresetId}" are not a declared baseline review condition. Fix: restore this exploration record from git, or delete it and create a new exploration.`
     );
   }
   if (baselineScreenPrototype && !(baselineScreenPrototype.states ?? []).includes(exploration.target?.state)) {
-    errors.push(`${label}.target state "${exploration.target?.state}" is not declared by the baseline prototype.`);
+    errors.push(`${label}.target state "${exploration.target?.state}" is not declared by the baseline prototype. Fix: restore this exploration record from git, or delete it and create a new exploration.`);
   }
   if (baseline?.prototype) {
     validateExplorationPrototype(errors, bundle, exploration, 'baseline', baseline.prototype);
@@ -937,7 +937,7 @@ function validateExploration(
   try {
     const digest = computeExplorationBaselineDigest(bundle, exploration.id);
     if (digest !== exploration.target?.baseDigest) {
-      errors.push(`${label}.target.baseDigest is stale for the persisted baseline sources.`);
+      errors.push(`${label}.target.baseDigest is stale for the persisted baseline sources. Fix: restore the baseline files of this exploration from git, or delete it and create a new exploration.`);
     }
   } catch (error) {
     errors.push(`${label}.target baseline cannot be digested: ${error instanceof Error ? error.message : String(error)}`);
@@ -945,23 +945,23 @@ function validateExploration(
 
   requireArray(errors, `${label}.candidates`, exploration.candidates);
   if (!Array.isArray(exploration.candidates) || exploration.candidates.length < 2 || exploration.candidates.length > 5) {
-    errors.push(`${label}.candidates must contain between 2 and 5 candidates.`);
+    errors.push(`${label}.candidates must contain between 2 and 5 candidates. Fix: change the candidates list in this record so that it holds 2 to 5 candidates.`);
   }
   const candidateIds = new Set<string>();
   const candidateLabels = new Set<string>();
   for (const candidate of exploration.candidates ?? []) {
     requireString(errors, `${label}.candidate.id`, candidate.id);
     if (!isSafeExplorationId(candidate.id)) {
-      errors.push(`${label}.candidate id "${candidate.id}" must use 1-64 lowercase letters, numbers, or internal hyphens.`);
+      errors.push(`${label}.candidate id "${candidate.id}" must use 1-64 lowercase letters, numbers, or internal hyphens. Fix: rename this candidate in that form, such as "option-a".`);
     }
     if (candidateIds.has(candidate.id)) {
-      errors.push(`${label} has duplicate candidate id "${candidate.id}".`);
+      errors.push(`${label} has duplicate candidate id "${candidate.id}". Fix: give each candidate in this exploration its own id.`);
     }
     candidateIds.add(candidate.id);
     requireSafeHumanLabel(errors, `${label}.candidate.${candidate.id}.label`, candidate.label);
     const normalizedLabel = candidate.label?.trim().toLocaleLowerCase();
     if (candidateLabels.has(normalizedLabel)) {
-      errors.push(`${label} has duplicate candidate label "${candidate.label}".`);
+      errors.push(`${label} has duplicate candidate label "${candidate.label}". Fix: give each candidate in this exploration its own label.`);
     }
     candidateLabels.add(normalizedLabel);
     requireObject(errors, `${label}.candidate.${candidate.id}.prototype`, candidate.prototype);
@@ -974,13 +974,13 @@ function validateExploration(
   const promotedScreen = exploration.promotedScreenId;
   if (exploration.lifecycle === 'promoted') {
     if (!selected || !candidateIds.has(selected)) {
-      errors.push(`${label}.selectedCandidateId must reference a candidate when lifecycle is "promoted".`);
+      errors.push(`${label}.selectedCandidateId must reference a candidate when lifecycle is "promoted". Fix: set selectedCandidateId in this record to one of these ids: ${[...candidateIds].join(', ')}.`);
     }
     if (!promotedScreen || !screenIds.has(promotedScreen)) {
-      errors.push(`${label}.promotedScreenId must reference a canonical screen when lifecycle is "promoted".`);
+      errors.push(`${label}.promotedScreenId must reference a canonical screen when lifecycle is "promoted". Fix: set promotedScreenId in this record to the id of the screen that this exploration became.`);
     }
   } else if (selected !== undefined || promotedScreen !== undefined) {
-    errors.push(`${label} may declare selectedCandidateId and promotedScreenId only when lifecycle is "promoted".`);
+    errors.push(`${label} may declare selectedCandidateId and promotedScreenId only when lifecycle is "promoted". Fix: remove both fields from this record, or set lifecycle to "promoted".`);
   }
 }
 
@@ -998,37 +998,40 @@ function validateExplorationPrototype(
   const textRefs = [prototype.source, ...(prototype.styles ?? [])];
   for (const sourceRef of textRefs) {
     if (!isSafeRelativeRef(sourceRef)) {
-      errors.push(`${label} source "${sourceRef}" escapes or points outside the Blueprint source root.`);
+      errors.push(`${label} source "${sourceRef}" escapes or points outside the Blueprint source root. Fix: set it to a relative path inside the project, with no ".." segment.`);
       continue;
     }
     if (!hasExplorationSourceMarker(sourceRef, exploration.id, ownerId)) {
-      errors.push(`${label} source "${sourceRef}" is not owned by this screen-local exploration entry.`);
+      errors.push(`${label} source "${sourceRef}" is not owned by this screen-local exploration entry. Fix: move the file under ${explorationSourceRoot(exploration.id, ownerId)}, and update this ref.`);
     }
     const content = bundle.prototypeSourceContents[sourceRef];
     if (typeof content !== 'string' || content.length === 0) {
-      errors.push(`${label} source "${sourceRef}" is missing or empty.`);
+      errors.push(`${label} source "${sourceRef}" is missing or empty. Fix: restore "${sourceRef}" from git, or write its content.`);
     }
   }
   for (const assetRef of prototype.assetRefs ?? []) {
     if (!isSafeRelativeRef(assetRef)) {
-      errors.push(`${label} asset "${assetRef}" escapes or points outside the Blueprint source root.`);
+      errors.push(`${label} asset "${assetRef}" escapes or points outside the Blueprint source root. Fix: set it to a relative path inside the project, with no ".." segment.`);
       continue;
     }
     if (!isControlledAssetRef(bundle, assetRef)) {
-      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+      errors.push(`${label} asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory. ${assetRootsFix(bundle, assetRef)}`);
     }
     if (!(assetRef in bundle.prototypeAssetContents)) {
-      errors.push(`${label} asset "${assetRef}" is missing.`);
+      errors.push(`${label} asset "${assetRef}" is missing. Fix: restore "${assetRef}" from git, or remove it from assetRefs in this record.`);
     }
   }
 }
 
-function hasExplorationSourceMarker(sourceRef: string, explorationId: string, ownerId: string): boolean {
-  const normalized = sourceRef.replace(/\\/g, '/');
-  const recordRoot = ownerId === 'baseline'
+function explorationSourceRoot(explorationId: string, ownerId: string): string {
+  return ownerId === 'baseline'
     ? `prototype/explorations/${explorationId}/baseline/`
     : `prototype/explorations/${explorationId}/candidates/${ownerId}/`;
-  if (normalized.startsWith(recordRoot)) {
+}
+
+function hasExplorationSourceMarker(sourceRef: string, explorationId: string, ownerId: string): boolean {
+  const normalized = sourceRef.replace(/\\/g, '/');
+  if (normalized.startsWith(explorationSourceRoot(explorationId, ownerId))) {
     return true;
   }
   const extension = path.posix.extname(normalized);
@@ -1043,7 +1046,7 @@ function isSafeExplorationId(value: string): boolean {
 function requireSafeHumanLabel(errors: string[], label: string, value: unknown): void {
   requireString(errors, label, value);
   if (typeof value === 'string' && (value.length > 160 || /[\u0000-\u001f\u007f]/.test(value))) {
-    errors.push(`${label} must be at most 160 characters and contain no control characters.`);
+    errors.push(`${label} must be at most 160 characters and contain no control characters. Fix: rewrite ${label} as one line of 160 characters or fewer.`);
   }
 }
 
@@ -1080,7 +1083,7 @@ function validateBasePrimitiveContract(errors: string[], bundle: BlueprintProjec
   const primitivesById = new Map(bundle.primitives.primitives.map(primitive => [primitive.id, primitive]));
   if (mode === 'strict') {
     for (const id of primitivesOutsideSet([...primitivesById.keys()])) {
-      errors.push(`${primitiveOutsideSetMessage(id)} ${BASE_PRIMITIVE_LOCK_REASON}`);
+      errors.push(primitiveOutsideSetMessage(id, BASE_PRIMITIVE_LOCK_REASON));
     }
   }
   for (const base of BASE_PRIMITIVE_CONTRACT) {
@@ -1109,7 +1112,7 @@ function validatePrototypeContracts(
 
   for (const screen of bundle.screens.screens) {
     if (!screen.prototype) {
-      errors.push(`screen.${screen.id}.prototype must declare a browser-native HTML/CSS source.`);
+      errors.push(`screen.${screen.id}.prototype must declare a browser-native HTML/CSS source. Fix: add prototype with source, styles, states, assetRefs, and reviewConditions to this screen in screens.json.`);
       continue;
     }
     validatePrototypeSource(errors, bundle, fileExists, `screen.${screen.id}.prototype`, screen.prototype);
@@ -1118,7 +1121,7 @@ function validatePrototypeContracts(
     for (const assetRef of screen.prototype.assetRefs ?? []) {
       validatePrototypeFileRef(errors, bundle, fileExists, `screen.${screen.id}.prototype.assetRef`, assetRef);
       if (!isControlledAssetRef(bundle, assetRef)) {
-        errors.push(`screen.${screen.id}.prototype asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory.`);
+        errors.push(`screen.${screen.id}.prototype asset "${assetRef}" must stay inside a declared prototypeHost.assetRoots directory. ${assetRootsFix(bundle, assetRef)}`);
       }
     }
     collectIds(errors, `screen.${screen.id}.prototype.reviewConditions`, screen.prototype.reviewConditions, condition => {
@@ -1126,10 +1129,10 @@ function validatePrototypeContracts(
       requireString(errors, `screen.${screen.id}.prototype.reviewCondition.${condition.id}.framePresetId`, condition.framePresetId);
       requireString(errors, `screen.${screen.id}.prototype.reviewCondition.${condition.id}.state`, condition.state);
       if (!framePresetIds.has(condition.framePresetId)) {
-        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references missing frame preset "${condition.framePresetId}".`);
+        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references missing frame preset "${condition.framePresetId}". Fix: set framePresetId of this review condition to one of these presets: ${[...framePresetIds].join(', ')}.`);
       }
       if (!screen.prototype?.states.includes(condition.state)) {
-        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references undeclared state "${condition.state}".`);
+        errors.push(`screen.${screen.id}.prototype.reviewCondition.${condition.id} references undeclared state "${condition.state}". Fix: add "${condition.state}" to prototype.states of this screen, or set state of this review condition to one of ${screen.prototype?.states.join(', ')}.`);
       }
     });
     const declaredUses = screen.sections.flatMap(section => section.uses);
@@ -1171,11 +1174,11 @@ function validatePrototypeFileRef(
   sourceRef: string
 ): void {
   if (!isSafeRelativeRef(sourceRef)) {
-    errors.push(`${label} "${sourceRef}" escapes or points outside the Blueprint source root.`);
+    errors.push(`${label} "${sourceRef}" escapes or points outside the Blueprint source root. Fix: set it to a relative path inside the project, with no ".." segment.`);
     return;
   }
   if (!fileExists(path.resolve(bundle.sourceRoot, sourceRef))) {
-    errors.push(`${label} "${sourceRef}" does not exist.`);
+    errors.push(`${label} "${sourceRef}" does not exist. Fix: add the file "${sourceRef}" to the project, or change this ref to a file that exists.`);
   }
 }
 
@@ -1210,21 +1213,21 @@ function validateRenderedUses(
     .sort();
   const rendered = renderedUses.map(dependency => `${dependency.kind}:${dependency.id}`).sort();
   if (JSON.stringify(declared) !== JSON.stringify(rendered)) {
-    errors.push(`${label} must exactly match declared reusable dependencies. Declared ${JSON.stringify(declared)}; rendered ${JSON.stringify(rendered)}.`);
+    errors.push(`${label} must exactly match declared reusable dependencies. Declared ${JSON.stringify(declared)}; rendered ${JSON.stringify(rendered)}. Fix: change renderedUses or the declared uses so that both lists hold the same entries.`);
   }
 }
 
 function validatePrototypeHost(errors: string[], prototypeHost: BlueprintProjectBundle['manifest']['prototypeHost'] | undefined): void {
   if (typeof prototypeHost !== 'object' || prototypeHost === null) {
-    errors.push('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none".');
+    errors.push('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none". Fix: set prototypeHost in manifest.json to { "assetRoots": ["prototype/assets"], "network": "deny", "scripts": "none" }.');
     return;
   }
   requireArray(errors, 'manifest.prototypeHost.assetRoots', prototypeHost.assetRoots);
   if (prototypeHost.network !== 'deny') {
-    errors.push('manifest.prototypeHost.network must be "deny".');
+    errors.push('manifest.prototypeHost.network must be "deny". Fix: set prototypeHost.network in manifest.json to "deny".');
   }
   if (prototypeHost.scripts !== 'none') {
-    errors.push('manifest.prototypeHost.scripts must be "none".');
+    errors.push('manifest.prototypeHost.scripts must be "none". Fix: set prototypeHost.scripts in manifest.json to "none".');
   }
 }
 
@@ -1258,9 +1261,9 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
 
   if (bundle.manifest.handoffContractVersion !== supportedHandoffContractVersion) {
     if (!bundle.manifest.handoffContractVersion) {
-      errors.push(`manifest.handoffContractVersion must be "${supportedHandoffContractVersion}" for strict handoff readiness.`);
+      errors.push(`manifest.handoffContractVersion must be "${supportedHandoffContractVersion}" for strict handoff readiness. Fix: set handoffContractVersion in manifest.json to "${supportedHandoffContractVersion}".`);
     } else {
-      errors.push(`Unsupported handoff contract version "${bundle.manifest.handoffContractVersion}". Expected "${supportedHandoffContractVersion}".`);
+      errors.push(`Unsupported handoff contract version "${bundle.manifest.handoffContractVersion}". Expected "${supportedHandoffContractVersion}". Fix: set handoffContractVersion in manifest.json to "${supportedHandoffContractVersion}".`);
     }
   }
 
@@ -1301,14 +1304,14 @@ function validateStrictHandoffReadiness(errors: string[], bundle: BlueprintProje
       validateCompositionBindings(errors, screen, section);
     }
     for (const sectionId of unmarkedSectionIds(bundle, screen)) {
-      errors.push(`screen.${screen.id}.section.${sectionId} needs a data-blueprint-section="${sectionId}" marker in its prototype source for strict handoff readiness.`);
+      errors.push(`screen.${screen.id}.section.${sectionId} needs a data-blueprint-section="${sectionId}" marker in its prototype source for strict handoff readiness. Fix: add data-blueprint-section="${sectionId}" to the root element of this section in ${screen.prototype.source}.`);
     }
   }
 }
 
 function validateProductionRelationship(errors: string[], label: string, relationship: ProductionRelationship | undefined): void {
   if (!relationship) {
-    errors.push(`${label} is required for strict handoff readiness.`);
+    errors.push(`${label} is required for strict handoff readiness. Fix: add ${label} with kind and notes, or set prototypeOnly to true on this screen.`);
     return;
   }
 
@@ -1320,7 +1323,7 @@ function validateProductionRelationship(errors: string[], label: string, relatio
     (relationship.kind === 'state-of-existing-screen' || relationship.kind === 'variant-of-existing-screen') &&
     !relationship.targetScreenId
   ) {
-    errors.push(`${label}.targetScreenId is required for ${relationship.kind}.`);
+    errors.push(`${label}.targetScreenId is required for ${relationship.kind}. Fix: set ${label}.targetScreenId to the id of the existing screen.`);
   }
 }
 
@@ -1330,7 +1333,7 @@ function validateImplementationTargets(
   targets: ImplementationTarget[] | undefined
 ): void {
   if (!Array.isArray(targets) || targets.length === 0) {
-    errors.push(`${label} must include at least one target for strict handoff readiness.`);
+    errors.push(`${label} must include at least one target for strict handoff readiness. Fix: ${implementationTargetFix(label)}`);
     return;
   }
 
@@ -1348,7 +1351,7 @@ function validateImplementationTargets(
     requireArray(errors, `${item}.storyPaths`, target.storyPaths);
     requireArray(errors, `${item}.unresolvedDecisions`, target.unresolvedDecisions);
     if ((target.unresolvedDecisions ?? []).length > 0) {
-      errors.push(`${item}.unresolvedDecisions must be empty for strict handoff readiness.`);
+      errors.push(`${item}.unresolvedDecisions must be empty for strict handoff readiness. Fix: settle each decision with the person, record the result in this target, and set ${item}.unresolvedDecisions to [].`);
     }
   });
 }
@@ -1365,7 +1368,7 @@ function validateStyleEvidence(
   }
 
   if (!Array.isArray(evidence)) {
-    errors.push(`${label} must include explicit evidence for ${refs.length} style refs.`);
+    errors.push(`${label} must include explicit evidence for ${refs.length} style refs. Fix: write ${label} as a list with one entry for each of these style refs: ${refs.join(', ')}.`);
     return;
   }
 
@@ -1373,11 +1376,11 @@ function validateStyleEvidence(
   for (const styleRef of refs) {
     const item = byRef.get(styleRef);
     if (!item) {
-      errors.push(`${label} is missing evidence for style ref "${styleRef}".`);
+      errors.push(`${label} is missing evidence for style ref "${styleRef}". Fix: ${styleEvidenceFix(label, styleRef)}`);
       continue;
     }
     if (item.status !== 'source' && item.status !== 'linked-artifact-pending' && item.status !== 'unresolved') {
-      errors.push(`${label}.${styleRef}.status "${String(item.status)}" is not supported.`);
+      errors.push(`${label}.${styleRef}.status "${String(item.status)}" is not supported. Fix: set this status to "source", "linked-artifact-pending", or "unresolved".`);
     }
     if (item.status === 'source') {
       requireString(errors, `${label}.${styleRef}.sourceAnchor`, item.sourceAnchor);
@@ -1386,7 +1389,7 @@ function validateStyleEvidence(
       requireString(errors, `${label}.${styleRef}.artifactRef`, item.artifactRef);
     }
     if (item.status === 'unresolved') {
-      errors.push(`${label}.${styleRef} style evidence is unresolved.`);
+      errors.push(`${label}.${styleRef} style evidence is unresolved. Fix: set this status to "source" with sourceAnchor, or to "linked-artifact-pending" with artifactRef.`);
     }
   }
 }
@@ -1395,7 +1398,7 @@ function validateCompositionBindings(errors: string[], screen: ScreenDefinition,
   for (const dependency of section.uses ?? []) {
     const label = `screen.${screen.id}.section.${section.id}.uses.${dependency.kind}.${dependency.id}.binding`;
     if (!dependency.binding) {
-      errors.push(`${label} is required for strict handoff readiness.`);
+      errors.push(`${label} is required for strict handoff readiness. Fix: add "binding" to the ${dependency.kind} "${dependency.id}" use in section "${section.id}" of screen "${screen.id}" in screens.json. Set "slot" and one of state, variant, size, prop, copy, data, layout, or accessibility in it.`);
       continue;
     }
 
@@ -1412,7 +1415,7 @@ function validateCompositionBindings(errors: string[], screen: ScreenDefinition,
     ].some(value => typeof value === 'string' && value.length > 0);
 
     if (!hasBindingDetail) {
-      errors.push(`${label} must describe at least one state, variant, size, prop, copy, data, layout, or accessibility binding.`);
+      errors.push(`${label} must describe at least one state, variant, size, prop, copy, data, layout, or accessibility binding. Fix: set one of those fields on ${label}.`);
     }
   }
 }
@@ -1440,32 +1443,51 @@ function collectIds<T extends { id: string }>(
   return ids;
 }
 
+function assetRootsFix(bundle: BlueprintProjectBundle, assetRef: string): string {
+  const roots = bundle.manifest.prototypeHost?.assetRoots;
+  const destination = Array.isArray(roots) && roots.length > 0 ? roots.map(root => `"${root}"`).join(' or ') : 'a prototypeHost.assetRoots directory';
+  return `Fix: move "${assetRef}" into ${destination}, or add its directory to prototypeHost.assetRoots in manifest.json.`;
+}
+
+function boundaryFile(label: string): string {
+  if (label.startsWith('primitive.')) return 'primitives.json';
+  return label.startsWith('component.') ? 'components.json' : 'screens.json';
+}
+
+function implementationTargetFix(label: string): string {
+  return `add one target to ${label} in ${boundaryFile(label)} with platform, framework, candidatePath, symbolName, operationIntent, propMapping, stateMapping, tokenAdapter, testPaths, storyPaths, and unresolvedDecisions. Or set prototypeOnly to true on ${label.replace(/\.implementationTargets$/, '')}.`;
+}
+
+function styleEvidenceFix(label: string, styleRef: string): string {
+  return `add { "styleRef": "${styleRef}", "status": "source", "sourceAnchor": "<stylesheet path>" } to ${label} in ${boundaryFile(label)}.`;
+}
+
 function requireString(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'string' || value.length === 0) {
-    errors.push(`${label} must be a non-empty string.`);
+    errors.push(`${label} must be a non-empty string. Fix: set ${label} to a non-empty string.`);
   }
 }
 
 function requireNumber(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    errors.push(`${label} must be a finite number.`);
+    errors.push(`${label} must be a finite number. Fix: set ${label} to a number.`);
   }
 }
 
 function requirePositiveNumber(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    errors.push(`${label} must be a positive number.`);
+    errors.push(`${label} must be a positive number. Fix: set ${label} to a number above 0.`);
   }
 }
 
 function requireArray(errors: string[], label: string, value: unknown): void {
   if (!Array.isArray(value)) {
-    errors.push(`${label} must be an array.`);
+    errors.push(`${label} must be an array. Fix: write ${label} as a JSON array.`);
   }
 }
 
 function requireObject(errors: string[], label: string, value: unknown): void {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    errors.push(`${label} must be an object.`);
+    errors.push(`${label} must be an object. Fix: write ${label} as a JSON object.`);
   }
 }

@@ -18,7 +18,7 @@ export function historyRecordRef(screenId: string, version: number): string {
 }
 
 export function isSavedRecordFile(fileRef: string): boolean {
-  return /^(explorations|history)\/[^/]+\.json$/.test(fileRef);
+  return /^(explorations|history)\/[^/.][^/]*\.json$/.test(fileRef);
 }
 
 export function explorationRecordFile(

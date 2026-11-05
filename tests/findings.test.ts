@@ -44,7 +44,7 @@ describe('design findings', () => {
     const [control] = collectDesignFindings(await loadProjectFromFs(brokenRoot)).filter(finding => finding.rule === 'native-control');
     assert.equal(
       designFindingReference(control),
-      'screen:hand-built-control prototype/screens/hand-built-control.html:4 hand-builds a native <button>; use <blueprint-use kind="primitive" ref="button"> or mark a deliberate native control with data-blueprint-native="<reason>".'
+      'screen:hand-built-control prototype/screens/hand-built-control.html:4 hand-builds a native <button>; use <blueprint-use kind="primitive" ref="button"> or mark a deliberate native control with data-blueprint-native="<reason>". Fix: replace this <button> at line 4 of prototype/screens/hand-built-control.html with that primitive, or add data-blueprint-native="<reason>" to it.'
     );
   });
 });

@@ -193,7 +193,7 @@ describe('serve routes on a valid project', () => {
       assertRoute(await post(`"${'x'.repeat(256 * 1024)}"`), {
         status: 400,
         headers: PLAIN_TEXT_HEADERS,
-        text: 'Blueprint activity request exceeded 262144 bytes.'
+        text: 'Blueprint activity request exceeded 262144 bytes. Fix: send a request of 262144 bytes or fewer.'
       });
     });
 
@@ -260,7 +260,7 @@ describe('serve routes on a valid project', () => {
       assertRoute(await put(`"${'x'.repeat(64 * 1024)}"`), {
         status: 400,
         headers: PLAIN_TEXT_HEADERS,
-        text: 'Blueprint activity request exceeded 65536 bytes.'
+        text: 'Blueprint activity request exceeded 65536 bytes. Fix: send a request of 65536 bytes or fewer.'
       });
     });
 
@@ -376,7 +376,7 @@ describe('serve routes on a valid project', () => {
       assertRoute(await send({ path: '/__blueprint/prototype?screen=missing' }), {
         status: 404,
         headers: PROBLEM_HEADERS,
-        text: problemBody(404, 'Screen not found: missing.')
+        text: problemBody(404, 'Screen not found: missing. Fix: pass one of these screen ids: launch, hub, match.')
       });
     });
 

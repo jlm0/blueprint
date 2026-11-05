@@ -46,6 +46,7 @@ import {
   BLUEPRINT_ACTIVITY_TOKEN_HEADER,
   BLUEPRINT_SELECTION_PATH,
   blueprintActivityRuntimeBaseUrl,
+  runtimeDescriptorPattern,
   findLiveBlueprintActivityRuntime,
   withBlueprintServeRuntimeLock,
   type BlueprintActivityRuntimeDescriptor
@@ -132,7 +133,9 @@ export async function initializeBlueprint(input: InitInput, signal?: AbortSignal
   if (existsSync(destination)) {
     const entries = await readdir(destination);
     if (entries.length > 0 && !input.force) {
-      throw new Error(`Destination is not empty: ${normalize(destination)}. Retry with force=true to overwrite Blueprint starter files in place.`);
+      throw new Error(entries.includes('manifest.json')
+        ? `Destination is not empty: ${normalize(destination)}. It holds a Blueprint project. Fix: pass an empty out directory.`
+        : `Destination is not empty: ${normalize(destination)}. Retry with force=true to overwrite Blueprint starter files in place. Fix: pass force true to overwrite the starter files, or pass an empty out directory.`);
     }
   }
 
@@ -447,7 +450,7 @@ export async function serveBlueprint(
   assertBlueprintProjectPath(projectRoot);
   const projectKey = await blueprintServeRuntimeKey(projectRoot);
   if (existing && await blueprintServeRuntimeKey(existing.project) !== projectKey) {
-    throw new Error('Cannot reuse a Blueprint review runtime for a different project.');
+    throw new Error('Cannot reuse a Blueprint review runtime for a different project. Fix: call serve with the project path of the running runtime, or restart the MCP server.');
   }
 
   let reusable = existing;
@@ -465,7 +468,7 @@ export async function serveBlueprint(
     if (!bundle?.explorations.explorations.some(exploration => exploration.id === explorationId)) {
       validated = await read(projectRoot, signal);
       if (!validated.bundle || validated.error !== undefined) {
-        throw new Error(validated.error ?? 'Blueprint project is unavailable.');
+        throw new Error(validated.error ?? 'Blueprint project is unavailable. Fix: call validate on this project, then apply the Fix line of each error.');
       }
       bundle = validated.bundle;
     }
@@ -527,14 +530,14 @@ export async function readBlueprintSelection(input: SelectionInput, signal?: Abo
   assertBlueprintProjectPath(projectRoot);
   const runtime = await findLiveBlueprintActivityRuntime(await blueprintServeRuntimeKey(projectRoot));
   if (!runtime) {
-    throw new Error('No Blueprint review runtime is running for this project. Call serve, then select a boundary in the canvas.');
+    throw new Error('No Blueprint review runtime is running for this project. Call serve, then select a boundary in the canvas. Fix: call serve on this project, then ask the person to select a boundary in the canvas.');
   }
   const response = await withAbort(fetch(new URL(BLUEPRINT_SELECTION_PATH, blueprintActivityRuntimeBaseUrl(runtime)), {
     headers: { [BLUEPRINT_ACTIVITY_TOKEN_HEADER]: runtime.token },
     signal
   }), signal);
   if (!response.ok) {
-    throw new Error(`Blueprint review runtime refused the selection request with status ${response.status}.`);
+    throw new Error(`Blueprint review runtime refused the selection request with status ${response.status}. Fix: call serve on this project, then call selection again. If the status repeats, restart the MCP server.`);
   }
   const payload = await response.json() as { selection?: StoredCanvasSelection | null; files?: string[] };
   const selection = payload.selection ?? null;
@@ -580,7 +583,7 @@ function borrowedServeServer(
   const url = blueprintActivityRuntimeBaseUrl(descriptor);
   const port = Number(new URL(url).port);
   if (!Number.isSafeInteger(port) || port <= 0) {
-    throw new Error('Blueprint runtime descriptor does not contain a valid review port.');
+    throw new Error(`Blueprint runtime descriptor does not contain a valid review port. Fix: delete ${runtimeDescriptorPattern(descriptor.pid)}, then call serve again.`);
   }
   return {
     port,
@@ -709,7 +712,7 @@ async function validateMigration(
   }
   const scratch = await realpath(await mkdtemp(path.join(tmpdir(), 'blueprint-migrate-')));
   try {
-    await cp(projectRoot, scratch, { recursive: true });
+    await cp(projectRoot, scratch, { recursive: true, dereference: true });
     await writeProjectFiles(scratch, migration.writes);
     let bundle = await loadProjectFromFs(scratch);
     const digestWrites = new Map<string, string>();

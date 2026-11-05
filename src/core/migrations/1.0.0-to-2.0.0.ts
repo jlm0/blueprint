@@ -60,6 +60,13 @@ const REUSABLE_FIELDS = [
   'tokenGroupIds', 'tokenRoles', 'accessibility', 'notes', 'implementationHints', 'implementationTargets', 'styleRefs', 'styleEvidence', 'prototypeOnly'
 ];
 
+/** v1 fields that this step reads or retires on purpose; each other field stays on the record, so that validate reports it and no data is lost. */
+const KNOWN_REUSABLE_FIELDS = [...REUSABLE_FIELDS, 'section', 'stateSets'];
+const KNOWN_PROTOTYPE_FIELDS = ['source', 'styles', 'localValueExceptions', 'accessibilityIntent', 'renderedUses', 'sizes', 'slots', 'states', 'tokenRoles', 'variants'];
+const KNOWN_GROUP_FIELDS = ['id', 'name', 'description'];
+const KNOWN_PRIMITIVE_FILE_FIELDS = ['schemaVersion', 'projectId', 'primitives'];
+const KNOWN_COMPONENT_FILE_FIELDS = ['schemaVersion', 'projectId', 'groups', 'sections', 'components'];
+
 /** v1 primitives whose values Blueprint now files under a different axis. */
 const AXIS_MOVES: Record<string, { variants?: 'sizes'; states?: 'variants' | 'sizes'; everyState?: boolean }> = {
   text: { variants: 'sizes', states: 'variants', everyState: true },
@@ -175,22 +182,23 @@ function upgradeReusables(files: Map<string, string>, changes: string[]): void {
     `components.json: ${components.length} components now carry the shared reusable shape, with a default variant and size; "sections" is now "groups" and "section" is "group".`
   );
 
-  writeIfChanged(files, 'primitives.json', {
+  writeIfChanged(files, 'primitives.json', keepUnknownFields({
     schemaVersion: nextVersion(primitivesFile),
     projectId: String(primitivesFile.projectId ?? ''),
     primitives
-  });
-  writeIfChanged(files, 'components.json', {
+  }, primitivesFile, KNOWN_PRIMITIVE_FILE_FIELDS));
+  writeIfChanged(files, 'components.json', keepUnknownFields({
     schemaVersion: nextVersion(componentsFile),
     projectId: String(componentsFile.projectId ?? ''),
     groups: asArray(componentsFile.groups ?? componentsFile.sections).map(asObject).map(migrateDeclaredGroup),
     components
-  });
+  }, componentsFile, KNOWN_COMPONENT_FILE_FIELDS));
 
   let bindingRewrites = 0;
   for (const file of [...files.keys()].filter(isScreenRecordFile).sort()) {
     const record = JSON.parse(files.get(file)!) as RawObject;
-    const count = rewriteScreenRecordBindings(record, remaps);
+    const { count, conflicts } = rewriteScreenRecordBindings(record, remaps);
+    changes.push(...conflicts);
     if (count > 0) {
       files.set(file, serializeJson(record));
       bindingRewrites += count;
@@ -334,7 +342,7 @@ function migratePrimitive(raw: RawObject, axes: Record<AxisKey, string[]>, conte
     styleRefs: stringList(raw.styleRefs),
     styleEvidence: asArray(raw.styleEvidence),
     prototypeOnly: raw.prototypeOnly === true
-  });
+  }, raw);
 }
 
 function axisDefault(key: AxisKey, values: string[], atTo: PrimitiveAtTo | undefined, rootValue: string | undefined): string {
@@ -397,7 +405,7 @@ function migrateComponent(raw: RawObject, context: ComponentMigrationContext): R
     styleRefs: stringList(raw.styleRefs),
     styleEvidence: asArray(raw.styleEvidence),
     prototypeOnly: raw.prototypeOnly === true
-  });
+  }, raw);
 }
 
 function singleValueAxis(axis: AxisName): Axis {
@@ -479,15 +487,20 @@ function sortAccepts(left: string, right: string): number {
 }
 
 function migratePrototype(prototype: RawObject): RawObject {
-  return {
+  return keepUnknownFields({
     source: String(prototype.source ?? ''),
     styles: stringList(prototype.styles),
     localValueExceptions: asArray(prototype.localValueExceptions)
-  };
+  }, prototype, KNOWN_PROTOTYPE_FIELDS);
 }
 
 function migrateDeclaredGroup(raw: RawObject): RawObject {
-  return { id: String(raw.id ?? ''), name: String(raw.name ?? ''), description: String(raw.description ?? '') };
+  return keepUnknownFields({ id: String(raw.id ?? ''), name: String(raw.name ?? ''), description: String(raw.description ?? '') }, raw, KNOWN_GROUP_FIELDS);
+}
+
+function keepUnknownFields(written: RawObject, raw: RawObject, known: readonly string[]): RawObject {
+  const kept = Object.entries(raw).filter(([key]) => !Object.hasOwn(written, key) && !known.includes(key));
+  return kept.length > 0 ? { ...written, ...Object.fromEntries(kept) } : written;
 }
 
 function migratedPrimitivePlatforms(value: unknown): string[] {
@@ -509,8 +522,8 @@ function inferPrimitiveGroup(id: string): string {
   return 'structure';
 }
 
-function orderReusable(reusable: RawObject): RawObject {
-  return Object.fromEntries(REUSABLE_FIELDS.map(field => [field, reusable[field]]));
+function orderReusable(reusable: RawObject, raw: RawObject): RawObject {
+  return keepUnknownFields(Object.fromEntries(REUSABLE_FIELDS.map(field => [field, reusable[field]])), raw, KNOWN_REUSABLE_FIELDS);
 }
 
 function countStyleOwners(reusables: RawObject[], screens: RawObject[]): Map<string, number> {

@@ -188,6 +188,10 @@ export async function findLiveBlueprintActivityRuntime(
   return undefined;
 }
 
+export function runtimeDescriptorPattern(pid: number): string {
+  return path.join(runtimeDirectory, `runtime-${pid}-*.json`);
+}
+
 export function blueprintActivityRuntimeBaseUrl(descriptor: BlueprintActivityRuntimeDescriptor): string {
   const activityUrl = new URL(descriptor.activityUrl);
   if (
@@ -195,7 +199,7 @@ export function blueprintActivityRuntimeBaseUrl(descriptor: BlueprintActivityRun
     activityUrl.hostname !== '127.0.0.1' ||
     activityUrl.pathname !== BLUEPRINT_ACTIVITY_POST_PATH
   ) {
-    throw new Error('Blueprint runtime descriptor contains an invalid loopback activity URL.');
+    throw new Error(`Blueprint runtime descriptor contains an invalid loopback activity URL. Fix: delete ${runtimeDescriptorPattern(descriptor.pid)}, then call serve again.`);
   }
   activityUrl.pathname = '/';
   activityUrl.search = '';
@@ -228,7 +232,7 @@ export async function withBlueprintServeRuntimeLock<T>(
         if (!isNodeError(error, 'EEXIST')) throw error;
         if (await removeAbandonedRuntimeLock(lockPath, ownerPath)) continue;
         if (Date.now() >= deadline) {
-          throw new Error(`Timed out waiting for the active Blueprint runtime lease for ${canonicalProjectRoot}.`);
+          throw new Error(`Timed out waiting for the active Blueprint runtime lease for ${canonicalProjectRoot}. Fix: wait for the other Blueprint call on this project to end, then call the tool again. If no other call runs, delete ${lockPath}.`);
         }
         await delay(25, undefined, signal ? { signal } : undefined);
       }
@@ -309,7 +313,7 @@ function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoExcepti
 
 function throwIfSignalAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
-    throw signal.reason instanceof Error ? signal.reason : new Error('Operation aborted.');
+    throw signal.reason instanceof Error ? signal.reason : new Error('Operation aborted. Fix: call the tool again if you still need its result.');
   }
 }
 

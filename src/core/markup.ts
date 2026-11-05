@@ -395,9 +395,9 @@ function readUseAt(html: string, scan: MarkupScan, openIndex: number): ScannedUs
     }
   }
   if (scan.cutOffOpen?.name === 'blueprint-use' || scan.cutOffClose === 'blueprint-use') {
-    throw new Error('Prototype source contains an unclosed HTML tag.');
+    throw new Error('Prototype source contains an unclosed HTML tag. Fix: close the cut-off tag with ">", or remove it.');
   }
-  throw new Error('Prototype source contains an unclosed <blueprint-use> element.');
+  throw new Error('Prototype source contains an unclosed <blueprint-use> element. Fix: add the matching </blueprint-use> tag.');
 }
 
 /** A generator, so that a fault in a later use never hides the error of an earlier one. */
@@ -416,7 +416,7 @@ export function* iterateUseElements(html: string): Generator<ScannedUse> {
     }
   }
   if (scan.cutOffOpen?.name === 'blueprint-use') {
-    throw new Error('Prototype source contains an unclosed HTML tag.');
+    throw new Error('Prototype source contains an unclosed HTML tag. Fix: close the cut-off tag with ">", or remove it.');
   }
 }
 
@@ -571,13 +571,13 @@ export function findFirstUseElement(html: string): UseElement | undefined {
 export function findTagEnd(html: string, start: number): number {
   const tag = firstOpenTag(html.slice(start));
   if (!tag) {
-    throw new Error('Prototype source contains an unclosed HTML tag.');
+    throw new Error('Prototype source contains an unclosed HTML tag. Fix: close the cut-off tag with ">", or remove it.');
   }
   return start + tag.end - 1;
 }
 
 export function parseUseAttributes(attributes: string, boundary: string): Map<string, string> {
-  const malformed = `${boundary} contains a malformed or unquoted <blueprint-use> attribute.`;
+  const malformed = `${boundary} contains a malformed or unquoted <blueprint-use> attribute. Fix: write each attribute of this <blueprint-use> as name="value".`;
   const parsed = new Map<string, string>();
   const openTag = `<x ${attributes}>`;
   let cursor = '<x '.length;
@@ -586,7 +586,7 @@ export function parseUseAttributes(attributes: string, boundary: string): Map<st
       throw new Error(malformed);
     }
     if (parsed.has(attribute.name)) {
-      throw new Error(`${boundary} contains duplicate <blueprint-use> attribute "${attribute.name}".`);
+      throw new Error(`${boundary} contains duplicate <blueprint-use> attribute "${attribute.name}". Fix: keep one "${attribute.name}" attribute on this <blueprint-use>.`);
     }
     parsed.set(attribute.name, attribute.value);
     cursor = attribute.end;

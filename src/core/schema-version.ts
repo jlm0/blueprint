@@ -25,8 +25,14 @@ export function fileSchemaVersions(bundle: VersionedBundle): Array<[string, unkn
   ];
 }
 
+/** A version that is not a string prints as JSON, because `String(["2.0.0"])` reads as the current version. */
+export function schemaVersionText(version: unknown): string {
+  return typeof version === 'string' || version === undefined ? String(version) : JSON.stringify(version);
+}
+
 export function isNewerSchemaVersion(version: unknown): boolean {
-  const parts = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(version))?.slice(1).map(Number);
+  if (typeof version !== 'string') return false;
+  const parts = /^(\d+)\.(\d+)\.(\d+)$/.exec(version)?.slice(1).map(Number);
   if (!parts) return false;
   const current = BLUEPRINT_SCHEMA_VERSION.split('.').map(Number);
   const first = parts.findIndex((part, index) => part !== current[index]);
@@ -34,7 +40,7 @@ export function isNewerSchemaVersion(version: unknown): boolean {
 }
 
 export function newerSchemaVersionError(file: string, version: unknown): string {
-  return `${file} is on schema "${String(version)}", which is newer than schema "${BLUEPRINT_SCHEMA_VERSION}" that this Blueprint reads. ` +
+  return `${file} is on schema "${schemaVersionText(version)}", which is newer than schema "${BLUEPRINT_SCHEMA_VERSION}" that this Blueprint reads. ` +
     'Fix: update Blueprint to a release that reads this schema, then call the tool again. Do not edit schemaVersion by hand.';
 }
 
@@ -44,7 +50,7 @@ export function schemaVersionErrors(bundle: VersionedBundle): string[] {
     .filter(([, version]) => version !== BLUEPRINT_SCHEMA_VERSION)
     .map(([file, version]) => (isNewerSchemaVersion(version)
       ? newerSchemaVersionError(file, version)
-      : `${file} is on schema "${String(version)}", and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". ` +
+      : `${file} is on schema "${schemaVersionText(version)}", and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". ` +
         'Fix: run the migrate tool on this project, then fix what validate reports.'
     ));
 }

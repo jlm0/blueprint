@@ -4,6 +4,9 @@ import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseN
 import { rewriteAxisSelectors, rewritePlacements, rewriteScreenRecordBindings, type PlacementRemap } from './placement-remap';
 import { asArray, asObject, parseJsonFile, serializeJson, unique, type RawObject } from './raw-json';
 import { SINGLE_VALUE_DESCRIPTIONS, SIZE_VALUE_IDS, stripRootAxisAttributes } from './reusable-contract';
+import { componentFileSchema } from './schemas/components';
+import { structuredFileErrors } from './schemas/issues';
+import { primitiveFileSchema } from './schemas/primitives';
 import { isSavedRecordFile } from './storage-records';
 import type { ComponentFile, PrimitiveFile, ReusableAxisName, ReusableDefinition } from './types';
 
@@ -20,10 +23,24 @@ export function normalizeCurrentFiles(input: NormalizeInput, writes: Map<string,
   normalizeTokenShapes(input.files, writes, changes);
 }
 
+/** Fields that this pass uses without a check, in addition to the fields load requires. */
+function reusableFieldsRead(list: string): string[] {
+  return ['variants', 'variants.values', 'sizes', 'sizes.values', 'states', 'states.values', 'slots', 'unsupported'].map(field => `${list}[].${field}`);
+}
+
+function assertNormalizerCanRead(primitiveFile: unknown, componentFile: unknown): void {
+  const errors = [
+    ...structuredFileErrors('primitives.json', primitiveFileSchema, primitiveFile, new Set(reusableFieldsRead('primitives'))),
+    ...structuredFileErrors('components.json', componentFileSchema, componentFile, new Set(['groups', ...reusableFieldsRead('components')]))
+  ];
+  if (errors.length > 0) throw new Error(errors.join('\n'));
+}
+
 function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, changes: string[]): void {
   const currentText = (file: string): string | undefined => writes.get(file) ?? input.files.get(file);
   const primitiveFile = parseJsonFile(input.files, 'primitives.json') as PrimitiveFile;
   const componentFile = parseJsonFile(input.files, 'components.json') as ComponentFile;
+  assertNormalizerCanRead(primitiveFile, componentFile);
 
   restoreMissingBasePrimitives(primitiveFile, input.starterFiles, currentText, writes, changes);
 
@@ -239,7 +256,8 @@ function applyRemaps(
   let bindings = 0;
   for (const file of fileNames.filter(name => name === 'screens.json' || isSavedRecordFile(name))) {
     const record = JSON.parse(currentText(file)) as RawObject;
-    const count = rewriteScreenRecordBindings(record, remaps);
+    const { count, conflicts } = rewriteScreenRecordBindings(record, remaps);
+    changes.push(...conflicts);
     if (count > 0) {
       writes.set(file, serializeJson(record));
       bindings += count;

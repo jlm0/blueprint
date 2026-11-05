@@ -149,7 +149,7 @@ export function lintSynonymRotation(texts: readonly string[], owner = 'reusable'
 
 function sentenceFormMessage(text: string): string {
   if (/^[\w.@-]+(?:\/[\w.@-]+)+$|^[\w-]+\.[a-z]{1,5}$/i.test(text)) {
-    return `names a file but does not say what it holds. Fix: write a sentence, such as "\`${text}\` renders it.", or record the path in implementationTargets.`;
+    return `names a file but does not say what it holds. Fix: record the path in implementationTargets, or write a sentence such as: \`${text.replace(/\.$/, '')}\` renders it.`;
   }
   const label = /^([a-z][\w-]*):\s/.exec(text);
   if (label) {

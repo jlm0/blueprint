@@ -109,8 +109,10 @@ function validateReusable(context: ReusableContext, kind: ReusableKind, item: un
   validateGroup(context, kind, label, reusable, contract?.group);
   validateUses(context, kind, label, reusable);
   validatePlatforms(context, kind, label, reusable, contract?.platforms);
+  const sizeValues = isRecord(reusable.sizes) && Array.isArray(reusable.sizes.values) ? reusable.sizes.values : [];
+  const sizeIds = new Set<string>(sizeValues.filter(isRecord).map(value => String(value.id)));
   for (const axis of REUSABLE_AXES) {
-    validateAxis(errors, label, axis.key, axis.label, reusable[axis.key], contract?.[axis.key]);
+    validateAxis(errors, label, axis.key, axis.label, reusable[axis.key], contract?.[axis.key], sizeIds);
   }
   validateUnsupported(errors, label, reusable);
   validateSlots(context, kind, label, reusable, contract?.slots ?? []);
@@ -281,7 +283,8 @@ function validateAxis(
   key: 'variants' | 'sizes' | 'states',
   noun: string,
   axis: unknown,
-  floor: BasePrimitiveAxisFloor | undefined
+  floor: BasePrimitiveAxisFloor | undefined,
+  sizeIds: ReadonlySet<string>
 ): void {
   const axisLabel = `${label}.${key}`;
   if (!isRecord(axis)) {
@@ -325,10 +328,15 @@ function validateAxis(
     for (const id of [...ids].filter(id => !locked.has(id))) {
       const segments = id.split('-');
       if (SIZE_VALUE_IDS.has(id)) {
-        errors.push(`${axisLabel}.${id} is a size, not a ${noun}. Fix: run the migrate tool, which moves it to "sizes" and rewrites its placements and selectors.`);
+        errors.push(sizeIds.has(id)
+          ? `${axisLabel}.${id} is a size, not a ${noun}. Fix: remove "${id}" from ${axisLabel}, because "sizes" already holds it, and place it with size="${id}".`
+          : `${axisLabel}.${id} is a size, not a ${noun}. Fix: run the migrate tool, which moves it to "sizes" and rewrites its placements and selectors.`);
       } else if (segments.length > 1 && segments.some(segment => SIZE_VALUE_IDS.has(segment))) {
         const size = segments.find(segment => SIZE_VALUE_IDS.has(segment))!;
-        errors.push(`${axisLabel}.${id} combines size "${size}" with a ${noun}. Fix: add "${size}" to "sizes", keep "${segments.filter(segment => segment !== size).join('-')}" as the ${noun}, and place it with size="${size}".`);
+        const rest = segments.filter(segment => !SIZE_VALUE_IDS.has(segment));
+        errors.push(rest.length > 0
+          ? `${axisLabel}.${id} combines size "${size}" with a ${noun}. Fix: add "${size}" to "sizes", keep "${rest.join('-')}" as the ${noun}, and place it with size="${size}".`
+          : `${axisLabel}.${id} combines size "${size}" with a ${noun}. Fix: remove "${id}" from ${axisLabel}, add "${size}" to "sizes", and place it with size="${size}".`);
       }
     }
   }
@@ -480,7 +488,7 @@ function validateTokens(context: ReusableContext, label: string, reusable: Reusa
     errors.push(`${label}.tokenGroupIds is empty. Fix: list the token groups its CSS reads, such as ${quoteList([...context.tokenGroupIds].slice(0, 3))}.`);
   } else {
     for (const groupId of reusable.tokenGroupIds.filter(id => !context.tokenGroupIds.has(id))) {
-      errors.push(`${label}.tokenGroupIds names "${groupId}", which tokens.json does not declare. Fix: use one of ${quoteList([...context.tokenGroupIds])}.`);
+      errors.push(`${label}.tokenGroupIds names "${groupId}", which tokens.json does not declare. Fix: ${context.tokenGroupIds.size > 0 ? `use one of ${quoteList([...context.tokenGroupIds])}` : `add a token group with id "${groupId}" to tokens.json`}.`);
     }
   }
   if (!isRecord(reusable.tokenRoles)) {

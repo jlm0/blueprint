@@ -64,7 +64,7 @@ export function createPrototypeAssetResponseHeaders(mediaType: string): Record<s
 /** Admits only the exact Host advertised by the bound IPv4 loopback listener. */
 export function evaluateLoopbackHost(hostHeader: string | undefined, port: number): LoopbackHostDecision {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new RangeError('Loopback Host policy requires a bound port between 1 and 65535.');
+    throw new RangeError('Loopback Host policy requires a bound port between 1 and 65535. Fix: pass a port from 1 to 65535.');
   }
 
   const expectedHost = `${LOOPBACK_HOSTNAME}:${port}`;

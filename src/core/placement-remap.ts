@@ -67,14 +67,15 @@ export function rewriteAxisSelectors(css: string, remap: PlacementRemap, kind: '
   }, ownsFile ? undefined : { name: `data-blueprint-${kind}`, value: reusableId });
 }
 
-/** Moves section binding values of reclassified reusables in screens.json, exploration baselines, and history entries. */
-export function rewriteScreenRecordBindings(record: RawObject, remaps: Map<string, PlacementRemap>): number {
+/** Moves section binding values of reclassified reusables in screens.json, exploration baselines, and history entries; a value whose target axis is taken stays where it is and comes back as a conflict line. */
+export function rewriteScreenRecordBindings(record: RawObject, remaps: Map<string, PlacementRemap>): { count: number; conflicts: string[] } {
   const screens: RawObject[] = [
     ...asArray(record.screens).map(asObject),
     ...(isObject(record.exploration) ? [asObject(asObject(asObject(asObject(record.exploration).target).baseline).screen)] : []),
     ...(isObject(record.entry) ? [asObject(asObject(record.entry).screen)] : [])
   ];
   let count = 0;
+  const conflicts: string[] = [];
   for (const screen of screens) {
     for (const section of asArray(screen.sections).map(asObject)) {
       for (const use of asArray(section.uses).map(asObject)) {
@@ -92,11 +93,19 @@ export function rewriteScreenRecordBindings(record: RawObject, remaps: Map<strin
         const values = Object.fromEntries(moves.map(([from]) => [from, binding[from]]));
         for (const [from] of moves) delete binding[from];
         for (const [from, to] of moves) {
-          if (to && binding[to] === undefined) binding[to] = values[from];
+          if (to && binding[to] !== undefined && binding[to] !== values[from]) {
+            binding[from] = values[from];
+            conflicts.push(
+              `screen ${String(screen.id)} section ${String(section.id)}: the ${String(use.kind)} ${String(use.id)} binding has ${from} "${values[from]}" and ${to} "${binding[to]}", and "${values[from]}" is now a ${to}. ` +
+              `Fix: remove ${from} or ${to} from this binding, then run migrate again.`
+            );
+            continue;
+          }
+          if (to) binding[to] = values[from];
+          count += 1;
         }
-        count += moves.length;
       }
     }
   }
-  return count;
+  return { count, conflicts };
 }

@@ -52,7 +52,7 @@ export function lintColorContrast(bundle: BlueprintProjectBundle<PrototypeAsset>
 
 export function contrastMessage(issue: ContrastIssue): string {
   const use = issue.minimum === 3 ? 'a focus indicator' : 'text';
-  return `${issue.foreground.styleRef} (${issue.foreground.value}) on ${issue.background.styleRef} (${issue.background.value}) has contrast ${issue.ratio}:1; ${use} needs at least ${issue.minimum}:1.`;
+  return `${issue.foreground.styleRef} (${issue.foreground.value}) on ${issue.background.styleRef} (${issue.background.value}) has contrast ${issue.ratio}:1; ${use} needs at least ${issue.minimum}:1. Fix: change the value of ${issue.foreground.styleRef} or ${issue.background.styleRef} in tokens.json until the pair reaches ${issue.minimum}:1.`;
 }
 
 export function contrastRatio(a: [number, number, number], b: [number, number, number]): number {

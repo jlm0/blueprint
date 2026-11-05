@@ -10,11 +10,13 @@ const TYPE_WORDS: Readonly<Record<string, string>> = {
   string: 'a JSON string'
 };
 
-function pathLabel(path: ReadonlyArray<PropertyKey>): string {
+const PROJECT_SCHEMA = 'schema/blueprint-project.schema.json';
+
+function pathLabel(path: ReadonlyArray<PropertyKey>, root = 'the file'): string {
   return path.reduce<string>((label, key) => {
     if (typeof key === 'number') return `${label}[${key}]`;
     return label ? `${label}.${String(key)}` : String(key);
-  }, '') || 'the file';
+  }, '') || root;
 }
 
 function valueAt(raw: unknown, path: ReadonlyArray<PropertyKey>): unknown {
@@ -36,7 +38,7 @@ function notAllowedValue(value: unknown, label: string, allowed: readonly unknow
   };
 }
 
-function describeIssue(issue: z.core.$ZodIssue, label: string, raw: unknown): { problem: string; fix: string } {
+function describeIssue(issue: z.core.$ZodIssue, label: string, raw: unknown, schema = PROJECT_SCHEMA): { problem: string; fix: string } {
   switch (issue.code) {
     case 'invalid_type': {
       const word = TYPE_WORDS[issue.expected] ?? `a JSON ${issue.expected}`;
@@ -69,14 +71,19 @@ function describeIssue(issue: z.core.$ZodIssue, label: string, raw: unknown): { 
       };
     case 'invalid_union':
       if ('options' in issue && issue.options) return notAllowedValue(valueAt(raw, issue.path), label, issue.options);
-      return { problem: 'does not match an allowed shape', fix: `write ${label} in a shape that schema/blueprint-project.schema.json allows` };
+      return { problem: 'does not match an allowed shape', fix: `write ${label} in a shape that ${schema} allows` };
     case 'invalid_key':
-      return { problem: 'is a key that is not allowed', fix: `rename ${label}` };
+      return { problem: 'is a key that is not allowed', fix: `rename ${label} to a key that ${schema} allows` };
     case 'invalid_element':
-      return { problem: 'has a value that is not allowed', fix: `correct the value in ${label}` };
+      return { problem: 'has a value that is not allowed', fix: `replace the value in ${label} with one that ${schema} allows` };
     case 'custom':
-      return { problem: issue.message, fix: String(issue.params?.fix ?? `correct ${label}`) };
+      return { problem: issue.message, fix: String(issue.params?.fix ?? `write ${label} in a shape that ${schema} allows`) };
   }
+}
+
+/** Writes the change that repairs one zod issue in the arguments of an MCP tool. */
+export function toolArgumentFix(tool: string, issue: z.core.$ZodIssue, args: unknown): string {
+  return describeIssue(issue, pathLabel(issue.path, `the arguments of tool ${tool}`), args, `the inputSchema of tool ${tool}`).fix;
 }
 
 /** Writes one zod issue as an agent error, so that no raw zod text reaches an agent. */
@@ -86,17 +93,26 @@ export function agentErrorForIssue(file: string, issue: z.core.$ZodIssue, raw: u
   return `${file}: ${label} ${problem}. Fix: ${fix}.`;
 }
 
+function reusableFieldsReaderNeeds(list: string): string[] {
+  return ['uses', 'variants', 'sizes', 'slots[].accepts', 'tokenGroupIds', 'tokenRoles', 'styleRefs'].map(field => `${list}[].${field}`);
+}
+
 /** Required fields that a reader uses without a check, so a missing one refuses the file; validate reports each other missing field with its own message. */
 const REQUIRED_TO_READ: Readonly<Record<string, ReadonlySet<string>>> = {
-  'manifest.json': new Set(['project', 'boards']),
+  'manifest.json': new Set(['project', 'project.id', 'boards']),
+  'brand.json': new Set(['marks', 'marks[].variants', 'marks[].variants[].foreground']),
   'tokens.json': new Set(['tokenGroups', 'tokenGroups[].tokens', 'tokenGroups[].tokens[].value']),
-  'primitives.json': new Set(['primitives', 'primitives[].prototype', 'primitives[].prototype.source', 'primitives[].prototype.styles']),
-  'components.json': new Set(['components', 'components[].prototype', 'components[].prototype.source', 'components[].prototype.styles']),
+  'primitives.json': new Set(['primitives', 'primitives[].prototype', 'primitives[].prototype.source', 'primitives[].prototype.styles', ...reusableFieldsReaderNeeds('primitives')]),
+  'components.json': new Set(['components', 'components[].prototype', 'components[].prototype.source', 'components[].prototype.styles', ...reusableFieldsReaderNeeds('components')]),
   'screens.json': new Set([
     'screens',
     'screens[].name',
+    'screens[].styleRefs',
+    'screens[].notes',
+    'screens[].implementationHints',
     'screens[].sections',
     'screens[].sections[].uses',
+    'screens[].sections[].styleRefs',
     'screens[].prototype',
     'screens[].prototype.source',
     'screens[].prototype.styles',
@@ -105,6 +121,7 @@ const REQUIRED_TO_READ: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
   explorations: new Set([
     'exploration',
+    'exploration.id',
     'exploration.target',
     'exploration.target.baseline',
     'exploration.target.baseline.prototype',
@@ -117,7 +134,7 @@ const REQUIRED_TO_READ: Readonly<Record<string, ReadonlySet<string>>> = {
     'exploration.candidates[].prototype.styles',
     'exploration.candidates[].prototype.assetRefs'
   ]),
-  history: new Set(['entry', 'entry.screen', 'entry.screen.prototype.source', 'entry.screen.prototype.styles'])
+  history: new Set(['entry', 'entry.screenId', 'entry.version', 'entry.screen', 'entry.screen.prototype.source', 'entry.screen.prototype.styles'])
 };
 
 function isRequiredToRead(file: string, path: ReadonlyArray<PropertyKey>): boolean {
@@ -133,9 +150,15 @@ function refusesLoad(file: string, issue: z.core.$ZodIssue, raw: unknown): boole
   return !(issue.expected === 'int' && typeof value === 'number');
 }
 
+function isMissingAt(issue: z.core.$ZodIssue, raw: unknown, paths: ReadonlySet<string>): boolean {
+  return issue.code === 'invalid_type' && valueAt(raw, issue.path) === undefined && paths.has(pathLabel(issue.path).replace(/\[\d+\]/g, '[]'));
+}
+
 /** Checks a structured file and leaves it as it is, because compiled output depends on its key order and on fields a schema does not name. */
-export function structuredFileErrors(file: string, schema: z.ZodType, raw: unknown): string[] {
+export function structuredFileErrors(file: string, schema: z.ZodType, raw: unknown, alsoRequired: ReadonlySet<string> = new Set()): string[] {
   const result = schema.safeParse(raw);
   if (result.success) return [];
-  return result.error.issues.filter(issue => refusesLoad(file, issue, raw)).map(issue => agentErrorForIssue(file, issue, raw));
+  return result.error.issues
+    .filter(issue => refusesLoad(file, issue, raw) || isMissingAt(issue, raw, alsoRequired))
+    .map(issue => agentErrorForIssue(file, issue, raw));
 }

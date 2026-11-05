@@ -45,15 +45,15 @@ describe('Blueprint schema contract', () => {
     delete (screen as Partial<ScreenDefinition>).prototype;
 
     const errors = validateProject(bundle).errors;
-    assert.ok(errors.includes('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none".'), errors.join('\n'));
+    assert.ok(errors.includes('manifest.prototypeHost must declare assetRoots, network "deny", and scripts "none". Fix: set prototypeHost in manifest.json to { "assetRoots": ["prototype/assets"], "network": "deny", "scripts": "none" }.'), errors.join('\n'));
     assert.ok(errors.includes('primitive.button.prototype must be { "source", "styles", "localValueExceptions" }. Fix: point "source" at its HTML and "styles" at its CSS.'), errors.join('\n'));
-    assert.ok(errors.includes('screen.workspace.prototype must declare a browser-native HTML/CSS source.'), errors.join('\n'));
+    assert.ok(errors.includes('screen.workspace.prototype must declare a browser-native HTML/CSS source. Fix: add prototype with source, styles, states, assetRefs, and reviewConditions to this screen in screens.json.'), errors.join('\n'));
 
     const permissive = structuredClone(await loadProjectFromFs(miraRoot));
     Object.assign(permissive.manifest.prototypeHost, { network: 'allow', scripts: 'inline' });
     const hostErrors = validateProject(permissive).errors;
-    assert.ok(hostErrors.includes('manifest.prototypeHost.network must be "deny".'), hostErrors.join('\n'));
-    assert.ok(hostErrors.includes('manifest.prototypeHost.scripts must be "none".'), hostErrors.join('\n'));
+    assert.ok(hostErrors.includes('manifest.prototypeHost.network must be "deny". Fix: set prototypeHost.network in manifest.json to "deny".'), hostErrors.join('\n'));
+    assert.ok(hostErrors.includes('manifest.prototypeHost.scripts must be "none". Fix: set prototypeHost.scripts in manifest.json to "none".'), hostErrors.join('\n'));
   });
 
   it('represents tokens, primitives, screens, sections, notes, style refs, and hints as structured files', async () => {

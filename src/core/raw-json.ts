@@ -28,7 +28,11 @@ export function serializeJson(value: unknown): string {
 export function parseJsonFile(files: ReadonlyMap<string, string>, file: string): RawObject {
   const text = files.get(file);
   if (text === undefined) {
-    throw new Error(`${file} is missing, so migrate cannot read the project.`);
+    throw new Error(`${file} is missing, so migrate cannot read the project. Fix: restore ${file} from git, or pass the directory of a complete project.`);
   }
-  return asObject(JSON.parse(text));
+  try {
+    return asObject(JSON.parse(text));
+  } catch (error) {
+    throw new Error(`${(error as Error).message}. Fix: make ${file} valid JSON at the position that this message names.`);
+  }
 }

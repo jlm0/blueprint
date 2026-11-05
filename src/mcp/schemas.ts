@@ -1,8 +1,24 @@
 import * as z from 'zod/v4';
+import { toolArgumentFix } from '../core/schemas/issues';
 
 const nonEmptyString = z.string().min(1);
 const projectPathSchema = nonEmptyString.describe('Path to one app-owned design/blueprint project. Relative paths resolve from the MCP server process working directory.');
 const outputPathSchema = nonEmptyString.describe('Optional file path that receives the full structured JSON. The tool then returns only a summary with counts. Existing files are overwritten.');
+
+/** The MCP SDK prints each input issue message as it stands, so the Fix line has to be on that message. */
+export function withArgumentFixes<S extends z.ZodType>(tool: string, schema: S): S {
+  const standard = schema['~standard'];
+  const validate = async (args: unknown) => {
+    const result = await standard.validate(args);
+    if (!result.issues) return result;
+    return {
+      issues: result.issues.map(issue => (issue.message.includes('Fix:')
+        ? issue
+        : { ...issue, message: `${issue.message}. Fix: ${toolArgumentFix(tool, issue as z.core.$ZodIssue, args)}.` }))
+    };
+  };
+  return Object.create(schema, { '~standard': { value: { ...standard, validate } } }) as S;
+}
 
 export const boundaryKindSchema = z.enum([
   'project',
@@ -160,7 +176,7 @@ export const serveInputSchema = z
     )
   })
   .strict()
-  .refine(input => !(input.explorationId && input.focus), { message: 'Pass either explorationId or focus, not both.' });
+  .refine(input => !(input.explorationId && input.focus), { message: 'Pass either explorationId or focus, not both. Fix: remove explorationId or remove focus from this call.' });
 
 export const selectionInputSchema = z
   .object({

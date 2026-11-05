@@ -422,8 +422,8 @@ export function primitivesOutsideSet(primitiveIds: string[]): string[] {
   return primitiveIds.filter(id => !BASE_PRIMITIVES_BY_ID.has(id));
 }
 
-export function primitiveOutsideSetMessage(id: string): string {
-  return `primitive "${id}" is not in the Blueprint primitive set; rebuild it as a component from primitives.`;
+export function primitiveOutsideSetMessage(id: string, reason?: string): string {
+  return `primitive "${id}" is not in the Blueprint primitive set; rebuild it as a component from primitives.${reason ? ` ${reason}` : ''} Fix: move "${id}" from primitives.json to components.json, and build it from base primitives.`;
 }
 
 /** Shared wording for locked-base-set validation errors. */

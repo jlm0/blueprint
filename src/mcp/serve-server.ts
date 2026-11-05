@@ -116,11 +116,11 @@ export async function startServeServer(
   const siteRoot = path.join(packageRoot, 'dist', 'site');
   const indexPath = path.join(siteRoot, 'index.html');
   if (!existsSync(indexPath)) {
-    throw new Error('Blueprint serve requires built site assets at dist/site. Run `npm run build` first.');
+    throw new Error('Blueprint serve requires built site assets at dist/site. Run `npm run build` first. Fix: run npm run build in the Blueprint package directory, then call serve again.');
   }
   const indexHtml = await readFile(indexPath, 'utf8');
   if (!indexHtml.includes('<script type="module"')) {
-    throw new Error('Blueprint serve could not find the built module script in dist/site/index.html. Re-run `npm run build` and try again.');
+    throw new Error('Blueprint serve could not find the built module script in dist/site/index.html. Re-run `npm run build` and try again. Fix: run npm run build in the Blueprint package directory, then call serve again.');
   }
 
   const activityHub = new BlueprintActivityHub();
@@ -357,7 +357,7 @@ async function sendPrototypeReview({ state, request, response, requestUrl }: Ser
   try {
     const snapshot = await state.snapshots.settled();
     if (!snapshot.bundle || snapshot.error !== undefined) {
-      throw new Error(snapshot.error ?? 'Blueprint project is unavailable.');
+      throw new Error(snapshot.error ?? 'Blueprint project is unavailable. Fix: call validate on this project, then apply the Fix line of each error.');
     }
     const selection = resolvePrototypeReviewSelection(snapshot.bundle, reviewRequest);
     const compiled = compilePrototypeReview(snapshot.bundle, selection);
@@ -384,7 +384,7 @@ async function sendInspoImage({ state, request, response, pathname }: ServeExcha
     const imageRoot = await realpath(path.join(state.projectRoot, INSPO_IMAGE_DIRECTORY));
     const target = await realpath(path.join(imageRoot, fileName));
     if (path.dirname(target) !== imageRoot) {
-      throw new Error('Inspo image resolves outside the inspo directory.');
+      throw new Error('Inspo image resolves outside the inspo directory. Fix: replace the symbolic link in the inspo image directory with the image file.');
     }
     const body = await readFile(target);
     response.writeHead(200, createBlueprintResponseHeaders({ contentType: contentType(fileName) }));
@@ -502,7 +502,7 @@ async function readJsonRequest(request: IncomingMessage, maximumBytes = 256 * 10
   for await (const chunk of request) {
     body += chunk;
     if (Buffer.byteLength(body) > maximumBytes) {
-      throw new Error(`Blueprint activity request exceeded ${maximumBytes} bytes.`);
+      throw new Error(`Blueprint activity request exceeded ${maximumBytes} bytes. Fix: send a request of ${maximumBytes} bytes or fewer.`);
     }
   }
   return JSON.parse(body);
@@ -537,7 +537,7 @@ function listen(server: HttpServer, port = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     const onError = (error: NodeJS.ErrnoException): void => {
       if (error.code === 'EADDRINUSE') {
-        reject(new Error(`EADDRINUSE: port ${port} is already in use for the Blueprint review server.`));
+        reject(new Error(`EADDRINUSE: port ${port} is already in use for the Blueprint review server. Fix: pass another port, or omit port so that Blueprint selects a free port.`));
         return;
       }
       reject(error);
@@ -563,7 +563,7 @@ async function listenForBlueprintServe(server: HttpServer, requestedPort?: numbe
       if (!(error instanceof Error) || !error.message.includes('EADDRINUSE')) throw error;
     }
   }
-  throw new Error('Blueprint could not find an available review port between 4173 and 4273.');
+  throw new Error('Blueprint could not find an available review port between 4173 and 4273. Fix: stop a server on one of these ports, or pass a free port above 4273.');
 }
 
 function closeHttpServer(server: HttpServer): Promise<void> {

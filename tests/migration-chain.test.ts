@@ -139,7 +139,17 @@ describe('migration chain', () => {
   }
 });
 
+function holdsVersionLiteral(source: string, version: string): boolean {
+  return ["'", '"', '`'].some(quote => source.includes(`${quote}${version}${quote}`));
+}
+
 describe('one schema version', () => {
+  it('finds a version literal in each quote form', () => {
+    for (const source of ["const a = '2.0.0';", 'const a = "2.0.0";', 'const a = `2.0.0`;']) assert.equal(holdsVersionLiteral(source, '2.0.0'), true, source);
+    assert.equal(holdsVersionLiteral('const a = "12.0.0";', '2.0.0'), false);
+  });
+
+
   it('holds in every schemaVersion constant of the JSON schema', () => {
     const constants = schemaVersionConstants(JSON.parse(readFileSync('schema/blueprint-project.schema.json', 'utf8')));
     assert.ok(constants.length > 0);
@@ -180,7 +190,7 @@ describe('one schema version', () => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
         const full = path.join(directory, entry.name);
         if (entry.isDirectory()) walk(full);
-        else if (entry.name.endsWith('.ts') && readFileSync(full, 'utf8').includes(`'${BLUEPRINT_SCHEMA_VERSION}'`)) repeats.push(full);
+        else if (entry.name.endsWith('.ts') && holdsVersionLiteral(readFileSync(full, 'utf8'), BLUEPRINT_SCHEMA_VERSION)) repeats.push(full);
       }
     };
     walk('src');

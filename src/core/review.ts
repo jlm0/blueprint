@@ -122,7 +122,7 @@ export interface CanvasStyleEvidenceArtifact {
 export function summarizeScreenSections(bundle: BlueprintProjectBundle<PrototypeAsset>, screenId: string): SectionProjectionSummary[] {
   const screen = bundle.screens.screens.find(candidate => candidate.id === screenId);
   if (!screen) {
-    throw new Error(`Unknown screen "${screenId}".`);
+    throw new Error(`Unknown screen "${screenId}". Fix: pass one of these screen ids: ${bundle.screens.screens.map(candidate => candidate.id).join(', ')}.`);
   }
 
   const projectId = bundle.manifest.project.id;
@@ -142,11 +142,11 @@ export function validateVisibleBoundaryRecords(
   for (const record of records) {
     const ref = references.get(record.id);
     if (!ref) {
-      errors.push(`Visible boundary "${record.id}" does not exist in structured data.`);
+      errors.push(`Visible boundary "${record.id}" does not exist in structured data. Fix: add boundary "${record.id}" to the structured data, or remove the element that renders it.`);
       continue;
     }
     if (ref.kind !== record.kind) {
-      errors.push(`Visible boundary "${record.id}" declares kind "${record.kind}" but structured data has "${ref.kind}".`);
+      errors.push(`Visible boundary "${record.id}" declares kind "${record.kind}" but structured data has "${ref.kind}". Fix: set the kind of this boundary record to "${ref.kind}".`);
     }
   }
 
@@ -242,7 +242,7 @@ function createCaptureRecord(options: ReviewManifestOptions): ReviewCaptureRecor
 
   if (options.captureStatus === 'unresolved') {
     if (!options.captureReason?.trim()) {
-      throw new Error('Review manifests with unresolved capture status require a capture reason.');
+      throw new Error('Review manifests with unresolved capture status require a capture reason. Fix: pass captureReason with the reason, or set captureStatus to "captured".');
     }
     return {
       status: 'unresolved',

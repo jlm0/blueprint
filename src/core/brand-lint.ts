@@ -31,12 +31,12 @@ export function brandMarkSourceIssues(svg: string): string[] {
   const issues = [
     ...UNSAFE_ELEMENTS.filter(([names]) => names.some(name => elements.has(name))),
     ...UNSAFE_PATTERNS.filter(([pattern]) => pattern.test(svg))
-  ].map(([, issue]) => `${issue}; brand marks must be self-contained drawings.`);
+  ].map(([, issue]) => `${issue}; brand marks must be self-contained drawings. Fix: remove that content from the SVG file, and draw the mark with paths.`);
   if (!listOpenTags(svg).some(tag => tag.name === 'svg' && attributeWithValue(tag, 'viewbox'))) {
-    issues.unshift('must be an <svg> with a viewBox so it scales.');
+    issues.unshift('must be an <svg> with a viewBox so it scales. Fix: make <svg> the root element of this file, and add a viewBox attribute to it.');
   }
   if (/NaN|Infinity/.test(svg)) {
-    issues.push('contains a NaN or Infinity coordinate, which stops the drawing partway.');
+    issues.push('contains a NaN or Infinity coordinate, which stops the drawing partway. Fix: replace each NaN or Infinity in this file with a number.');
   }
   return issues;
 }
@@ -45,10 +45,10 @@ export function brandMarkSourceIssues(svg: string): string[] {
 export function brandMarkHandoffIssues(svg: string): string[] {
   const issues: string[] = [];
   if (LITERAL_COLOR.test(svg)) {
-    issues.push('draws with a literal color; use currentColor or var(--brand-accent) so each variant can recolor it.');
+    issues.push('draws with a literal color; use currentColor or var(--brand-accent) so each variant can recolor it. Fix: replace each literal color in this file with currentColor or var(--brand-accent).');
   }
   if (listOpenTags(svg).some(tag => tag.name === 'text')) {
-    issues.push('sets live text; outline the lettering to paths so it never depends on an installed font.');
+    issues.push('sets live text; outline the lettering to paths so it never depends on an installed font. Fix: convert each <text> element in this file to paths.');
   }
   return issues;
 }

@@ -194,13 +194,9 @@ function fillDefaults(item: RawObject, defaults: Record<string, () => unknown>, 
 
 /** Copies an object with its known fields in contract order, followed by any unknown fields for validation to report. */
 function ordered(item: RawObject, order: readonly string[], tally: ShapeTally): RawObject {
-  const result: RawObject = {};
-  for (const field of order) {
-    if (field in item) result[field] = item[field];
-  }
-  for (const [field, value] of Object.entries(item)) {
-    if (!(field in result)) result[field] = value;
-  }
+  const known = order.filter(field => Object.hasOwn(item, field));
+  const keys = [...known, ...Object.keys(item).filter(field => !known.includes(field))];
+  const result: RawObject = Object.fromEntries(keys.map(field => [field, item[field]]));
   if (Object.keys(result).join('\u0000') !== Object.keys(item).join('\u0000')) tally.reordered += 1;
   return result;
 }

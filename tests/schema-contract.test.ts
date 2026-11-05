@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import * as z from 'zod/v4';
 import { collectDesignFindings } from '../src/core/findings';
+import { compilePrototypeDocument } from '../src/prototype/compiler';
 import {
   INSPO_DIRECTION_FIELDS,
   INSPO_ENTRY_FIELDS,
@@ -16,7 +17,7 @@ import {
 import { loadProjectFromFs } from '../src/core/load';
 import { emptyRequiredFields } from '../src/core/migrate-shapes';
 import { collectProseAdvisories } from '../src/core/prose-advisories';
-import { listBoundaryReferences } from '../src/core/query';
+import { createExtractionPacket, listBoundaryReferences, queryPrototypeOnly, querySections, queryUsedBy, queryUses, showBoundary } from '../src/core/query';
 import { serializeJson } from '../src/core/raw-json';
 import {
   COMPONENT_FILE_FIELDS,
@@ -309,7 +310,7 @@ describe('zod issues as agent errors', () => {
     ['invalid_value', { kind: 'c' }, /^f\.json: kind is "c", which is not an allowed value\. Fix: set kind to one of "a", "b"\.$/],
     ['invalid_value', { fixed: 'y' }, /^f\.json: fixed is "y", which is not an allowed value\. Fix: set fixed to "x"\.$/],
     ['invalid_union', { choice: { type: 'c' } }, /^f\.json: choice\.type is "c", which is not an allowed value\. Fix: set choice\.type to one of "a", "b"\.$/],
-    ['invalid_key', { keyed: { b: 'x' } }, /^f\.json: keyed\.b is a key that is not allowed\. Fix: rename keyed\.b\.$/],
+    ['invalid_key', { keyed: { b: 'x' } }, /^f\.json: keyed\.b is a key that is not allowed\. Fix: rename keyed\.b to a key that schema\/blueprint-project\.schema\.json allows\.$/],
     ['custom', { unique: ['a', 'a'] }, /^f\.json: unique lists a value twice\. Fix: list each value once\.$/],
     ['unrecognized_keys', { stray: 1 }, /^f\.json: the file has the unknown field "stray"\. Fix: remove it from the file\.$/]
   ];
@@ -326,7 +327,7 @@ describe('zod issues as agent errors', () => {
     const input = new Map([[{}, 1]]);
     const issues = z.map(z.object({}), z.string()).safeParse(input).error?.issues ?? [];
     assert.equal(issues[0]?.code, 'invalid_element');
-    assert.equal(agentErrorForIssue('f.json', issues[0]!, input), 'f.json: the file has a value that is not allowed. Fix: correct the value in the file.');
+    assert.equal(agentErrorForIssue('f.json', issues[0]!, input), 'f.json: the file has a value that is not allowed. Fix: replace the value in the file with one that schema/blueprint-project.schema.json allows.');
   });
 
   it('writes a plain union in the agent form', () => {
@@ -340,6 +341,60 @@ describe('zod issues as agent errors', () => {
     assert.equal(agentErrorForIssue('f.json', issues[0]!, []), 'f.json: the file must be a JSON object. Fix: write the file as a JSON object.');
   });
 });
+
+async function readerCrashes(copy: string, files: readonly string[]): Promise<string[]> {
+  const crashes: string[] = [];
+  for (const file of files) {
+    const original = await readFile(path.join(copy, file), 'utf8');
+    const parsed = JSON.parse(original) as unknown;
+    const seen = new Set<string>();
+    for (const fieldPath of removablePaths(parsed)) {
+      const label = fieldPath.join('.');
+      if (label === 'schemaVersion' || seen.has(label)) continue;
+      seen.add(label);
+      await writeFile(path.join(copy, file), JSON.stringify(withoutField(parsed, fieldPath)));
+      const attempt = (run: () => unknown): void => {
+        try {
+          run();
+        } catch (error) {
+          if (error instanceof TypeError) crashes.push(`${file} ${label}: ${error.message}. Fix: add the field to REQUIRED_TO_READ in src/core/schemas/issues.ts, or check it in the reader.`);
+        }
+      };
+      let bundle: Awaited<ReturnType<typeof loadProjectFromFs>> | undefined;
+      try {
+        bundle = await loadProjectFromFs(copy);
+      } catch (error) {
+        if (error instanceof TypeError) crashes.push(`${file} ${label}: ${error.message}. Fix: add the field to REQUIRED_TO_READ in src/core/schemas/issues.ts, or check it in the reader.`);
+      }
+      if (bundle) {
+        const loaded = bundle;
+        attempt(() => validateProject(loaded));
+        attempt(() => validateProject(loaded, { mode: 'strict' }));
+        attempt(() => validateProjectReadiness(loaded));
+        attempt(() => listBoundaryReferences(loaded));
+        attempt(() => collectDesignFindings(loaded));
+        attempt(() => collectProseAdvisories(loaded));
+        attempt(() => queryPrototypeOnly(loaded));
+        const targets = [
+          ...loaded.screens.screens.map(screen => ({ kind: 'screen' as const, id: screen.id })),
+          ...loaded.primitives.primitives.map(primitive => ({ kind: 'primitive' as const, id: primitive.id })),
+          ...loaded.components.components.map(component => ({ kind: 'component' as const, id: component.id }))
+        ].filter(target => typeof target.id === 'string');
+        for (const target of targets) {
+          const selector = `${target.kind}:${target.id}`;
+          attempt(() => showBoundary(loaded, selector));
+          attempt(() => queryUses(loaded, selector));
+          attempt(() => queryUsedBy(loaded, selector));
+          attempt(() => compilePrototypeDocument({ bundle: loaded, target }));
+          attempt(() => createExtractionPacket(loaded, selector, { mode: 'deep' }));
+          if (target.kind === 'screen') attempt(() => querySections(loaded, target.id));
+        }
+      }
+    }
+    await writeFile(path.join(copy, file), original);
+  }
+  return [...new Set(crashes)];
+}
 
 describe('structured files at load', () => {
   const wrongShapes: Array<{ file: () => Promise<string> | string; path: string; word: string; edit: (value: any) => void }> = [
@@ -508,31 +563,13 @@ describe('structured files at load', () => {
         await firstRecord(copy, 'explorations'),
         await firstRecord(copy, 'history')
       ];
-      const crashes: string[] = [];
-      for (const file of files) {
-        const original = await readFile(path.join(copy, file), 'utf8');
-        const parsed = JSON.parse(original) as unknown;
-        const seen = new Set<string>();
-        for (const fieldPath of removablePaths(parsed)) {
-          const label = fieldPath.join('.');
-          if (label === 'schemaVersion' || seen.has(label)) continue;
-          seen.add(label);
-          await writeFile(path.join(copy, file), JSON.stringify(withoutField(parsed, fieldPath)));
-          try {
-            const bundle = await loadProjectFromFs(copy);
-            validateProject(bundle);
-            validateProject(bundle, { mode: 'strict' });
-            validateProjectReadiness(bundle);
-            listBoundaryReferences(bundle);
-            collectDesignFindings(bundle);
-            collectProseAdvisories(bundle);
-          } catch (error) {
-            if (error instanceof TypeError) crashes.push(`${file} ${label}: ${error.message}. Fix: add the field to REQUIRED_TO_READ in src/core/schemas/issues.ts, or check it in the reader.`);
-          }
-        }
-        await writeFile(path.join(copy, file), original);
-      }
-      assert.deepEqual(crashes, []);
+      assert.deepEqual(await readerCrashes(copy, files), []);
+    });
+  });
+
+  it('keeps each reader free of a TypeError when a boundary that a screen uses lacks one field', async () => {
+    await withCopy('fixtures/valid/mira-ai/design/blueprint', async copy => {
+      assert.deepEqual(await readerCrashes(copy, ['screens.json', 'components.json', 'primitives.json']), []);
     });
   });
 });

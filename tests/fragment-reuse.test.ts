@@ -29,7 +29,7 @@ function boundary(id: string): string {
 }
 
 function cycleMessage(...ids: string[]): string {
-  return `Prototype composition cycle detected: ${ids.map(boundary).join(' -> ')}.`;
+  return `Prototype composition cycle detected: ${ids.map(boundary).join(' -> ')}. Fix: remove one <blueprint-use> in this chain, so that no boundary renders itself.`;
 }
 
 function addComponents(bundle: BlueprintProjectBundle, pieces: Piece[]): void {

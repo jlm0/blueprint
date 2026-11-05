@@ -53,7 +53,7 @@ describe('listUsePlacements', () => {
     assert.equal(placement.kind, '');
     assert.equal(placement.ref, '');
     assert.throws(() => listUsePlacements('<blueprint-use kind="a">'), /unclosed <blueprint-use> element/);
-    assert.throws(() => listUsePlacements('<blueprint-use kind=a></blueprint-use>'), /^Error: markup contains a malformed or unquoted <blueprint-use> attribute\.$/);
+    assert.throws(() => listUsePlacements('<blueprint-use kind=a></blueprint-use>'), /^Error: markup contains a malformed or unquoted <blueprint-use> attribute\. Fix: write each attribute of this <blueprint-use> as name="value"\.$/);
   });
 });
 
@@ -162,7 +162,7 @@ describe('slotContentAccepts', () => {
       slotContentAccepts('Go <svg></svg><blueprint-use kind="primitive" ref="text"></blueprint-use><blueprint-use kind="component" ref="chip"></blueprint-use><blueprint-use kind="component" ref="chip"></blueprint-use>'),
       ['component:chip', 'graphic', 'primitive:text', 'text']
     );
-    assert.throws(() => slotContentAccepts('<blueprint-use kind=a></blueprint-use>'), /^Error: slot content contains a malformed or unquoted <blueprint-use> attribute\.$/);
+    assert.throws(() => slotContentAccepts('<blueprint-use kind=a></blueprint-use>'), /^Error: slot content contains a malformed or unquoted <blueprint-use> attribute\. Fix: write each attribute of this <blueprint-use> as name="value"\.$/);
   });
 });
 
@@ -184,13 +184,13 @@ describe('parseUseAttributes', () => {
     assert.deepEqual(Object.fromEntries(attributes), { kind: 'primitive', ref: 'Text', class: 'a b' });
     assert.equal(parseUseAttributes('', 'test').size, 0);
 
-    const malformed = /^Error: demo\/screen contains a malformed or unquoted <blueprint-use> attribute\.$/;
+    const malformed = /^Error: demo\/screen contains a malformed or unquoted <blueprint-use> attribute\. Fix: write each attribute of this <blueprint-use> as name="value"\.$/;
     assert.throws(() => parseUseAttributes('kind=primitive', 'demo/screen'), malformed);
     assert.throws(() => parseUseAttributes('hidden kind="a"', 'demo/screen'), malformed);
     assert.throws(() => parseUseAttributes('kind="a" trailing', 'demo/screen'), malformed);
     assert.throws(
       () => parseUseAttributes('kind="a" KIND="b"', 'demo/screen'),
-      /^Error: demo\/screen contains duplicate <blueprint-use> attribute "kind"\.$/
+      /^Error: demo\/screen contains duplicate <blueprint-use> attribute "kind"\. Fix: keep one "kind" attribute on this <blueprint-use>\.$/
     );
   });
 });
@@ -219,8 +219,8 @@ describe('findFirstUseElement', () => {
     assert.equal(quoted.attributes, ' title="a > b" kind="x"');
     assert.equal(quoted.children, 'Body');
 
-    assert.throws(() => findFirstUseElement('<blueprint-use kind="a"><p></p>'), /^Error: Prototype source contains an unclosed <blueprint-use> element\.$/);
-    assert.throws(() => findFirstUseElement('<blueprint-use kind="a"'), /^Error: Prototype source contains an unclosed HTML tag\.$/);
+    assert.throws(() => findFirstUseElement('<blueprint-use kind="a"><p></p>'), /^Error: Prototype source contains an unclosed <blueprint-use> element\. Fix: add the matching <\/blueprint-use> tag\.$/);
+    assert.throws(() => findFirstUseElement('<blueprint-use kind="a"'), /^Error: Prototype source contains an unclosed HTML tag\. Fix: close the cut-off tag with ">", or remove it\.$/);
   });
 });
 
@@ -306,7 +306,7 @@ describe('markup helpers', () => {
     assert.equal(findElementEnd('<div>open', 'div', 0, 4), 5);
 
     assert.equal(findTagEnd('<a title="x>y" b=\'>\'>tail', 0), 20);
-    assert.throws(() => findTagEnd('<a title="x>y"', 0), /^Error: Prototype source contains an unclosed HTML tag\.$/);
+    assert.throws(() => findTagEnd('<a title="x>y"', 0), /^Error: Prototype source contains an unclosed HTML tag\. Fix: close the cut-off tag with ">", or remove it\.$/);
 
     const pattern = new RegExp(`^${escapeRegExp('a.b*c[d]')}$`);
     assert.equal(pattern.test('a.b*c[d]'), true);

@@ -17,6 +17,7 @@ import {
   type BlueprintServeHandle,
   artifactSummary
 } from './operations';
+import { withCrashFix } from './crash-text';
 import {
   captureInputSchema,
   captureOutputSchema,
@@ -44,6 +45,7 @@ import {
   indexToolOutputSchema,
   queryToolOutputSchema,
   extractToolOutputSchema,
+  withArgumentFixes,
   type ArtifactSummary
 } from './schemas';
 
@@ -82,7 +84,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Initialize Blueprint',
       description:
         'Create one app-owned Blueprint sidecar from the governed starter. Refuses a non-empty destination unless force is true; force overwrites colliding starter files but preserves unrelated files. Pass start "inspo" for a new product.',
-      inputSchema: initInputSchema,
+      inputSchema: withArgumentFixes('init', initInputSchema),
       outputSchema: initOutputSchema
     },
     async (input, context) => executeTool(() => initializeBlueprint(input, context.mcpReq.signal))
@@ -94,7 +96,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Edit Blueprint Inspo',
       description:
         'Edit the inspo board of one Blueprint sidecar. The board is the first step of a new product. add downloads the image link that the person pastes into inspo/, which git ignores, and saves the link with the note of the person. update changes aspects, stance, note, or reading. remove deletes an entry. sync downloads each missing image again. direction proposes or approves what the brand takes from the board for one aspect. A changed statement or entryIds returns the direction to proposed unless the call passes status, and a sidecar with brand.json needs an approved direction. Keep each note as the person wrote it. The tool refuses a sidecar that has brand.json and no inspo.json.',
-      inputSchema: inspoInputSchema,
+      inputSchema: withArgumentFixes('inspo', inspoInputSchema),
       outputSchema: inspoOutputSchema,
       annotations: {
         readOnlyHint: false,
@@ -112,7 +114,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Validate Blueprint',
       description:
         'Validate one Blueprint project in baseline, readiness, or strict mode. When out is provided, writes the full JSON to that path and returns only a summary with counts. A non-passing validation returns isError=true. In readiness mode ok true means no blockers, so read readiness.tier: pending and unresolved are not ready.',
-      inputSchema: validateInputSchema,
+      inputSchema: withArgumentFixes('validate', validateInputSchema),
       outputSchema: validateToolOutputSchema
     },
     async (input, context) =>
@@ -128,7 +130,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Migrate Blueprint',
       description:
         'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result; each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project already on the current schema is left unchanged. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
-      inputSchema: migrateInputSchema,
+      inputSchema: withArgumentFixes('migrate', migrateInputSchema),
       outputSchema: migrateToolOutputSchema
     },
     async (input, context) => executeTool(async () => summarizeWhenWritten('migrate', input, await migrateBlueprint(input, context.mcpReq.signal)))
@@ -140,7 +142,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Index Blueprint',
       description:
         'List every stable boundary reference in one Blueprint project. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
-      inputSchema: indexInputSchema,
+      inputSchema: withArgumentFixes('index', indexInputSchema),
       outputSchema: indexToolOutputSchema
     },
     async (input, context) => executeTool(async () => summarizeWhenWritten('index', input, await indexBlueprint(input, context.mcpReq.signal)))
@@ -152,7 +154,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Query Blueprint',
       description:
         'Run exactly one typed boundary, section, prototype-only, exploration, or canonical-history query against one Blueprint project. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
-      inputSchema: queryInputSchema,
+      inputSchema: withArgumentFixes('query', queryInputSchema),
       outputSchema: queryToolOutputSchema
     },
     async (input, context) => executeTool(async () => summarizeWhenWritten('query', input, await queryBlueprint(input, context.mcpReq.signal)))
@@ -164,7 +166,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Extract Blueprint Handoff',
       description:
         'Extract a focused boundary packet or deep transitive handoff packet from one Blueprint project. The focused packet equals query show. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
-      inputSchema: extractInputSchema,
+      inputSchema: withArgumentFixes('extract', extractInputSchema),
       outputSchema: extractToolOutputSchema
     },
     async (input, context) => executeTool(async () => summarizeWhenWritten('extract', input, await extractBlueprint(input, context.mcpReq.signal)))
@@ -176,7 +178,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Capture Blueprint Boundary',
       description:
         'Capture one screen in a named state and declared viewport, or one component or primitive in a named state cropped to its own box, as a deterministic PNG.',
-      inputSchema: captureInputSchema,
+      inputSchema: withArgumentFixes('capture', captureInputSchema),
       outputSchema: captureOutputSchema
     },
     async (input, context) => executeTool(() => captureBlueprint(input, context.mcpReq.signal))
@@ -188,7 +190,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Serve Blueprint Review',
       description:
         'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. Pass focus with a kind:id boundary to get a URL that opens that boundary\'s page, so the person lands on what changed. Omitted ports allocate from 4173; separate projects receive separate listeners. Independent MCP connections share the repository runtime; its owning connection closes it.',
-      inputSchema: serveInputSchema,
+      inputSchema: withArgumentFixes('serve', serveInputSchema),
       outputSchema: serveOutputSchema
     },
     async (input, context) =>
@@ -232,7 +234,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Read Blueprint Canvas Selection',
       description:
         'Return the boundary the person last selected in the served Blueprint canvas, with its enclosing boundaries, owning source files, and a kind:id reference. Resolve "this" or "the selected" in the person\'s feedback with this tool. Returns a null selection when nothing is selected.',
-      inputSchema: selectionInputSchema,
+      inputSchema: withArgumentFixes('selection', selectionInputSchema),
       outputSchema: selectionOutputSchema,
       annotations: {
         readOnlyHint: true,
@@ -250,7 +252,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Manage Blueprint Exploration',
       description:
         'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline.',
-      inputSchema: exploreInputSchema,
+      inputSchema: withArgumentFixes('explore', exploreInputSchema),
       outputSchema: exploreOutputSchema,
       annotations: {
         readOnlyHint: false,
@@ -268,7 +270,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Promote Blueprint Exploration Candidate',
       description:
         'Promote one explicitly selected exploration candidate into the next canonical screen version. Requires the inspected baseline, current-screen, and candidate digests and preserves both prior canonical history and the exploration.',
-      inputSchema: promoteInputSchema,
+      inputSchema: withArgumentFixes('promote', promoteInputSchema),
       outputSchema: promoteOutputSchema,
       annotations: {
         readOnlyHint: false,
@@ -286,7 +288,7 @@ export function createBlueprintMcpServer(): McpServer {
       title: 'Restore Blueprint Screen Version',
       description:
         'Restore one inspected canonical screen history version as the current screen while first preserving the outgoing current screen as the next immutable history version.',
-      inputSchema: restoreInputSchema,
+      inputSchema: withArgumentFixes('restore', restoreInputSchema),
       outputSchema: restoreOutputSchema,
       annotations: {
         readOnlyHint: false,
@@ -347,12 +349,34 @@ function toolResult<T extends Record<string, unknown>>(value: T, isError = false
   };
 }
 
+const NATIVE_ERROR_FIXES: Readonly<Record<string, (file: string) => string>> = {
+  EACCES: file => `grant this process access to ${file}, or pass a path that it can use`,
+  EEXIST: file => `pass a path that does not use ${file} as a directory`,
+  EISDIR: file => `pass the path of a file, not the directory ${file}`,
+  ELOOP: file => `remove the symbolic link that loops in ${file}`,
+  ENAMETOOLONG: file => `pass a path that is shorter than ${file}`,
+  ENOENT: file => `create ${file}, or pass a path that exists`,
+  ENOSPC: file => `free disk space on the volume that holds ${file}`,
+  ENOTDIR: file => `pass a path in which each parent of ${file} is a directory`,
+  EPERM: file => `grant this process access to ${file}, or pass a path that it can use`,
+  EROFS: file => `pass a path on a writable volume, not ${file}`
+};
+
+/** Node writes file system errors with no repair, and these reach an agent through an `out` or `project` path. */
+export function toolErrorText(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const { code, path, dest } = error as NodeJS.ErrnoException & { dest?: string };
+  const file = dest ?? path;
+  const fix = code && file ? NATIVE_ERROR_FIXES[code] : undefined;
+  return fix && file ? `${error.message}. Fix: ${fix(file)}.` : withCrashFix(error);
+}
+
 function toolError(error: unknown): CallToolResult {
   return {
     content: [
       {
         type: 'text',
-        text: error instanceof Error ? error.message : String(error)
+        text: toolErrorText(error)
       }
     ],
     isError: true

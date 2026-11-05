@@ -276,14 +276,14 @@ function reviewServerAssetSource(origin: string): string {
     parsed = undefined;
   }
   if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || parsed.origin !== origin) {
-    throw new Error(`Prototype asset origin "${origin}" must be an exact http or https origin, such as http://127.0.0.1:4173.`);
+    throw new Error(`Prototype asset origin "${origin}" must be an exact http or https origin, such as http://127.0.0.1:4173. Fix: pass an origin with no path, such as http://127.0.0.1:4173.`);
   }
   return `${origin}${PROTOTYPE_ASSET_PATH_PREFIX}`;
 }
 
 function linkedAssetUrl(assetSource: string, sha256: string): string {
   if (!SHA256_PATTERN.test(sha256)) {
-    throw new Error(`Prototype asset hash "${sha256}" must be 64 lowercase hex characters.`);
+    throw new Error(`Prototype asset hash "${sha256}" must be 64 lowercase hex characters. Fix: call the tool again, so that Blueprint reads the asset file and computes its hash.`);
   }
   return `${assetSource}${sha256}`;
 }
@@ -358,10 +358,11 @@ export function inspectPrototypeSourceGraph(bundle: CanvasProjectBundle): Protot
       compileDocument({ bundle, target: candidate.target, state: candidate.state }, session, { kind: 'tokens' });
     } catch (error) {
       const localBoundaryId = `${bundle.manifest.project.id}/${candidate.target.kind}/${candidate.target.id}`;
+      const message = error instanceof Error ? error.message : String(error);
       issues.push({
         boundaryId: localBoundaryId,
         state: candidate.state,
-        message: error instanceof Error ? error.message : String(error)
+        message: message.includes('Fix:') ? message : `${message}. Fix: correct each shape error that validate reports, then validate again.`
       });
     }
   }
@@ -413,7 +414,7 @@ export function selectPrototypeReviewCondition(
   request: PrototypeReviewSelectionRequest = {}
 ): SelectedPrototypeReviewCondition {
   if (!screen.prototype) {
-    throw new Error(`Screen "${screen.id}" has no browser-native prototype review conditions.`);
+    throw new Error(`Screen "${screen.id}" has no browser-native prototype review conditions. Fix: add prototype.reviewConditions to screen "${screen.id}" in screens.json.`);
   }
   const conditions = screen.prototype.reviewConditions;
   const requestedById = request.viewport
@@ -424,7 +425,7 @@ export function selectPrototypeReviewCondition(
   if (requestedById) {
     if (request.state && requestedById.state !== request.state) {
       throw new Error(
-        `Screen "${screen.id}" review condition "${requestedById.id}" uses state "${requestedById.state}", not "${request.state}".`
+        `Screen "${screen.id}" review condition "${requestedById.id}" uses state "${requestedById.state}", not "${request.state}". Fix: pass state "${requestedById.state}" with this viewport, or pass another viewport.`
       );
     }
     selected = requestedById;
@@ -444,7 +445,7 @@ export function selectPrototypeReviewCondition(
     const selection = [request.state ? `state="${request.state}"` : '', request.viewport ? `viewport="${request.viewport}"` : '']
       .filter(Boolean)
       .join(', ');
-    throw new Error(`Screen "${screen.id}" does not declare a review condition for ${selection || 'its default frame'}.`);
+    throw new Error(`Screen "${screen.id}" does not declare a review condition for ${selection || 'its default frame'}. Fix: ${conditions.length > 0 ? `pass a state and viewport from this list: ${conditions.map(condition => `${condition.state} at ${condition.framePresetId}`).join(', ')}. Or add` : 'add'} the pair to prototype.reviewConditions of this screen.`);
   }
   return {
     conditionId: selected.id,
@@ -456,7 +457,7 @@ export function selectPrototypeReviewCondition(
 function resolveTopLevelAxes(boundary: SourceBoundary, variant: string | undefined, size: string | undefined): ForwardedInvocationAttributes {
   if (!boundary.reusable) {
     if (variant || size) {
-      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a ${variant ? 'variant' : 'size'}; only primitives and components have them.`);
+      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive a ${variant ? 'variant' : 'size'}; only primitives and components have them. Fix: remove variant and size from this call.`);
     }
     return {};
   }
@@ -470,7 +471,7 @@ function declaredAxisValue(boundary: SourceBoundary, axis: 'variant' | 'size', v
   const declared = axisIds(axis === 'variant' ? boundary.reusable.variants : boundary.reusable.sizes);
   const match = declaredCopy(declared, value);
   if (match === undefined) {
-    throw new Error(`${boundary.kind} "${boundary.id}" does not declare ${axis} "${value}"; it declares ${declared.map(id => `"${id}"`).join(', ')}.`);
+    throw new Error(`${boundary.kind} "${boundary.id}" does not declare ${axis} "${value}"; ${declared.length > 0 ? `it declares ${declared.map(id => `"${id}"`).join(', ')}. Fix: pass one of those ids, or add` : 'it declares none. Fix: add'} "${value}" to ${axis}s.values of ${boundary.kind} "${boundary.id}".`);
   }
   return match;
 }
@@ -492,7 +493,7 @@ function resolveReusableAxes(boundary: SourceBoundary, state: string, attributes
   for (const combination of reusable.unsupported ?? []) {
     const value = combination.axis === 'variant' ? variant : size;
     if (combination.value === value && combination.state === state) {
-      throw new Error(`${boundary.kind} "${boundary.id}" does not support ${combination.axis} "${value}" in state "${state}": ${combination.reason}`);
+      throw new Error(`${boundary.kind} "${boundary.id}" does not support ${combination.axis} "${value}" in state "${state}": ${combination.reason} Fix: pass another ${combination.axis} or state, or remove this pair from unsupported on ${boundary.kind} "${boundary.id}".`);
     }
   }
   return { ...attributes, variant, size };
@@ -570,7 +571,7 @@ function compileFragmentSource(
     record.boundaryIds.add(currentBoundaryId);
   }
   if (stack.includes(currentBoundaryId)) {
-    throw new Error(`Prototype composition cycle detected: ${[...stack, currentBoundaryId].join(' -> ')}.`);
+    throw new Error(`Prototype composition cycle detected: ${[...stack, currentBoundaryId].join(' -> ')}. Fix: remove one <blueprint-use> in this chain, so that no boundary renders itself.`);
   }
 
   emit(context, { kind: 'styles', styleRefs: boundary.prototype.styles });
@@ -612,7 +613,7 @@ function prepareSource(context: CompilerContext, boundary: SourceBoundary, curre
   const source = requireSource(context.bundle, sourceRef, `${currentBoundaryId} prototype source`);
   assertNoExecutableMarkup(source, sourceRef);
   if (source.includes(SLOT_AUTHOR_ATTRIBUTE)) {
-    throw new Error(`Prototype source "${sourceRef}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute.`);
+    throw new Error(`Prototype source "${sourceRef}" cannot contain the reserved "${SLOT_AUTHOR_ATTRIBUTE}" attribute. Fix: remove ${SLOT_AUTHOR_ATTRIBUTE} from this source, because the compiler writes it.`);
   }
   const assetValues: string[] = [];
   let markup = rewriteHtmlAssetRefs(context, source, sourceRef, assetValues);
@@ -664,7 +665,7 @@ function expandUse(
     return { fragment, sections: listSectionTags(fragment) };
   }
   if (kind !== 'primitive' && kind !== 'component') {
-    throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}".`);
+    throw new Error(`${currentBoundaryId} uses unsupported reusable boundary kind "${kind}". Fix: set kind on this <blueprint-use> to "primitive", "component", or "brand-mark".`);
   }
   const id = requiredParsedUseAttribute(useAttributes, 'ref', currentBoundaryId);
   const owner = creditedBoundary(context.bundle, boundary, slotAuthor, { kind, id });
@@ -750,7 +751,7 @@ function creditedBoundary(
   if (!declaresUse(author, use)) {
     throw new Error(
       `${author.kind} "${author.id}" renders undeclared ${use.kind} "${use.id}" inside ${container.kind} "${container.id}". ` +
-      `Declare it on ${author.kind} "${author.id}", or on ${container.kind} "${container.id}" if every instance contains it.`
+      `Declare it on ${author.kind} "${author.id}", or on ${container.kind} "${container.id}" if every instance contains it. Fix: ${declareUseFix(author, use)}`
     );
   }
   return author;
@@ -762,10 +763,10 @@ function applySectionMetadata(bundle: CanvasProjectBundle, boundary: SourceBound
   const edits: MarkupEdit[] = [];
   for (const { start, end, id: sectionId } of sections) {
     if (!sectionIds.has(sectionId)) {
-      throw new Error(`screen "${boundary.id}" marks undeclared section "${sectionId}".`);
+      throw new Error(`screen "${boundary.id}" marks undeclared section "${sectionId}". Fix: add section "${sectionId}" to screen "${boundary.id}" in screens.json, or remove this data-blueprint-section marker from its source.`);
     }
     if (marked.has(sectionId)) {
-      throw new Error(`screen "${boundary.id}" marks section "${sectionId}" more than once.`);
+      throw new Error(`screen "${boundary.id}" marks section "${sectionId}" more than once. Fix: keep one data-blueprint-section="${sectionId}" marker in the source of screen "${boundary.id}".`);
     }
     marked.add(sectionId);
     const sectionBoundaryId = `${bundle.manifest.project.id}/section/${boundary.id}/${sectionId}`;
@@ -778,33 +779,33 @@ function resolveBoundary(bundle: CanvasProjectBundle, target: PrototypeCompileTa
   if (target.kind === 'primitive') {
     const primitive = bundle.primitives.primitives.find(candidate => candidate.id === target.id);
     if (!primitive) {
-      throw new Error(`Unknown prototype primitive "${target.id}".`);
+      throw new Error(`Unknown prototype primitive "${target.id}". Fix: add "${target.id}" to primitives.json, or use the id of a primitive that it declares.`);
     }
     if (!primitive.prototype) {
-      throw new Error(`Primitive "${target.id}" has no canonical prototype source.`);
+      throw new Error(`Primitive "${target.id}" has no canonical prototype source. Fix: add prototype with source and styles to primitive "${target.id}" in primitives.json.`);
     }
     return primitiveBoundary(primitive);
   }
   if (target.kind === 'component') {
     const component = bundle.components.components.find(candidate => candidate.id === target.id);
     if (!component) {
-      throw new Error(`Unknown prototype component "${target.id}".`);
+      throw new Error(`Unknown prototype component "${target.id}". Fix: add "${target.id}" to components.json, or use the id of a component that it declares.`);
     }
     return componentBoundary(component);
   }
   const screen = bundle.screens.screens.find(candidate => candidate.id === target.id);
   if (!screen) {
-    throw new Error(`Unknown prototype screen "${target.id}".`);
+    throw new Error(`Unknown prototype screen "${target.id}". Fix: add "${target.id}" to screens.json, or use the id of a screen that it declares.`);
   }
   if (!screen.prototype) {
-    throw new Error(`Screen "${target.id}" has no browser-native prototype source.`);
+    throw new Error(`Screen "${target.id}" has no browser-native prototype source. Fix: add prototype with source, styles, states, assetRefs, and reviewConditions to screen "${target.id}" in screens.json.`);
   }
   return screenBoundary(screen);
 }
 
 function primitiveBoundary(primitive: ReusableDefinition): SourceBoundary {
   if (!primitive.prototype) {
-    throw new Error(`Primitive "${primitive.id}" is missing its canonical prototype source.`);
+    throw new Error(`Primitive "${primitive.id}" is missing its canonical prototype source. Fix: add prototype with source and styles to primitive "${primitive.id}" in primitives.json.`);
   }
   return reusableBoundary('primitive', primitive);
 }
@@ -828,7 +829,7 @@ function reusableBoundary(kind: ReusableKind, reusable: ReusableDefinition): Sou
 
 function screenBoundary(screen: ScreenDefinition): SourceBoundary {
   if (!screen.prototype) {
-    throw new Error(`Screen "${screen.id}" is missing its browser-native prototype source.`);
+    throw new Error(`Screen "${screen.id}" is missing its browser-native prototype source. Fix: add prototype with source, styles, states, assetRefs, and reviewConditions to screen "${screen.id}" in screens.json.`);
   }
   const uses = screen.sections.flatMap(section => section.uses);
   return {
@@ -844,14 +845,18 @@ function screenBoundary(screen: ScreenDefinition): SourceBoundary {
   };
 }
 
+function statesField(boundary: SourceBoundary): string {
+  return boundary.reusable ? 'states.values' : 'prototype.states';
+}
+
 function resolveState(boundary: SourceBoundary, requestedState: string | undefined): string {
   const state = requestedState ?? boundary.defaultState;
   if (!state) {
-    throw new Error(`${boundary.kind} "${boundary.id}" has no declared prototype state.`);
+    throw new Error(`${boundary.kind} "${boundary.id}" has no declared prototype state. Fix: add a state to ${statesField(boundary)} of ${boundary.kind} "${boundary.id}".`);
   }
   const declared = declaredCopy(boundary.states, state);
   if (declared === undefined) {
-    throw new Error(`${boundary.kind} "${boundary.id}" does not declare prototype state "${state}".`);
+    throw new Error(`${boundary.kind} "${boundary.id}" does not declare prototype state "${state}". Fix: ${boundary.states.length > 0 ? `pass one of these states: ${boundary.states.join(', ')}. Or add` : 'add'} "${state}" to ${statesField(boundary)} of ${boundary.kind} "${boundary.id}".`);
   }
   return declared;
 }
@@ -859,7 +864,7 @@ function resolveState(boundary: SourceBoundary, requestedState: string | undefin
 function assertIsolatedHostPolicy(bundle: CanvasProjectBundle): void {
   const policy = bundle.manifest.prototypeHost;
   if (!policy || policy.network !== 'deny' || policy.scripts !== 'none') {
-    throw new Error('Canonical prototype compilation requires prototypeHost.network="deny" and prototypeHost.scripts="none".');
+    throw new Error('Canonical prototype compilation requires prototypeHost.network="deny" and prototypeHost.scripts="none". Fix: set prototypeHost.network to "deny" and prototypeHost.scripts to "none" in manifest.json.');
   }
 }
 
@@ -875,7 +880,7 @@ function addStyleRefs(context: CompilerContext, styleRefs: string[]): void {
 function loadAndRewriteStyle(context: CompilerContext, styleRef: string): string {
   const css = requireSource(context.bundle, styleRef, `prototype stylesheet ${styleRef}`);
   if (cssHasImport(css)) {
-    throw new Error(`Prototype stylesheet "${styleRef}" cannot import external or undeclared stylesheets.`);
+    throw new Error(`Prototype stylesheet "${styleRef}" cannot import external or undeclared stylesheets. Fix: remove each @import from this stylesheet, and add each imported file to prototype.styles.`);
   }
   return rewriteCssUrls(css, value => `url("${assetToken(context, styleRef, value)}")`);
 }
@@ -925,10 +930,10 @@ function navigationHref(tag: OpenTag, sourceRef: string): MarkupAttribute | unde
   const hrefs = tag.attributes.filter(attribute => (attribute.name === 'href' || attribute.name === 'xlink:href') && attribute.hasValue);
   if (hrefs.length === 0) return undefined;
   if (hrefs.length !== 1 || !hrefs[0].quote) {
-    throw new Error(`Prototype source "${sourceRef}" contains malformed or duplicate navigation href markup.`);
+    throw new Error(`Prototype source "${sourceRef}" contains malformed or duplicate navigation href markup. Fix: give each <${tag.name}> one href in double quotes.`);
   }
   if (!isSafePrototypeHref(hrefs[0].value)) {
-    throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${hrefs[0].value}".`);
+    throw new Error(`Prototype source "${sourceRef}" contains unsafe href "${hrefs[0].value}". Fix: change this href to a value that starts with /, #, ./, or ../.`);
   }
   return hrefs[0];
 }
@@ -936,10 +941,10 @@ function navigationHref(tag: OpenTag, sourceRef: string): MarkupAttribute | unde
 function assetToken(context: CompilerContext, sourceRef: string, value: string): string {
   const assetRef = resolveRelativeRef(sourceRef, value);
   if (!context.allowedAssetRefs.has(assetRef)) {
-    throw new Error(`Prototype resource "${value}" from "${sourceRef}" is not a declared controlled asset.`);
+    throw new Error(`Prototype resource "${value}" from "${sourceRef}" is not a declared controlled asset. Fix: add "${assetRef}" to prototype.assetRefs of the screen that renders it, and keep the file in a prototypeHost.assetRoots directory.`);
   }
   if (!context.bundle.prototypeAssetContents[assetRef]) {
-    throw new Error(`Declared prototype asset "${assetRef}" is missing from the loaded bundle.`);
+    throw new Error(`Declared prototype asset "${assetRef}" is missing from the loaded bundle. Fix: add the file "${assetRef}" to the project, or remove it from prototype.assetRefs.`);
   }
   for (const record of context.recorders) {
     record.assetRefs.add(assetRef);
@@ -962,7 +967,7 @@ function resolveAssetTokens(context: CompilerContext, html: string, output: Asse
     const asset = context.bundle.prototypeAssetContents[assetRef];
     if ('base64' in asset) return assetDataUrl(asset);
     if (output.kind === 'linked') return linkedAssetUrl(output.assetSource, asset.sha256);
-    throw new Error(`Prototype asset "${assetRef}" is a review server link, so a self-contained document cannot inline it.`);
+    throw new Error(`Prototype asset "${assetRef}" is a review server link, so a self-contained document cannot inline it. Fix: compile with linked output, or load the project from its files so that the asset holds its bytes.`);
   });
 }
 
@@ -977,14 +982,14 @@ function resolveRelativeRef(sourceRef: string, value: string): string {
     /^[a-z][a-z\d+.-]*:/i.test(trimmed) ||
     /[?#]/.test(trimmed)
   ) {
-    throw new Error(`Prototype resource URL "${value}" must be a controlled relative path without query or fragment parts.`);
+    throw new Error(`Prototype resource URL "${value}" must be a controlled relative path without query or fragment parts. Fix: copy the file into a prototypeHost.assetRoots directory, and write its relative path with no query or fragment.`);
   }
   const normalizedInput = trimmed.replace(/\\/g, '/');
   let decodedInput: string;
   try {
     decodedInput = decodeURIComponent(normalizedInput);
   } catch {
-    throw new Error(`Prototype resource URL "${value}" contains invalid escaping.`);
+    throw new Error(`Prototype resource URL "${value}" contains invalid escaping. Fix: rewrite "${value}" with valid percent escapes, or write the plain file path.`);
   }
   const parts = sourceRef.split('/').slice(0, -1);
   for (const segment of decodedInput.split('/')) {
@@ -993,7 +998,7 @@ function resolveRelativeRef(sourceRef: string, value: string): string {
     }
     if (segment === '..') {
       if (parts.length === 0) {
-        throw new Error(`Prototype resource URL "${value}" escapes the app-owned sidecar root.`);
+        throw new Error(`Prototype resource URL "${value}" escapes the app-owned sidecar root. Fix: copy the file into a prototypeHost.assetRoots directory, and remove the ".." segments that leave the project.`);
       }
       parts.pop();
       continue;
@@ -1009,13 +1014,13 @@ function createTokenCss(bundle: CanvasProjectBundle): string {
   for (const group of bundle.tokens.tokenGroups) {
     for (const token of group.tokens) {
       if (!/^--[a-zA-Z0-9_-]+$/.test(token.styleRef)) {
-        throw new Error(`Token "${group.id}.${token.id}" styleRef "${token.styleRef}" must be a CSS custom property.`);
+        throw new Error(`Token "${group.id}.${token.id}" styleRef "${token.styleRef}" must be a CSS custom property. Fix: set styleRef of this token in tokens.json to a name such as "--${group.id}-${token.id}".`);
       }
       if (seen.has(token.styleRef)) {
-        throw new Error(`Token CSS custom property "${token.styleRef}" is declared more than once.`);
+        throw new Error(`Token CSS custom property "${token.styleRef}" is declared more than once. Fix: set styleRef of token "${group.id}.${token.id}" in tokens.json to a name that no other token uses.`);
       }
       if (/[;{}]|<\/style/i.test(token.value)) {
-        throw new Error(`Token "${group.id}.${token.id}" contains an unsafe CSS value.`);
+        throw new Error(`Token "${group.id}.${token.id}" contains an unsafe CSS value. Fix: remove each ";", "{", "}", and "</style" from the value of this token in tokens.json.`);
       }
       seen.add(token.styleRef);
       declarations.push(`  ${token.styleRef}: ${token.value};`);
@@ -1033,13 +1038,13 @@ function applySlots(template: string, invocationChildren: string, boundary: Sour
     if (!slot) {
       if (name === 'default' && !boundary.reusable) continue;
       throw new Error(name === 'default'
-        ? `${label} received content outside any named slot, but declares no "default" slot.`
-        : `${label} received undeclared slot "${name}".`);
+        ? `${label} received content outside any named slot, but declares no "default" slot. Fix: ${declaredSlots.length > 0 ? `add slot="<id>" to the content, with one of these slot ids: ${declaredSlots.join(', ')}. Or add` : 'add'} a "default" slot to this boundary.`
+        : `${label} received undeclared slot "${name}". Fix: ${declaredSlots.length > 0 ? `use one of these slot ids: ${declaredSlots.join(', ')}. Or add` : 'add'} "${name}" to the slots of this boundary.`);
     }
     const refused = slotContentAccepts(content).filter(accept => !slot.accepts.includes(accept));
     if (refused.length > 0) {
       throw new Error(
-        `${label} slot "${name}" received ${refused.join(', ')}, which it does not accept; it accepts ${slot.accepts.join(', ')}.`
+        `${label} slot "${name}" received ${refused.join(', ')}, which it does not accept; it accepts ${slot.accepts.join(', ')}. Fix: replace that content with what the slot accepts, or add ${refused.join(', ')} to the accepts list of slot "${name}".`
       );
     }
   }
@@ -1054,7 +1059,7 @@ function applySlots(template: string, invocationChildren: string, boundary: Sour
   const hadDefaultPlaceholder = listOpenTags(result).some(tag => tag.name === 'slot');
   result = replaceDefaultSlotElements(result, defaultContent);
   if (defaultContent && !hadDefaultPlaceholder) {
-    throw new Error(`${label} received default slot content but declares no default slot placeholder.`);
+    throw new Error(`${label} received default slot content but declares no default slot placeholder. Fix: add a <slot> element to the source of this boundary, or remove the content from this <blueprint-use>.`);
   }
   return result;
 }
@@ -1109,7 +1114,7 @@ function replaceDataSlotContents(template: string, name: string, content: string
 function requiredParsedUseAttribute(attributes: Map<string, string>, name: string, boundary: string): string {
   const value = attributes.get(name);
   if (!value) {
-    throw new Error(`${boundary} contains <blueprint-use> without required "${name}".`);
+    throw new Error(`${boundary} contains <blueprint-use> without required "${name}". Fix: add ${name}="<value>" to this <blueprint-use>.`);
   }
   return value;
 }
@@ -1121,18 +1126,18 @@ function resolveForwardedInvocationAttributes(
   const allowed = new Set(['kind', 'ref', 'state', 'class', 'variant', 'size', 'href', 'data-blueprint-section']);
   for (const name of attributes.keys()) {
     if (!allowed.has(name) || name.startsWith('on') || name === 'style') {
-      throw new Error(`${target.kind} "${target.id}" received unsupported <blueprint-use> attribute "${name}".`);
+      throw new Error(`${target.kind} "${target.id}" received unsupported <blueprint-use> attribute "${name}". Fix: remove "${name}" from this <blueprint-use>. It takes ${[...allowed].join(', ')}.`);
     }
   }
   const className = attributes.get('class');
   if (className && !/^[a-zA-Z0-9_-]+(?:\s+[a-zA-Z0-9_-]+)*$/.test(className)) {
-    throw new Error(`${target.kind} "${target.id}" received an unsafe class invocation attribute.`);
+    throw new Error(`${target.kind} "${target.id}" received an unsafe class invocation attribute. Fix: write class as names of letters, digits, hyphens, and underscores, with spaces between them.`);
   }
   const variant = declaredAxisValue(target, 'variant', attributes.get('variant'));
   const size = declaredAxisValue(target, 'size', attributes.get('size'));
   const href = attributes.get('href');
   if (href && !isSafePrototypeHref(href)) {
-    throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}".`);
+    throw new Error(`${target.kind} "${target.id}" received unsafe href "${href}". Fix: change this href to a value that starts with /, #, ./, or ../.`);
   }
   const section = attributes.get('data-blueprint-section');
   return {
@@ -1160,28 +1165,28 @@ function renderBrandMark(
   const brand = context.bundle.brand;
   const mark = brand?.marks.find(candidate => candidate.id === id);
   if (!brand || !mark) {
-    throw new Error(`${placedBy} places brand mark "${id}", which brand.json does not declare.`);
+    throw new Error(`${placedBy} places brand mark "${id}", which brand.json does not declare. Fix: add mark "${id}" to brand.json, or set ref to a mark that it declares${brand?.marks.length ? `: ${brand.marks.map(candidate => candidate.id).join(', ')}` : ''}.`);
   }
   for (const name of attributes.keys()) {
     if (!BRAND_MARK_USE_ATTRIBUTES.has(name)) {
-      throw new Error(`Brand mark "${id}" received unsupported <blueprint-use> attribute "${name}".`);
+      throw new Error(`Brand mark "${id}" received unsupported <blueprint-use> attribute "${name}". Fix: remove "${name}" from this <blueprint-use>. It takes ${[...BRAND_MARK_USE_ATTRIBUTES].join(', ')}.`);
     }
   }
   if (children.trim()) {
-    throw new Error(`Brand mark "${id}" cannot receive slot content; it always draws its brand.json source.`);
+    throw new Error(`Brand mark "${id}" cannot receive slot content; it always draws its brand.json source. Fix: remove the content inside this <blueprint-use>.`);
   }
   const className = attributes.get('class');
   if (className && !/^[a-zA-Z0-9_-]+(?:\s+[a-zA-Z0-9_-]+)*$/.test(className)) {
-    throw new Error(`Brand mark "${id}" received an unsafe class invocation attribute.`);
+    throw new Error(`Brand mark "${id}" received an unsafe class invocation attribute. Fix: write class as names of letters, digits, hyphens, and underscores, with spaces between them.`);
   }
   const hidden = attributes.get('aria-hidden');
   if (hidden !== undefined && hidden !== 'true') {
-    throw new Error(`Brand mark "${id}" accepts only aria-hidden="true".`);
+    throw new Error(`Brand mark "${id}" accepts only aria-hidden="true". Fix: set aria-hidden to "true", or remove it.`);
   }
   const variantId = attributes.get('variant');
   const variant = variantId === undefined ? undefined : mark.variants.find(candidate => candidate.id === variantId);
   if (variantId !== undefined && !variant) {
-    throw new Error(`Brand mark "${id}" does not declare variant "${variantId}".`);
+    throw new Error(`Brand mark "${id}" does not declare variant "${variantId}". Fix: set variant to one of ${mark.variants.map(candidate => candidate.id).join(', ')}. Or add "${variantId}" to this mark in brand.json.`);
   }
 
   const source = requireSource(context.bundle, mark.source, `Brand mark "${id}" source`);
@@ -1191,7 +1196,7 @@ function renderBrandMark(
   }
   const svg = scopeSvgIds(outerSvgMarkup(source), `bp-brand-${id}-`);
   if (!svg) {
-    throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element.`);
+    throw new Error(`Brand mark "${id}" source "${mark.source}" has no <svg> element. Fix: write "${mark.source}" as one <svg> element with a viewBox.`);
   }
   emit(context, { kind: 'brand-mark', mark: { sourceBoundaryId: placedBy, id: mark.id, ...(variant ? { variant: variant.id } : {}) } });
 
@@ -1237,7 +1242,7 @@ function colorTokenStyleRef(bundle: CanvasProjectBundle, ref: string, markId: st
     .find(group => group.id === ref.slice(0, separator))
     ?.tokens.find(candidate => candidate.id === ref.slice(separator + 1));
   if (!token) {
-    throw new Error(`Brand mark "${markId}" variant references undeclared color token "${ref}".`);
+    throw new Error(`Brand mark "${markId}" variant references undeclared color token "${ref}". Fix: add "${ref}" to tokens.json, or set this variant in brand.json to a declared color token.`);
   }
   return token.styleRef;
 }
@@ -1272,7 +1277,7 @@ function applyInvocationAttributes(
   }
   const rootTag = firstOpenTag(fragment);
   if (!rootTag) {
-    throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for invocation attributes.`);
+    throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for invocation attributes. Fix: put the source of ${boundary.kind} "${boundary.id}" inside one root element.`);
   }
   let root = fragment.slice(rootTag.start, rootTag.end);
   if (attributes.className) {
@@ -1290,7 +1295,7 @@ function applyInvocationAttributes(
   }
   if (attributes.href) {
     if (rootTag.name !== 'a') {
-      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive href because its root element is <${fragment.slice(rootTag.start + 1, rootTag.nameEnd)}>.`);
+      throw new Error(`${boundary.kind} "${boundary.id}" cannot receive href because its root element is <${fragment.slice(rootTag.start + 1, rootTag.nameEnd)}>. Fix: make <a> the root element of this source, or remove href from this <blueprint-use>.`);
     }
     root = setRootAttribute(root, 'data-blueprint-href', attributes.href);
   }
@@ -1322,9 +1327,16 @@ function declaresUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): bo
   return boundary.renderedUses.some(dependency => dependency.kind === use.kind && dependency.id === use.id);
 }
 
+function declareUseFix(boundary: SourceBoundary, use: PrototypeUseDeclaration): string {
+  const entry = `{ "kind": "${use.kind}", "id": "${use.id}", "reason": "<why>" }`;
+  return boundary.kind === 'screen'
+    ? `add ${entry} to the uses of a section on screen "${boundary.id}". If the screen has prototype.renderedUses, add the use there too.`
+    : `add ${entry} to the uses of ${boundary.kind} "${boundary.id}".`;
+}
+
 function assertDeclaredUse(boundary: SourceBoundary, use: PrototypeUseDeclaration): void {
   if (!declaresUse(boundary, use)) {
-    throw new Error(`${boundary.kind} "${boundary.id}" renders undeclared ${use.kind} "${use.id}".`);
+    throw new Error(`${boundary.kind} "${boundary.id}" renders undeclared ${use.kind} "${use.id}". Fix: ${declareUseFix(boundary, use)}`);
   }
 }
 
@@ -1332,8 +1344,9 @@ function assertRenderedUses(boundary: SourceBoundary, observedKeys: ReadonlySet<
   const declaredKeys = new Set(boundary.renderedUses.map(useKey));
   const matches = (observedKeys?.size ?? 0) === declaredKeys.size && [...declaredKeys].every(key => observedKeys?.has(key));
   if (!matches) {
+    const rendered = [...(observedKeys ?? [])].sort().join(', ');
     throw new Error(
-      `${boundary.kind} "${boundary.id}" rendered uses do not match its declared reusable dependencies.`
+      `${boundary.kind} "${boundary.id}" rendered uses do not match its declared reusable dependencies. Fix: ${rendered ? `make the uses of this ${boundary.kind} list exactly what its source renders: ${rendered}` : `remove each entry from the uses of this ${boundary.kind}, because its source renders no reusable`}.`
     );
   }
 }
@@ -1346,7 +1359,7 @@ function applyBoundaryMetadata(
 ): RenderedFragment {
   const rootTag = firstOpenTag(fragment);
   if (!rootTag) {
-    throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for boundary metadata.`);
+    throw new Error(`${boundary.kind} "${boundary.id}" prototype source has no root element for boundary metadata. Fix: put the source of ${boundary.kind} "${boundary.id}" inside one root element.`);
   }
   let root = fragment.slice(rootTag.start, rootTag.end);
   root = setRootAttribute(root, 'data-blueprint-boundary-id', currentBoundaryId);
@@ -1383,14 +1396,14 @@ function assertNoExecutableMarkup(source: string, sourceRef: string): void {
     attribute.hasValue && (EVENT_HANDLER_NAME.test(attribute.name) || FORM_TARGET_ATTRIBUTES.has(attribute.name))
   ));
   if (tags.some(isExecutable)) {
-    throw new Error(`Prototype source "${sourceRef}" contains executable, navigation, form, or nested browsing content.`);
+    throw new Error(`Prototype source "${sourceRef}" contains executable, navigation, form, or nested browsing content. Fix: remove these tags, or their on* and form action attributes: ${[...new Set(tags.filter(isExecutable).map(tag => `<${tag.name}>`))].join(', ')}.`);
   }
   // Media elements compile fine but the CSP (default-src 'none', no media-src) blocks
   // playback at runtime; reject them here so authors get a clear compile error instead
   // of a silently dead element. <picture> stays allowed: it renders static imagery.
   if (tags.some(tag => MEDIA_ELEMENTS.has(tag.name))) {
     throw new Error(
-      `Prototype source "${sourceRef}" contains media content (<video>/<audio>) that the isolated prototype host cannot play; use static imagery or SMIL-animated SVG assets instead.`
+      `Prototype source "${sourceRef}" contains media content (<video>/<audio>) that the isolated prototype host cannot play; use static imagery or SMIL-animated SVG assets instead. Fix: replace each <video> and <audio> in this source with an <img> or an SVG asset.`
     );
   }
 }
@@ -1398,7 +1411,7 @@ function assertNoExecutableMarkup(source: string, sourceRef: string): void {
 function requireSource(bundle: CanvasProjectBundle, sourceRef: string, label: string): string {
   const source = bundle.prototypeSourceContents[sourceRef];
   if (source === undefined) {
-    throw new Error(`${label} "${sourceRef}" is missing from the loaded bundle.`);
+    throw new Error(`${label} "${sourceRef}" is missing from the loaded bundle. Fix: add the file "${sourceRef}" to the project, or remove the ref that names it.`);
   }
   if (source.includes(ASSET_TOKEN_START) || source.includes(ASSET_TOKEN_END)) {
     throw new Error(`${label} "${sourceRef}" contains a reserved noncharacter, U+FDD0 or U+FDD1. Fix: delete that character from the source.`);
@@ -1415,7 +1428,7 @@ function safeAreaCss(preset: FramePreset | undefined): string {
   const declarations = (['top', 'right', 'bottom', 'left'] as const).map(side => {
     const inset = insets[side];
     if (!Number.isFinite(inset) || inset < 0) {
-      throw new Error(`Frame preset "${preset?.id}" safe-area ${side} must be a non-negative number.`);
+      throw new Error(`Frame preset "${preset?.id}" safe-area ${side} must be a non-negative number. Fix: set safeArea.${side} of this preset in manifest.json to 0 or a higher number.`);
     }
     return `--blueprint-safe-area-${side}:${inset}px;`;
   });
@@ -1451,7 +1464,7 @@ function specimenCanvasCss(bundle: CanvasProjectBundle, boundary: SourceBoundary
 
 function safeStyleText(css: string): string {
   if (css.includes('</') && css.toLowerCase().includes('</style')) {
-    throw new Error('Prototype stylesheet contains an unsafe closing style tag.');
+    throw new Error('Prototype stylesheet contains an unsafe closing style tag. Fix: remove "</style" from the stylesheet.');
   }
   return css;
 }

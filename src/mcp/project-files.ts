@@ -93,7 +93,7 @@ export async function applyProjectFileTransaction(
       const existingBytes = Buffer.isBuffer(existing.content) ? existing.content : Buffer.from(existing.content);
       const nextBytes = Buffer.isBuffer(write.content) ? write.content : Buffer.from(write.content);
       if (!existingBytes.equals(nextBytes)) {
-        throw new Error(`Exploration mutation produced conflicting writes for "${write.fileRef}".`);
+        throw new Error(`Exploration mutation produced conflicting writes for "${write.fileRef}". Fix: give each source in this change its own path, so that "${write.fileRef}" has one content.`);
       }
       continue;
     }
@@ -144,7 +144,7 @@ export async function applyProjectFileTransaction(
     try {
       await rollbackAppliedFiles(applied);
     } catch (rollbackError) {
-      throw new AggregateError([error, rollbackError], 'Exploration file transaction and rollback both failed.');
+      throw new AggregateError([error, rollbackError], 'Exploration file transaction and rollback both failed. Fix: run git status in the project, restore each changed file with git restore, then call the tool again.');
     }
     throw error;
   }
@@ -181,7 +181,7 @@ async function rollbackAppliedFiles(applied: AppliedProjectFile[]): Promise<void
     }
   }
   if (errors.length > 0) {
-    throw new AggregateError(errors, 'Failed to roll back one or more Blueprint exploration files.');
+    throw new AggregateError(errors, 'Failed to roll back one or more Blueprint exploration files. Fix: run git status in the project, restore each changed file with git restore, then call the tool again.');
   }
 }
 
@@ -190,7 +190,7 @@ async function assertExistingAncestorContained(root: string, targetParent: strin
   while (!existsSync(current)) {
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error(`Exploration write "${fileRef}" has no existing contained parent.`);
+      throw new Error(`Exploration write "${fileRef}" has no existing contained parent. Fix: create the project directory, then call the tool again.`);
     }
     current = parent;
   }
@@ -206,14 +206,14 @@ function assertSafeProjectFileRef(fileRef: string): void {
     normalized.includes('://') ||
     normalized.split('/').some(segment => segment === '..')
   ) {
-    throw new Error(`Exploration write path "${fileRef}" must stay inside the Blueprint project.`);
+    throw new Error(`Exploration write path "${fileRef}" must stay inside the Blueprint project. Fix: pass a relative path inside the project, with no ".." segment.`);
   }
 }
 
 export function assertContainedWrite(root: string, target: string, fileRef: string): void {
   const relative = path.relative(root, target);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Exploration write "${fileRef}" resolves outside the canonical Blueprint project root.`);
+    throw new Error(`Exploration write "${fileRef}" resolves outside the canonical Blueprint project root. Fix: replace the symbolic link in this path with a directory inside the project, or pass a path inside the project.`);
   }
 }
 
@@ -238,12 +238,12 @@ export async function writeProjectFiles(projectRoot: string, writes: Map<string,
 
 export function assertBlueprintProjectPath(projectRoot: string): void {
   if (!existsSync(projectRoot)) {
-    throw new Error(`Blueprint project path not found: ${normalize(projectRoot)}.`);
+    throw new Error(`Blueprint project path not found: ${normalize(projectRoot)}. Fix: pass the directory that holds manifest.json, or create a project there with the init tool.`);
   }
   for (const fileName of ['manifest.json', 'tokens.json', 'primitives.json', 'screens.json']) {
     const filePath = path.join(projectRoot, fileName);
     if (!existsSync(filePath)) {
-      throw new Error(`Missing Blueprint project file: ${normalize(filePath)}.`);
+      throw new Error(`Missing Blueprint project file: ${normalize(filePath)}. Fix: restore ${fileName} from git, or pass the project directory that holds it.`);
     }
   }
 }

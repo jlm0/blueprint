@@ -28,7 +28,7 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
 
   if (selector.kind === 'screen') {
     if (input.variant || input.size) {
-      throw new Error('Screen captures take a state and viewport; variant and size apply to primitives.');
+      throw new Error('Screen captures take a state and viewport; variant and size apply to primitives. Fix: remove variant and size from this call, or pass a primitive or component boundary.');
     }
     const selection = resolvePrototypeReviewSelection(bundle, {
       screenId: selector.id,
@@ -49,11 +49,11 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
   }
 
   if (selector.kind !== 'component' && selector.kind !== 'primitive') {
-    throw new Error(`The capture tool supports screen, component, and primitive boundaries. Received ${selector.kind}:${selector.id}.`);
+    throw new Error(`The capture tool supports screen, component, and primitive boundaries. Received ${selector.kind}:${selector.id}. Fix: pass a boundary that starts with screen:, component:, or primitive:.`);
   }
   const preset = input.viewport ? bundle.manifest.framePresets.find(candidate => candidate.id === input.viewport) : undefined;
   if (input.viewport && !preset) {
-    throw new Error(`Frame preset "${input.viewport}" is not declared in manifest.json.`);
+    throw new Error(`Frame preset "${input.viewport}" is not declared in manifest.json. Fix: pass one of these viewport ids: ${bundle.manifest.framePresets.map(candidate => candidate.id).join(', ')}. Or add "${input.viewport}" to framePresets in manifest.json.`);
   }
   const compiled = compilePrototypeDocument({
     bundle,
@@ -137,7 +137,7 @@ async function capturePrototypeDocument(
     if (cropToBoundaryId) {
       const bounds = await page.locator(`[data-blueprint-boundary-id="${cropToBoundaryId}"]`).first().boundingBox();
       if (!bounds || bounds.width === 0 || bounds.height === 0) {
-        throw new Error(`${cropToBoundaryId} rendered no visible box to capture.`);
+        throw new Error(`${cropToBoundaryId} rendered no visible box to capture. Fix: give the root element of ${cropToBoundaryId} a visible width and height in this state, or pass another state.`);
       }
       const x = Math.max(0, Math.floor(bounds.x - SPECIMEN_CAPTURE_PADDING));
       const y = Math.max(0, Math.floor(bounds.y - SPECIMEN_CAPTURE_PADDING));
@@ -185,13 +185,13 @@ async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
         if (!image.complete) {
           await new Promise<void>((resolve, reject) => {
             image.addEventListener('load', () => resolve(), { once: true });
-            image.addEventListener('error', () => reject(new Error(`Prototype image failed to load: ${image.currentSrc || image.src}`)), {
+            image.addEventListener('error', () => reject(new Error(`Prototype image failed to load: ${image.currentSrc || image.src}. Fix: change this image path to a file inside a prototypeHost.assetRoots directory.`)), {
               once: true
             });
           });
         }
         if (image.naturalWidth === 0) {
-          throw new Error(`Prototype image has no decoded pixels: ${image.currentSrc || image.src}`);
+          throw new Error(`Prototype image has no decoded pixels: ${image.currentSrc || image.src}. Fix: replace this file with a valid image.`);
         }
         await image.decode();
       })
@@ -227,6 +227,6 @@ async function waitForPrototypeCaptureReadiness(page: Page): Promise<void> {
       }
       previous = current;
     }
-    throw new Error('Prototype layout did not stabilize before capture.');
+    throw new Error('Prototype layout did not stabilize before capture. Fix: remove the animation or transition that changes the layout of this boundary, then capture again.');
   });
 }

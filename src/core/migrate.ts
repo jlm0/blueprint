@@ -1,7 +1,7 @@
 import { normalizeCurrentFiles } from './migrate-normalize';
 import { MIGRATABLE_SCHEMA_VERSIONS, MIGRATIONS, OLDEST_SCHEMA_VERSION, stepsFrom } from './migrations';
 import { parseJsonFile } from './raw-json';
-import { BLUEPRINT_SCHEMA_VERSION, isNewerSchemaVersion, newerSchemaVersionError, OPTIONAL_VERSIONED_FILES, VERSIONED_FILES } from './schema-version';
+import { BLUEPRINT_SCHEMA_VERSION, isNewerSchemaVersion, newerSchemaVersionError, OPTIONAL_VERSIONED_FILES, schemaVersionText, VERSIONED_FILES } from './schema-version';
 import { isSavedRecordFile } from './storage-records';
 
 /** Inputs to {@linkcode migrateProjectFiles}. */
@@ -62,16 +62,16 @@ function readProjectVersions(files: ReadonlyMap<string, string>): Set<string> {
   const refusals: string[] = [];
   const readVersion = (file: string, version: string): void => {
     if (isNewerSchemaVersion(version)) refusals.push(newerSchemaVersionError(file, version));
-    else if (!MIGRATABLE_SCHEMA_VERSIONS.has(version)) refusals.push(`${file} is on schema "${version}", which migrate does not know how to upgrade.`);
+    else if (!MIGRATABLE_SCHEMA_VERSIONS.has(version)) refusals.push(`${file} is on schema "${version}", which migrate does not know how to upgrade. Fix: set schemaVersion in ${file} to the version whose shape it has, one of ${[...MIGRATABLE_SCHEMA_VERSIONS].join(', ')}, then run migrate again.`);
     else versions.add(version);
   };
   for (const file of VERSIONED_FILES) {
     if (OPTIONAL_VERSIONED_FILES.has(file) && !files.has(file)) continue;
-    readVersion(file, String(parseJsonFile(files, file).schemaVersion ?? ''));
+    readVersion(file, schemaVersionText(parseJsonFile(files, file).schemaVersion ?? ''));
   }
   for (const file of [...files.keys()].filter(isSavedRecordFile).sort()) {
     const record = parseJsonFile(files, file);
-    readVersion(file, 'schemaVersion' in record ? String(record.schemaVersion) : OLDEST_SCHEMA_VERSION);
+    readVersion(file, 'schemaVersion' in record ? schemaVersionText(record.schemaVersion) : OLDEST_SCHEMA_VERSION);
   }
   if (refusals.length > 0) throw new Error(refusals.join('\n'));
   return versions;

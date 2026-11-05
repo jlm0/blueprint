@@ -13,6 +13,7 @@ import { selectionSourceFiles } from '../core/selection';
 import type { BlueprintProjectBundle, PrototypeSourceGraphIssue, ValidationResult } from '../core/types';
 import { inspectPrototypeSourceGraph } from '../prototype/compiler';
 import { validateProject, validateProjectReadiness } from '../prototype/validate-project';
+import { withCrashFix } from './crash-text';
 import { loadCurrentProject } from './project-files';
 import type {
   ProjectCheck,
@@ -210,7 +211,7 @@ export async function answerProjectTask(task: ProjectValidationTask, memo: reado
     const value = await runProjectTask(task, validation);
     return session ? { value, memo: session.memo, runs: session.runs } : { value, runs: [] };
   } catch (error) {
-    return { thrown: error instanceof Error ? error.message : String(error) };
+    return { thrown: error instanceof Error ? withCrashFix(error) : String(error) };
   }
 }
 

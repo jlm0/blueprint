@@ -50,11 +50,11 @@ export function localStyleValueMessage(issue: LocalStyleValueIssue): string {
   const remedy = issue.tokenStyleRef
     ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
     : 'uses a literal color; use a token custom property';
-  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions.`;
+  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace "${value}" with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. Or add { "property": "${issue.property}", "value": ${JSON.stringify(issue.value)}, "reason": "<why>" } to prototype.localValueExceptions.`;
 }
 
 export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
-  return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>".`;
+  return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>". Fix: replace this <${issue.element}> at line ${issue.line} of ${issue.sourceRef} with that primitive, or add data-blueprint-native="<reason>" to it.`;
 }
 
 export function unmarkedSectionIds(bundle: BlueprintProjectBundle<PrototypeAsset>, screen: ScreenDefinition): string[] {

@@ -20,7 +20,7 @@ export function normalize(filePath: string): string {
 }
 
 export function abortError(signal: AbortSignal): Error {
-  return signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled.');
+  return signal.reason instanceof Error ? signal.reason : new Error('Blueprint tool call was cancelled. Fix: call the tool again if you still need its result.');
 }
 
 export function throwIfAborted(signal?: AbortSignal): void {
