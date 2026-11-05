@@ -37,9 +37,9 @@ The prose on primitives, components, screens, and tokens is written for agents, 
 
 Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares groups, and every component names its group. An agent starting a new page or group must declare it first, and validation rejects undeclared references.
 
-Every structured file carries one `schemaVersion`. When Blueprint moves to a new schema, every tool except `migrate` refuses an older sidecar, and the canvas shows a notice until `migrate` upgrades it.
+Every structured file carries one `schemaVersion`. When Blueprint moves to a new schema, `validate` reports each older file and `serve` shows a notice on the canvas. `serve` with `focus` or `explorationId`, and every other tool that reads the sidecar, refuse it until `migrate` upgrades it.
 
-Validation has three modes. `baseline` checks structure. `readiness` reports evidence and pending decisions. `strict` checks the full production handoff contract, including lints for literal colors, lengths that restate tokens, hand-built native controls, unmarked sections, color contrast, and primitives outside the closed set.
+Validation has three modes. `baseline` checks structure, naming, and the style rules, including lints for literal colors, lengths that restate tokens, hand-built native controls, color contrast, and primitives outside the closed set. `readiness` reports evidence and pending decisions. `strict` adds the full production handoff contract: a brand, implementation targets, bindings, section markers, and every primitive in the set.
 
 ## Getting started
 
@@ -69,13 +69,15 @@ Then register the stdio server with your agent host, running from the app reposi
 }
 ```
 
+Restart the MCP server after each new build. A running server keeps its tool text and its copy of the canvas page, and that page points at a script the build has deleted.
+
 The server exposes thirteen project-scoped tools:
 
 | Tool | Purpose |
 | --- | --- |
 | `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. With `start: "inspo"`, it skips the brand and opens an empty inspo board instead. |
 | `inspo` | Keep the inspo board for a new product. Paste image links in chat with what you like about each one; the agent downloads each image to a git-ignored `inspo/` folder, saves the link and your words in `inspo.json`, and proposes brand directions for you to approve. |
-| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks and the wording advisories on the prose of reusables, screens, and tokens. Contract errors end with `Fix:` and the exact change to make. |
+| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks and the wording advisories on the prose of reusables, screens, and tokens. Each error ends with `Fix:` and the exact change to make. |
 | `migrate` | Upgrade a sidecar to the current schema, or report the changes with `dryRun`. It makes every mechanical change and returns the remaining decisions as validation errors. |
 | `index` | List every stable boundary ID, plus the declared screen pages and component groups with their members. |
 | `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
@@ -100,16 +102,17 @@ Example calls:
 }
 ```
 
-`init` writes an `AGENTS.md` into the new sidecar that describes the working rules for agents editing it.
+`init` writes an `AGENTS.md` into the new sidecar that describes the working rules for agents editing it, and `migrate` replaces it with the current copy.
 
 ## The review canvas
 
-`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current page, zoom, and pan. While an edit is invalid, the last good state stays visible.
+`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current page, zoom, and pan. While an edit has a contract error, the last good state stays visible. An edit with only style errors still applies, and `validate` lists each error.
 
 - **Navigation.** A rail switches between Foundations, Primitives, Components, and Screens. The sub-navigation groups items by declared section or page, and each group collapses. With `focus`, `serve` returns a link that opens one boundary's page; a screen link opens its page and centers the screen.
 - **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.
-- **Turn changes.** Boundaries that changed during the latest agent turn get a dashed marker, and a brand edit flags the Brand page. Before and After toggle between the turn's starting state and the live project.
-- **Findings.** Strict-lint findings appear as counts on screen frames and markers on component instances, each with a copyable remedy. `validate` returns the same list to the agent.
+- **Turn changes.** A bar lists what changed during the latest agent turn, and a frame preset edit appears there as "Frame sizes". On Screens, a dashed outline marks each element whose computed look changed, and a frame with no outline to draw gets a dashed mark of its own. A frame out of view gets its mark when the view reaches it. Other pages mark the changed boundary, and a brand edit flags the Brand page. Before and After toggle between the turn's starting state and the live project.
+- **Zoomed out.** The canvas keeps at most 32 frames live. Each other frame shows a thumbnail of its last live render, down to the zoom floor. A frame that has not rendered yet, or whose document is over 4 MB, shows a title placeholder.
+- **Findings.** Design findings appear as counts on screen frames and markers on component instances, each with a copyable remedy. `validate` returns the same list to the agent.
 - **Explorations.** Saved alternatives open in an isolated baseline-and-candidates view instead of crowding the canonical screens.
 
 ### Live agent activity
@@ -142,8 +145,8 @@ The hook finds the running listener through an owner-only descriptor in the OS t
 ```text
 src/core/       schema types, validation, lints, boundary IDs, queries, extraction packets
 src/app/        browser-native canvas (no UI framework)
-src/prototype/  source compiler, sandbox host policy, capture
-src/mcp/        MCP tool schemas, operations, and stdio server
+src/prototype/  source compiler, sandbox host policy, review selection
+src/mcp/        MCP tool schemas, operations, capture, and stdio server
 src/hooks/      agent activity hook
 src/scripts/    fixture validation, extraction, scope scan, browser smoke
 schema/         JSON Schema for sidecar files

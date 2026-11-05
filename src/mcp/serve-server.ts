@@ -459,7 +459,7 @@ function createServeErrorHtml(message: string, outdatedFiles: BlueprintOutdatedF
   const body = needsMigrate
     ? [
       '<h1>This sidecar needs migrate</h1>',
-      `<p>Blueprint now reads schema ${BLUEPRINT_SCHEMA_VERSION}, and these files use an older schema. Ask your agent to run the Blueprint migrate tool on this project, then fix what validate reports.</p>`,
+      `<p>Blueprint now reads schema ${BLUEPRINT_SCHEMA_VERSION}, and these files use an older schema. Ask your agent to run the Blueprint migrate tool on this project, then fix each error that it returns.</p>`,
       `<ul>${outdatedFiles.map(({ file, version }) => `<li><code>${escapeHtml(file)}</code> is on schema ${escapeHtml(version)}.</li>`).join('')}</ul>`
     ].join('')
     : [

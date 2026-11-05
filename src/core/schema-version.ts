@@ -51,7 +51,7 @@ export function schemaVersionErrors(bundle: VersionedBundle): string[] {
     .map(([file, version]) => (isNewerSchemaVersion(version)
       ? newerSchemaVersionError(file, version)
       : `${file} is on schema "${schemaVersionText(version)}", and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". ` +
-        'Fix: run the migrate tool on this project, then fix what validate reports.'
+        'Fix: run the migrate tool on this project, then fix each error that it returns.'
     ));
 }
 

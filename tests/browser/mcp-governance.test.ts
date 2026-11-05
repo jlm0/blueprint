@@ -814,7 +814,7 @@ describe('Blueprint MCP and template governance', () => {
         assertToolError(await session.client.callTool({ name: 'index', arguments: { project: projectCopy } }), /manifest\.json is on schema "1\.0\.0".*Fix: run the migrate tool/);
         const validation = structured(await session.client.callTool({ name: 'validate', arguments: { project: projectCopy } }));
         assert.deepEqual(validation.errors, [
-          'manifest.json is on schema "1.0.0", and Blueprint now reads "3.0.0". Fix: run the migrate tool on this project, then fix what validate reports.'
+          'manifest.json is on schema "1.0.0", and Blueprint now reads "3.0.0". Fix: run the migrate tool on this project, then fix each error that it returns.'
         ]);
 
         const served = await call(session, 'serve', { project: projectCopy, port: 0 });

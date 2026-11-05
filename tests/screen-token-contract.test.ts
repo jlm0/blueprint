@@ -18,7 +18,7 @@ describe('project schema version', () => {
     (bundle.manifest as { schemaVersion: string }).schemaVersion = '1.0.0';
     (bundle.screens as { schemaVersion: string }).schemaVersion = '1.0.0';
 
-    const fix = `and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". Fix: run the migrate tool on this project, then fix what validate reports.`;
+    const fix = `and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". Fix: run the migrate tool on this project, then fix each error that it returns.`;
     assert.deepEqual(validateProject(bundle).errors, [
       `manifest.json is on schema "1.0.0", ${fix}`,
       `screens.json is on schema "1.0.0", ${fix}`

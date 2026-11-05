@@ -72,7 +72,7 @@ export function createBlueprintMcpServer(): McpServer {
     { name: BLUEPRINT_MCP_SERVER_NAME, version: BLUEPRINT_MCP_SERVER_VERSION },
     {
       instructions:
-        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars; each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives, components, screens, and tokens have fixed shapes, described in the AGENTS.md of each sidecar; contract errors end with "Fix:" and the exact change to make. A sidecar made with init start "inspo" begins with an inspo board and no brand: save the image links and words of the person with the inspo tool, propose directions, and write brand.json only after the person approves a direction. Start with validate, then index, then focused query calls. Call serve when a person needs to see the work, and call selection to resolve what they selected in the canvas. On a sidecar with a file on an older schema, validate reports each file on an older schema and serve shows a notice, and every other tool refuses it until migrate runs: run migrate, then fix what it reports. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
+        'Blueprint MCP is the agent-facing control surface for app-owned design sidecars. Each repository owns an isolated Blueprint project and stable serve runtime. The Blueprint canvas is the human visual-review surface. Structured JSON and governed HTML/CSS remain source of truth. Primitives, components, screens, and tokens have fixed shapes, described in the AGENTS.md of each sidecar. Each error ends with "Fix:" and the exact change to make. A sidecar made with init start "inspo" begins with an inspo board and no brand: save the image links and words of the person with the inspo tool, propose directions, and write brand.json only after the person approves a direction. Start with validate, then index, then focused query calls. Call serve when a person needs to see the work, and call selection to resolve what they selected in the canvas. On a sidecar with a file on an older schema, validate reports each file on an older schema and serve shows a notice. Serve with focus or explorationId, and every other tool that reads the sidecar, refuse it until migrate runs. Run migrate, then fix each error that it returns. The init, inspo, migrate, explore, promote, and restore tools validate their own result in baseline mode, so do not call validate again on that result. A running server keeps its tool code, tool text, and canvas page from the build that started it. Its validation workers and the starter come from the build on disk. After a new Blueprint build, ask the person to restart the MCP server in each session on the folder. Use exactly one project path per call. Explorations and canonical history are stored as independent records. Promotion and restoration require explicit compare-and-swap digests.'
     }
   );
   const activeServeHandles = new Map<string, BlueprintServeHandle>();
@@ -83,7 +83,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Initialize Blueprint',
       description:
-        'Create one app-owned Blueprint sidecar from the governed starter. Refuses a non-empty destination unless force is true; force overwrites colliding starter files but preserves unrelated files. Pass start "inspo" for a new product.',
+        'Create one app-owned Blueprint sidecar from the governed starter. Refuses a non-empty destination unless force is true. Force overwrites colliding starter files but preserves unrelated files. Pass start "inspo" for a new product. The tool validates the new sidecar in baseline mode and returns the result in validation.',
       inputSchema: withArgumentFixes('init', initInputSchema),
       outputSchema: initOutputSchema
     },
@@ -95,7 +95,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Edit Blueprint Inspo',
       description:
-        'Edit the inspo board of one Blueprint sidecar. The board is the first step of a new product. add downloads the image link that the person pastes into inspo/, which git ignores, and saves the link with the note of the person. update changes aspects, stance, note, or reading. remove deletes an entry. sync downloads each missing image again. direction proposes or approves what the brand takes from the board for one aspect. A changed statement or entryIds returns the direction to proposed unless the call passes status, and a sidecar with brand.json needs an approved direction. Keep each note as the person wrote it. The tool refuses a sidecar that has brand.json and no inspo.json.',
+        'Edit the inspo board of one Blueprint sidecar. The board is the first step of a new product. add requires the image link in url and a kebab-case id. It downloads the image into inspo/, which git ignores, and saves the link with the note of the person. update changes aspects, stance, note, or reading. remove deletes an entry, and it refuses an entry that is the only source of a direction. sync downloads each missing image again. direction proposes or approves what the brand takes from the board for one aspect. A changed statement or entryIds returns the direction to proposed unless the call passes status, and a sidecar with brand.json needs an approved direction. Keep each note as the person wrote it. The tool refuses a sidecar that has brand.json and no inspo.json. It validates the result, and it writes nothing on a contract error.',
       inputSchema: withArgumentFixes('inspo', inspoInputSchema),
       outputSchema: inspoOutputSchema,
       annotations: {
@@ -129,7 +129,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Migrate Blueprint',
       description:
-        'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result; each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project already on the current schema is left unchanged. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
+        'Upgrade one Blueprint project to the current schema in place. Applies every mechanical change itself, writes all files in one transaction, and returns the changes plus validation of the result. Each remaining validation error is a decision left to the agent, with its exact fix. dryRun reports the same without writing. A project on the current schema gets only the repairs of that schema, such as the starter copy of AGENTS.md and the Blueprint text of its primitives. When out is provided, writes the full JSON to that path and returns only a summary with counts.',
       inputSchema: withArgumentFixes('migrate', migrateInputSchema),
       outputSchema: migrateToolOutputSchema
     },
@@ -189,7 +189,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Serve Blueprint Review',
       description:
-        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. A project with only style errors still opens on the canvas, and styleErrors lists the first of them. A contract error shows the error page. Pass focus with a kind:id boundary to get a URL that opens that boundary\'s page, so the person lands on what changed. Omitted ports allocate from 4173; separate projects receive separate listeners. Independent MCP connections share the repository runtime; its owning connection closes it.',
+        'Start or reuse the loopback-only Blueprint review runtime for one canonical project and return its stable URL. A project with only style errors still opens on the canvas, and styleErrors lists the first of them. A contract error shows the error page, or the last valid state of a runtime that has one. A file on an older schema shows a notice, and focus or explorationId refuses that project. Pass focus with a kind:id boundary to get a URL that opens that boundary\'s page, so the person lands on what changed. Omitted ports allocate from 4173. Separate projects receive separate listeners. Independent MCP connections share the repository runtime. Its owning connection closes it.',
       inputSchema: withArgumentFixes('serve', serveInputSchema),
       outputSchema: serveOutputSchema
     },
@@ -253,7 +253,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Manage Blueprint Exploration',
       description:
-        'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline.',
+        'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline. The tool validates the result in baseline mode, and it writes nothing on an error.',
       inputSchema: withArgumentFixes('explore', exploreInputSchema),
       outputSchema: exploreOutputSchema,
       annotations: {
@@ -271,7 +271,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Promote Blueprint Exploration Candidate',
       description:
-        'Promote one explicitly selected exploration candidate into the next canonical screen version. Requires the inspected baseline, current-screen, and candidate digests and preserves both prior canonical history and the exploration.',
+        'Promote one explicitly selected exploration candidate into the next canonical screen version. Requires the inspected baseline, current-screen, and candidate digests and preserves both prior canonical history and the exploration. The tool validates the result in baseline mode, and it writes nothing on an error.',
       inputSchema: withArgumentFixes('promote', promoteInputSchema),
       outputSchema: promoteOutputSchema,
       annotations: {
@@ -289,7 +289,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Restore Blueprint Screen Version',
       description:
-        'Restore one inspected canonical screen history version as the current screen while first preserving the outgoing current screen as the next immutable history version.',
+        'Restore one inspected canonical screen history version as the current screen while first preserving the outgoing current screen as the next immutable history version. The tool validates the result in baseline mode, and it writes nothing on an error.',
       inputSchema: withArgumentFixes('restore', restoreInputSchema),
       outputSchema: restoreOutputSchema,
       annotations: {

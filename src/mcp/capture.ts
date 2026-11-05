@@ -28,7 +28,7 @@ export async function captureBlueprint(input: CaptureInput, signal?: AbortSignal
 
   if (selector.kind === 'screen') {
     if (input.variant || input.size) {
-      throw new Error('Screen captures take a state and viewport; variant and size apply to primitives. Fix: remove variant and size from this call, or pass a primitive or component boundary.');
+      throw new Error('Screen captures take a state and viewport. Variant and size apply to primitives and components. Fix: remove variant and size from this call, or pass a primitive or component boundary.');
     }
     const selection = resolvePrototypeReviewSelection(bundle, {
       screenId: selector.id,

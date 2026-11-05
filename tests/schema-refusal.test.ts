@@ -88,7 +88,7 @@ describe('a record on an older schema', () => {
         assert.equal((await validateBlueprint({ project, mode: 'baseline' })).ok, true);
 
         await setVersion(project, file, version);
-        const message = `${file} is on schema "${version}", and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". Fix: run the migrate tool on this project, then fix what validate reports.`;
+        const message = `${file} is on schema "${version}", and Blueprint now reads "${BLUEPRINT_SCHEMA_VERSION}". Fix: run the migrate tool on this project, then fix each error that it returns.`;
 
         const validated = await validateBlueprint({ project, mode: 'baseline' });
         assert.equal(validated.ok, false);

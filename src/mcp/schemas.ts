@@ -154,7 +154,7 @@ export const captureInputSchema = z
   .object({
     project: projectPathSchema,
     boundary: capturableBoundarySelectorSchema,
-    state: nonEmptyString.optional().describe('Declared state to render. Defaults to the first declared state.'),
+    state: nonEmptyString.optional().describe('Declared state to render. A screen defaults to its first declared state. A primitive or component defaults to its default state.'),
     viewport: nonEmptyString.optional().describe(
       'Declared frame preset, or a review condition id of the screen. Screens render in that review condition; components and primitives take the preset width instead of the 1280 px default.'
     ),
