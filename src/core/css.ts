@@ -70,6 +70,8 @@ export interface CssFontFace {
   urls: string[];
   /** Each `src` entry that is not a `url()`, such as `local()`. */
   otherSources: string[];
+  /** The rule as written, because the canvas installs each project font in its own document. */
+  text: string;
 }
 
 export interface FontValue {
@@ -567,7 +569,7 @@ export function listCssFontFaces(css: string): readonly CssFontFace[] {
     const fontFaces: CssFontFace[] = [];
     try {
       (parse(css, { map: false }) as Root).walkAtRules(/^font-face$/i, rule => {
-        const face: CssFontFace = { family: '', urls: [], otherSources: [] };
+        const face: CssFontFace = { family: '', urls: [], otherSources: [], text: rule.toString() };
         rule.walkDecls(declaration => {
           const property = declaration.prop.toLowerCase();
           if (property === 'font-family') face.family = unquoted(declaration.value.trim());

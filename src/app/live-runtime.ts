@@ -161,31 +161,39 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   if (!changeBaseline || changeBaseline.activityKey !== activeActivityKey) {
     setChangeBaseline({ bundle: project, activityKey: activeActivityKey });
   }
+  const previousWindowBundle = window.__BLUEPRINT_PROJECT_BUNDLE__;
   setProject(createConfiguredProjectBundle(snapshot.bundle));
   window.__BLUEPRINT_PROJECT_BUNDLE__ = snapshot.bundle;
-  refreshSurround();
-  setScreenPages(declaredScreenPages(project));
-  if (!activeScreenPage || !hasScreenPage(activeScreenPage)) {
-    setActiveScreenPage(requestedScreenPage() ?? screenPages[0]?.id ?? null);
-  }
-  refreshBoardSwitcher();
-  refreshItemNav();
-
-  const updates: Promise<void>[] = [];
   const fittedBoards = new Set<BoardId>();
-  const replace = (id: BoardId): Promise<void> => replaceMountedBoard(id).then(fitted => {
-    if (fitted) fittedBoards.add(id);
-  });
-  if (boardState.has('primitives') && (advancedPastEvent || pathsAffectPrimitives(changedPaths))) {
-    updates.push(replace('primitives'));
+  try {
+    refreshSurround();
+    setScreenPages(declaredScreenPages(project));
+    if (!activeScreenPage || !hasScreenPage(activeScreenPage)) {
+      setActiveScreenPage(requestedScreenPage() ?? screenPages[0]?.id ?? null);
+    }
+    refreshBoardSwitcher();
+    refreshItemNav();
+
+    const updates: Promise<void>[] = [];
+    const replace = (id: BoardId): Promise<void> => replaceMountedBoard(id).then(fitted => {
+      if (fitted) fittedBoards.add(id);
+    });
+    if (boardState.has('primitives') && (advancedPastEvent || pathsAffectPrimitives(changedPaths))) {
+      updates.push(replace('primitives'));
+    }
+    if (boardState.has('screens')) {
+      const reconciled = !advancedPastEvent && previousProjectId === project.manifest.project.id
+        ? await reconcileScreenFrames(changedPaths, previousProject)
+        : false;
+      if (!reconciled) updates.push(replace('screens'));
+    }
+    await Promise.all(updates);
+  } catch (error) {
+    // The next apply diffs against the project, so the project must stay the bundle that the frames show.
+    setProject(previousProject);
+    window.__BLUEPRINT_PROJECT_BUNDLE__ = previousWindowBundle;
+    throw error;
   }
-  if (boardState.has('screens')) {
-    const reconciled = !advancedPastEvent && previousProjectId === project.manifest.project.id
-      ? await reconcileScreenFrames(changedPaths, previousProject)
-      : false;
-    if (!reconciled) updates.push(replace('screens'));
-  }
-  await Promise.all(updates);
   if (activeBoardId) {
     boardState.get(activeBoardId)?.mounted.configure();
     if (preservedView && !fittedBoards.has(activeBoardId)) canvas.setView(preservedView);

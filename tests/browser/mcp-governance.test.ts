@@ -764,6 +764,104 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('keeps live edits and the page load working when a CSS comment holds a font rule that does not decode', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const server = await startServeServer(projectCopy, 0, undefined, loadValidatedProject);
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          const pageErrors: string[] = [];
+          page.on('pageerror', error => pageErrors.push(error.message));
+          await page.goto(`${server.url}?board=screens`);
+          await page.locator('[data-board-root="screens"] iframe.canonical-prototype-iframe').first().waitFor({ timeout: 20_000 });
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* @font-face { font-family: "Old Sans"; src: url("fonts/old%ZZ.woff2"); } */\n[data-blueprint-screen="workspace"] { --blueprint-font-comment-test: 1; }\n`, 'utf8');
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .some(frame => frame.srcdoc.includes('blueprint-font-comment-test')), undefined, { timeout: 20_000 });
+          await page.reload();
+          await page.locator('.bp-chrome-section-button').first().waitFor({ timeout: 20_000 });
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it('installs each project font in the canvas from the asset route', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(meridianRoot, projectCopy, { recursive: true });
+      const server = await startServeServer(projectCopy, 0, undefined, loadValidatedProject);
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(`${server.url}?board=screens`);
+          await page.locator('[data-board-root="screens"] iframe.canonical-prototype-iframe').first().waitFor({ timeout: 20_000 });
+          const fonts = await page.evaluate(() => document.getElementById('bp-project-fonts')?.textContent ?? '');
+          const origin = new URL(server.url).origin;
+          assert.match(fonts, /font-family: "Inter Tight"/);
+          assert.match(fonts, new RegExp(`url\\("${origin.replaceAll('.', '\\.')}/[^"]*[0-9a-f]{64}"\\)`));
+          assert.doesNotMatch(fonts, /url\(\s*(?!["']?http)/);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
+  it('brings the frames up to date after an apply that throws, when the next edit changes no frame output', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const server = await startServeServer(projectCopy, 0, undefined, loadValidatedProject);
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(`${server.url}?board=screens`);
+          await page.locator('[data-board-root="screens"] iframe.canonical-prototype-iframe').first().waitFor({ timeout: 20_000 });
+          await page.evaluate(() => {
+            const record = window as Window & { __BLUEPRINT_INJECTED_FAULT__?: boolean };
+            const getElementById = document.getElementById.bind(document);
+            document.getElementById = (id: string) => {
+              if (id === 'bp-project-fonts' && !record.__BLUEPRINT_INJECTED_FAULT__) {
+                record.__BLUEPRINT_INJECTED_FAULT__ = true;
+                throw new Error('injected apply fault');
+              }
+              return getElementById(id);
+            };
+          });
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n[data-blueprint-screen="workspace"] { --blueprint-failed-apply-test: 1; }\n`, 'utf8');
+          await page.waitForFunction(() => (window as Window & { __BLUEPRINT_INJECTED_FAULT__?: boolean }).__BLUEPRINT_INJECTED_FAULT__ === true, undefined, { timeout: 20_000 });
+          await page.waitForFunction(() => document.querySelector<HTMLElement>('.bp-chrome-agent-status')?.dataset.phase === 'waiting', undefined, { timeout: 20_000 });
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* blueprint-later-comment */\n`, 'utf8');
+          await page.waitForFunction(() => Object.values((window as Window & { __BLUEPRINT_PROJECT_BUNDLE__?: { prototypeSourceContents: Record<string, string> } }).__BLUEPRINT_PROJECT_BUNDLE__?.prototypeSourceContents ?? {})
+            .some(source => source.includes('blueprint-later-comment')), undefined, { timeout: 20_000 });
+          await waitForAppliedLiveChange(page);
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .some(frame => frame.srcdoc.includes('blueprint-failed-apply-test')), undefined, { timeout: 10_000 });
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
   it('returns compact JSON, and only a summary when the caller gives out', async () => {
     await withTempDir(async tempDir => {
       const session = await openSession();

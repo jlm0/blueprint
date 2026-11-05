@@ -1,7 +1,8 @@
 import { parseOpaqueColor, relativeLuminance } from '../core/color';
 import { contrastRatio } from '../core/contrast-lint';
+import { listCssFontFaces, rewriteCssUrls } from '../core/css';
 import type { CanvasProjectBundle } from '../core/types';
-import { prototypeAssetUrl } from '../prototype/compiler';
+import { acceptedAssetRef, prototypeAssetUrl } from '../prototype/compiler';
 import { project } from './canvas-state';
 import { createTokenIndex, findTokenValue, resolveTokenReferences, resolvedColor, singleLength } from './tokens';
 
@@ -107,8 +108,8 @@ function installProjectFonts(bundle: CanvasProjectBundle): void {
   const rules = new Set<string>();
   for (const [sourceRef, css] of Object.entries(bundle.prototypeSourceContents)) {
     if (!sourceRef.endsWith('.css')) continue;
-    for (const match of css.matchAll(/@font-face\s*\{[^{}]*\}/g)) {
-      const rule = resolveFontFaceUrls(bundle, sourceRef, match[0]);
+    for (const face of listCssFontFaces(css)) {
+      const rule = resolveFontFaceUrls(bundle, sourceRef, face.text);
       if (rule) rules.add(rule);
     }
   }
@@ -117,9 +118,9 @@ function installProjectFonts(bundle: CanvasProjectBundle): void {
 
 function resolveFontFaceUrls(bundle: CanvasProjectBundle, sourceRef: string, rule: string): string | undefined {
   let resolved = true;
-  const rewritten = rule.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (_match, _quote: string, value: string) => {
-    const assetRef = decodeURIComponent(new URL(value.trim(), `https://sidecar.invalid/${sourceRef}`).pathname.slice(1));
-    const asset = bundle.prototypeAssetContents[assetRef];
+  const rewritten = rewriteCssUrls(rule, value => {
+    const assetRef = acceptedAssetRef(sourceRef, value);
+    const asset = assetRef === undefined ? undefined : bundle.prototypeAssetContents[assetRef];
     if (!asset) {
       resolved = false;
       return 'none';

@@ -1002,6 +1002,15 @@ function resolveAssetTokens(context: CompilerContext, html: string, output: Asse
   });
 }
 
+/** The canvas installs a project font only from a path that the compiler accepts. */
+export function acceptedAssetRef(sourceRef: string, value: string): string | undefined {
+  try {
+    return resolveRelativeRef(sourceRef, value);
+  } catch {
+    return undefined;
+  }
+}
+
 function resolveRelativeRef(sourceRef: string, value: string): string {
   const trimmed = value.trim();
   if (
