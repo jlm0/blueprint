@@ -144,13 +144,13 @@ export async function startServeServer(
   });
   const state: ServeState = { projectRoot, siteRoot, indexHtml, canvasToken: randomUUID(), activityHub, snapshots };
 
-  const server = createHttpServer(async (request, response) => {
+  const server = createHttpServer(answerFailedRequests(async (request, response) => {
     if (!admitLoopbackRequest(server, request.headers.host, response)) {
       return;
     }
-    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
-    const pathname = decodeRequestPathname(requestUrl);
-    if (!pathname) {
+    const requestUrl = parseRequestUrl(request.url ?? '/');
+    const pathname = requestUrl && decodeRequestPathname(requestUrl);
+    if (!requestUrl || !pathname) {
       writePlainText(response, 400, 'Bad request');
       return;
     }
@@ -161,7 +161,7 @@ export async function startServeServer(
       return;
     }
     await route.handle({ state, request, response, requestUrl, pathname });
-  });
+  }));
 
   await listenForBlueprintServe(server, requestedPort);
   const address = server.address() as AddressInfo;
@@ -526,6 +526,23 @@ function writePrototypeRouteError(response: ServerResponse, status: number, erro
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** This process also runs the MCP server, and Node ends the process on an unhandled rejection. */
+export function answerFailedRequests(
+  handle: (request: IncomingMessage, response: ServerResponse) => Promise<void>
+): (request: IncomingMessage, response: ServerResponse) => void {
+  return (request, response) => {
+    handle(request, response).catch(() => {
+      if (response.headersSent) response.destroy();
+      else writePlainText(response, 500, 'Internal server error');
+    });
+  };
+}
+
+/** A target such as `//` or `http://` reads as an authority with no valid host, and `new URL` throws on it. */
+function parseRequestUrl(target: string): URL | undefined {
+  return URL.canParse(target, 'http://127.0.0.1') ? new URL(target, 'http://127.0.0.1') : undefined;
 }
 
 function decodeRequestPathname(requestUrl: URL): string | undefined {

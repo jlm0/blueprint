@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
-import { request as httpRequest, type IncomingMessage } from 'node:http';
+import { createServer as createHttpServer, request as httpRequest, type IncomingMessage } from 'node:http';
+import { connect, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -10,6 +11,7 @@ import { loadProjectFromFs } from '../src/core/load';
 import { findLiveBlueprintActivityRuntime } from '../src/mcp/activity';
 import { blueprintServeRuntimeKey, serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
 import type { ProjectReader } from '../src/mcp/project-validation';
+import { answerFailedRequests } from '../src/mcp/serve-server';
 import { rewriteUntilSeen, serveWatched, settleFileEvents } from './support/serve-watched';
 import { hashProjectAssets, readValidatedProject } from '../src/mcp/project-validation-worker';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
@@ -55,6 +57,23 @@ interface ServedProject {
   canvasToken: string;
   close: () => Promise<void>;
 }
+
+describe('serve request failures', () => {
+  it('answers a request whose handler throws with 500, and keeps the process and the server alive', async () => {
+    const server = createHttpServer(answerFailedRequests(async () => {
+      throw new Error('handler fault');
+    }));
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const port = (server.address() as AddressInfo).port;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        assertRoute(await sendRoute(port, { path: '/' }), { status: 500, headers: PLAIN_TEXT_HEADERS, text: 'Internal server error' });
+      }
+    } finally {
+      await new Promise(resolve => server.close(resolve));
+    }
+  });
+});
 
 describe('serve routes on a valid project', () => {
   let target: ServedProject;
@@ -133,6 +152,13 @@ describe('serve routes on a valid project', () => {
       assert.equal((await send({ path: '/__blueprint/%70roject' })).status, 200);
       assert.equal((await send({ method: 'POST', path: '/__blueprint/%70roject' })).status, 405);
     });
+
+    for (const requestTarget of ['//', '//?x', '/\\', '//a:b', '//%', '//1.2.3.256', 'http://', 'http://a:b/']) {
+      it(`answers the target ${JSON.stringify(requestTarget)} that is not a URL with 400, and keeps serving`, async () => {
+        assert.equal(await sendRawTarget(target.port, requestTarget), 'HTTP/1.1 400 Bad Request');
+        assert.equal((await send({ path: '/__blueprint/project' })).status, 200);
+      });
+    }
   });
 
   describe('activity stream', () => {
@@ -706,6 +732,20 @@ function sendRoute(port: number, { method = 'GET', path: routePath, headers = {}
     });
     outgoing.on('error', reject);
     outgoing.end(body);
+  });
+}
+
+/** The HTTP client changes some targets before it sends them, so this request writes the target to the socket as given. */
+function sendRawTarget(port: number, requestTarget: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const socket = connect(port, '127.0.0.1');
+    let received = '';
+    socket.setEncoding('utf8');
+    socket.setTimeout(5000, () => socket.destroy(new Error(`serve gave no reply to ${requestTarget} in 5 s`)));
+    socket.on('data', (chunk: string) => { received += chunk; });
+    socket.on('error', reject);
+    socket.on('close', () => resolve(received.split('\r\n')[0] ?? ''));
+    socket.write(`GET ${requestTarget} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`);
   });
 }
 

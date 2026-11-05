@@ -22,7 +22,7 @@ import {
   type ErrorSiteReport,
   type FixAllowEntry
 } from './support/error-fix-guard';
-import { withProjectCopy } from './support/project-copies';
+import { fileDigests, withProjectCopy } from './support/project-copies';
 
 const WRAPPER = 'Wrapper: it adds a prefix to messages that each hold a Fix: line.';
 const RETHROW = 'Rethrow: it passes on a message from a site that this guard checks.';
@@ -597,6 +597,19 @@ describe('a Fix: line that a project state can make wrong', () => {
         assert.doesNotMatch(error.message, /force/i);
         return true;
       });
+    });
+  });
+
+  it('refuses force on a real project, names migrate, and changes no file', async () => {
+    await withMeridian(async project => {
+      const before = await fileDigests(project);
+      await assert.rejects(initializeBlueprint({ out: project, projectId: 'meridian-finance', name: 'Meridian', force: true }), (error: Error) => {
+        const fix = error.message.split('Fix:')[1] ?? '';
+        assert.match(fix, /pass an empty out directory/);
+        assert.match(fix, /call migrate/);
+        return true;
+      });
+      assert.deepEqual(await fileDigests(project), before);
     });
   });
 

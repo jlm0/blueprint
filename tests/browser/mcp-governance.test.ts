@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer, type Server as NetServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -106,7 +106,7 @@ describe('Blueprint MCP and template governance', () => {
     }
   });
 
-  it('initializes a safe sidecar, preserves unrelated files on force, and rewrites identity', async () => {
+  it('initializes a safe sidecar, refuses force on a project, preserves unrelated files on force, and rewrites identity', async () => {
     await withTempDir(async tempDir => {
       const session = await openSession();
       try {
@@ -139,10 +139,18 @@ describe('Blueprint MCP and template governance', () => {
         assertToolError(refused, /Destination is not empty/);
         assert.equal(await readFile(sentinel, 'utf8'), 'do not overwrite');
 
-        const forced = await call(session, 'init', { projectId: 'app-b', name: 'App B', out, force: true });
+        const forcedOnProject = await session.client.callTool({ name: 'init', arguments: { projectId: 'app-b', name: 'App B', out, force: true } });
+        assertToolError(forcedOnProject, /holds a Blueprint project/);
+        assert.equal(JSON.parse(await readFile(path.join(out, 'manifest.json'), 'utf8')).project.id, 'app-a');
+
+        const plainOut = path.join(tempDir, 'app-b', 'design', 'blueprint');
+        await mkdir(plainOut, { recursive: true });
+        const plainSentinel = path.join(plainOut, 'keep.txt');
+        await writeFile(plainSentinel, 'do not overwrite', 'utf8');
+        const forced = await call(session, 'init', { projectId: 'app-b', name: 'App B', out: plainOut, force: true });
         assert.equal(forced.projectId, 'app-b');
-        assert.equal(await readFile(sentinel, 'utf8'), 'do not overwrite');
-        assert.equal(JSON.parse(await readFile(path.join(out, 'manifest.json'), 'utf8')).project.id, 'app-b');
+        assert.equal(await readFile(plainSentinel, 'utf8'), 'do not overwrite');
+        assert.equal(JSON.parse(await readFile(path.join(plainOut, 'manifest.json'), 'utf8')).project.id, 'app-b');
       } finally {
         await session.close();
       }

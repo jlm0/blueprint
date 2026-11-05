@@ -45,7 +45,7 @@ export const initInputSchema = z
     projectId: nonEmptyString.describe('Stable project identifier written into every structured Blueprint file.'),
     name: nonEmptyString.describe('Project display name written into the Blueprint manifest.'),
     out: nonEmptyString.describe('Destination design/blueprint directory.'),
-    force: z.boolean().default(false).describe('Overwrite colliding starter files in place while preserving unrelated destination files.'),
+    force: z.boolean().default(false).describe('Overwrite colliding starter files in a destination that holds no Blueprint project, and keep unrelated files. Init refuses a Blueprint project also with force.'),
     start: z.enum(['inspo']).optional().describe('Pass "inspo" for a new product: the sidecar starts with an empty inspo board and no brand.json, and the brand comes from the directions the person approves.')
   })
   .strict();

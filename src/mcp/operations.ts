@@ -132,10 +132,11 @@ export async function initializeBlueprint(input: InitInput, signal?: AbortSignal
 
   if (existsSync(destination)) {
     const entries = await readdir(destination);
+    if (entries.includes('manifest.json')) {
+      throw new Error(`Destination is not empty: ${normalize(destination)}. It holds a Blueprint project, and init never writes over a project. Fix: pass an empty out directory. To bring AGENTS.md and the primitives of this project up to the current starter, call migrate.`);
+    }
     if (entries.length > 0 && !input.force) {
-      throw new Error(entries.includes('manifest.json')
-        ? `Destination is not empty: ${normalize(destination)}. It holds a Blueprint project. Fix: pass an empty out directory.`
-        : `Destination is not empty: ${normalize(destination)}. Retry with force=true to overwrite Blueprint starter files in place. Fix: pass force true to overwrite the starter files, or pass an empty out directory.`);
+      throw new Error(`Destination is not empty: ${normalize(destination)}. Retry with force=true to overwrite Blueprint starter files in place. Fix: pass force true to overwrite the starter files, or pass an empty out directory.`);
     }
   }
 

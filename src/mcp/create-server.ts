@@ -83,7 +83,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Initialize Blueprint',
       description:
-        'Create one app-owned Blueprint sidecar from the governed starter. Refuses a non-empty destination unless force is true. Force overwrites colliding starter files but preserves unrelated files. Pass start "inspo" for a new product. The tool validates the new sidecar in baseline mode and returns the result in validation.',
+        'Create one app-owned Blueprint sidecar from the governed starter. Refuses a destination that holds a Blueprint project, also with force. Refuses another non-empty destination unless force is true. Force then overwrites colliding starter files and keeps unrelated files. Pass start "inspo" for a new product. The tool validates the new sidecar in baseline mode and returns the result in validation.',
       inputSchema: withArgumentFixes('init', initInputSchema),
       outputSchema: initOutputSchema
     },
