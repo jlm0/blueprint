@@ -6,12 +6,13 @@ import { createServer as createHttpServer, request as httpRequest, type Incoming
 import { connect, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { after, before, describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { findLiveBlueprintActivityRuntime } from '../src/mcp/activity';
-import { blueprintServeRuntimeKey, serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
-import type { ProjectReader } from '../src/mcp/project-validation';
-import { answerFailedRequests } from '../src/mcp/serve-server';
+import { blueprintServeRuntimeKey, exploreBlueprint, migrateBlueprint, serveBlueprint, type BlueprintServeHandle } from '../src/mcp/operations';
+import { loadValidatedProject, type ProjectReader } from '../src/mcp/project-validation';
+import { answerFailedRequests, startServeServer, type LocalServeServer, type ProjectWatch } from '../src/mcp/serve-server';
 import { rewriteUntilSeen, serveWatched, settleFileEvents } from './support/serve-watched';
 import { hashProjectAssets, readValidatedProject } from '../src/mcp/project-validation-worker';
 import { PROTOTYPE_CONTENT_SECURITY_POLICY } from '../src/prototype/compiler';
@@ -680,6 +681,92 @@ describe('completed activity deadline', () => {
   });
 });
 
+describe('serve change sources with no file events', () => {
+  const POLL_WAIT_MS = 5_000;
+
+  it('holds the explore result in settledProject at once after the tool returns, and sends one project-changed event', async () => {
+    const target = await serveWithoutFileEvents(umbraRoot);
+    const stream = await openStream(target.server.port);
+    try {
+      await stream.waitFor(text => text.includes(': blueprint activity stream\n\n'));
+      const before = target.server.latestProject!().revision;
+      await exploreBlueprint({ project: target.project, operation: launchExploration('launch-hero') });
+      const settled = await target.server.settledProject!();
+      assert.ok(settled, 'settledProject ended at its deadline.');
+      assert.ok(settled.bundle?.explorations.explorations.some(exploration => exploration.id === 'launch-hero'), 'settledProject does not hold the new exploration.');
+      assert.notEqual(settled.revision, before);
+      const [changed] = await stream.waitForEvents('project-changed', () => true);
+      assert.equal(changed.revision, settled.revision);
+      assert.ok((changed.changedPaths as string[]).includes('explorations/launch-hero.json'));
+
+      const readsBeforeLateEvent = target.reads();
+      for (const changedPath of changed.changedPaths as string[]) target.report(changedPath);
+      const afterLateEvent = await target.server.settledProject!();
+      assert.equal(target.reads(), readsBeforeLateEvent + 1, 'The late file event must start a reload, or this check proves nothing.');
+      assert.equal(afterLateEvent?.revision, settled.revision);
+      await delay(300);
+      assert.equal(stream.events('project-changed').length, 1);
+    } finally {
+      stream.close();
+      await target.close();
+    }
+  });
+
+  it('holds the migrate result in settledProject at once after the tool returns', async () => {
+    const target = await serveWithoutFileEvents(umbraRoot, async project => {
+      const manifestPath = path.join(project, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.schemaVersion = '1.0.0';
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    });
+    try {
+      assert.match(target.server.latestProject!().error ?? '', /schema "1\.0\.0"/);
+      const migrated = await migrateBlueprint({ project: target.project, dryRun: false });
+      assert.deepEqual(migrated.files, ['manifest.json']);
+      const settled = await target.server.settledProject!();
+      assert.equal(settled?.error, undefined);
+      assert.ok(settled?.bundle);
+    } finally {
+      await target.close();
+    }
+  });
+
+  it('sends project-changed for a hand edit through the stat poll within 5 s', async () => {
+    const target = await serveWithoutFileEvents(umbraRoot);
+    const stream = await openStream(target.server.port);
+    try {
+      await stream.waitFor(text => text.includes(': blueprint activity stream\n\n'));
+      await renameProject(target.project, 'Edited With No File Event');
+      const editedAt = performance.now();
+      while (stream.events('project-changed').length === 0) {
+        assert.ok(performance.now() - editedAt < POLL_WAIT_MS, 'No project-changed event arrived within 5 s of the hand edit.');
+        await delay(25);
+      }
+      assert.deepEqual(stream.events('project-changed')[0]?.changedPaths, ['manifest.json']);
+      assert.equal(target.server.latestProject!().bundle?.manifest.project.name, 'Edited With No File Event');
+    } finally {
+      stream.close();
+      await target.close();
+    }
+  });
+
+  it('starts one reload for a hand edit that the watcher and the poll both see', async () => {
+    const target = await serveWithoutFileEvents(umbraRoot);
+    try {
+      const readsBefore = target.reads();
+      await renameProject(target.project, 'Seen Twice');
+      target.report('manifest.json');
+      await target.server.settledProject!();
+      assert.equal(target.reads(), readsBefore + 1);
+      await delay(POLL_WAIT_MS);
+      await target.server.settledProject!();
+      assert.equal(target.reads(), readsBefore + 1, 'The poll started a second reload for a change that a reload already read.');
+    } finally {
+      await target.close();
+    }
+  });
+});
+
 async function serveCopy(
   fixture: string,
   prepare?: (project: string) => Promise<void>,
@@ -710,6 +797,64 @@ async function serveCopy(
     await close();
     throw error;
   }
+}
+
+interface UnwatchedServe {
+  project: string;
+  server: LocalServeServer;
+  reads: () => number;
+  report: (changedPath: string) => void;
+  close: () => Promise<void>;
+}
+
+/** The watcher reports only what the test passes to report, as when FSEvents loses each event. */
+async function serveWithoutFileEvents(fixture: string, prepare?: (project: string) => Promise<void>): Promise<UnwatchedServe> {
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'blueprint-serve-sources-'));
+  const project = path.join(tempDir, 'design', 'blueprint');
+  await cp(fixture, project, { recursive: true });
+  await prepare?.(project);
+  let reads = 0;
+  let onChange: ((changedPath: string) => void) | undefined;
+  const watch: ProjectWatch = (_projectRoot, report) => {
+    onChange = report;
+    return () => {
+      onChange = undefined;
+    };
+  };
+  const server = await startServeServer(project, 0, undefined, (root, signal) => {
+    reads += 1;
+    return loadValidatedProject(root, signal);
+  }, { watch });
+  return {
+    project,
+    server,
+    reads: () => reads,
+    report: changedPath => onChange?.(changedPath),
+    close: async () => {
+      await server.close();
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  };
+}
+
+async function renameProject(project: string, name: string): Promise<void> {
+  const manifestPath = path.join(project, 'manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  manifest.project.name = name;
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function launchExploration(id: string) {
+  return {
+    type: 'create' as const,
+    id,
+    screenId: 'launch',
+    state: 'default',
+    framePresetId: 'desktop-web-page',
+    title: 'Launch hero',
+    intent: 'Compare hero directions without changing the canonical canvas.',
+    candidateLabels: ['A', 'B', 'C']
+  };
 }
 
 function sendRoute(port: number, { method = 'GET', path: routePath, headers = {}, body }: RouteRequest): Promise<RouteResponse> {
@@ -838,6 +983,7 @@ function openStream(port: number): Promise<{
   text: () => string;
   waitFor: (condition: (text: string) => boolean) => Promise<void>;
   waitForEvents: (name: string, condition: (event: Record<string, unknown>) => boolean) => Promise<Array<Record<string, unknown>>>;
+  events: (name: string) => Array<Record<string, unknown>>;
   close: () => void;
 }> {
   return new Promise((resolve, reject) => {
@@ -864,6 +1010,7 @@ function openStream(port: number): Promise<{
           await waitUntil(() => events(name, condition).length > 0);
           return events(name, condition);
         },
+        events: name => events(name, () => true),
         close: () => outgoing.destroy()
       });
     });

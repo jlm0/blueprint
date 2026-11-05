@@ -7,6 +7,7 @@ import { assertCurrentSchema } from '../core/schema-version';
 import type { BlueprintProjectBundle, ValidationResult } from '../core/types';
 import { normalize, runInOrder, throwIfAborted } from './operation-support';
 import type { ProjectCheck, ProjectValidator } from './project-validation';
+import { scheduleOwnedServeReloads } from './serve-runtimes';
 
 export interface ProjectFileWrite {
   fileRef: string;
@@ -20,6 +21,8 @@ interface AppliedProjectFile {
 
 interface ProjectFileTransaction {
   rollback: () => Promise<void>;
+  /** Call after the writes pass validation, so a serve runtime of this process holds them before the tool returns. */
+  announce: () => void;
 }
 
 const projectMutations = new Map<string, Promise<void>>();
@@ -34,6 +37,12 @@ function gated(result: ValidationResult, gate: MutationGate): { errors: string[]
 // A worker check leaves the event loop free, so another mutation of this project must wait until this commit ends.
 export async function withProjectMutation<T>(projectRoot: string, signal: AbortSignal | undefined, mutate: () => Promise<T>): Promise<T> {
   return runInOrder(projectMutations, realpathSync.native(projectRoot), signal, mutate);
+}
+
+/** A reader that waits here sees the memo of the commit, and it does not join the queue, so it holds no later mutation. */
+export function settledProjectMutations(projectRoot: string): Promise<void> {
+  const tail = existsSync(projectRoot) ? projectMutations.get(realpathSync.native(projectRoot)) : undefined;
+  return tail ?? Promise.resolve();
 }
 
 export async function assertValidMutation(
@@ -81,6 +90,7 @@ export async function commitProjectMutation(
     await transaction.rollback();
     throw error;
   }
+  transaction.announce();
 }
 
 export function jsonFileContent(value: unknown): string {
@@ -169,7 +179,8 @@ export async function applyProjectFileTransaction(
       }
       rolledBack = true;
       await rollbackAppliedFiles(applied);
-    }
+    },
+    announce: () => scheduleOwnedServeReloads(canonicalRoot, [...uniqueWrites.keys()])
   };
 }
 

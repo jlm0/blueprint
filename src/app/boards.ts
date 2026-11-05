@@ -147,9 +147,10 @@ export function remountBoard(id: BoardId): void {
   }
 }
 
-export async function replaceMountedBoard(id: BoardId): Promise<void> {
+/** Resolves true when new frames replace a board with none and the board fits them, because a view saved on the unavailable panel leaves them out of view. */
+export async function replaceMountedBoard(id: BoardId): Promise<boolean> {
   const current = boardState.get(id);
-  if (!current) return;
+  if (!current) return false;
   const config = boardConfigs[id];
   const isActive = activeBoardId === id;
   const onCanvas = config.surface === 'canvas';
@@ -167,25 +168,28 @@ export async function replaceMountedBoard(id: BoardId): Promise<void> {
   if (isActive) await waitForBoardFrames(nextRoot);
   if (boardState.get(id) !== current) {
     nextRoot.remove();
-    return;
+    return false;
   }
 
+  const fitsNewFrames = onCanvas && !current.root.querySelector('.frame-slot') && nextRoot.querySelector('.frame-slot') !== null;
   current.root.remove();
   nextRoot.style.removeProperty('visibility');
   nextRoot.style.removeProperty('position');
   nextRoot.removeAttribute('aria-busy');
   nextRoot.classList.remove('bp-chrome-live-board-next');
   nextRoot.classList.add('bp-chrome-live-board-enter');
-  const nextState: MountedBoard = { root: nextRoot, mounted, view, ...(scrollTop === undefined ? {} : { scrollTop }) };
+  const nextState: MountedBoard = { root: nextRoot, mounted, view: fitsNewFrames ? null : view, ...(scrollTop === undefined ? {} : { scrollTop }) };
   boardState.set(id, nextState);
   if (isActive) {
     mounted.configure();
-    if (onCanvas && view) canvas.setView(view);
+    if (fitsNewFrames) mounted.fit();
+    else if (onCanvas && view) canvas.setView(view);
     if (!onCanvas) documentView.scrollTop = scrollTop ?? 0;
     refreshNavigationState();
     refreshCanvasReviewState(id);
     renderCanvasAnnotations();
   }
+  return fitsNewFrames;
 }
 
 async function waitForBoardFrames(root: HTMLElement): Promise<void> {

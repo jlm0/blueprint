@@ -41,7 +41,9 @@ import {
   type RegisteredBlueprintActivityRuntime
 } from './activity';
 import { packageRoot } from './operation-support';
+import { isWatchedProjectPath, ProjectFilePoll } from './project-poll';
 import type { ProjectReader, ValidatedProject } from './project-validation';
+import { registerOwnedServeRuntime } from './serve-runtimes';
 import { ServeProjectSnapshots, type ServeProjectSnapshot } from './serve-snapshot';
 
 const watcherDebounceMs = 120;
@@ -49,6 +51,7 @@ const INSPO_IMAGE_ROUTE = /^\/__blueprint\/inspo\/([a-z0-9]+(?:-[a-z0-9]+)*\.(?:
 const PROTOTYPE_ASSET_HASH = /^[0-9a-f]{64}$/;
 const watcherEventGraceMs = 200;
 const watcherSettleTimeoutMs = 5_000;
+const filePollIntervalMs = 2_000;
 
 export interface CaptureServer {
   url: string;
@@ -66,6 +69,13 @@ export interface LocalServeServer extends CaptureServer {
   latestProject?: () => ServeProjectSnapshot;
 }
 
+export type ProjectWatch = (projectRoot: string, onChange: (changedPath: string) => void) => () => void;
+
+export interface ServeServerOptions {
+  /** A test replaces the file watcher to prove that serve learns of each change without it. */
+  watch?: ProjectWatch;
+}
+
 export interface StoredCanvasSelection extends BlueprintCanvasSelection {
   selectedAt: string;
   revision: string;
@@ -78,6 +88,7 @@ interface ServeState {
   canvasToken: string;
   activityHub: BlueprintActivityHub;
   snapshots: ServeProjectSnapshots;
+  scheduleFileChanges: () => Promise<void>;
   runtime?: RegisteredBlueprintActivityRuntime;
   canvasSelection?: StoredCanvasSelection;
 }
@@ -113,7 +124,8 @@ export async function startServeServer(
   projectRoot: string,
   requestedPort: number | undefined,
   validated: ValidatedProject | undefined,
-  read: ProjectReader
+  read: ProjectReader,
+  { watch: watchProject = watchBlueprintProject }: ServeServerOptions = {}
 ): Promise<LocalServeServer> {
   const siteRoot = path.join(packageRoot, 'dist', 'site');
   const indexPath = path.join(siteRoot, 'index.html');
@@ -125,10 +137,13 @@ export async function startServeServer(
     throw new Error('Blueprint serve could not find the built module script in dist/site/index.html. Re-run `npm run build` and try again. Fix: run npm run build in the Blueprint package directory, then call serve again.');
   }
 
+  const canonicalRoot = await realpath(projectRoot);
+  const filePoll = new ProjectFilePoll(projectRoot);
   const activityHub = new BlueprintActivityHub();
   const snapshots = new ServeProjectSnapshots(projectRoot, {
     read,
     debounceMs: watcherDebounceMs,
+    changesBeforeRead: () => filePoll.pass(),
     onChanged: ({ revision, changedPaths }) => activityHub.publish('project-changed', {
       version: 1,
       revision,
@@ -142,7 +157,11 @@ export async function startServeServer(
       changedAt: new Date().toISOString()
     })
   });
-  const state: ServeState = { projectRoot, siteRoot, indexHtml, canvasToken: randomUUID(), activityHub, snapshots };
+  const schedule = (changedPath: string): void => snapshots.schedule(changedPath);
+  const scheduleFileChanges = async (): Promise<void> => {
+    for (const changedPath of await filePoll.pass()) schedule(changedPath);
+  };
+  const state: ServeState = { projectRoot, siteRoot, indexHtml, canvasToken: randomUUID(), activityHub, snapshots, scheduleFileChanges };
 
   const server = createHttpServer(answerFailedRequests(async (request, response) => {
     if (!admitLoopbackRequest(server, request.headers.host, response)) {
@@ -166,6 +185,7 @@ export async function startServeServer(
   await listenForBlueprintServe(server, requestedPort);
   const address = server.address() as AddressInfo;
   try {
+    await filePoll.pass();
     await snapshots.start(validated);
     state.runtime = await registerBlueprintActivityRuntime(
       projectRoot,
@@ -178,7 +198,9 @@ export async function startServeServer(
     throw error;
   }
 
-  const stopWatching = watchBlueprintProject(projectRoot, changedPath => snapshots.schedule(changedPath));
+  const stopWatching = watchProject(projectRoot, schedule);
+  filePoll.every(filePollIntervalMs, schedule);
+  const unregisterOwnedRuntime = registerOwnedServeRuntime(canonicalRoot, schedule);
 
   const baseUrl = `http://127.0.0.1:${address.port}/`;
   let closePromise: Promise<void> | undefined;
@@ -192,6 +214,8 @@ export async function startServeServer(
     latestProject: () => snapshots.current,
     close: () => {
       closePromise ??= (async () => {
+        unregisterOwnedRuntime();
+        filePoll.close();
         snapshots.close();
         stopWatching();
         activityHub.close();
@@ -261,7 +285,10 @@ async function receiveActivity({ state, request, response }: ServeExchange): Pro
     if (activity.phase === 'started') {
       state.activityHub.publishActivity(activity);
     } else {
-      void settledRevision(state.snapshots).then(settled => state.activityHub.publishActivity({ ...activity, ...settled }));
+      // A hand edit of the tool can reach serve after its PostToolUse hook, so the canvas must see a busy snapshot first.
+      void state.scheduleFileChanges()
+        .then(() => settledRevision(state.snapshots))
+        .then(settled => state.activityHub.publishActivity({ ...activity, ...settled }));
     }
     response.writeHead(202, createBlueprintResponseHeaders({ contentType: 'application/json; charset=utf-8' }));
     response.end('{"accepted":true}\n');
@@ -488,13 +515,7 @@ const SERVE_ERROR_CSS = [
 function watchBlueprintProject(projectRoot: string, onChange: (changedPath: string) => void): () => void {
   const watcher = watch(projectRoot, { recursive: true }, (_eventType, fileName) => {
     const normalized = String(fileName ?? '').replaceAll('\\', '/');
-    if (
-      normalized.length === 0 ||
-      normalized.split('/').some(part => part === '.git' || part === '.blueprint-artifacts' || part === 'node_modules')
-    ) {
-      return;
-    }
-    onChange(normalized);
+    if (isWatchedProjectPath(normalized)) onChange(normalized);
   });
   return () => watcher.close();
 }

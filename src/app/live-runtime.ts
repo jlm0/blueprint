@@ -27,6 +27,7 @@ import {
 } from './agent-focus';
 import { boardConfigs, replaceMountedBoard } from './boards';
 import {
+  type BoardId,
   activeBoardId,
   activeScreenPage,
   boardState,
@@ -171,19 +172,23 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   refreshItemNav();
 
   const updates: Promise<void>[] = [];
+  const fittedBoards = new Set<BoardId>();
+  const replace = (id: BoardId): Promise<void> => replaceMountedBoard(id).then(fitted => {
+    if (fitted) fittedBoards.add(id);
+  });
   if (boardState.has('primitives') && (advancedPastEvent || pathsAffectPrimitives(changedPaths))) {
-    updates.push(replaceMountedBoard('primitives'));
+    updates.push(replace('primitives'));
   }
   if (boardState.has('screens')) {
     const reconciled = !advancedPastEvent && previousProjectId === project.manifest.project.id
       ? await reconcileScreenFrames(changedPaths, previousProject)
       : false;
-    if (!reconciled) updates.push(replaceMountedBoard('screens'));
+    if (!reconciled) updates.push(replace('screens'));
   }
   await Promise.all(updates);
   if (activeBoardId) {
     boardState.get(activeBoardId)?.mounted.configure();
-    if (preservedView) canvas.setView(preservedView);
+    if (preservedView && !fittedBoards.has(activeBoardId)) canvas.setView(preservedView);
   }
   lastAppliedRevision = snapshot.revision;
   setLatestChanges(narrowScreenChangesToSections(changeBaseline!.bundle, project, changedBoundaries(changeBaseline!.bundle, project)));

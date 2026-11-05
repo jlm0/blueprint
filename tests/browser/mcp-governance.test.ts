@@ -14,7 +14,9 @@ import { applyProjectBundleDelta } from '../../src/core/bundle-delta';
 import { loadProjectFromFs } from '../../src/core/load';
 import type { BlueprintProjectBundle, LinkedProjectBundle } from '../../src/core/types';
 import { serveBlueprint, type BlueprintServeHandle } from '../../src/mcp/operations';
+import { loadValidatedProject } from '../../src/mcp/project-validation';
 import { hashProjectAssets } from '../../src/mcp/project-validation-worker';
+import { startServeServer } from '../../src/mcp/serve-server';
 import { linkProjectAssets } from '../../src/mcp/serve-snapshot';
 import { compilePrototypeDocument } from '../../src/prototype/compiler';
 
@@ -714,6 +716,54 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('shows complete only after a hand edit that no file event reports reaches the frames', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const server = await startServeServer(projectCopy, 0, undefined, loadValidatedProject, { watch: () => () => undefined });
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          await page.goto(`${server.url}?board=screens`);
+          await page.locator('[data-board-root="screens"] iframe.canonical-prototype-iframe').first().waitFor({ timeout: 20_000 });
+          await page.evaluate(() => {
+            const status = document.querySelector<HTMLElement>('.bp-chrome-agent-status');
+            const record = window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean };
+            new MutationObserver(() => {
+              if (status?.dataset.phase !== 'complete' || record.__BLUEPRINT_COMPLETE_SAW_EDIT__ !== undefined) return;
+              record.__BLUEPRINT_COMPLETE_SAW_EDIT__ = [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+                .some(frame => frame.srcdoc.includes('blueprint-unwatched-test'));
+            }).observe(status!, { attributes: true, attributeFilter: ['data-phase'] });
+          });
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
+          const hook = {
+            session_id: 'thread-unwatched',
+            turn_id: 'turn-unwatched',
+            cwd: tempDir,
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-unwatched',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`
+          };
+          await runCodexHook(tempDir, { ...hook, hook_event_name: 'PreToolUse' });
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n[data-blueprint-screen="workspace"] { --blueprint-unwatched-test: 1; }\n`, 'utf8');
+          await runCodexHook(tempDir, { ...hook, hook_event_name: 'PostToolUse', tool_response: { isError: false } });
+          await page.waitForFunction(() => (
+            window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean }
+          ).__BLUEPRINT_COMPLETE_SAW_EDIT__ !== undefined, undefined, { timeout: 20_000 });
+          assert.equal(await page.evaluate(() => (
+            window as Window & { __BLUEPRINT_COMPLETE_SAW_EDIT__?: boolean }
+          ).__BLUEPRINT_COMPLETE_SAW_EDIT__), true, 'The status read complete before the hand edit reached the frames.');
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
   it('returns compact JSON, and only a summary when the caller gives out', async () => {
     await withTempDir(async tempDir => {
       const session = await openSession();
@@ -881,6 +931,41 @@ describe('Blueprint MCP and template governance', () => {
             }
           });
           await page.locator('.exploration-frame-slot[data-exploration-candidate-id="bold"] iframe.canonical-prototype-iframe').waitFor({ timeout: 20_000 });
+          await waitForAppliedLiveChange(page);
+          assert.deepEqual(await frameSlotsOutsideViewport(page, '.exploration-frame-slot'), []);
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await session.close();
+      }
+    });
+  });
+
+  it('fits the frames of a history view that the page requested before its review condition existed', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const manifestPath = path.join(projectCopy, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      manifest.project.sourceRoot = normalize(projectCopy);
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const session = await openSession(tempDir);
+      try {
+        const served = await call(session, 'serve', { port: 0 });
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+          await page.goto(`${served.url as string}?board=screens&history=workspace&viewport=phone`);
+          await page.locator('.bp-chrome-exploration-unavailable').waitFor({ timeout: 20_000 });
+          const screensPath = path.join(projectCopy, 'screens.json');
+          const screens = JSON.parse(await readFile(screensPath, 'utf8')) as { screens: Array<{ id: string; prototype: { reviewConditions: unknown[] } }> };
+          screens.screens.find(screen => screen.id === 'workspace')!.prototype.reviewConditions.push({ id: 'phone-default', framePresetId: 'phone', state: 'default' });
+          await writeFile(screensPath, `${JSON.stringify(screens, null, 2)}\n`, 'utf8');
+          await page.locator('.exploration-frame-slot[data-exploration-role="current"] iframe.canonical-prototype-iframe').waitFor({ timeout: 20_000 });
+          await waitForAppliedLiveChange(page);
+          assert.deepEqual(await frameSlotsOutsideViewport(page, '.exploration-frame-slot'), []);
         } finally {
           await browser.close();
         }
@@ -1838,6 +1923,23 @@ async function assertEventuallyWithin(check: () => boolean, timeoutMs = 10000): 
     if (Date.now() > deadline) assert.fail('Condition did not hold in time.');
     await new Promise(resolve => setTimeout(resolve, 50));
   }
+}
+
+async function waitForAppliedLiveChange(page: { waitForFunction: (fn: () => boolean) => Promise<unknown> }): Promise<void> {
+  await page.waitForFunction(() => document.querySelector('.bp-chrome-live-board-next') === null
+    && document.querySelector<HTMLElement>('.bp-chrome-agent-status')?.dataset.phase !== 'applying');
+}
+
+/** `locator.waitFor` accepts an element outside the viewport, so a test that needs a frame in view measures its box. */
+async function frameSlotsOutsideViewport(page: { evaluate: <T, A>(fn: (arg: A) => T, arg: A) => Promise<T> }, selector: string): Promise<string[]> {
+  return page.evaluate(slotSelector => {
+    const area = document.querySelector('#viewport')!.getBoundingClientRect();
+    return [...document.querySelectorAll<HTMLElement>(slotSelector)].flatMap(slot => {
+      const box = slot.getBoundingClientRect();
+      const inside = box.left >= area.left && box.top >= area.top && box.right <= area.right && box.bottom <= area.bottom;
+      return inside ? [] : [`${slot.dataset.explorationRole ?? ''} ${slot.dataset.explorationCandidateId ?? ''} at ${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)} in ${Math.round(area.width)}x${Math.round(area.height)}`.trim()];
+    });
+  }, selector);
 }
 
 async function publishedRevisionAfter(served: BlueprintServeHandle, revision: string): Promise<string> {

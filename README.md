@@ -106,7 +106,7 @@ Example calls:
 
 ## The review canvas
 
-`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files and applies each valid edit in place, keeping the current page, zoom, and pan. While an edit has a contract error, the last good state stays visible. An edit with only style errors still applies, and `validate` lists each error.
+`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files, checks them again every 2 seconds, and applies each valid edit in place, keeping the current page, zoom, and pan. If you open an exploration or history link before its frames exist, the canvas zooms to fit them when they arrive. While an edit has a contract error, the last good state stays visible. An edit with only style errors still applies, and `validate` lists each error.
 
 - **Navigation.** A rail switches between Foundations, Primitives, Components, and Screens. The sub-navigation groups items by declared section or page, and each group collapses. With `focus`, `serve` returns a link that opens one boundary's page; a screen link opens its page and centers the screen.
 - **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.

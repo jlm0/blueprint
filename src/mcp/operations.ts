@@ -201,7 +201,7 @@ export async function migrateBlueprint(input: MigrateInput, signal?: AbortSignal
 
     throwIfAborted(signal);
     if (!input.dryRun && migration.writes.size > 0) {
-      await applyProjectFileTransaction(projectRoot, [...migration.writes].map(([fileRef, content]) => ({ fileRef, content })));
+      (await applyProjectFileTransaction(projectRoot, [...migration.writes].map(([fileRef, content]) => ({ fileRef, content })))).announce();
     }
     return migrateOutputSchema.parse({
       command: 'migrate',

@@ -9,6 +9,7 @@ import { type Browser, type Page, chromium } from 'playwright';
 import { loadProjectFromFs } from '../../src/core/load';
 import { type BlueprintServeHandle, serveBlueprint } from '../../src/mcp/operations';
 import { compilePrototypeDocument } from '../../src/prototype/compiler';
+import { settleFileEvents } from '../support/serve-watched';
 
 const PAGE_ID = 'mobile';
 const HOOK_PATH = path.resolve('dist/mcp/codex-activity-hook.js');
@@ -608,6 +609,8 @@ describe('the change highlight of the canvas', () => {
     root = await mkdtemp(path.join(tmpdir(), 'blueprint-change-highlight-'));
     project = path.join(root, 'design/blueprint');
     await writeGuardProject(project);
+    // FSEvents can deliver the setup writes after serve starts, and the screens.json path in an E1 event rebuilds each frame.
+    await settleFileEvents(project);
     served = await serveBlueprint({ project, port: 0 });
     // A heap snapshot cuts each string at 1024 characters by default, and that limit hides a marker deep in a document.
     browser = await chromium.launch({ args: ['--js-flags=--heap-snapshot-string-limit=100000000', '--disable-gpu-rasterization', '--disable-partial-raster', '--num-raster-threads=1', '--disable-lcd-text', '--disable-skia-runtime-opts'] });

@@ -365,6 +365,52 @@ describe('one validation per mutation', () => {
     });
   });
 
+  it('starts a serve reload that a mutation overlaps after the mutation commits, so the reload validates nothing again', async () => {
+    await withUnvalidatedProjectCopy(async project => {
+      let releaseProjected: () => void = () => undefined;
+      const projectedGate = new Promise<void>(resolve => {
+        releaseProjected = resolve;
+      });
+      let projectedHeld = false;
+      const order: string[] = [];
+      const onWorker = (): void => {
+        order.push('worker');
+      };
+      subscribe('worker_threads', onWorker);
+      const runs = recordRuns();
+      const pending: Promise<unknown>[] = [];
+      try {
+        const mutation = exploreBlueprint({ project, operation: launchExploration('launch-hero') }, undefined, {
+          projected: async (bundle, signal) => {
+            projectedHeld = true;
+            await projectedGate;
+            return workerProjectValidator.projected(bundle, signal);
+          },
+          persisted: (projectRoot, projectedFingerprint, signal) => {
+            order.push('persisted');
+            return workerProjectValidator.persisted(projectRoot, projectedFingerprint, signal);
+          }
+        });
+        pending.push(mutation);
+        await waitUntil(() => projectedHeld);
+        const reload = loadValidatedProject(project);
+        pending.push(reload);
+        await delay(100);
+        assert.deepEqual(order, [], 'The reload started its worker while the mutation held its projected step.');
+        releaseProjected();
+        const [, reloaded] = await Promise.all([mutation, reload]);
+        assert.deepEqual(order, ['worker', 'persisted', 'worker', 'worker']);
+        assert.ok(reloaded.bundle?.explorations.explorations.some(exploration => exploration.id === 'launch-hero'));
+        assert.deepEqual(runs.of(projectFingerprint(await loadProjectFromFs(project))), ['baseline', 'source-graph']);
+      } finally {
+        releaseProjected();
+        await Promise.allSettled(pending);
+        runs.stop();
+        unsubscribe('worker_threads', onWorker);
+      }
+    });
+  });
+
   it('reuses the source graph result for strict and readiness on the same content', async () => {
     await withUnvalidatedProjectCopy(async project => {
       const runs = recordRuns();

@@ -18,6 +18,8 @@ export interface ServeProjectSnapshotOptions {
   onChanged: (change: { revision: string; changedPaths: string[] }) => void;
   onFailed: (failure: { message: string; outdatedFiles: BlueprintOutdatedFile[] }) => void;
   read?: ProjectReader;
+  /** Returns the paths that changed since its last call, so a poll does not schedule again a change that this read covers. */
+  changesBeforeRead?: () => Promise<readonly string[]>;
 }
 
 export class ServeProjectSnapshots {
@@ -115,6 +117,7 @@ export class ServeProjectSnapshots {
   }
 
   async #reload(): Promise<void> {
+    for (const changedPath of await this.#options.changesBeforeRead?.() ?? []) this.#changedPaths.add(changedPath);
     const covered = [...this.#changedPaths];
     const next = await this.#read();
     if (this.#closed) return;

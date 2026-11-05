@@ -12,7 +12,8 @@ import type {
   ReadinessReport,
   ValidationResult
 } from '../core/types';
-import { abortError, runInOrder } from './operation-support';
+import { abortError, runInOrder, withAbort } from './operation-support';
+import { settledProjectMutations } from './project-files';
 
 export type ValidatedProject = ValidProject | InvalidProject;
 
@@ -117,10 +118,12 @@ export function createWorkerValidator(options: ProjectWorkerOptions = {}): Proje
 
 export const workerProjectValidator = createWorkerValidator();
 
+// The worker copies the memo when it starts, so a reload that starts during a mutation would validate the commit again.
 export const loadValidatedProject: ProjectReader = (projectRoot, signal) => {
-  return runInOrder(diskValidations, path.resolve(projectRoot), signal, () =>
-    runProjectTask<ValidatedProject>({ kind: 'read', projectRoot }, signal)
-  ).catch(error => ({ error: errorMessage(error), outdatedFiles: [], styleErrors: [] }));
+  return runInOrder(diskValidations, path.resolve(projectRoot), signal, async () => {
+    await withAbort(settledProjectMutations(projectRoot), signal);
+    return runProjectTask<ValidatedProject>({ kind: 'read', projectRoot }, signal);
+  }).catch(error => ({ error: errorMessage(error), outdatedFiles: [], styleErrors: [] }));
 };
 
 export function reportProjectValidation(project: string, mode: ValidationReportMode, signal?: AbortSignal): Promise<ValidationReport> {
