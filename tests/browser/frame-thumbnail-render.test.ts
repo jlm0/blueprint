@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { after, before, describe, it } from 'node:test';
 import { type Browser, chromium, type Page } from 'playwright';
 import { build, type Rollup } from 'vite';
@@ -88,24 +89,28 @@ describe('Blueprint frame thumbnail render', () => {
     return answer.percent;
   };
 
-  before(async () => {
+  const bundleScript = async (entry: string, name: string): Promise<string> => {
     const built = await build({
       configFile: false,
       logLevel: 'silent',
       build: {
         write: false,
         minify: false,
-        lib: { entry: 'src/app/frame-thumbnails.ts', formats: ['iife'], name: 'frameThumbnails', fileName: () => 'frame-thumbnails.js' }
+        lib: { entry, formats: ['iife'], name, fileName: () => `${name}.js` }
       }
     }) as Rollup.RollupOutput | Rollup.RollupOutput[];
-    const output = Array.isArray(built) ? built[0] : built;
+    return (Array.isArray(built) ? built[0] : built).output[0].code;
+  };
+
+  before(async () => {
+    const scripts = [await bundleScript('src/app/frame-thumbnails.ts', 'frameThumbnails'), await bundleScript('src/app/frame-capture.ts', 'frameCapture')];
     browser = await chromium.launch({ args: ['--disable-gpu', '--disable-lcd-text'] });
     page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
     await page.route(`${ORIGIN}/`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body></body></html>' }));
     await page.route(`${ORIGIN}${PROTOTYPE_ASSET_PATH_PREFIX}${SHA}`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(SMALL_PNG, 'base64') }));
     await page.goto(`${ORIGIN}/`);
     await page.evaluate('globalThis.__name = target => target');
-    await page.addScriptTag({ content: output.output[0].code });
+    for (const content of scripts) await page.addScriptTag({ content });
   });
 
   after(async () => {
@@ -178,5 +183,99 @@ describe('Blueprint frame thumbnail render', () => {
     page.on('request', request => seen.push(request.url()));
     assert.equal(await renderAnswers(documentWith('', '<p>Text</p>')), true);
     assert.deepEqual(seen.filter(url => url.includes(PROTOTYPE_ASSET_PATH_PREFIX)), []);
+  });
+
+  it('decodes each image in a short-lived document and removes that document, also when the decode fails', async () => {
+    const answer = await page.evaluate(async ({ html, width, height }) => {
+      const thumbnails = (globalThis as unknown as { frameThumbnails: { renderFrameThumbnail: (html: string, width: number, height: number) => Promise<Blob | null> } }).frameThumbnails;
+      const ownedByCanvas: boolean[] = [];
+      let failDecode = false;
+      const wrapped = new WeakSet<HTMLImageElement>();
+      const wrapDecode = (prototype: HTMLImageElement): void => {
+        if (wrapped.has(prototype)) return;
+        wrapped.add(prototype);
+        const decode = prototype.decode;
+        prototype.decode = function (this: HTMLImageElement) {
+          ownedByCanvas.push(this.ownerDocument === document);
+          return failDecode ? Promise.reject(new Error('decode failed')) : decode.call(this);
+        };
+      };
+      const canvasDecode = HTMLImageElement.prototype.decode;
+      const contentWindow = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow') as PropertyDescriptor;
+      wrapDecode(HTMLImageElement.prototype);
+      // An image from another document has the prototype of that window, so the wrap must reach each window that the render opens.
+      Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+        ...contentWindow,
+        get(this: HTMLIFrameElement) {
+          const view = contentWindow.get?.call(this) as (Window & typeof globalThis) | null;
+          if (view) wrapDecode(view.HTMLImageElement.prototype);
+          return view;
+        }
+      });
+      try {
+        const frames = (): number => document.querySelectorAll('iframe').length;
+        const before = frames();
+        const rendered = await thumbnails.renderFrameThumbnail(html, width, height) !== null;
+        const leftAfterRender = frames() - before;
+        failDecode = true;
+        const failure = await thumbnails.renderFrameThumbnail(html, width, height).then(() => 'resolved', (error: Error) => error.message);
+        return { rendered, ownedByCanvas, leftAfterRender, failure, leftAfterFailure: frames() - before };
+      } finally {
+        Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', contentWindow);
+        HTMLImageElement.prototype.decode = canvasDecode;
+      }
+    }, { html: documentWith('body { margin: 0; background: #be123c; }', '<p>Text</p>'), width: WIDTH, height: HEIGHT });
+    assert.equal(answer.rendered, true);
+    assert.equal(answer.ownedByCanvas.length, 2, 'Each render must decode one image, or this test proves nothing.');
+    assert.deepEqual(answer.ownedByCanvas, [false, false], 'A decoded image must not belong to the canvas document.');
+    assert.equal(answer.leftAfterRender, 0, 'The render must remove its helper document.');
+    assert.equal(answer.failure, 'decode failed');
+    assert.equal(answer.leftAfterFailure, 0, 'A failed decode must remove the helper document.');
+  });
+
+  it('saves a screenshot that matches the frame when a sheet enters from a starting style', async () => {
+    const html = documentWith(
+      'body { margin: 0; background: #fff; } .sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; background: #0f766e; opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; } @starting-style { .sheet { opacity: 0; transform: translateY(100%); } }',
+      '<div class="sheet"></div>'
+    );
+    const truth = await screenshotOf(html, WIDTH, HEIGHT);
+    const download = page.waitForEvent('download');
+    await page.evaluate(({ html, width, height }) => {
+      const capture = (globalThis as unknown as { frameCapture: { wireFrameCapture: (options: { screenEl: HTMLElement; shot: HTMLButtonElement; save: HTMLButtonElement; screenId: string; captureDocument?: () => Promise<string | undefined> }) => void } }).frameCapture;
+      const screenEl = document.createElement('div');
+      screenEl.style.cssText = `position:fixed;left:0;top:0;width:${width}px;height:${height}px;`;
+      const shot = document.createElement('button');
+      const save = document.createElement('button');
+      for (const element of [screenEl, shot, save]) element.classList.add('capture-harness');
+      document.body.append(screenEl, shot, save);
+      capture.wireFrameCapture({ screenEl, shot, save, screenId: 'sheet', captureDocument: async () => html });
+      save.click();
+    }, { html, width: WIDTH, height: HEIGHT });
+    const saved = await download;
+    await page.evaluate(() => document.querySelectorAll('.capture-harness').forEach(element => element.remove()));
+    assert.equal(saved.suggestedFilename(), 'sheet.png');
+    const png = (await readFile(await saved.path())).toString('base64');
+    const answer = await page.evaluate(async ({ png, truth, width, height }) => {
+      const pixels = async (data: string): Promise<{ data: Uint8ClampedArray; width: number; height: number }> => {
+        const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${data}`)).blob());
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+        context.fillStyle = '#fff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(bitmap, 0, 0, width, height);
+        return { data: context.getImageData(0, 0, width, height).data, width: bitmap.width, height: bitmap.height };
+      };
+      const left = await pixels(png);
+      const right = await pixels(truth);
+      let count = 0;
+      for (let index = 0; index < left.data.length; index += 4) {
+        if (Math.abs(left.data[index] - right.data[index]) + Math.abs(left.data[index + 1] - right.data[index + 1]) + Math.abs(left.data[index + 2] - right.data[index + 2]) > 30) count += 1;
+      }
+      return { percent: 100 * count / (width * height), size: [left.width, left.height] };
+    }, { png, truth, width: WIDTH, height: HEIGHT });
+    assert.deepEqual(answer.size, [WIDTH * 2, HEIGHT * 2]);
+    assert.ok(answer.percent <= 0.5, `The screenshot differs from the frame in ${answer.percent}% of pixels.`);
   });
 });

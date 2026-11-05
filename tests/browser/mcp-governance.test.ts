@@ -1670,7 +1670,7 @@ describe('Blueprint MCP and template governance', () => {
           // Thumbnail captures start in an idle callback, so without one only the save button captures the self-contained compile.
           window.requestIdleCallback = () => 0;
           const captured: string[] = [];
-          (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__ = captured;
+          (window as Window & { __CAPTURED_DOCUMENTS__?: string[] }).__CAPTURED_DOCUMENTS__ = captured;
           const descriptor = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc')!;
           Object.defineProperty(HTMLIFrameElement.prototype, 'srcdoc', {
             ...descriptor,
@@ -1679,6 +1679,12 @@ describe('Blueprint MCP and template governance', () => {
               descriptor.set!.call(this, value);
             }
           });
+          // The save button renders a document within the size limit directly, and only a larger document reaches a capture iframe.
+          const parse = DOMParser.prototype.parseFromString;
+          DOMParser.prototype.parseFromString = function (this: DOMParser, source: string, type: DOMParserSupportedType) {
+            if (type === 'text/html') captured.push(source);
+            return parse.call(this, source, type);
+          };
         });
         try {
           await page.goto(`${url}?board=screens&page=mobile`);
@@ -1703,13 +1709,13 @@ describe('Blueprint MCP and template governance', () => {
           assert.deepEqual(faces.filter(face => face.endsWith(':error')), []);
 
           await page.evaluate(() => {
-            (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!.length = 0;
+            (window as Window & { __CAPTURED_DOCUMENTS__?: string[] }).__CAPTURED_DOCUMENTS__!.length = 0;
           });
           const download = page.waitForEvent('download', { timeout: 15000 });
           await frame.locator('xpath=..').locator('.frame-save').first().click();
           const saved = await download;
           assert.equal(saved.suggestedFilename(), 'hub.png');
-          const captured = await page.evaluate(() => (window as Window & { __CAPTURED_SRCDOCS__?: string[] }).__CAPTURED_SRCDOCS__!);
+          const captured = await page.evaluate(() => (window as Window & { __CAPTURED_DOCUMENTS__?: string[] }).__CAPTURED_DOCUMENTS__!);
           const preset = bundle.manifest.framePresets.find(candidate => candidate.id === bundle.screens.screens.find(screen => screen.id === 'hub')!.framePresetId)!;
           const expected = compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'hub' }, state: 'default', framePreset: preset }).html;
           const savedCaptures = captured.filter(document => document === expected);

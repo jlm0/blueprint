@@ -41,13 +41,23 @@ export async function renderFrameThumbnail(html: string, width: number, height: 
   parsed.head.append(rest);
   const markup = await inlineLinkedAssets(new XMLSerializer().serializeToString(parsed.documentElement));
   if (markup === undefined) return null;
-  const image = new Image();
-  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject x="0" y="0" width="100%" height="100%">${markup}</foreignObject></svg>`)}`;
-  await image.decode();
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(width * pixelRatio));
   canvas.height = Math.max(1, Math.round(height * pixelRatio));
-  canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  // A document keeps a copy of each image URL that it loads until the document closes, so the image loads in a document that closes after the draw.
+  const host = document.createElement('iframe');
+  host.hidden = true;
+  document.body.append(host);
+  try {
+    const view = host.contentWindow as typeof globalThis | null;
+    if (!view) throw new Error('Blueprint could not open a document for the frame image.');
+    const image = new view.Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject x="0" y="0" width="100%" height="100%">${markup}</foreignObject></svg>`)}`;
+    await image.decode();
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  } finally {
+    host.remove();
+  }
   return new Promise(resolve => canvas.toBlob(resolve));
 }
 

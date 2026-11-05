@@ -1,4 +1,5 @@
 import { toBlob } from 'html-to-image';
+import { renderFrameThumbnail } from './frame-thumbnails';
 import { checkIcon, failIcon } from './icons';
 
 export function wireFrameCapture(options: {
@@ -57,19 +58,22 @@ export function wireFrameCapture(options: {
   });
 }
 
-/**
- * html-to-image cannot read the deliberately opaque iframe used by the canvas,
- * so serializing the visible host produces a white PNG. Render the same compiled,
- * no-script document in a short-lived readable iframe and capture its document
- * root instead. The review iframe remains fully sandboxed and unchanged.
- */
 async function captureCanonicalPrototype(screenEl: HTMLElement, html: string): Promise<Blob | null> {
   const width = screenEl.clientWidth;
   const height = screenEl.clientHeight;
   if (width <= 0 || height <= 0) {
     throw new Error('Screen capture requires a visible frame with non-zero dimensions.');
   }
+  return await renderFrameThumbnail(html, width, height, 2) ?? await captureLargePrototype(html, width, height);
+}
 
+/**
+ * html-to-image cannot read the deliberately opaque iframe used by the canvas,
+ * so serializing the visible host produces a white PNG. Render the same compiled,
+ * no-script document in a short-lived readable iframe and capture its document
+ * root instead. The review iframe remains fully sandboxed and unchanged.
+ */
+async function captureLargePrototype(html: string, width: number, height: number): Promise<Blob | null> {
   const captureFrame = document.createElement('iframe');
   captureFrame.style.cssText = [
     'position:fixed',
