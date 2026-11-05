@@ -13,6 +13,8 @@ export interface LocalStyleValueIssue {
   tokenStyleRef?: string;
   /** The named color that `named-color` found. */
   namedColor?: string;
+  /** The length in `value` that equals the token that `restated-token` found. */
+  restatedLength?: string;
 }
 
 const spacingEdges = ['top', 'right', 'bottom', 'left', 'inline', 'block'];
@@ -93,7 +95,7 @@ export function lintStylesheetValues(
   return issues;
 }
 
-type LocalStyleFinding = Pick<LocalStyleValueIssue, 'rule' | 'category' | 'tokenStyleRef' | 'namedColor'>;
+type LocalStyleFinding = Pick<LocalStyleValueIssue, 'rule' | 'category' | 'tokenStyleRef' | 'namedColor' | 'restatedLength'>;
 
 function namedColorFinding(declaration: CssDeclaration): LocalStyleFinding | undefined {
   const namedColor = declaration.namedColors[0];
@@ -106,7 +108,7 @@ function literalFinding(declaration: CssDeclaration, lengthTokens: ReadonlyMap<s
   if (!category) return undefined;
   for (const length of declaration.lengths) {
     const tokenStyleRef = lengthTokens.get(`${category}:${length.toLowerCase()}`);
-    if (tokenStyleRef) return { rule: 'restated-token', category, tokenStyleRef };
+    if (tokenStyleRef) return { rule: 'restated-token', category, tokenStyleRef, restatedLength: length };
   }
   return undefined;
 }

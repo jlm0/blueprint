@@ -225,7 +225,7 @@ const RULE_CASES: readonly RuleCase[] = [
   {
     rule: 'undeclared-variable',
     mustFail: project => project.css(`${ROOT} { margin: var(--missing); }`),
-    error: 'screen.home prototype/screens/home.css margin: "var(--missing)" reads --missing, which no token declares. Fix: replace var(--missing) with var() of a token in prototype/screens/home.css, or add a token with styleRef "--missing" to tokens.json.',
+    error: 'screen.home prototype/screens/home.css margin: "var(--missing)" reads --missing, which no token declares. Fix: replace var(--missing) with var() of a token in prototype/screens/home.css. When no token fits, add a token with styleRef "--app-<group>-<token>" to tokens.json, and read that name in the var().',
     control: project => project.css(`${ROOT} { margin: var(--blueprint-safe-area-top) var(--app-space-2); }`)
   },
   {

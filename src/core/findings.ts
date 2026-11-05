@@ -68,7 +68,8 @@ export function localStyleValueMessage(issue: LocalStyleValueIssue): string {
   const remedy = issue.tokenStyleRef
     ? `restates token ${issue.tokenStyleRef}; use var(${issue.tokenStyleRef})`
     : 'uses a literal color; use a token custom property';
-  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace "${value}" with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. ${exception}`;
+  const restated = issue.restatedLength !== undefined && issue.restatedLength !== issue.value ? `"${issue.restatedLength}" in "${value}"` : `"${value}"`;
+  return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace ${restated} with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. ${exception}`;
 }
 
 export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {

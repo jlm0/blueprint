@@ -283,7 +283,7 @@ function checkUndeclaredVariables(context: StyleContext): StyleRuleIssue[] {
           rule: 'undeclared-variable',
           boundary: owners[0].label,
           location: styleRef,
-          message: `${declaration.property}: "${declaration.value}" reads ${variable}, which no token declares. Fix: replace var(${variable}) with var() of a token in ${styleRef}, or add a token with styleRef "${variable}" to tokens.json.`
+          message: `${declaration.property}: "${declaration.value}" reads ${variable}, which no token declares. Fix: replace var(${variable}) with var() of a token in ${styleRef}. When no token fits, add a token with styleRef "--app-<group>-<token>" to tokens.json, and read that name in the var().`
         });
       }
     }
@@ -368,18 +368,33 @@ function forEachRule(context: StyleContext, visit: (rule: CssRule, styleRef: str
   });
 }
 
+const SELECTOR_ROOTS_LISTED = 3;
+
+/** A rule that starts at one owner stops for each other owner, so a shared stylesheet needs one copy of the selector for each owner. */
+function selectorRootMessage(selector: string, owners: Boundary[], styleRef: string): string {
+  const rootOf = ({ kind, id }: Boundary): string => `[data-blueprint-${kind}="${id}"]`;
+  const moveRule = 'move this rule to the stylesheet of the boundary that it styles.';
+  if (owners.length === 1) {
+    const [owner] = owners;
+    return `selector "${selector}" does not start at the root of ${owner.kind} "${owner.id}". Fix: start this selector with ${rootOf(owner)} in ${styleRef}, or ${moveRule}`;
+  }
+  const unlisted = owners.length - SELECTOR_ROOTS_LISTED;
+  const roots = owners.slice(0, SELECTOR_ROOTS_LISTED).map(rootOf).join(', ');
+  const more = unlisted > 0 ? `, and ${unlisted} more ${unlisted === 1 ? 'boundary' : 'boundaries'} that ${unlisted === 1 ? 'lists' : 'list'} this stylesheet` : '';
+  return `selector "${selector}" does not start at the root of any of the ${owners.length} boundaries that use ${styleRef}. Fix: write this selector once for each boundary in ${styleRef}, and start each copy with one root: ${roots}${more}. Or ${moveRule}`;
+}
+
 function checkSelectorRoots(context: StyleContext): StyleRuleIssue[] {
   const issues: StyleRuleIssue[] = [];
   forEachRule(context, (rule, styleRef, owners) => {
     if (rule.nested) return;
     for (const selector of rule.selectors) {
       if (owners.some(owner => compoundStartsAt(selector.compounds[0], owner))) continue;
-      const owner = owners[0];
       issues.push({
         rule: 'selector-root',
-        boundary: owner.label,
+        boundary: owners[0].label,
         location: styleRef,
-        message: `selector "${selector.text}" does not start at the root of ${owner.kind} "${owner.id}". Fix: start this selector with [data-blueprint-${owner.kind}="${owner.id}"] in ${styleRef}, or move this rule to the stylesheet of the boundary that it styles.`
+        message: selectorRootMessage(selector.text, owners, styleRef)
       });
     }
   });

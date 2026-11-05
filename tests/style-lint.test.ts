@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { loadProjectFromFs } from '../src/core/load';
 import { lintLocalStyleValues } from '../src/core/style-lint';
+import { collectStyleRuleIssues } from '../src/core/style-rules';
 import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
@@ -39,6 +40,48 @@ describe('local style value lint', () => {
     const readiness = createReadinessReport(bundle);
     assert.equal(readiness.tier, 'blocked');
     assert.ok(readiness.blockers.some(item => item.path === `screen.transactions.localValues.${screenCss}.color`));
+  });
+
+  it('tells the agent to replace only the part of a value that restates a token', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    bundle.prototypeSourceContents[screenCss] += '\n.part { padding: 3px 20px; margin: 20px; }';
+    const errors = validateProject(bundle, { mode: 'strict' }).errors.join('\n');
+    assert.match(errors, /padding: "3px 20px" restates token --app-space-5; use var\(--app-space-5\) or declare the literal in prototype\.localValueExceptions\. Fix: replace "20px" in "3px 20px" with var\(--app-space-5\) in prototype\/screens\/transactions\.css\./);
+    assert.match(errors, /margin: "20px" restates token --app-space-5; use var\(--app-space-5\) or declare the literal in prototype\.localValueExceptions\. Fix: replace "20px" with var\(--app-space-5\) in prototype\/screens\/transactions\.css\./);
+  });
+
+  it('names a root for each owner of a stylesheet in a selector-root fix', async () => {
+    const shared = async (ownerCount: number): Promise<string[]> => {
+      const bundle = await loadProjectFromFs(meridianRoot);
+      const screens = bundle.screens.screens.slice(0, ownerCount);
+      assert.equal(screens.length, ownerCount);
+      for (const screen of screens) {
+        assert.ok(screen.prototype);
+        screen.prototype.styles = ['prototype/shared.css'];
+      }
+      bundle.prototypeSourceContents['prototype/shared.css'] = '.stray { margin: 0; }';
+      return collectStyleRuleIssues(bundle).filter(issue => issue.rule === 'selector-root' && issue.location === 'prototype/shared.css').map(issue => issue.message);
+    };
+    const root = (bundle: { screens: { screens: { id: string }[] } }, index: number): string => `[data-blueprint-screen="${bundle.screens.screens[index].id}"]`;
+    const bundle = await loadProjectFromFs(meridianRoot);
+    assert.deepEqual(await shared(2), [
+      `selector ".stray" does not start at the root of any of the 2 boundaries that use prototype/shared.css. Fix: write this selector once for each boundary in prototype/shared.css, and start each copy with one root: ${root(bundle, 0)}, ${root(bundle, 1)}. Or move this rule to the stylesheet of the boundary that it styles.`
+    ]);
+    assert.deepEqual(await shared(4), [
+      `selector ".stray" does not start at the root of any of the 4 boundaries that use prototype/shared.css. Fix: write this selector once for each boundary in prototype/shared.css, and start each copy with one root: ${root(bundle, 0)}, ${root(bundle, 1)}, ${root(bundle, 2)}, and 1 more boundary that lists this stylesheet. Or move this rule to the stylesheet of the boundary that it styles.`
+    ]);
+  });
+
+  it('clears selector-root on a shared stylesheet when each owner has its own selector', async () => {
+    const bundle = await loadProjectFromFs(meridianRoot);
+    const screens = bundle.screens.screens.slice(0, 2);
+    for (const screen of screens) {
+      assert.ok(screen.prototype);
+      screen.prototype.styles = ['prototype/shared.css'];
+    }
+    const selectors = screens.map(screen => `[data-blueprint-screen="${screen.id}"] .stray`).join(', ');
+    bundle.prototypeSourceContents['prototype/shared.css'] = `${selectors} { margin: 0; }`;
+    assert.deepEqual(collectStyleRuleIssues(bundle).filter(issue => issue.rule === 'selector-root' && issue.location === 'prototype/shared.css'), []);
   });
 
   it('holds canonical primitive CSS to the same token-only rule', async () => {
