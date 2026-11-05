@@ -297,6 +297,10 @@ function createCompileSession(): CompileSession {
 }
 
 function compileDocument(options: CompileInput, session: CompileSession, output: AssetOutput): CompiledPrototypeDocument {
+  return compileDocumentOutput(options, session, output).compiled;
+}
+
+function compileDocumentOutput(options: CompileInput, session: CompileSession, output: AssetOutput): { compiled: CompiledPrototypeDocument; sheets: string[]; body: string } {
   assertIsolatedHostPolicy(options.bundle);
   const boundary = resolveBoundary(options.bundle, options.target);
   const state = resolveState(boundary, options.state);
@@ -317,7 +321,8 @@ function compileDocument(options: CompileInput, session: CompileSession, output:
     styleRefSet: new Set()
   };
   const { fragment } = compileBoundaryFragment(context, boundary, state, '', [], resolveTopLevelAxes(boundary, options.variant, options.size));
-  const appCss = context.styleRefs.map(styleRef => loadAndRewriteStyle(context, styleRef)).join('\n\n');
+  const sheets = context.styleRefs.map(styleRef => loadAndRewriteStyle(context, styleRef));
+  const appCss = sheets.join('\n\n');
   const tokenCss = createTokenCss(options.bundle);
   const targetBoundaryId = boundaryId(options.bundle, boundary);
   const title = `${options.bundle.manifest.project.name} · ${boundary.name}`;
@@ -337,11 +342,15 @@ function compileDocument(options: CompileInput, session: CompileSession, output:
   ].join('');
 
   return {
-    html: resolveAssetTokens(context, html, output),
-    targetBoundaryId,
-    state,
-    observedUses: context.observedUses,
-    brandMarks: context.brandMarks
+    compiled: {
+      html: resolveAssetTokens(context, html, output),
+      targetBoundaryId,
+      state,
+      observedUses: context.observedUses,
+      brandMarks: context.brandMarks
+    },
+    sheets,
+    body: fragment
   };
 }
 
@@ -374,8 +383,28 @@ export function inspectPrototypeSourceGraph(bundle: CanvasProjectBundle): Protot
  * target does not depend on compile order, so equal output means equal rendered source.
  */
 export function createPrototypeOutputCompiler(bundle: CanvasProjectBundle): (target: PrototypeCompileTarget, state?: string) => string {
+  const compile = createPrototypeDocumentCompiler(bundle);
+  return (target, state) => compile({ target, state }).html;
+}
+
+/** A caller can compare the parts that can paint, because the whole document also holds what cannot. */
+export interface PrototypeDocumentOutput {
+  html: string;
+  state: string;
+  sheets: string[];
+  body: string;
+  /** A token holds the asset ref and not the bytes, so a caller must compare the bytes of each asset in this list. */
+  assetRefs: string[];
+}
+
+/** Each snapshot needs its own compiler, because the fragment cache does not check the snapshot. */
+export function createPrototypeDocumentCompiler(bundle: CanvasProjectBundle): (options: Omit<CompilePrototypeDocumentOptions, 'bundle'>) => PrototypeDocumentOutput {
   const session = createCompileSession();
-  return (target, state) => compileDocument({ bundle, target, state }, session, { kind: 'tokens' }).html;
+  return options => {
+    const { compiled, sheets, body } = compileDocumentOutput({ ...options, bundle }, session, { kind: 'tokens' });
+    const assetRefs = new Set(Array.from(compiled.html.matchAll(ASSET_TOKEN_PATTERN), match => textFromHex(match[1])));
+    return { html: compiled.html, state: compiled.state, sheets, body, assetRefs: [...assetRefs] };
+  };
 }
 
 /** Every declared canonical boundary and state that a sidecar can compile. */

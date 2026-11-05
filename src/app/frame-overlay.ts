@@ -1,6 +1,9 @@
 import { type BoundaryExtent, measureBoundaryExtents } from './boundary-extent';
 import { el } from './dom';
 
+/** A request that never ends must not hold the marks of each later frame. */
+const TWIN_LOAD_TIMEOUT_MS = 10_000;
+
 export function prototypeDocument(iframe: HTMLIFrameElement): string | undefined {
   return iframe.srcdoc || undefined;
 }
@@ -78,7 +81,7 @@ export function readPrototypeTwin<T>(
   html: string,
   width: number,
   height: number,
-  read: (twinDocument: Document) => T,
+  read: (twinDocument: Document) => T | Promise<T>,
   fallback: T
 ): Promise<T> {
   if (width <= 0 || height <= 0) return Promise.resolve(fallback);
@@ -88,17 +91,21 @@ export function readPrototypeTwin<T>(
     twin.tabIndex = -1;
     twin.setAttribute('aria-hidden', 'true');
     twin.setAttribute('sandbox', 'allow-same-origin');
+    const settle = (result: T): void => {
+      window.clearTimeout(timer);
+      twin.remove();
+      resolve(result);
+    };
+    const timer = window.setTimeout(() => settle(fallback), TWIN_LOAD_TIMEOUT_MS);
     twin.addEventListener('load', () => {
       const twinDocument = twin.contentDocument;
       const measured = twinDocument
-        ? twinDocument.fonts.ready.then(() => read(twinDocument))
+        ? twinDocument.fonts.ready.then(() => {
+          window.clearTimeout(timer);
+          return read(twinDocument);
+        })
         : Promise.resolve(fallback);
-      void measured
-        .catch(() => fallback)
-        .then(result => {
-          twin.remove();
-          resolve(result);
-        });
+      void measured.catch(() => fallback).then(settle);
     }, { once: true });
     twin.srcdoc = html;
     document.body.append(twin);

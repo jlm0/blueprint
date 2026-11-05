@@ -49,12 +49,14 @@ interface ScreenFrameSource {
   selection: SelectedPrototypeReviewCondition;
 }
 
-interface ScreenFrame extends MountableFrame {
+export interface ScreenFrame extends MountableFrame {
   host: HTMLElement;
   source: ScreenFrameSource;
   iframe?: HTMLIFrameElement;
   failed?: boolean;
   onFailed?: () => void;
+  /** Keeps what the chrome of a frame shows up to date when the frame keeps its document for a new snapshot. */
+  onBundleChanged?: (bundle: CanvasProjectBundle) => void;
   thumbnailKey?: string;
 }
 

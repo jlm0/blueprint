@@ -6,6 +6,7 @@ import {
   activeBoardId,
   boardState,
   changeBaseline,
+  focusedReviewIsRequested,
   latestChanges,
   project,
   projectApplyQueue,
@@ -14,8 +15,10 @@ import {
   setProject,
   setProjectApplyQueue
 } from './canvas-state';
+import { clearFrameChangeMarks, renderFrameChangeMarks, reportFrameChangeMarks } from './change-marks';
 import { el, errorMessage } from './dom';
 import { createFrameOverlay, resetFrameOverlay, showFrameOverlay } from './frame-overlay';
+import { keepFrameOutputSnapshots } from './frame-output-client';
 import { prototypeHostsUsingBoundary } from './frame-uses';
 import { refreshItemNav } from './navigation';
 import { refreshSurround } from './surround';
@@ -80,12 +83,28 @@ function sectionMarkup(source: string | undefined): { outside: string; sections:
   return { outside: parsed.documentElement.outerHTML, sections };
 }
 
+let changeMarksApplies = 0;
+
 export function renderChangeAnnotations(): void {
   resetFrameOverlay(changeOverlay);
   refreshItemNav();
   for (const element of document.querySelectorAll('.bp-chrome-changed')) element.classList.remove('bp-chrome-changed');
   renderChangeBar();
   const root = activeBoardId ? boardState.get(activeBoardId)?.root : undefined;
+  if (root && activeBoardId === 'screens' && !focusedReviewIsRequested() && changeBaseline && latestChanges.length > 0) {
+    renderFrameChangeMarks({
+      root,
+      before: changeBaseline.bundle,
+      after: liveProjectDuringBaselineView ?? project,
+      showOutlines: !viewingChangeBaseline,
+      report: state => {
+        if (changeMarksApplies === 0) changeBar.dataset.marks = state;
+      }
+    });
+    return;
+  }
+  clearFrameChangeMarks();
+  if (changeMarksApplies === 0) delete changeBar.dataset.marks;
   if (!root || latestChanges.length === 0) return;
   const frameChanges = new Map<HTMLElement, Set<string>>();
   for (const change of latestChanges) {
@@ -99,6 +118,17 @@ export function renderChangeAnnotations(): void {
     }
   }
   for (const [host, boundaryIds] of frameChanges) showFrameOverlay(changeOverlay, host, boundaryIds);
+}
+
+/** An edit that waits in the live queue must keep the state on pending, because the marks on the canvas do not answer for it yet. */
+export function beginChangeMarksApply(): void {
+  changeMarksApplies += 1;
+  changeBar.dataset.marks = 'pending';
+}
+
+export function endChangeMarksApply(): void {
+  changeMarksApplies -= 1;
+  if (changeMarksApplies === 0 && !reportFrameChangeMarks()) delete changeBar.dataset.marks;
 }
 
 function renderChangeBar(): void {
@@ -145,5 +175,6 @@ function dismissChanges(): void {
     setChangeBaseline(undefined);
     setLatestChanges([]);
     renderChangeAnnotations();
+    keepFrameOutputSnapshots(new Set([project]));
   }, () => undefined));
 }

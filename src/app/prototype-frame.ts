@@ -13,6 +13,7 @@ import { cameraIcon, downloadIcon, expandIcon } from './icons';
 import { openExploration, openHistory } from './navigation';
 import { setBoundary } from './review-state';
 import { type ScreenFrameLayout, liveFrameKey } from './screen-layout';
+import { backgroundAppearance } from './surround';
 import type { TokenIndex } from './tokens';
 
 export function createPrototypeFrame(
@@ -118,9 +119,10 @@ export function createPrototypeFrame(
   findingsButton.dataset.findingsScreenId = screen.id;
   let findingBoundaryIds: string[] = [];
   findingsButton.addEventListener('click', () => openFindingsPanel({ title: screen.name, boundaryIds: findingBoundaryIds }));
+  let findingsBundle = bundle;
   const showFindings = (usedBoundaryIds: Iterable<string>): void => {
-    findingBoundaryIds = frameFindingBoundaryIds(bundle, screen, usedBoundaryIds);
-    const findingCount = designFindings(bundle).filter(finding => findingBoundaryIds.includes(finding.boundaryId)).length;
+    findingBoundaryIds = frameFindingBoundaryIds(findingsBundle, screen, usedBoundaryIds);
+    const findingCount = designFindings(findingsBundle).filter(finding => findingBoundaryIds.includes(finding.boundaryId)).length;
     findingsButton.textContent = findingCount === 1 ? '1 finding' : `${findingCount} findings`;
     if (findingCount === 0) findingsButton.remove();
     else if (!findingsButton.isConnected) head.append(findingsButton);
@@ -143,6 +145,11 @@ export function createPrototypeFrame(
       view.remove();
       showFindings([]);
       mounter.remove(screenFrame);
+    };
+    screenFrame.onBundleChanged = next => {
+      findingsBundle = next;
+      showFindings(prototypeUsesByHost.get(screenEl)?.usedBoundaryIds ?? []);
+      if (frame.dataset.appearance) frame.dataset.appearance = backgroundAppearance(next);
     };
   }
   frame.classList.add('frame-canonical');

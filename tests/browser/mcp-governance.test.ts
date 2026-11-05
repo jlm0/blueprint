@@ -636,7 +636,7 @@ describe('Blueprint MCP and template governance', () => {
           await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
           const preservedTransform = await page.locator('#world').getAttribute('style');
           const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* blueprint-live-test */\n`, 'utf8');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n[data-blueprint-screen="workspace"] { --blueprint-live-test: 1; }\n`, 'utf8');
           await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
             .some(frame => frame.srcdoc.includes('blueprint-live-test')));
           await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-agent-focus').first().waitFor();
@@ -660,7 +660,7 @@ describe('Blueprint MCP and template governance', () => {
             tool_use_id: 'tool-live-complete',
             tool_input: editPatch
           });
-          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n/* blueprint-complete-test */\n`, 'utf8');
+          await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n[data-blueprint-screen="workspace"] { --blueprint-complete-test: 1; }\n`, 'utf8');
           await runCodexHook(tempDir, {
             session_id: 'thread-live-focus',
             turn_id: 'turn-live-complete',
@@ -1018,7 +1018,7 @@ describe('Blueprint MCP and template governance', () => {
           const hookBase = { session_id: 'thread-diff', cwd: tempDir, tool_name: 'functions.exec' };
           await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-a', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-a', tool_input: firstPatch });
           await writeFile(workspaceHtml, (await readFile(workspaceHtml, 'utf8')).replace('Growth research', 'Growth insights'), 'utf8');
-          await writeFile(buttonCss, `${await readFile(buttonCss, 'utf8')}\n/* live diff */\n`, 'utf8');
+          await writeFile(buttonCss, `${await readFile(buttonCss, 'utf8')}\n.blueprint-diff-test { opacity: 1; }\n`, 'utf8');
           await runCodexHook(tempDir, {
             ...hookBase,
             turn_id: 'turn-diff-a',
@@ -1028,9 +1028,9 @@ describe('Blueprint MCP and template governance', () => {
             tool_response: { isError: false }
           });
           await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '2 changes: Button, Thread header');
-          const changeLayer = page.locator('.bp-chrome-change-layer[data-change-boundary-ids~="mira-ai/primitive/button"][data-change-boundary-ids~="mira-ai/section/workspace/thread-header"]');
-          await changeLayer.locator('.bp-chrome-change-box').first().waitFor();
-          assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
+          const workspaceSlot = page.locator('.frame-slot:has([data-boundary-id="mira-ai/screen/workspace"])').first();
+          await workspaceSlot.locator('.bp-chrome-change-layer .bp-chrome-change-box').first().waitFor();
+          assert.equal(await workspaceSlot.locator('.frame.bp-chrome-changed').count(), 0);
 
           const workspaceFrames = 'iframe.canonical-prototype-iframe[data-prototype-target-boundary="mira-ai/screen/workspace"]';
           const frameShowsEdit = (): Promise<boolean> => page.evaluate(selector => [...document.querySelectorAll<HTMLIFrameElement>(selector)]
@@ -1046,7 +1046,7 @@ describe('Blueprint MCP and template governance', () => {
           const workspaceCss = path.join(projectCopy, 'prototype/screens/workspace.css');
           const secondPatch = `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`;
           await runCodexHook(tempDir, { ...hookBase, turn_id: 'turn-diff-b', hook_event_name: 'PreToolUse', tool_use_id: 'tool-diff-b', tool_input: secondPatch });
-          await writeFile(workspaceCss, `${await readFile(workspaceCss, 'utf8')}\n/* blueprint-diff-test */\n`, 'utf8');
+          await writeFile(workspaceCss, `${await readFile(workspaceCss, 'utf8')}\n[data-blueprint-screen="workspace"] { box-shadow: inset 0 0 0 4px currentColor; }\n`, 'utf8');
           await page.waitForFunction(() => document.querySelector('.bp-chrome-changes-label')?.textContent === '1 change: Workspace');
           await page.locator('[data-boundary-id="mira-ai/screen/workspace"].bp-chrome-changed').first().waitFor();
 

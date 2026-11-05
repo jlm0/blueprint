@@ -55,11 +55,11 @@ function boundaryElements(document: Document): Element[] {
   return [...document.querySelectorAll(boundaryAttributes.map(attribute => `[${attribute}]`).join(', '))];
 }
 
-function viewportExtent(view: Window): BoundaryExtent {
+export function viewportExtent(view: Window): BoundaryExtent {
   return { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight };
 }
 
-function measureElementExtent(element: Element, view: Window, clip: BoundaryExtent | undefined): BoundaryExtent | undefined {
+export function measureElementExtent(element: Element, view: Window, clip: BoundaryExtent | undefined): BoundaryExtent | undefined {
   const style = view.getComputedStyle(element);
   if (style.display === 'none') return undefined;
   const rect = element.getBoundingClientRect();

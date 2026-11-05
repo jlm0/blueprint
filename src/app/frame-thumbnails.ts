@@ -1,3 +1,5 @@
+import { textHash } from './text-hash';
+
 export const FRAME_THUMBNAIL_LIMIT = 256;
 export const FRAME_THUMBNAIL_PIXEL_RATIO = 0.5;
 // html-to-image copies every computed style of each element, about 0.55 ms per element on an M-series Mac, so larger documents block input for more than 200 ms.
@@ -8,16 +10,7 @@ export function frameElementCount(html: string): number {
 }
 
 export function frameThumbnailKey(html: string, width: number, height: number): string {
-  let first = 0xdeadbeef ^ html.length;
-  let second = 0x41c6ce57 ^ html.length;
-  for (let index = 0; index < html.length; index += 1) {
-    const code = html.charCodeAt(index);
-    first = Math.imul(first ^ code, 2654435761);
-    second = Math.imul(second ^ code, 1597334677);
-  }
-  first = Math.imul(first ^ (first >>> 16), 2246822507) ^ Math.imul(second ^ (second >>> 13), 3266489909);
-  second = Math.imul(second ^ (second >>> 16), 2246822507) ^ Math.imul(first ^ (first >>> 13), 3266489909);
-  return `${width}x${height}.${html.length.toString(36)}.${(first >>> 0).toString(36)}.${(second >>> 0).toString(36)}`;
+  return `${width}x${height}.${textHash([html])}`;
 }
 
 export interface FrameThumbnailCache {

@@ -69,6 +69,8 @@ export interface BlueprintProjectSnapshotDelta {
 export const BRAND_FOCUS_ID = 'brand';
 /** Local ID of the project focus that stands for inspo.json and its cached images, matching the canvas Inspo page. */
 export const INSPO_FOCUS_ID = 'inspo';
+/** Local ID of the project focus that stands for the frame presets of the manifest. */
+export const FRAME_PRESETS_FOCUS_ID = 'frame-presets';
 
 interface SourceReferenceOwner {
   kind: BoundaryKind;
@@ -118,6 +120,7 @@ export function boundaryDisplayName(bundle: BlueprintProjectBundle<PrototypeAsse
   if (kind === 'project') {
     if (localId === BRAND_FOCUS_ID) return 'Brand';
     if (localId === INSPO_FOCUS_ID) return 'Inspo';
+    if (localId === FRAME_PRESETS_FOCUS_ID) return 'Frame sizes';
     return bundle.manifest.project.name;
   }
   if (kind === 'board') return localId === 'screens' ? 'Screens' : 'Primitives';

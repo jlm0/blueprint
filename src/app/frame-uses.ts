@@ -13,8 +13,7 @@ interface PrototypeFrameUses {
 
 const reusablesByBundle = new WeakMap<CanvasProjectBundle, Map<string, ReusableDefinition>>();
 
-export function declaredFrameUses(bundle: CanvasProjectBundle, screen: ScreenDefinition): PrototypeFrameUses {
-  const projectId = bundle.manifest.project.id;
+function declaredUseClosure(bundle: CanvasProjectBundle, screen: ScreenDefinition): Array<{ kind: string; id: string; reusable?: ReusableDefinition }> {
   let reusables = reusablesByBundle.get(bundle);
   if (!reusables) {
     reusables = new Map([
@@ -25,13 +24,24 @@ export function declaredFrameUses(bundle: CanvasProjectBundle, screen: ScreenDef
   }
   const pending: Array<{ kind: string; id: string }> = [...screen.prototype.renderedUses
     ?? screen.sections.flatMap(section => section.uses.filter(use => use.kind === 'primitive' || use.kind === 'component'))];
-  const usedBoundaryIds = new Set<string>();
+  const closure = new Map<string, { kind: string; id: string; reusable?: ReusableDefinition }>();
   for (let use = pending.pop(); use; use = pending.pop()) {
-    const id = boundaryId(projectId, use.kind as BoundaryKind, use.id);
-    if (usedBoundaryIds.has(id)) continue;
-    usedBoundaryIds.add(id);
-    pending.push(...reusables.get(`${use.kind}:${use.id}`)?.uses ?? []);
+    const key = `${use.kind}:${use.id}`;
+    if (closure.has(key)) continue;
+    const reusable = reusables.get(key);
+    closure.set(key, { kind: use.kind, id: use.id, reusable });
+    pending.push(...reusable?.uses ?? []);
   }
+  return [...closure.values()];
+}
+
+export function declaredReusables(bundle: CanvasProjectBundle, screen: ScreenDefinition): ReusableDefinition[] {
+  return declaredUseClosure(bundle, screen).flatMap(use => use.reusable ? [use.reusable] : []);
+}
+
+export function declaredFrameUses(bundle: CanvasProjectBundle, screen: ScreenDefinition): PrototypeFrameUses {
+  const projectId = bundle.manifest.project.id;
+  const usedBoundaryIds = new Set(declaredUseClosure(bundle, screen).map(use => boundaryId(projectId, use.kind as BoundaryKind, use.id)));
   const declaredSections = new Set(screen.sections.map(section => section.id));
   const markedSections = findSectionMarkers(bundle.prototypeSourceContents[screen.prototype.source] ?? '')
     .filter(sectionId => declaredSections.has(sectionId))

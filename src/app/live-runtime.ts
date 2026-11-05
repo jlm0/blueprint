@@ -48,10 +48,13 @@ import {
   exitChangeBaselineView,
   narrowScreenChangesToSections,
   renderChangeAnnotations,
+  beginChangeMarksApply,
+  endChangeMarksApply,
   viewingChangeBaseline
 } from './change-annotations';
 import { canvas } from './chrome';
 import { el, errorMessage } from './dom';
+import { keepFrameOutputSnapshots } from './frame-output-client';
 import { reconcileScreenFrames } from './frame-reconcile';
 import { refreshBoardSwitcher, refreshItemNav } from './navigation';
 import { type LiveProjectSnapshot, fetchLiveProjectSnapshot } from './project-snapshot';
@@ -107,6 +110,7 @@ export function connectBlueprintLiveRuntime(): void {
     if (!event || event.version !== 1) return;
     announcedRevisions.push(event.revision);
     addPendingProjectApplies(1);
+    beginChangeMarksApply();
     if (lastAgentActivity?.phase === 'completed' && activityClearTimer !== undefined) window.clearTimeout(activityClearTimer);
     setProjectApplyQueue(projectApplyQueue
       .then(() => applyProjectChange(event, runtime.snapshotPath))
@@ -120,6 +124,7 @@ export function connectBlueprintLiveRuntime(): void {
       })
       .finally(() => {
         addPendingProjectApplies(-1);
+        endChangeMarksApply();
         checkAgentCompletion();
       }));
   });
@@ -150,7 +155,8 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   if (leftChangeBaseline) setProject(exitChangeBaselineView());
   const advancedPastEvent = snapshot.revision !== event.revision || leftChangeBaseline;
 
-  const previousProjectId = project.manifest.project.id;
+  const previousProject = project;
+  const previousProjectId = previousProject.manifest.project.id;
   if (!changeBaseline || changeBaseline.activityKey !== activeActivityKey) {
     setChangeBaseline({ bundle: project, activityKey: activeActivityKey });
   }
@@ -170,7 +176,7 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   }
   if (boardState.has('screens')) {
     const reconciled = !advancedPastEvent && previousProjectId === project.manifest.project.id
-      ? await reconcileScreenFrames(changedPaths)
+      ? await reconcileScreenFrames(changedPaths, previousProject)
       : false;
     if (!reconciled) updates.push(replaceMountedBoard('screens'));
   }
@@ -182,6 +188,7 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   lastAppliedRevision = snapshot.revision;
   setLatestChanges(narrowScreenChangesToSections(changeBaseline!.bundle, project, changedBoundaries(changeBaseline!.bundle, project)));
   renderChangeAnnotations();
+  keepFrameOutputSnapshots(new Set([changeBaseline!.bundle, project]));
   const changedFocuses = activityFocusesForChangedPaths(project, changedPaths);
   setChangedBoundaryFocuses(activeActivityKey ? uniqueAgentFocuses([...changedBoundaryFocuses, ...changedFocuses]) : changedFocuses);
   renderAgentFocus();

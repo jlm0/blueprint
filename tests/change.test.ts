@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { activityFocusesForChangedPaths, boundaryDisplayName } from '../src/core/activity';
+import { activityFocusesForChangedPaths, boundaryDisplayName, FRAME_PRESETS_FOCUS_ID } from '../src/core/activity';
 import { changedBoundaries } from '../src/core/change';
 import { loadProjectFromFs } from '../src/core/load';
 
@@ -8,6 +8,33 @@ const miraRoot = 'fixtures/valid/mira-ai/design/blueprint';
 const meridianRoot = 'fixtures/valid/meridian-finance/design/blueprint';
 
 describe('changed boundary detection', () => {
+  it('reports a screen when the bytes of its asset change', async () => {
+    const previous = await loadProjectFromFs(miraRoot);
+    const screen = previous.screens.screens[0];
+    const assetRef = 'prototype/assets/probe.png';
+    screen.prototype.assetRefs.push(assetRef);
+    previous.prototypeAssetContents[assetRef] = { mediaType: 'image/png', sha256: 'old', size: 1 } as never;
+    const next = structuredClone(previous);
+    next.prototypeAssetContents[assetRef] = { mediaType: 'image/png', sha256: 'new', size: 1 } as never;
+    assert.deepEqual(changedBoundaries(previous, next).map(change => change.boundaryId), [`mira-ai/screen/${screen.id}`]);
+  });
+
+  it('reports a token group that the next snapshot removes, because a frame can read it through a var() fallback', async () => {
+    const previous = await loadProjectFromFs(miraRoot);
+    const next = structuredClone(previous);
+    const [removed] = next.tokens.tokenGroups.splice(0, 1);
+    assert.deepEqual(changedBoundaries(previous, next).map(change => change.boundaryId), [`mira-ai/token-group/${removed.id}`]);
+  });
+
+  it('reports the frame presets when a size or a safe area changes', async () => {
+    const previous = await loadProjectFromFs(miraRoot);
+    const next = structuredClone(previous);
+    next.manifest.framePresets[0].width += 10;
+    const changes = changedBoundaries(previous, next);
+    assert.deepEqual(changes.map(change => change.boundaryId), [`mira-ai/project/${FRAME_PRESETS_FOCUS_ID}`]);
+    assert.equal(boundaryDisplayName(next, 'project', FRAME_PRESETS_FOCUS_ID), 'Frame sizes');
+  });
+
   it('reports nothing for identical snapshots', async () => {
     const bundle = await loadProjectFromFs(miraRoot);
     assert.deepEqual(changedBoundaries(bundle, structuredClone(bundle)), []);

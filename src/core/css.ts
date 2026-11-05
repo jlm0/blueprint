@@ -26,6 +26,8 @@ export interface CssAttributeMatch {
   name: string;
   /** Absent when the selector tests only that the attribute exists. */
   value?: string;
+  /** Absent when the selector tests only that the attribute exists. */
+  operator?: string;
 }
 
 /** One element in a selector: the simple selectors between two combinators. */
@@ -36,6 +38,8 @@ export interface CssCompound {
   elements: string[];
   /** The branches of each `:is()` and `:where()` in this compound. `:not()` and `:has()` select nothing, so they stay out. */
   alternatives: CssSelector[][];
+  /** Lowercase with 2 colons, also for a legacy form such as `:before`. */
+  pseudoElements: string[];
 }
 
 export interface CssSelector {
@@ -51,6 +55,13 @@ export interface CssRule {
   /** A nested rule starts at its parent, so only a rule that is not nested must start at the boundary. */
   nested: boolean;
   declarations: CssDeclaration[];
+}
+
+/** A piece with `selectors` is one whole rule, so that a caller can drop it when no selector can match. */
+export interface CssOutputItem {
+  text: string;
+  selectors?: CssSelector[];
+  variables: string[];
 }
 
 export interface CssFontFace {
@@ -98,11 +109,13 @@ interface CssSheet {
   declarations?: CssDeclaration[];
   references?: CssReferences;
   selectorRanges?: Array<[number, number]>;
+  outputItems?: CssOutputItem[] | null;
 }
 
 const MEMO_LIMIT = 2048;
 const REFERENCE_TEXT = /url\(|@import/i;
 const URL_TEXT = /url\(|image-set\(/i;
+const LEGACY_PSEUDO_ELEMENTS: ReadonlySet<string> = new Set([':before', ':after', ':first-line', ':first-letter']);
 const IMAGE_SET_NAME = /^(-webkit-)?image-set$/i;
 const IMPORT_RULE_NAME = /^import\b/i;
 const HEX_COLOR = /#[0-9a-f]{3,8}\b/i;
@@ -238,8 +251,9 @@ function readSheet<T>(css: string, read: (root: Root, text: string) => T | undef
   }
 }
 
+/** White space inside a string paints under `white-space: pre`, so it stays. */
 export function collapseCssWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ');
+  return text.replace(/("(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*')|\s+/g, (_match, string?: string) => string ?? ' ');
 }
 
 export function isCssLengthLiteral(value: string): boolean {
@@ -385,8 +399,14 @@ function readSelector(text: string): CssSelector {
   }
 }
 
+function pseudoElementName(value: string): string | undefined {
+  const name = value.toLowerCase();
+  if (name.startsWith('::')) return name;
+  return LEGACY_PSEUDO_ELEMENTS.has(name) ? `:${name}` : undefined;
+}
+
 function partsOf(text: string, selector: selectorParser.Selector): CssSelector {
-  const empty = (): CssCompound => ({ attributes: [], classes: [], elements: [], alternatives: [] });
+  const empty = (): CssCompound => ({ attributes: [], classes: [], elements: [], alternatives: [], pseudoElements: [] });
   const compounds = [empty()];
   const combinators: string[] = [];
   for (const node of selector.nodes) {
@@ -396,12 +416,73 @@ function partsOf(text: string, selector: selectorParser.Selector): CssSelector {
       combinators.push(node.value.trim() || ' ');
     } else if (node.type === 'class') compound.classes.push(node.value);
     else if (node.type === 'tag' || node.type === 'universal') compound.elements.push(node.value);
-    else if (node.type === 'attribute') compound.attributes.push({ name: node.attribute.toLowerCase(), ...(node.value === undefined ? {} : { value: node.value }) });
+    else if (node.type === 'attribute') compound.attributes.push({ name: node.attribute.toLowerCase(), ...(node.value === undefined ? {} : { value: node.value, operator: node.operator }) });
     else if (node.type === 'pseudo' && SELECTOR_ALTERNATIVES.has(node.value.toLowerCase())) {
       compound.alternatives.push(node.nodes.map(branch => partsOf(collapseCssWhitespace(String(branch).trim()), branch)));
+    } else if (node.type === 'pseudo') {
+      const pseudoElement = pseudoElementName(node.value);
+      if (pseudoElement) compound.pseudoElements.push(pseudoElement);
     }
   }
   return { text, compounds, combinators };
+}
+
+/** The pieces hold no comment and no white space of the sheet, so that an edit to them does not change what a caller compares. */
+export function listCssOutputItems(css: string): readonly CssOutputItem[] | null {
+  const sheet = sheetFor(css);
+  if (sheet.outputItems === undefined) {
+    try {
+      const items: CssOutputItem[] = [];
+      if (URL_TOKEN_THAT_POSTCSS_SPLITS.test(css) || !appendOutputItems(parse(css, { map: false }) as Root, true, items)) sheet.outputItems = null;
+      else sheet.outputItems = items;
+    } catch {
+      sheet.outputItems = null;
+    }
+  }
+  return sheet.outputItems;
+}
+
+function appendOutputItems(container: Root | AtRule | Rule, droppable: boolean, items: CssOutputItem[]): boolean {
+  for (const node of container.nodes ?? []) {
+    if (node.type === 'decl') {
+      const item = declarationOutput(node);
+      if (!item) return false;
+      items.push(item);
+    } else if (node.type === 'atrule') {
+      const params = collapseCssWhitespace(node.params);
+      const lowerParams = params.toLowerCase();
+      if (lowerParams.includes('style(') || lowerParams.includes('var(')) return false;
+      if (!node.nodes) {
+        items.push({ text: `@${node.name} ${params};`, variables: [] });
+        continue;
+      }
+      items.push({ text: `@${node.name} ${params}{`, variables: [] });
+      if (!appendOutputItems(node, droppable && !node.name.toLowerCase().endsWith('keyframes'), items)) return false;
+      items.push({ text: '}', variables: [] });
+    } else if (node.type === 'rule') {
+      const selector = collapseCssWhitespace(node.selector);
+      if (droppable && node.nodes.every(child => child.type === 'decl' || child.type === 'comment')) {
+        const declarations = node.nodes.flatMap(child => child.type === 'decl' ? [declarationOutput(child)] : []);
+        if (declarations.some(declaration => !declaration)) return false;
+        items.push({
+          text: `${selector}{${declarations.map(declaration => declaration?.text).join('')}}`,
+          selectors: node.selectors.map(readSelector),
+          variables: declarations.flatMap(declaration => declaration?.variables ?? [])
+        });
+        continue;
+      }
+      items.push({ text: `${selector}{`, variables: [] });
+      if (!appendOutputItems(node, false, items)) return false;
+      items.push({ text: '}', variables: [] });
+    }
+  }
+  return true;
+}
+
+function declarationOutput(node: Declaration): CssOutputItem | undefined {
+  const { variables, value } = describeDeclaration(node.prop, `${node.value}${node.important ? ' !important' : ''}`);
+  if (value.toLowerCase().includes('var(') && (variables.length === 0 || variables.some(variable => variable.includes('\\')))) return undefined;
+  return { text: `${node.prop}:${value};`, variables };
 }
 
 /** Where each selector of each rule that is not nested and not in `@keyframes` starts, for an edit that keeps the rest of the sheet as written. */
