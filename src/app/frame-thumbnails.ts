@@ -1,12 +1,54 @@
+import { PROTOTYPE_ASSET_PATH_PREFIX } from '../prototype/host-policy';
 import { textHash } from './text-hash';
 
 export const FRAME_THUMBNAIL_LIMIT = 256;
-export const FRAME_THUMBNAIL_PIXEL_RATIO = 0.5;
-// html-to-image copies every computed style of each element, about 0.55 ms per element on an M-series Mac, so larger documents block input for more than 200 ms.
-export const FRAME_THUMBNAIL_ELEMENT_LIMIT = 300;
+const FRAME_THUMBNAIL_PIXEL_RATIO = 0.5;
+// Parsing, serializing, and encoding a document take about 8.6 ms per MB on an M-series Mac, so a larger document blocks input for more than 50 ms.
+export const FRAME_THUMBNAIL_DOCUMENT_LIMIT = 4 * 1024 * 1024;
+// An SVG image holds a CSS animation at its first keyframe and a transition at its start, and `html` is not its root, so a margin collapses out of `html` and no background reaches a canvas. These rules give the frame its resting look, and `:where` lets each rule of the document win.
+const FRAME_AT_REST_CSS = ':where(html,body){display:flow-root;min-height:100vh}*,*::before,*::after{animation-delay:-99999s!important;transition:none!important}';
+const ASSET_HASH = /^[0-9a-f]{64}$/;
+const BASE64_GROWTH = 4 / 3;
 
-export function frameElementCount(html: string): number {
-  return html.match(/<[a-z]/gi)?.length ?? 0;
+/** An SVG image loads no file, so each linked asset of the document becomes a data URL. The answer is undefined when the document grows over the limit. */
+async function inlineLinkedAssets(markup: string): Promise<string | undefined> {
+  const source = `${location.origin}${PROTOTYPE_ASSET_PATH_PREFIX}`;
+  const hashes = new Set(markup.split(source).slice(1).map(rest => rest.slice(0, 64)).filter(hash => ASSET_HASH.test(hash)));
+  let inlined = markup;
+  for (const hash of hashes) {
+    const url = `${source}${hash}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Blueprint could not load asset ${hash}.`);
+    const blob = await response.blob();
+    if (inlined.length + blob.size * BASE64_GROWTH > FRAME_THUMBNAIL_DOCUMENT_LIMIT) return undefined;
+    const data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error(`Blueprint could not read asset ${hash}.`));
+      reader.readAsDataURL(blob);
+    });
+    inlined = inlined.replaceAll(url, () => data);
+  }
+  return inlined;
+}
+
+/** html-to-image copies every computed style of each element, so it takes about 0.6 ms per element. The browser renders this document in an SVG image, which runs no script and loads no file. */
+export async function renderFrameThumbnail(html: string, width: number, height: number, pixelRatio = FRAME_THUMBNAIL_PIXEL_RATIO): Promise<Blob | null> {
+  if (html.length > FRAME_THUMBNAIL_DOCUMENT_LIMIT) return null;
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const rest = parsed.createElement('style');
+  rest.textContent = FRAME_AT_REST_CSS;
+  parsed.head.append(rest);
+  const markup = await inlineLinkedAssets(new XMLSerializer().serializeToString(parsed.documentElement));
+  if (markup === undefined) return null;
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject x="0" y="0" width="100%" height="100%">${markup}</foreignObject></svg>`)}`;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * pixelRatio));
+  canvas.height = Math.max(1, Math.round(height * pixelRatio));
+  canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return new Promise(resolve => canvas.toBlob(resolve));
 }
 
 export function frameThumbnailKey(html: string, width: number, height: number): string {

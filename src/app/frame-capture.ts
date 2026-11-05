@@ -63,7 +63,7 @@ export function wireFrameCapture(options: {
  * no-script document in a short-lived readable iframe and capture its document
  * root instead. The review iframe remains fully sandboxed and unchanged.
  */
-export async function captureCanonicalPrototype(screenEl: HTMLElement, html: string, pixelRatio = 2): Promise<Blob | null> {
+async function captureCanonicalPrototype(screenEl: HTMLElement, html: string): Promise<Blob | null> {
   const width = screenEl.clientWidth;
   const height = screenEl.clientHeight;
   if (width <= 0 || height <= 0) {
@@ -98,7 +98,7 @@ export async function captureCanonicalPrototype(screenEl: HTMLElement, html: str
       height,
       canvasWidth: width,
       canvasHeight: height,
-      pixelRatio,
+      pixelRatio: 2,
       style: {
         width: `${width}px`,
         height: `${height}px`,

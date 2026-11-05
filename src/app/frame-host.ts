@@ -9,19 +9,16 @@ import { applyPrototypeIframeIsolation } from '../prototype/host-policy';
 import { frameMounterByRoot } from './boards';
 import { canvas } from './chrome';
 import { createPrototypeCompileError, el } from './dom';
-import { captureCanonicalPrototype } from './frame-capture';
 import { trackFrameLoad } from './frame-loads';
 import type { MountableFrame } from './frame-mounting';
 import { prototypeDocument } from './frame-overlay';
 import {
-  FRAME_THUMBNAIL_ELEMENT_LIMIT,
   FRAME_THUMBNAIL_LIMIT,
-  FRAME_THUMBNAIL_PIXEL_RATIO,
   createFrameThumbnailCache,
   createIdleQueue,
-  frameElementCount,
   frameThumbnailKey,
-  idleCallback
+  idleCallback,
+  renderFrameThumbnail
 } from './frame-thumbnails';
 import { declaredFrameUses, prototypeUsesByHost } from './frame-uses';
 import { withAssetBytes } from './prototype-assets';
@@ -239,13 +236,12 @@ async function whenCanvasIdle(): Promise<void> {
 
 async function captureFrameThumbnail(frame: ScreenFrame): Promise<void> {
   const live = frame.iframe && frame.host.isConnected ? prototypeDocument(frame.iframe) : undefined;
-  if (!live || frameElementCount(live) > FRAME_THUMBNAIL_ELEMENT_LIMIT) return;
+  if (!live) return;
   const key = frameThumbnailKey(live, frame.host.clientWidth, frame.host.clientHeight);
   frame.thumbnailKey = key;
   rememberFrameThumbnail(frame);
   if (!frameThumbnails.get(key)) {
-    const html = await captureScreenFrameDocument(frame);
-    const blob = html ? await captureCanonicalPrototype(frame.host, html, FRAME_THUMBNAIL_PIXEL_RATIO) : null;
+    const blob = await renderFrameThumbnail(live, frame.host.clientWidth, frame.host.clientHeight);
     if (!blob) return;
     frameThumbnails.set(key, URL.createObjectURL(blob));
   }
