@@ -1,7 +1,7 @@
 import { type CssCompound, type CssOutputItem, type CssSelector, listCssOutputItems } from '../core/css';
 import { type OpenTag, listPossibleOpenTags } from '../core/markup';
 import type { CanvasProjectBundle, FramePreset } from '../core/types';
-import { createPrototypeDocumentCompiler } from '../prototype/compiler';
+import { type PrototypeDocumentOutput, createPrototypeDocumentCompiler } from '../prototype/compiler';
 import { attributeVariables, tokenReadClosure } from './frame-token-reads';
 import { textHash } from './text-hash';
 
@@ -157,56 +157,72 @@ function assetPart(bundle: CanvasProjectBundle, assetRef: string): string {
   return `${assetRef}:${'base64' in asset ? textHash([asset.base64]) : asset.sha256}`;
 }
 
+/** What one compile gives to a frame hash. It holds no token value, so an edit of token values compiles nothing. */
+export interface FrameShape {
+  digest: string;
+  outsideRulesDigest: string;
+  reads: string[];
+  readsOutsideRules: string[];
+  unknown: boolean;
+  assetRefs: string[];
+}
+
+function readFrameShape(output: PrototypeDocumentOutput, safeArea: FramePreset['safeArea'], knownElements: Map<string, IndexedElement>): FrameShape {
+  const { canMatch, tags } = createElementIndex(output.body, output.state, knownElements);
+  const parts = [output.state, JSON.stringify(safeArea ?? null), output.body];
+  const outsideRules: string[] = [];
+  const reads = new Set<string>();
+  const readsOutsideRules = new Set<string>();
+  let unknown = false;
+  for (const sheet of output.sheets) {
+    const items = listCssOutputItems(sheet);
+    if (!items) {
+      unknown = true;
+      parts.push(sheet);
+      outsideRules.push(sheet);
+      continue;
+    }
+    const digests = itemDigests(items);
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index];
+      if (item.selectors && !item.selectors.some(canMatch)) continue;
+      parts.push(digests[index]);
+      for (const variable of item.variables) reads.add(variable);
+      if (!item.selectors?.every(diffReads)) {
+        outsideRules.push(digests[index]);
+        for (const variable of item.variables) readsOutsideRules.add(variable);
+      }
+    }
+  }
+  for (const tag of tags) {
+    if (tag.name === 'style') unknown = true;
+    for (const attribute of tag.attributes) {
+      const read = attributeVariables(attribute);
+      if (read.unknown) unknown = true;
+      for (const variable of read.variables) reads.add(variable);
+    }
+  }
+  return { digest: textHash(parts), outsideRulesDigest: textHash(outsideRules), reads: [...reads], readsOutsideRules: [...readsOutsideRules], unknown, assetRefs: output.assetRefs };
+}
+
 /** Each document holds every token and every rule of each sheet that it loads, so a raw hash of the document changes in frames that paint nothing new. */
-export function createFrameOutputHasher(bundle: CanvasProjectBundle): (target: FrameOutputTarget) => string {
+export function createFrameOutputHasher(bundle: CanvasProjectBundle, shapes = new Map<string, FrameShape>()): (target: FrameOutputTarget) => string {
   const compile = createPrototypeDocumentCompiler(bundle);
   const allTokens = bundle.tokens.tokenGroups.flatMap(group => group.tokens.map(token => token.styleRef));
   const knownElements = new Map<string, IndexedElement>();
   return target => {
     try {
-      const output = compile({ target: { kind: 'screen', id: target.screenId }, state: target.state, framePreset: target.preset });
-      const { canMatch, tags } = createElementIndex(output.body, output.state, knownElements);
-      const parts = [output.state, JSON.stringify(target.preset.safeArea ?? null), output.body];
-      const outsideRules: string[] = [];
-      const reads = new Set<string>();
-      const readsOutsideRules = new Set<string>();
-      let unknown = false;
-      for (const sheet of output.sheets) {
-        const items = listCssOutputItems(sheet);
-        if (!items) {
-          unknown = true;
-          parts.push(sheet);
-          outsideRules.push(sheet);
-          continue;
-        }
-        const digests = itemDigests(items);
-        for (let index = 0; index < items.length; index += 1) {
-          const item = items[index];
-          if (item.selectors && !item.selectors.some(canMatch)) continue;
-          parts.push(digests[index]);
-          for (const variable of item.variables) reads.add(variable);
-          if (!item.selectors?.every(diffReads)) {
-            outsideRules.push(digests[index]);
-            for (const variable of item.variables) readsOutsideRules.add(variable);
-          }
-        }
+      let shape = shapes.get(target.key);
+      if (!shape) {
+        const output = compile({ target: { kind: 'screen', id: target.screenId }, state: target.state, framePreset: target.preset });
+        shape = readFrameShape(output, target.preset.safeArea, knownElements);
+        shapes.set(target.key, shape);
       }
-      for (const tag of tags) {
-        if (tag.name === 'style') unknown = true;
-        for (const attribute of tag.attributes) {
-          const read = attributeVariables(attribute);
-          if (read.unknown) unknown = true;
-          for (const variable of read.variables) reads.add(variable);
-        }
-      }
-      parts.push(...tokenCssParts(bundle, unknown ? allTokens : reads));
-      outsideRules.push(...tokenCssParts(bundle, unknown ? allTokens : readsOutsideRules));
-      for (const assetRef of output.assetRefs) {
-        const part = assetPart(bundle, assetRef);
-        parts.push(part);
-        outsideRules.push(part);
-      }
-      return `${textHash(parts)}:${textHash(outsideRules)}`;
+      const assetParts = shape.assetRefs.map(assetRef => assetPart(bundle, assetRef));
+      return [
+        textHash([shape.digest, ...tokenCssParts(bundle, shape.unknown ? allTokens : shape.reads), ...assetParts]),
+        textHash([shape.outsideRulesDigest, ...tokenCssParts(bundle, shape.unknown ? allTokens : shape.readsOutsideRules), ...assetParts])
+      ].join(':');
     } catch (error) {
       return `error:${error instanceof Error ? error.message : String(error)}`;
     }

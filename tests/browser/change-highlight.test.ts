@@ -753,7 +753,7 @@ describe('the change highlight of the canvas', () => {
     await canvas.locator('.bp-chrome-changes').waitFor({ state: 'hidden' });
   });
 
-  it('marks a frame off screen, and computes its outlines when it mounts', async () => {
+  it('marks a frame out of view when a resize reaches it, and computes its outlines when it mounts', async () => {
     await dismissChanges();
     const page = await browser.newPage({ viewport: { width: 1200, height: 700 } });
     try {
@@ -765,8 +765,9 @@ describe('the change highlight of the canvas', () => {
       assert.equal(await page.locator(`${slot} iframe.canonical-prototype-iframe`).count(), 0);
       const tokens = path.join(project, 'tokens.json');
       await writeFile(tokens, setToken(await readFile(tokens, 'utf8'), 'audit-art', '#be123c'), 'utf8');
-      await page.locator(`${slot} .frame.bp-chrome-changed`).waitFor({ state: 'attached', timeout: 20_000 });
-      assert.equal(await page.locator(`${slot} .bp-chrome-change-box`).count(), 0);
+      await page.locator('.bp-chrome-changes').waitFor({ state: 'visible', timeout: 20_000 });
+      await marksAre(page, 'settled');
+      assert.equal(await page.locator(`${slot} .frame.bp-chrome-changed, ${slot} .bp-chrome-change-box`).count(), 0);
       await page.setViewportSize({ width: 1200, height: 6000 });
       await page.locator(`${slot} .bp-chrome-change-box`).first().waitFor({ state: 'attached', timeout: 20_000 });
       await page.waitForFunction(selector => !document.querySelector(`${selector} .frame.bp-chrome-changed`), slot);
@@ -777,11 +778,19 @@ describe('the change highlight of the canvas', () => {
     await dismissChanges();
   });
 
-  it('shows no mark on a frame off screen whose pixels do not change', async () => {
+  it('shows no mark on a frame whose pixels do not change, when the view reaches it', async () => {
     await dismissChanges();
     const page = await browser.newPage({ viewport: { width: 1200, height: 700 } });
     try {
-      await page.addInitScript({ content: 'globalThis.__name = target => target;' });
+      await page.addInitScript({ content: `
+        globalThis.__name = target => target;
+        globalThis.guardDocuments = [];
+        const post = Worker.prototype.postMessage;
+        Worker.prototype.postMessage = function (message, ...rest) {
+          if (message?.kind === 'document') globalThis.guardDocuments.push(message.target.screenId);
+          post.call(this, message, ...rest);
+        };
+      ` });
       await page.goto(`${served.url}?board=screens&page=${PAGE_ID}`);
       const slot = '.frame-slot:has(.frame[data-screen-id="audit-hover"])';
       await page.locator(`${slot} .bp-chrome-frame-placeholder`).waitFor({ state: 'attached', timeout: 30_000 });
@@ -791,7 +800,10 @@ describe('the change highlight of the canvas', () => {
       const current = JSON.parse(await readFile(tokens, 'utf8')).tokenGroups.flatMap((group: { tokens: Array<{ id: string; value: string }> }) => group.tokens).find((token: { id: string }) => token.id === 'audit-hover').value;
       await writeFile(tokens, setToken(await readFile(tokens, 'utf8'), 'audit-hover', current === '#0f766e' ? '#b45309' : '#0f766e'), 'utf8');
       await page.locator('.bp-chrome-changes').waitFor({ state: 'visible', timeout: 20_000 });
-      await page.waitForFunction(() => document.querySelector<HTMLElement>('.bp-chrome-changes')?.dataset.marks === 'settled', undefined, { timeout: 60_000 });
+      await marksAre(page, 'settled');
+      await page.setViewportSize({ width: 1200, height: 6000 });
+      await page.waitForFunction(() => (globalThis as unknown as { guardDocuments: string[] }).guardDocuments.filter(id => id === 'audit-hover').length >= 2, undefined, { timeout: 20_000 });
+      await marksAre(page, 'settled');
       assert.equal(await page.locator('.frame.bp-chrome-changed').count(), 0);
       assert.equal(await page.locator('.bp-chrome-change-box').count(), 0);
     } finally {
@@ -990,6 +1002,50 @@ describe('the change highlight of the canvas', () => {
     } finally {
       await page.close();
       await writeFile(manifest, original, 'utf8');
+    }
+    await waitForAppliedChange();
+    await dismissChanges();
+  });
+
+  it('loads no document for a frame out of view, and marks that frame when the view reaches it', { timeout: 120_000 }, async () => {
+    await dismissChanges();
+    const css = path.join(project, 'prototype/screens/audit-hover.css');
+    const original = await readFile(css, 'utf8');
+    const page = await browser.newPage({ viewport: { width: 1200, height: 700 } });
+    const slot = '.frame-slot:has(.frame[data-screen-id="audit-hover"])';
+    const marked = `.frame[data-screen-id="audit-hover"].bp-chrome-changed, ${slot} .bp-chrome-change-box`;
+    try {
+      await page.addInitScript({ content: `
+        globalThis.__name = target => target;
+        globalThis.guardDocuments = [];
+        const post = Worker.prototype.postMessage;
+        Worker.prototype.postMessage = function (message, ...rest) {
+          if (message?.kind === 'document') globalThis.guardDocuments.push(message.target.screenId);
+          post.call(this, message, ...rest);
+        };
+      ` });
+      await page.goto(`${served.url}?board=screens&page=${PAGE_ID}`);
+      await page.locator(`${slot} .bp-chrome-frame-placeholder`).waitFor({ state: 'attached', timeout: 30_000 });
+      await page.waitForTimeout(SETTLE_MS);
+      await writeFile(css, `${original}\n.audit-hover__card { box-shadow: inset 0 0 0 4px #be123c; }\n`, 'utf8');
+      await page.locator('.bp-chrome-changes').waitFor({ state: 'visible', timeout: 20_000 });
+      await marksAre(page, 'settled');
+      const documentsOf = (): Promise<string[]> => page.evaluate(() => (globalThis as unknown as { guardDocuments: string[] }).guardDocuments);
+      assert.ok(!(await documentsOf()).includes('audit-hover'), 'A frame out of view must load no document.');
+      assert.equal(await page.locator(marked).count(), 0);
+      const inView = (): Promise<boolean> => page.locator(slot).evaluate(element => {
+        const box = element.getBoundingClientRect();
+        const view = (document.getElementById('viewport') as HTMLElement).getBoundingClientRect();
+        return box.top < view.bottom && box.bottom > view.top && box.left < view.right && box.right > view.left;
+      });
+      await page.mouse.move(600, 350);
+      for (let step = 0; step < 200 && !(await inView()); step += 1) await page.mouse.wheel(0, 200);
+      assert.equal(await inView(), true, 'The wheel must bring the frame into view, or this test proves nothing.');
+      await page.locator(marked).first().waitFor({ state: 'attached', timeout: 20_000 });
+      assert.ok((await documentsOf()).includes('audit-hover'));
+    } finally {
+      await page.close();
+      await writeFile(css, original, 'utf8');
     }
     await waitForAppliedChange();
     await dismissChanges();

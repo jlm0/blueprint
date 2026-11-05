@@ -1,7 +1,7 @@
 import type { CanvasProjectBundle, ScreenDefinition } from '../core/types';
 import { compilePrototypeDocument } from '../prototype/compiler';
-import { type FrameOutputTarget, createFrameOutputHasher, frameOutputOutsideRules, frameTargetIn } from './frame-output';
-import { changedBundlePaths, frameNeedsRebuild, rebuildScope } from './frame-rebuild';
+import { type FrameOutputTarget, type FrameShape, createFrameOutputHasher, frameOutputOutsideRules, frameTargetIn } from './frame-output';
+import { changedBundlePaths, frameNeedsRebuild, onlyTokenValuesChanged, rebuildScope } from './frame-rebuild';
 import { screenTokenReads } from './frame-token-reads';
 import { declaredFrameUses } from './frame-uses';
 
@@ -18,8 +18,8 @@ export type FrameOutputAnswer =
 
 interface FrameOutputSnapshot {
   bundle: CanvasProjectBundle;
-  hash: (target: FrameOutputTarget) => string;
   hashes: Map<string, string>;
+  shapes: Map<string, FrameShape>;
 }
 
 export function framesInChangeScope<T extends { screenId: string }>(
@@ -38,24 +38,29 @@ export function framesInChangeScope<T extends { screenId: string }>(
   });
 }
 
-export function createFrameOutputService(): (request: FrameOutputRequest) => FrameOutputAnswer | undefined {
+export function createFrameOutputService(createHasher = createFrameOutputHasher): (request: FrameOutputRequest) => FrameOutputAnswer | undefined {
   const snapshots = new Map<number, FrameOutputSnapshot>();
   const snapshotById = (id: number): FrameOutputSnapshot => {
     const snapshot = snapshots.get(id);
     if (!snapshot) throw new Error(`The frame output service does not hold snapshot ${id}.`);
     return snapshot;
   };
-  const hashOf = (snapshot: FrameOutputSnapshot, target: FrameOutputTarget): string => {
-    let hash = snapshot.hashes.get(target.key);
-    if (hash === undefined) {
-      hash = snapshot.hash(target);
-      snapshot.hashes.set(target.key, hash);
-    }
-    return hash;
+  /** The compile session behind a hasher holds hundreds of MB on a large project, so it lives only for one compare. */
+  const hasherOf = (snapshot: FrameOutputSnapshot): ((target: FrameOutputTarget) => string) => {
+    let hasher: ReturnType<typeof createHasher> | undefined;
+    return target => {
+      let hash = snapshot.hashes.get(target.key);
+      if (hash === undefined) {
+        hasher ??= createHasher(snapshot.bundle, snapshot.shapes);
+        hash = hasher(target);
+        snapshot.hashes.set(target.key, hash);
+      }
+      return hash;
+    };
   };
   return request => {
     if (request.kind === 'snapshot') {
-      snapshots.set(request.snapshot, { bundle: request.bundle, hash: createFrameOutputHasher(request.bundle), hashes: new Map() });
+      snapshots.set(request.snapshot, { bundle: request.bundle, hashes: new Map(), shapes: new Map() });
       return undefined;
     }
     if (request.kind === 'release') {
@@ -79,14 +84,17 @@ export function createFrameOutputService(): (request: FrameOutputRequest) => Fra
       }
       const before = snapshotById(request.before);
       const after = snapshotById(request.after);
-      const hashBefore = (target: FrameOutputTarget): string => hashOf(before, frameTargetIn(before.bundle, target));
+      if (after.shapes !== before.shapes && onlyTokenValuesChanged(before.bundle, after.bundle)) after.shapes = before.shapes;
+      const hashOfBefore = hasherOf(before);
+      const hashAfter = hasherOf(after);
+      const hashBefore = (target: FrameOutputTarget): string => hashOfBefore(frameTargetIn(before.bundle, target));
       const resized = (target: FrameOutputTarget): boolean => {
         const { width, height } = frameTargetIn(before.bundle, target).preset;
         return width !== target.preset.width || height !== target.preset.height;
       };
       const changed = framesInChangeScope(before.bundle, after.bundle, request.targets)
-        .filter(target => resized(target) || hashBefore(target) !== hashOf(after, target));
-      const unconfirmable = changed.filter(target => resized(target) || frameOutputOutsideRules(hashBefore(target)) !== frameOutputOutsideRules(hashOf(after, target)));
+        .filter(target => resized(target) || hashBefore(target) !== hashAfter(target));
+      const unconfirmable = changed.filter(target => resized(target) || frameOutputOutsideRules(hashBefore(target)) !== frameOutputOutsideRules(hashAfter(target)));
       return { kind: 'compare', request: request.request, changed: changed.map(target => target.key), unconfirmable: unconfirmable.map(target => target.key) };
     } catch (error) {
       return { kind: 'failed', request: request.request, message: error instanceof Error ? error.message : String(error) };

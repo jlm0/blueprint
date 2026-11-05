@@ -13,6 +13,7 @@ import type { Worker } from 'node:worker_threads';
 import { canvasLocationParams } from '../src/core/canvas-location';
 import { loadProjectFromFs } from '../src/core/load';
 import type { BlueprintProjectBundle } from '../src/core/types';
+import { inspectPrototypeSourceGraph } from '../src/prototype/compiler';
 import { createReadinessReport, validateProject } from '../src/prototype/validate-project';
 import { findLiveBlueprintActivityRuntime } from '../src/mcp/activity';
 import { createBlueprintMcpServer } from '../src/mcp/create-server';
@@ -977,6 +978,65 @@ describe('validation memo and the disk', () => {
     assert.equal(validateProject(bundle, { fileExists: () => true }).ok, true);
     const missing = validateProject(bundle, { fileExists: () => false });
     assert.ok(missing.errors.some(error => error.includes('does not exist')));
+  });
+});
+
+describe('source graph memo after a token value edit', () => {
+  const changed = (bundle: BlueprintProjectBundle, change: (next: BlueprintProjectBundle) => void): BlueprintProjectBundle => {
+    const next = structuredClone(bundle);
+    change(next);
+    return next;
+  };
+  const setFirstToken = (value: string) => (next: BlueprintProjectBundle): void => {
+    next.tokens.tokenGroups[0].tokens[0].value = value;
+  };
+
+  it('compiles nothing for an edit of a safe token value', async () => {
+    const bundle = await loadProjectFromFs(umbraRoot);
+    const first = new ProjectValidationSession(bundle, []);
+    assert.deepEqual(first.sourceGraphIssues(), []);
+    assert.deepEqual(first.runs, ['source-graph']);
+    const edited = changed(bundle, setFirstToken('#123456'));
+    const next = new ProjectValidationSession(edited, [first.memo]);
+    assert.notEqual(next.memo.fingerprint, first.memo.fingerprint);
+    assert.deepEqual(next.sourceGraphIssues(), inspectPrototypeSourceGraph(edited));
+    assert.deepEqual(next.runs, []);
+    const later = new ProjectValidationSession(changed(bundle, setFirstToken('#654321')), [next.memo]);
+    later.sourceGraphIssues();
+    assert.deepEqual(later.runs, []);
+  });
+
+  it('compiles again for an unsafe token value, and again after the fix', async () => {
+    const bundle = await loadProjectFromFs(umbraRoot);
+    const first = new ProjectValidationSession(bundle, []);
+    first.sourceGraphIssues();
+    const unsafe = new ProjectValidationSession(changed(bundle, setFirstToken('red; }')), [first.memo]);
+    assert.ok(unsafe.sourceGraphIssues().length > 0);
+    assert.deepEqual(unsafe.runs, ['source-graph']);
+    const fixed = new ProjectValidationSession(changed(bundle, setFirstToken('#123456')), [unsafe.memo]);
+    assert.deepEqual(fixed.sourceGraphIssues(), []);
+    assert.deepEqual(fixed.runs, ['source-graph']);
+  });
+
+  it('compiles again when anything other than a token value changes', async () => {
+    const bundle = await loadProjectFromFs(umbraRoot);
+    const first = new ProjectValidationSession(bundle, []);
+    first.sourceGraphIssues();
+    const source = Object.keys(bundle.prototypeSourceContents)[0];
+    const edits: Array<[string, (next: BlueprintProjectBundle) => void]> = [
+      ['a source file', next => { next.prototypeSourceContents[source] = `${next.prototypeSourceContents[source]} `; }],
+      ['a styleRef', next => { next.tokens.tokenGroups[0].tokens[0].styleRef = '--renamed-token'; }],
+      ['a token id', next => { next.tokens.tokenGroups[0].tokens[0].id = 'renamed-token'; }],
+      ['a token value and a screen name', next => {
+        setFirstToken('#123456')(next);
+        next.screens.screens[0].name = 'Renamed';
+      }]
+    ];
+    for (const [name, change] of edits) {
+      const next = new ProjectValidationSession(changed(bundle, change), [first.memo]);
+      next.sourceGraphIssues();
+      assert.deepEqual(next.runs, ['source-graph'], name);
+    }
   });
 });
 

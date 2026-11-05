@@ -66,6 +66,8 @@ export type ProjectValidationTask =
 
 export interface ValidationMemoEntry {
   fingerprint: string;
+  /** Equal for two bundles that differ only in safe token values, which the source graph does not read. */
+  compileFingerprint?: string;
   sourceGraphIssues?: PrototypeSourceGraphIssue[];
   baseline?: ValidationResult;
   strict?: ValidationResult;

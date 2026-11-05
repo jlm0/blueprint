@@ -1,5 +1,6 @@
 import type { CanvasProjectBundle } from '../core/types';
 import type { BoundaryExtent } from './boundary-extent';
+import { canvas, viewport } from './chrome';
 import { el } from './dom';
 import { type DocumentDiff, UNKNOWN_DIFF, diffPrototypeDocuments } from './element-diff';
 import { slotScreenFrame } from './frame-host';
@@ -27,6 +28,7 @@ interface ChangeMarks {
 }
 
 let marks: ChangeMarks | undefined;
+let watchingView = false;
 
 function frameTarget(slot: HTMLElement): FrameOutputTarget | undefined {
   const frame = slotScreenFrame(slot);
@@ -49,7 +51,23 @@ function drawOutlines(host: HTMLElement, outlines: readonly BoundaryExtent[]): v
 }
 
 function report(current: ChangeMarks): void {
-  current.report(current.comparing > 0 || current.draining || current.queue.length > 0 ? 'pending' : 'settled');
+  current.report(current.comparing > 0 || current.draining ? 'pending' : 'settled');
+}
+
+function watchView(): void {
+  if (watchingView) return;
+  watchingView = true;
+  const wake = (): void => {
+    if (marks) void drainDiffQueue(marks);
+  };
+  canvas.onViewSettled(wake);
+  window.addEventListener('resize', wake);
+}
+
+function slotInView(slot: HTMLElement): boolean {
+  const box = slot.getBoundingClientRect();
+  const view = viewport.getBoundingClientRect();
+  return box.right > view.left && box.left < view.right && box.bottom > view.top && box.top < view.bottom;
 }
 
 function applyMark(current: ChangeMarks, slot: HTMLElement): void {
@@ -84,19 +102,20 @@ async function diffFrame(current: ChangeMarks, target: FrameOutputTarget): Promi
   }
 }
 
-/** A hash also changes for a rule that does not paint now, so a frame takes its mark from the diff, and a frame on screen goes first. A frame keeps its mark from the previous edit until this diff answers. */
+/** A hash also changes for a rule that does not paint now, so a frame takes its mark from the diff. A frame keeps its mark from the previous edit until this diff answers. Each diff loads 2 documents, so a frame out of view waits until the view reaches it. */
 async function drainDiffQueue(current: ChangeMarks): Promise<void> {
   if (current.draining) return;
   current.draining = true;
   report(current);
   try {
-    while (current.queue.length > 0) {
+    for (;;) {
       const slots = slotsByKey(current.root);
-      const onScreen = current.queue.findIndex(({ key }) => {
+      const next = current.queue.findIndex(({ key }) => {
         const slot = slots.get(key);
-        return slot !== undefined && slotScreenFrame(slot)?.mounted === true;
+        return slot === undefined || slotInView(slot);
       });
-      const [target] = current.queue.splice(Math.max(onScreen, 0), 1);
+      if (next < 0) return;
+      const [target] = current.queue.splice(next, 1);
       if (!slots.has(target.key)) {
         current.compared.delete(target.key);
         continue;
@@ -138,7 +157,6 @@ async function compareFrames(current: ChangeMarks, targets: FrameOutputTarget[])
     for (const target of framesInChangeScope(current.before, current.after, targets, false)) current.changed.add(target.key);
   }
   for (const slot of slotsByKey(current.root).values()) applyMark(current, slot);
-  report(current);
   void drainDiffQueue(current);
 }
 
@@ -170,6 +188,7 @@ export function renderFrameChangeMarks(options: {
   const current = marks;
   current.root = root;
   current.showOutlines = showOutlines;
+  watchView();
   const slots = [...root.querySelectorAll<HTMLElement>('.frame-slot[data-live-frame-key]')];
   for (const slot of slots) applyMark(current, slot);
   const missing = slots.flatMap(slot => {

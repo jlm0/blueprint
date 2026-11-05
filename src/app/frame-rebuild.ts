@@ -1,5 +1,6 @@
 import { boundaryId } from '../core/address';
 import type { CanvasProjectBundle } from '../core/types';
+import { tokensWithoutValues } from '../prototype/compiler';
 import { type ScreenTokenReads, changedTokenRefs } from './frame-token-reads';
 
 export interface RebuildScope {
@@ -90,6 +91,12 @@ export function changedBundlePaths(previous: CanvasProjectBundle, next: CanvasPr
     if (JSON.stringify(previous.prototypeAssetContents[changedPath]) !== JSON.stringify(next.prototypeAssetContents[changedPath])) paths.push(changedPath);
   }
   return paths;
+}
+
+export function onlyTokenValuesChanged(previous: CanvasProjectBundle, next: CanvasProjectBundle): boolean {
+  const paths = changedBundlePaths(previous, next);
+  return paths.length === 1 && paths[0] === 'tokens.json'
+    && JSON.stringify(tokensWithoutValues(previous.tokens)) === JSON.stringify(tokensWithoutValues(next.tokens));
 }
 
 function reusables(bundle: CanvasProjectBundle) {

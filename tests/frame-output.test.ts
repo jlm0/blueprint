@@ -1,8 +1,13 @@
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createElementIndex, createFrameOutputHasher, frameOutputOutsideRules, type FrameOutputTarget } from '../src/app/frame-output';
+import { createElementIndex, createFrameOutputHasher, frameOutputOutsideRules, type FrameOutputTarget, type FrameShape } from '../src/app/frame-output';
 import { createFrameOutputService, framesInChangeScope, type FrameOutputAnswer } from '../src/app/frame-output-service';
+import { onlyTokenValuesChanged } from '../src/app/frame-rebuild';
 import { listCssOutputItems, listCssRules } from '../src/core/css';
+import { loadProjectFromFs } from '../src/core/load';
+import { createPrototypeDocumentCompiler } from '../src/prototype/compiler';
 import type { CanvasProjectBundle, FramePreset } from '../src/core/types';
 
 const preset = { id: 'phone', name: 'Phone', type: 'mobile', width: 390, height: 844 } as FramePreset;
@@ -250,6 +255,55 @@ describe('Blueprint frame output service', () => {
     answer({ kind: 'compare', request, before, after, targets: [target, otherTarget] })
   );
 
+  it('holds no compile session after a compare', async () => {
+    setFlagsFromString('--expose-gc');
+    const collectGarbage = runInNewContext('gc') as () => void;
+    const sessions: Array<WeakRef<object>> = [];
+    const answer = createFrameOutputService(files => {
+      const hasher = createFrameOutputHasher(files);
+      sessions.push(new WeakRef(hasher));
+      return hasher;
+    });
+    answer({ kind: 'snapshot', snapshot: 1, bundle: bundle({ css: '.a { color: red; }' }) });
+    answer({ kind: 'snapshot', snapshot: 2, bundle: bundle({ css: '.a { color: blue; }' }) });
+    assert.deepEqual(compare(answer, 1, 1, 2), { kind: 'compare', request: 1, changed: [target.key], unconfirmable: [] });
+    assert.equal(sessions.length, 2);
+    await new Promise(resolve => setImmediate(resolve));
+    collectGarbage();
+    assert.deepEqual(sessions.map(session => session.deref()), [undefined, undefined]);
+  });
+
+  it('compiles nothing for a compare that the kept hashes answer', () => {
+    let sessions = 0;
+    const answer = createFrameOutputService(files => {
+      sessions += 1;
+      return createFrameOutputHasher(files);
+    });
+    answer({ kind: 'snapshot', snapshot: 1, bundle: bundle({ css: '.a { color: red; }' }) });
+    answer({ kind: 'snapshot', snapshot: 2, bundle: bundle({ css: '.a { color: blue; }' }) });
+    assert.deepEqual(compare(answer, 1, 1, 2), compare(answer, 1, 1, 2));
+    assert.equal(sessions, 2);
+  });
+
+  it('lends the frame shapes to a snapshot that differs only in token values', () => {
+    const shapesSeen: Array<Map<string, FrameShape> | undefined> = [];
+    const answer = createFrameOutputService((files, shapes) => {
+      shapesSeen.push(shapes);
+      return createFrameOutputHasher(files, shapes);
+    });
+    answer({ kind: 'snapshot', snapshot: 1, bundle: bundle({ primary: '#111111' }) });
+    answer({ kind: 'snapshot', snapshot: 2, bundle: bundle({ primary: '#222222' }) });
+    answer({ kind: 'snapshot', snapshot: 3, bundle: bundle({ primary: '#111111', css: '.a { color: var(--primary); margin: 1px; }' }) });
+    assert.deepEqual(compare(answer, 1, 1, 2), { kind: 'compare', request: 1, changed: [target.key], unconfirmable: [] });
+    assert.equal(shapesSeen.length, 2);
+    assert.ok(shapesSeen[0]);
+    assert.equal(shapesSeen[0], shapesSeen[1]);
+    assert.equal(shapesSeen[0].size, 1);
+    compare(answer, 2, 1, 3);
+    assert.equal(shapesSeen.length, 3);
+    assert.notEqual(shapesSeen[2], shapesSeen[0]);
+  });
+
   it('names the changed frames that the element diff cannot confirm', () => {
     const answer = createFrameOutputService();
     answer({ kind: 'snapshot', snapshot: 1, bundle: bundle({ css: '@keyframes k { to { opacity: 0; } } .a { color: red; }' }) });
@@ -278,5 +332,86 @@ describe('Blueprint frame output service', () => {
     answer({ kind: 'release', snapshot: 1 });
     assert.equal(answer({ kind: 'document', request: 2, snapshot: 1, target, assetOrigin: 'http://127.0.0.1:1234' })?.kind, 'failed');
     assert.equal(compare(answer, 3, 1, 1)?.kind, 'failed');
+  });
+});
+
+describe('Blueprint token value edit', () => {
+  const editableBundle = (change: (next: CanvasProjectBundle) => void): CanvasProjectBundle => {
+    const next = structuredClone(bundle());
+    change(next);
+    return next;
+  };
+
+  it('tells an edit of only token values from every other edit', () => {
+    const base = bundle();
+    const rows: Array<[string, (next: CanvasProjectBundle) => void, boolean]> = [
+      ['a token value', next => { next.tokens.tokenGroups[0].tokens[0].value = '#222222'; }, true],
+      ['two token values', next => { for (const token of next.tokens.tokenGroups[0].tokens) token.value = '#222222'; }, true],
+      ['nothing', () => undefined, false],
+      ['a styleRef', next => { next.tokens.tokenGroups[0].tokens[0].styleRef = '--renamed'; }, false],
+      ['a token id', next => { next.tokens.tokenGroups[0].tokens[0].id = 'renamed'; }, false],
+      ['a new token', next => { next.tokens.tokenGroups[0].tokens.push({ id: 'new', value: '#000000', styleRef: '--new' } as never); }, false],
+      ['a token value and a source file', next => {
+        next.tokens.tokenGroups[0].tokens[0].value = '#222222';
+        next.prototypeSourceContents['one.css'] = '.a { color: blue; }';
+      }, false],
+      ['a token value and a manifest field', next => {
+        next.tokens.tokenGroups[0].tokens[0].value = '#222222';
+        next.manifest.project.name = 'Renamed';
+      }, false]
+    ];
+    for (const [name, change, expected] of rows) assert.equal(onlyTokenValuesChanged(base, editableBundle(change)), expected, name);
+  });
+
+  const roots = ['starter/design/blueprint', 'fixtures/valid/mira-ai/design/blueprint', 'fixtures/valid/umbra-gaming/design/blueprint', 'fixtures/valid/meridian-finance/design/blueprint'];
+
+  const withEveryTokenValueChanged = (project: CanvasProjectBundle): CanvasProjectBundle => {
+    const next = structuredClone(project);
+    const tokens = next.tokens.tokenGroups.flatMap(group => group.tokens);
+    tokens.forEach((token, index) => {
+      token.value = index % 3 === 2 ? `var(${tokens[index - 1].styleRef})` : `#${(index + 1).toString(16).padStart(6, '0')}`;
+    });
+    return next;
+  };
+
+  const framesOf = (project: CanvasProjectBundle): FrameOutputTarget[] => project.screens.screens.flatMap(item => (item.prototype?.states ?? []).map(state => {
+    const framePreset = project.manifest.framePresets[0];
+    return { key: `${item.id}\0${state}`, screenId: item.id, state, preset: framePreset };
+  }));
+
+  it('compiles equal output when only token values change', async () => {
+    for (const root of roots) {
+      const before = await loadProjectFromFs(root) as unknown as CanvasProjectBundle;
+      const after = withEveryTokenValueChanged(before);
+      const compileBefore = createPrototypeDocumentCompiler(before);
+      const compileAfter = createPrototypeDocumentCompiler(after);
+      const frames = framesOf(before);
+      assert.ok(frames.length > 0, root);
+      for (const frame of frames) {
+        const options = { target: { kind: 'screen' as const, id: frame.screenId }, state: frame.state, framePreset: frame.preset };
+        const left = compileBefore(options);
+        const right = compileAfter(options);
+        assert.deepEqual({ state: right.state, sheets: right.sheets, body: right.body, assetRefs: right.assetRefs }, { state: left.state, sheets: left.sheets, body: left.body, assetRefs: left.assetRefs }, `${root} ${frame.key}`);
+      }
+    }
+  });
+
+  it('gives a frame the same hash from a kept shape as from a new compile', async () => {
+    for (const root of roots) {
+      const before = await loadProjectFromFs(root) as unknown as CanvasProjectBundle;
+      const after = withEveryTokenValueChanged(before);
+      const shapes = new Map<string, FrameShape>();
+      const hashBefore = createFrameOutputHasher(before, shapes);
+      const frames = framesOf(before);
+      for (const frame of frames) hashBefore(frame);
+      const kept = createFrameOutputHasher(after, shapes);
+      const fresh = createFrameOutputHasher(after);
+      let differs = 0;
+      for (const frame of frames) {
+        assert.equal(kept(frame), fresh(frame), `${root} ${frame.key}`);
+        if (kept(frame) !== hashBefore(frame)) differs += 1;
+      }
+      assert.ok(differs > 0, `${root}: The edit must change a hash, or this test proves nothing.`);
+    }
   });
 });

@@ -11,7 +11,7 @@ import { collectProseAdvisories, type ProseAdvisory } from '../core/prose-adviso
 import { BLUEPRINT_SCHEMA_VERSION, fileSchemaVersions } from '../core/schema-version';
 import { selectionSourceFiles } from '../core/selection';
 import type { BlueprintProjectBundle, PrototypeSourceGraphIssue, ValidationResult } from '../core/types';
-import { inspectPrototypeSourceGraph } from '../prototype/compiler';
+import { createTokenCss, inspectPrototypeSourceGraph, tokensWithoutValues } from '../prototype/compiler';
 import { validationResult } from '../core/validate';
 import { validateProject, validateProjectReadiness } from '../prototype/validate-project';
 import { withCrashFix } from './crash-text';
@@ -41,8 +41,25 @@ const prototypeFileChecks = new WeakMap<BlueprintProjectBundle, Map<string, { re
 export function projectFingerprint(bundle: BlueprintProjectBundle): string {
   const known = fingerprints.get(bundle);
   if (known) return known;
+  const fingerprint = fingerprintWithTokens(bundle, bundle.tokens);
+  fingerprints.set(bundle, fingerprint);
+  return fingerprint;
+}
+
+// A bundle with an unsafe token value gets no fingerprint, because that value is the one way that a token value changes a source graph result.
+function compileFingerprint(bundle: BlueprintProjectBundle): string | undefined {
+  try {
+    createTokenCss(bundle);
+    return fingerprintWithTokens(bundle, tokensWithoutValues(bundle.tokens));
+  } catch {
+    return undefined;
+  }
+}
+
+function fingerprintWithTokens(bundle: BlueprintProjectBundle, tokens: unknown): string {
   const fields: Record<string, unknown> = {
     ...bundle,
+    tokens,
     sourceRoot: undefined,
     sourceFiles: undefined,
     explorations: {
@@ -58,9 +75,7 @@ export function projectFingerprint(bundle: BlueprintProjectBundle): string {
     missingPrototypeFiles: missingPrototypeFiles(bundle),
     workerCodeHash
   };
-  const fingerprint = createHash('sha256').update(JSON.stringify(sortedEntries(fields))).digest('hex');
-  fingerprints.set(bundle, fingerprint);
-  return fingerprint;
+  return createHash('sha256').update(JSON.stringify(sortedEntries(fields))).digest('hex');
 }
 
 function sortedEntries(record: Record<string, unknown>): Array<[string, unknown]> {
@@ -105,17 +120,24 @@ export class ProjectValidationSession {
   readonly memo: ValidationMemoEntry;
   readonly runs: ValidationRun[] = [];
   readonly #bundle: BlueprintProjectBundle;
+  readonly #known: readonly ValidationMemoEntry[];
 
   constructor(bundle: BlueprintProjectBundle, memo: readonly ValidationMemoEntry[]) {
     const fingerprint = projectFingerprint(bundle);
     this.#bundle = bundle;
+    this.#known = memo;
     this.memo = memo.find(entry => entry.fingerprint === fingerprint) ?? { fingerprint };
   }
 
   #fileExists = (filePath: string): boolean => checkPrototypeFiles(this.#bundle).get(filePath)?.exists ?? existsSync(filePath);
 
   sourceGraphIssues = (): PrototypeSourceGraphIssue[] => {
-    this.memo.sourceGraphIssues ??= this.#run('source-graph', () => inspectPrototypeSourceGraph(this.#bundle));
+    if (!this.memo.sourceGraphIssues) {
+      const key = compileFingerprint(this.#bundle);
+      const reusable = key === undefined ? undefined : this.#known.find(entry => entry.compileFingerprint === key)?.sourceGraphIssues;
+      this.memo.compileFingerprint = key;
+      this.memo.sourceGraphIssues = reusable ?? this.#run('source-graph', () => inspectPrototypeSourceGraph(this.#bundle));
+    }
     return this.memo.sourceGraphIssues;
   };
 

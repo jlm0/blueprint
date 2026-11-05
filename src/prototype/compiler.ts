@@ -8,7 +8,8 @@ import type {
   ReusableDefinition,
   ReusableKind,
   ReviewCondition,
-  ScreenDefinition
+  ScreenDefinition,
+  TokenFile
 } from '../core/types';
 import { brandMarkSourceIssues } from '../core/brand-lint';
 import { cssHasImport, rewriteCssUrls } from '../core/css';
@@ -1038,7 +1039,12 @@ function resolveRelativeRef(sourceRef: string, value: string): string {
   return parts.join('/');
 }
 
-function createTokenCss(bundle: CanvasProjectBundle): string {
+/** The compiler reads a token value only in `createTokenCss`, so two bundles with equal output of this function compile to the same output apart from that sheet. */
+export function tokensWithoutValues(tokens: TokenFile): TokenFile {
+  return { ...tokens, tokenGroups: tokens.tokenGroups.map(group => ({ ...group, tokens: group.tokens.map(token => ({ ...token, value: '' })) })) };
+}
+
+export function createTokenCss(bundle: Pick<CanvasProjectBundle, 'tokens'>): string {
   const declarations: string[] = [];
   const seen = new Set<string>();
   for (const group of bundle.tokens.tokenGroups) {
