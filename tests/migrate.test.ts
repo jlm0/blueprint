@@ -5,6 +5,11 @@ import { describe, it } from 'node:test';
 import { BLUEPRINT_SCHEMA_VERSION } from '../src/core/schema-version';
 import { BASE_PRIMITIVE_TEXT } from '../src/core/base-primitive-text';
 import { migrateProjectFiles, type MigrationInput } from '../src/core/migrate';
+import { normalizeCurrentFiles } from '../src/core/migrate-normalize';
+import { normalizeScreenShapes, normalizeTokenShapes, reportNames } from '../src/core/migrate-shapes';
+import { normalizeSelectorRoots } from '../src/core/migrate-style';
+import { step as stepToV2 } from '../src/core/migrations/1.0.0-to-2.0.0';
+import { step as stepToV3 } from '../src/core/migrations/2.0.0-to-3.0.0';
 import type { BlueprintManifest, ComponentFile, PrimitiveFile, ScreenFile, TokenFile } from '../src/core/types';
 
 const starterRoot = 'starter/design/blueprint';
@@ -97,7 +102,7 @@ describe('Blueprint migrate', () => {
       'Hover: Apply it on pointer hover only. Touch platforms skip it.',
       'Keep the checkout button sticky on phones.'
     ]);
-    assert.ok(output.changes.some(change => change.startsWith("primitives.json: 1 primitive now carry Blueprint's description")), output.changes.join('\n'));
+    assert.ok(output.changes.some(change => change.startsWith("primitives.json: 1 primitive now carries Blueprint's description")), output.changes.join('\n'));
     assert.ok(output.changes.includes('primitives.json: moved 1 app note on Blueprint primitives to implementationHints.'), output.changes.join('\n'));
 
     for (const [file, content] of output.writes) input.files.set(file, content);
@@ -218,6 +223,206 @@ describe('Blueprint migrate', () => {
 
     for (const [file, content] of output.writes) input.files.set(file, content);
     assert.equal(migrateProjectFiles(input).upToDate, true, 'a second run has nothing left to do');
+  });
+});
+
+type Normalize = (files: ReadonlyMap<string, string>, writes: Map<string, string>, changes: string[]) => void;
+
+function normalizeChanges(normalize: Normalize, files: Record<string, unknown>): string[] {
+  const changes: string[] = [];
+  normalize(new Map(Object.entries(files).map(([file, value]) => [file, typeof value === 'string' ? value : JSON.stringify(value)])), new Map(), changes);
+  return changes;
+}
+
+function v1Project(primitives: unknown[], extra: Record<string, unknown> = {}): Map<string, string> {
+  const files: Record<string, unknown> = {
+    'manifest.json': { schemaVersion: '1.0.0', project: { id: 'demo', name: 'Demo' } },
+    'tokens.json': { schemaVersion: '1.0.0', projectId: 'demo', tokenGroups: [] },
+    'screens.json': { schemaVersion: '1.0.0', projectId: 'demo', screens: [] },
+    'primitives.json': { schemaVersion: '1.0.0', projectId: 'demo', primitives },
+    'components.json': { schemaVersion: '1.0.0', projectId: 'demo', sections: [], components: [] },
+    ...extra
+  };
+  return new Map(Object.entries(files).map(([file, value]) => [file, typeof value === 'string' ? value : JSON.stringify(value)]));
+}
+
+function v1SurfaceChanges(): string[] {
+  return stepToV2.run(v1Project(
+    [{ id: 'surface', name: 'Surface', prototype: { source: 'prototype/primitives/surface.html', styles: ['prototype/primitives/surface.css'], states: ['default', 'raised'] } }],
+    {
+      'prototype/primitives/surface.html': '<div data-blueprint-primitive="surface"></div>',
+      'prototype/primitives/surface.css': '.a[data-blueprint-state="raised"] { color: inherit }',
+      'prototype/components/card.html': '<div data-blueprint-component="card"></div>',
+      'prototype/screens/home.html': '<blueprint-use kind="primitive" ref="surface" state="raised"></blueprint-use>',
+      'screens.json': {
+        schemaVersion: '1.0.0',
+        projectId: 'demo',
+        screens: [{ id: 'home', sections: [{ id: 'body', uses: [{ kind: 'primitive', id: 'surface', binding: { state: 'raised' } }] }] }]
+      },
+      'components.json': {
+        schemaVersion: '1.0.0',
+        projectId: 'demo',
+        sections: [{ id: 'main', name: 'Main' }],
+        components: [{ id: 'card', name: 'Card', section: 'main', uses: [], prototype: { source: 'prototype/components/card.html', styles: [], slots: [], states: ['default'] } }]
+      }
+    }
+  )).changes;
+}
+
+async function miraSizeMoveChanges(): Promise<string[]> {
+  const input = await migrationInput(fixtureRoots[0]);
+  input.starterFiles = await textFiles(starterRoot);
+  const source = 'prototype/components/source-item.html';
+  input.files.set(source, input.files.get(source)!.replace('data-blueprint-component="source-item"', 'data-blueprint-component="source-item" data-blueprint-state="default"'));
+  const primitives = JSON.parse(input.files.get('primitives.json')!) as PrimitiveFile;
+  primitives.primitives.find(primitive => primitive.id === 'button')!.description = 'An app description.';
+  input.files.set('primitives.json', JSON.stringify(primitives));
+  const components = JSON.parse(input.files.get('components.json')!) as ComponentFile;
+  const item = components.components.find(component => component.id === 'source-item')!;
+  item.variants.values.push({ id: 'dense', name: 'Dense', description: 'Tight rows.' });
+  item.unsupported.push({ axis: 'variant', value: 'dense', state: 'active', reason: 'The active row needs room.' });
+  input.files.set('components.json', JSON.stringify(components));
+  const workspace = 'prototype/screens/workspace.html';
+  const placement = '<blueprint-use kind="component" ref="source-item" state="active">';
+  assert.ok(input.files.get(workspace)!.includes(placement));
+  input.files.set(workspace, input.files.get(workspace)!.replace(placement, '<blueprint-use kind="component" ref="source-item" state="active" variant="dense">'));
+  const styles = 'prototype/components/source-item.css';
+  input.files.set(styles, `${input.files.get(styles)}\n[data-blueprint-component="source-item"][data-blueprint-variant="dense"] { padding: 0; }\n`);
+  const screens = JSON.parse(input.files.get('screens.json')!) as ScreenFile;
+  const bound = screens.screens.flatMap(screen => screen.sections).flatMap(section => section.uses).filter(use => use.id === 'source-item' && use.binding);
+  assert.equal(bound.length, 1);
+  bound[0].binding!.variant = 'dense';
+  input.files.set('screens.json', JSON.stringify(screens));
+  const changes: string[] = [];
+  normalizeCurrentFiles(input, new Map(), changes);
+  return changes;
+}
+
+const DROPPED_FLOWS = [
+  ['a kept page', { page: 'web', flow: 'Other' }],
+  ['an empty flow', { flow: '   ' }],
+  ['a flow that is not a string', { flow: 5 }]
+] as const;
+
+const COUNT_OF_ONE: ReadonlyArray<{ name: string; changes: () => string[] | Promise<string[]>; expected: string }> = [
+  {
+    name: 'a filled token group',
+    changes: () => normalizeChanges(normalizeTokenShapes, { 'tokens.json': { schemaVersion: '3.0.0', projectId: 'demo', tokenGroups: [{ id: 'color', name: 'Color', type: 'color', description: 'd', tokens: [] }] } }),
+    expected: 'tokens.json: 1 token group now carries styleRefs and notes.'
+  },
+  {
+    name: 'a sentence-cased name',
+    changes: () => {
+      const changes: string[] = [];
+      reportNames(changes, 'screens.json', { renamed: ['Home page'] });
+      return changes;
+    },
+    expected: 'screens.json: 1 name now uses sentence case, such as "Home page". Capitalize any proper noun the change made lowercase.'
+  },
+  {
+    name: 'a saved screen snapshot',
+    changes: () => normalizeChanges(normalizeScreenShapes, {
+      'screens.json': { schemaVersion: '3.0.0', projectId: 'demo', pages: [], screens: [] },
+      'history/home-v1.json': { schemaVersion: '3.0.0', entry: { screen: { id: 'home', name: 'Home' } } }
+    }),
+    expected: 'explorations and history: 1 saved screen snapshot now uses the fixed screen shape.'
+  },
+  {
+    name: 'a stamped saved record',
+    changes: async () => {
+      const input = await migrationInput(fixtureRoots[2]);
+      input.files.set('history/home-v1.json', JSON.stringify({ ...JSON.parse(input.files.get('history/home-v1.json')!), schemaVersion: '2.0.0' }));
+      return migrateProjectFiles(input).changes;
+    },
+    expected: `explorations and history: 1 saved record now carries schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`
+  },
+  { name: 'a reusable root element', changes: miraSizeMoveChanges, expected: 'Removed hardcoded variant, size, and state attributes from 1 reusable root element. The compiler stamps them.' },
+  {
+    name: 'a primitive with Blueprint text',
+    changes: miraSizeMoveChanges,
+    expected: "primitives.json: 1 primitive now carries Blueprint's description, accessibility, notes, and value and slot text, and hints from earlier starters use the current wording."
+  },
+  { name: 'a placement moved to sizes', changes: miraSizeMoveChanges, expected: 'Rewrote 1 <blueprint-use> placement to the moved sizes.' },
+  { name: 'a CSS file moved to sizes', changes: miraSizeMoveChanges, expected: 'Rewrote size selectors in 1 CSS file to match.' },
+  { name: 'a binding value moved to sizes', changes: miraSizeMoveChanges, expected: 'Moved 1 screen section binding value to sizes.' },
+  {
+    name: 'a dropped unsupported combination',
+    changes: miraSizeMoveChanges,
+    expected: 'component source-item: dropped 1 unsupported combination that named a moved variant. List each one again against sizes if it still applies.'
+  },
+  { name: 'a placement on the new axes', changes: v1SurfaceChanges, expected: 'Rewrote 1 <blueprint-use> placement in 1 HTML file to the new axes.' },
+  { name: 'a CSS file on the new axes', changes: v1SurfaceChanges, expected: 'Rewrote axis selectors in 1 CSS file to match.' },
+  {
+    name: 'a primitive in the shared shape',
+    changes: v1SurfaceChanges,
+    expected: 'primitives.json: 1 primitive now carries name, group, platforms, variants, sizes, states, slots, and accessibility in the shared reusable shape, with state sets folded in.'
+  },
+  {
+    name: 'a component in the shared shape',
+    changes: v1SurfaceChanges,
+    expected: 'components.json: 1 component now carries the shared reusable shape, with a default variant and size and a "group" in place of "section".'
+  },
+  { name: 'the renamed sections list', changes: v1SurfaceChanges, expected: 'components.json: "sections" is now "groups".' },
+  { name: 'a binding value on the new axes', changes: v1SurfaceChanges, expected: 'Moved 1 screen section binding value to the new axes.' },
+  { name: 'a state moved to variants', changes: v1SurfaceChanges, expected: 'primitive surface: state raised is now a variant.' },
+  {
+    name: 'a variant moved to sizes',
+    changes: () => stepToV2.run(v1Project(
+      [{ id: 'text', name: 'Text', prototype: { source: 'prototype/primitives/text.html', styles: [], variants: ['display'] } }],
+      { 'prototype/primitives/text.html': '<span data-blueprint-primitive="text"></span>' }
+    )).changes,
+    expected: 'primitive text: variant display is now a size.'
+  },
+  {
+    name: 'a selector started at the boundary root',
+    changes: () => normalizeChanges(normalizeSelectorRoots, {
+      'primitives.json': { primitives: [] },
+      'components.json': { components: [{ id: 'card', prototype: { source: 'prototype/components/card.html', styles: ['prototype/components/card.css'] } }] },
+      'screens.json': { screens: [] },
+      'prototype/components/card.html': '<div data-blueprint-component="card"><span class="label">Card</span></div>',
+      'prototype/components/card.css': '.label { color: inherit; }'
+    }),
+    expected: 'Started 1 selector at the boundary root with :where(), in 1 stylesheet. The look does not change.'
+  },
+  {
+    name: 'a screen moved from flow to page',
+    changes: () => normalizeChanges(normalizeScreenShapes, { 'screens.json': { schemaVersion: '3.0.0', projectId: 'demo', pages: [{ id: 'web', name: 'Web', description: 'Web.' }], screens: [{ id: 'a', flow: 'web' }] } }),
+    expected: 'screens.json: 1 screen moved from flow to page.'
+  },
+  {
+    name: 'a saved screen moved from flow to page',
+    changes: () => stepToV3.run(new Map([['history/home-v1.json', JSON.stringify({ schemaVersion: '2.0.0', entry: { screen: { id: 'home', flow: 'web' } } })]])).changes,
+    expected: 'explorations and history: moved flow to page in 1 saved screen.'
+  },
+  ...DROPPED_FLOWS.flatMap(([form, fields]) => [
+    {
+      name: `a screen with ${form}`,
+      changes: () => normalizeChanges(normalizeScreenShapes, { 'screens.json': { schemaVersion: '3.0.0', projectId: 'demo', pages: [{ id: 'web', name: 'Web', description: 'Web.' }], screens: [{ id: 'a', ...fields }] } }),
+      expected: 'screens.json: dropped the flow of 1 screen that already had a page or had no flow text.'
+    },
+    {
+      name: `a saved screen with ${form}`,
+      changes: () => stepToV3.run(new Map([['history/home-v1.json', JSON.stringify({ schemaVersion: '2.0.0', entry: { screen: { id: 'home', ...fields } } })]])).changes,
+      expected: 'explorations and history: dropped the flow of 1 saved screen that already had a page or had no flow text.'
+    }
+  ])
+];
+
+describe('migrate change messages with a count of 1', () => {
+  for (const row of COUNT_OF_ONE) {
+    it(`agrees in number and counts only what changed: ${row.name}`, async () => {
+      const changes = await row.changes();
+      assert.ok(changes.includes(row.expected), `expected "${row.expected}" in:\n${changes.join('\n')}`);
+      if (row.expected.includes('dropped the flow')) {
+        assert.equal(changes.some(change => change.includes('moved from flow') || change.includes('moved flow to page')), false, changes.join('\n'));
+      }
+    });
+  }
+
+  it('counts only the reusables that the 1.0.0 step changes', () => {
+    const shared = { id: 'rating', name: 'Rating', states: { default: 'default', values: [{ id: 'default', name: 'Default', description: '' }] } };
+    const { changes } = stepToV2.run(v1Project([shared]));
+    assert.equal(changes.some(change => /now carr(y|ies)/.test(change)), false, changes.join('\n'));
   });
 });
 

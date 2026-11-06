@@ -14,6 +14,7 @@ import {
 } from '../src/mcp/operations';
 import type { QueryInput } from '../src/mcp/schemas';
 import { validateProject } from '../src/prototype/validate-project';
+import { inProcessValidator } from './support/in-process-validator';
 import { withProjectCopy } from './support/project-copies';
 
 const MERIDIAN = 'fixtures/valid/meridian-finance/design/blueprint';
@@ -112,6 +113,73 @@ describe('the gates read one validation result', () => {
         }
       }), /uses !important/);
     });
+  });
+});
+
+describe('explore archive refuses only the errors that it adds', () => {
+  const archive = (project: string, explorationId: string, validate?: Parameters<typeof exploreBlueprint>[2]) => (
+    exploreBlueprint({ project, operation: { type: 'archive', explorationId } }, undefined, validate)
+  );
+  const lifecycle = async (project: string, explorationId: string): Promise<string> => (
+    JSON.parse(await readFile(path.join(project, `explorations/${explorationId}.json`), 'utf8')).exploration.lifecycle
+  );
+
+  it('archives each of two active explorations that hold one candidate error each', async () => {
+    await withProjectCopy(async project => {
+      const created = await exploreBlueprint({
+        project,
+        operation: {
+          type: 'create',
+          id: 'home-hero-layout',
+          screenId: 'home',
+          state: 'default',
+          framePresetId: 'phone',
+          title: 'Home hero layout',
+          intent: 'Compare two hero layouts.',
+          candidateLabels: ['Stacked', 'Split']
+        }
+      });
+      const candidateSheet = created.exploration.candidates[0].prototype.styles.find(style => style.includes('.exploration-'))!;
+      await appendRule(project, 'prototype/screens/transactions.exploration-ledger-density-compact.css', '[data-blueprint-screen="transactions"]');
+      await appendRule(project, candidateSheet, '[data-blueprint-screen="home"]');
+      assert.equal(validateProject(await loadProjectFromFs(project)).styleErrors.length, 2);
+
+      await archive(project, 'ledger-density');
+      assert.equal(await lifecycle(project, 'ledger-density'), 'archived');
+      await archive(project, 'home-hero-layout');
+      assert.equal(await lifecycle(project, 'home-hero-layout'), 'archived');
+    }, MERIDIAN);
+  });
+
+  it('archives a clean exploration while a canonical style error stays', async () => {
+    await withProjectCopy(async project => {
+      await appendRule(project, 'prototype/screens/overview.css', '[data-blueprint-screen="overview"]');
+      assert.equal(validateProject(await loadProjectFromFs(project)).styleErrors.length, 1);
+
+      await archive(project, 'ledger-density');
+      assert.equal(await lifecycle(project, 'ledger-density'), 'archived');
+    }, MERIDIAN);
+  });
+
+  it('refuses an archive that adds an error, names only that error, and writes nothing', async () => {
+    await withProjectCopy(async project => {
+      await appendRule(project, 'prototype/screens/overview.css', '[data-blueprint-screen="overview"]');
+      const added = 'exploration.ledger-density: the archive added this error. Fix: delete the archive call.';
+      // No rule reads the lifecycle of an archived exploration today, so only a validator seam can make an archive add an error.
+      const validate = inProcessValidator(bundle => {
+        const result = validateProject(bundle);
+        const archived = bundle.explorations.explorations.some(exploration => exploration.id === 'ledger-density' && exploration.lifecycle === 'archived');
+        return archived ? { ...result, ok: false, errors: [...result.errors, added], styleErrors: [...result.styleErrors, added] } : result;
+      });
+      const record = path.join(project, 'explorations/ledger-density.json');
+      const before = await readFile(record, 'utf8');
+
+      await assert.rejects(archive(project, 'ledger-density', validate), (error: Error) => {
+        assert.equal(error.message, `The change adds the errors below, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${added}`);
+        return true;
+      });
+      assert.equal(await readFile(record, 'utf8'), before);
+    }, MERIDIAN);
   });
 });
 

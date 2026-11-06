@@ -207,9 +207,9 @@ export interface ValidationResult {
   ok: boolean;
   /** Each contract error, then each style error. */
   errors: string[];
-  /** The errors of the file contracts. They stop `serve` and each tool that changes the project. */
+  /** The errors of the file contracts. They stop `serve` and each tool that changes the project, but an `explore` archive stops only on an error that it adds. */
   contractErrors: string[];
-  /** The errors of the style rules. They refuse validate, `explore`, `promote`, and `restore`, but the canvas shows them as finding marks. */
+  /** The errors of the style rules. They refuse validate, `explore` create, `promote`, and `restore`, but the canvas shows them as finding marks. */
   styleErrors: string[];
 }
 

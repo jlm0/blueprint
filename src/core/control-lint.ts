@@ -1,13 +1,24 @@
-import { attributeWithValue, listOpenTags, listTagsOutsideSlots, type OpenTag } from './markup';
+import { attributeWithValue, listOpenTags, listTagsOutsideSlots, markupDisagreement, type MarkupDisagreement, type OpenTag } from './markup';
 import type { BlueprintProjectBundle, PrototypeAsset } from './types';
 
-export interface HandBuiltControlIssue {
+interface SourceLocation {
   boundary: string;
   sourceRef: string;
   line: number;
+}
+
+export interface NativeControlIssue extends SourceLocation {
+  kind: 'native-control';
   element: string;
   primitiveId: string;
 }
+
+export interface UnreadableSourceIssue extends SourceLocation {
+  kind: 'unreadable-source';
+  construct: MarkupDisagreement['kind'];
+}
+
+export type HandBuiltControlIssue = NativeControlIssue | UnreadableSourceIssue;
 
 const nativeControls = new Set(['button', 'input', 'select', 'textarea']);
 const buttonInputTypes = new Set(['button', 'submit', 'reset']);
@@ -40,6 +51,11 @@ export function lintHandBuiltControls(bundle: BlueprintProjectBundle<PrototypeAs
 }
 
 export function lintSourceControls(label: string, sourceRef: string, source: string, primitiveIds: ReadonlySet<string>): HandBuiltControlIssue[] {
+  const lineAt = (index: number): number => source.slice(0, index).split('\n').length;
+  const disagreement = markupDisagreement(source);
+  if (disagreement) {
+    return [{ kind: 'unreadable-source', boundary: label, sourceRef, line: lineAt(disagreement.start), construct: disagreement.kind }];
+  }
   const issues: HandBuiltControlIssue[] = [];
   const outsideSlots = new Set(listTagsOutsideSlots(source).map(tag => tag.start));
   for (const tag of listOpenTags(source)) {
@@ -48,9 +64,10 @@ export function lintSourceControls(label: string, sourceRef: string, source: str
     const primitiveId = (role ? [controlRolePrimitives.get(role.toLowerCase())!] : matchingPrimitiveIds(tag)).find(candidate => primitiveIds.has(candidate));
     if (primitiveId) {
       issues.push({
+        kind: 'native-control',
         boundary: label,
         sourceRef,
-        line: source.slice(0, tag.start).split('\n').length,
+        line: lineAt(tag.start),
         element: role ? `${tag.name} role="${role}"` : tag.name,
         primitiveId
       });

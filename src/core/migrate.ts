@@ -1,3 +1,4 @@
+import { countPhrase } from './count-phrase';
 import { normalizeCurrentFiles } from './migrate-normalize';
 import { MIGRATABLE_SCHEMA_VERSIONS, MIGRATIONS, OLDEST_SCHEMA_VERSION, stepsFrom } from './migrations';
 import { parseJsonFile } from './raw-json';
@@ -52,7 +53,7 @@ export function migrateProjectFiles(input: MigrationInput): MigrationOutput {
     changes.push(`${bumped.join(', ')}: schemaVersion is now "${BLUEPRINT_SCHEMA_VERSION}".`);
   }
   if (stampedRecords.size > 0) {
-    changes.push(`explorations and history: ${stampedRecords.size} saved record${stampedRecords.size > 1 ? 's' : ''} now carry schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`);
+    changes.push(`explorations and history: ${countPhrase(stampedRecords.size, 'saved record', ['now carries', 'now carry'])} schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`);
   }
   return { fromVersion, toVersion: BLUEPRINT_SCHEMA_VERSION, upToDate: writes.size === 0 && changes.length === 0, writes, changes };
 }

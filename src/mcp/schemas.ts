@@ -563,7 +563,7 @@ export const serveOutputSchema = z
     port: z.number().int().min(0).max(65535),
     url: z.string().url(),
     runtime: z.enum(['started', 'reused']),
-    styleErrorCount: z.number().int().nonnegative().describe('How many style errors the project has. A style error leaves the canvas open, and refuses validate, explore, promote, and restore.'),
+    styleErrorCount: z.number().int().nonnegative().describe('How many style errors the project has. A style error leaves the canvas open, and refuses validate, explore create, promote, and restore.'),
     styleErrors: z.array(z.string()).describe('The first style errors, at most 20. Call validate to read each one.'),
     focus: z.string().optional(),
     selection: z

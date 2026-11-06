@@ -7,6 +7,7 @@ const HTML_INTEGRATION_POINTS = new Set(['foreignobject', 'desc', 'title', 'anno
 const USE_ELEMENT_NAME = /blueprint-use/i;
 const SECTION_MARKER_NAME = /data-blueprint-section/i;
 const POSSIBLE_TAG_READ_LIMIT_PER_CHARACTER = 8;
+const END_TAG_ATTRIBUTE_TEXT = /[^\t\n\f\r /]/;
 
 export interface MarkupAttribute {
   /** Lowercase, because HTML attribute names ignore case. */
@@ -81,10 +82,17 @@ export interface UsePlacement {
   slots: Map<string, string>;
 }
 
+/** The first construct that a browser and this tokenizer read in different ways, so that a lint can refuse the source and not trust its tags. */
+export interface MarkupDisagreement {
+  kind: 'cdata-outside-foreign-content' | 'end-tag-attributes';
+  start: number;
+}
+
 interface MarkupScan {
   html: string;
   tokens: MarkupToken[];
   openTags: OpenTag[];
+  disagreement?: MarkupDisagreement;
   /** A later source or wrapper can still complete a tag that the end of the text cuts off. */
   cutOffOpen?: OpenTag;
   cutOffClose?: string;
@@ -121,6 +129,10 @@ function tokenize(html: string, stopAt?: (tag: OpenTag) => boolean): MarkupScan 
   const pushInnerSpan = (start: number, end: number, offset: number): void => {
     tokens.push({ kind: 'comment', start, end: end - offset });
     tailStart = end + 1;
+  };
+  const inForeignContent = (): boolean => foreign.length > 0 && FOREIGN_ROOTS.has(foreign[foreign.length - 1]);
+  const disagree = (kind: MarkupDisagreement['kind'], start: number): void => {
+    scan.disagreement ??= { kind, start };
   };
 
   const tokenizer = new Tokenizer({ decodeEntities: false }, {
@@ -159,6 +171,7 @@ function tokenize(html: string, stopAt?: (tag: OpenTag) => boolean): MarkupScan 
       }
       tokens.push({ kind: 'close', name, start: start - 2, end: closeEnd + 1 });
       tailStart = closeEnd + 1;
+      if (END_TAG_ATTRIBUTE_TEXT.test(html.slice(end, closeEnd))) disagree('end-tag-attributes', start - 2);
       const depth = foreign.lastIndexOf(name);
       if (depth !== -1) {
         foreign.length = depth;
@@ -169,8 +182,14 @@ function tokenize(html: string, stopAt?: (tag: OpenTag) => boolean): MarkupScan 
         tokens.push({ kind: 'text', start, end });
       }
     },
-    oncomment: pushInnerSpan,
-    oncdata: pushInnerSpan,
+    oncomment(start, end, offset) {
+      if (!inForeignContent() && html.startsWith('<![CDATA[', start - 2)) disagree('cdata-outside-foreign-content', start - 2);
+      pushInnerSpan(start, end, offset);
+    },
+    oncdata(start, end, offset) {
+      if (!inForeignContent()) disagree('cdata-outside-foreign-content', start - '<![CDATA['.length);
+      pushInnerSpan(start, end, offset);
+    },
     ondeclaration(_start, end) {
       tailStart = end + 1;
     },
@@ -178,9 +197,7 @@ function tokenize(html: string, stopAt?: (tag: OpenTag) => boolean): MarkupScan 
     onattribentity() {},
     ontextentity() {},
     onend() {},
-    isInForeignContext() {
-      return foreign.length > 0 && FOREIGN_ROOTS.has(foreign[foreign.length - 1]);
-    }
+    isInForeignContext: inForeignContent
   });
 
   tokenizer.write(html);
@@ -223,6 +240,10 @@ export function listMarkupTokens(html: string): readonly MarkupToken[] {
 
 export function listOpenTags(html: string): readonly OpenTag[] {
   return scanMarkup(html).openTags;
+}
+
+export function markupDisagreement(html: string): MarkupDisagreement | undefined {
+  return scanMarkup(html).disagreement;
 }
 
 function holdsSlotContent(token: OpenTag): boolean {

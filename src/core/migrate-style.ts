@@ -1,3 +1,4 @@
+import { countPhrase } from './count-phrase';
 import { insertIntoCss, listCssSelectorStarts, type CssCompound } from './css';
 import { prototypeFileCopies } from './exploration';
 import { deriveBrandFonts } from './font-rules';
@@ -190,6 +191,6 @@ export function normalizeSelectorRoots(files: ReadonlyMap<string, string>, write
     }
   }
   if (selectors > 0) {
-    changes.push(`Started ${selectors} selector${selectors === 1 ? '' : 's'} at the root of their boundary with :where(), in ${sheets} stylesheet${sheets === 1 ? '' : 's'}. The look does not change.`);
+    changes.push(`Started ${countPhrase(selectors, 'selector')} at the boundary root with :where(), in ${countPhrase(sheets, 'stylesheet')}. The look does not change.`);
   }
 }

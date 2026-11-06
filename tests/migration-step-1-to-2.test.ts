@@ -52,7 +52,7 @@ describe('step 1.0.0 to 2.0.0: axis moves', () => {
       assert.equal(files.get('prototype/screens/home.html'), `<blueprint-use kind="primitive" ref="${id}" variant="app-tone"></blueprint-use><blueprint-use kind="primitive" ref="${id}" state="hover"></blueprint-use>`);
       assert.equal(files.get(styles), '.a[data-blueprint-variant="app-tone"] { color: inherit }');
       assert.deepEqual(JSON.parse(files.get('screens.json')!).screens[0].sections[0].uses[0].binding, { variant: 'app-tone' });
-      assert.ok(changes.includes(`primitive ${id}: states app-tone are now variants.`), changes.join('\n'));
+      assert.ok(changes.includes(`primitive ${id}: state app-tone is now a variant.`), changes.join('\n'));
     });
   }
 

@@ -1,4 +1,5 @@
 import * as z from 'zod/v4';
+import { countPhrase, inflect } from './count-phrase';
 import { asArray, asObject, isObject, serializeJson, type RawObject } from './raw-json';
 import { humanizeId, isTitleCase, toSentenceCase } from './reusable-contract';
 import {
@@ -48,15 +49,17 @@ export function normalizeScreenShapes(files: ReadonlyMap<string, string>, writes
   if (text === undefined) return;
   const file = asObject(JSON.parse(text));
   const tally: ShapeTally = { filled: 0, reordered: 0, renamed: [] };
-  const pages = asArray(file.pages).filter(isObject);
-  const pageIds = new Set(pages.map(page => String(page.id)));
+  const pages = asArray(file.pages);
+  const pageIds = new Set(pages.filter(isObject).map(page => String(page.id)));
   const addedPages: string[] = [];
   let movedFlows = 0;
+  let droppedFlows = 0;
 
   const screens = asArray(file.screens).map(screen => {
     if (!isObject(screen)) return screen;
     const page = movePageFromFlow(screen);
-    if (page !== undefined) movedFlows += 1;
+    if (page) movedFlows += 1;
+    if (page === null) droppedFlows += 1;
     if (page && !pageIds.has(page.id)) {
       pages.push({ id: page.id, name: page.name });
       pageIds.add(page.id);
@@ -65,6 +68,7 @@ export function normalizeScreenShapes(files: ReadonlyMap<string, string>, writes
     return normalizeScreen(screen, tally);
   });
   file.pages = pages.map(page => {
+    if (!isObject(page)) return page;
     sentenceCaseName(page, tally);
     return ordered(page, PAGE_FIELDS, tally);
   });
@@ -73,8 +77,11 @@ export function normalizeScreenShapes(files: ReadonlyMap<string, string>, writes
 
   if (movedFlows > 0) {
     changes.push(addedPages.length > 0
-      ? `screens.json: ${movedFlows} screen${plural(movedFlows)} moved from flow to page, and ${addedPages.length} new page${plural(addedPages.length)} ${addedPages.length > 1 ? 'are' : 'is'} declared: ${addedPages.map(id => `"${id}"`).join(', ')}. Give each new page a description.`
-      : `screens.json: ${movedFlows} screen${plural(movedFlows)} moved from flow to page.`);
+      ? `screens.json: ${countPhrase(movedFlows, 'screen')} moved from flow to page, and ${countPhrase(addedPages.length, 'new page', ['is', 'are'])} declared: ${addedPages.map(id => `"${id}"`).join(', ')}. Give each new page a description.`
+      : `screens.json: ${countPhrase(movedFlows, 'screen')} moved from flow to page.`);
+  }
+  if (droppedFlows > 0) {
+    changes.push(`screens.json: dropped the flow of ${countPhrase(droppedFlows, 'screen')} that already had a page or had no flow text.`);
   }
   if (tally.filled > 0) {
     changes.push(`screens.json: added the fields the fixed shape requires to ${tally.filled} of the screens and sections, as empty lists or false.`);
@@ -99,7 +106,7 @@ export function normalizeScreenShapes(files: ReadonlyMap<string, string>, writes
     if (writeIfChanged(writes, recordFile, before, record)) snapshots += 1;
   }
   if (snapshots > 0) {
-    changes.push(`explorations and history: ${snapshots} saved screen snapshot${plural(snapshots)} now use the fixed screen shape.`);
+    changes.push(`explorations and history: ${countPhrase(snapshots, 'saved screen snapshot', ['now uses', 'now use'])} the fixed screen shape.`);
   }
 }
 
@@ -126,11 +133,11 @@ export function normalizeTokenShapes(files: ReadonlyMap<string, string>, writes:
   });
   writeIfChanged(writes, 'tokens.json', text, ordered(file, TOKEN_FILE_FIELDS, tally));
   if (tally.filled > 0) {
-    changes.push(`tokens.json: ${tally.filled} token group${plural(tally.filled)} now carry styleRefs and notes.`);
+    changes.push(`tokens.json: ${countPhrase(tally.filled, 'token group', ['now carries', 'now carry'])} styleRefs and notes.`);
   }
   reportNames(changes, 'tokens.json', tally);
   for (const [from, count] of retyped) {
-    changes.push(`tokens.json: ${count} token${plural(count)} of type "${from}" now use${count === 1 ? 's' : ''} the type "${TOKEN_TYPE_NAMES[from]}".`);
+    changes.push(`tokens.json: ${countPhrase(count, 'token')} of type "${from}" ${inflect(count, ['now uses', 'now use'])} the type "${TOKEN_TYPE_NAMES[from]}".`);
   }
   if (tally.reordered > 0) {
     changes.push('tokens.json: token groups and tokens now use the fixed field order.');
@@ -149,7 +156,7 @@ export function sentenceCaseName(item: RawObject, tally: Pick<ShapeTally, 'renam
 export function reportNames(changes: string[], file: string, tally: Pick<ShapeTally, 'renamed'>): void {
   if (tally.renamed.length === 0) return;
   const examples = tally.renamed.slice(0, 3).map(name => `"${name}"`).join(', ');
-  changes.push(`${file}: ${tally.renamed.length} name${plural(tally.renamed.length)} now use sentence case, such as ${examples}. Capitalize any proper noun the change made lowercase.`);
+  changes.push(`${file}: ${countPhrase(tally.renamed.length, 'name', ['now uses', 'now use'])} sentence case, such as ${examples}. Capitalize any proper noun the change made lowercase.`);
 }
 
 function normalizeScreen(screen: RawObject, tally: ShapeTally): RawObject {
@@ -205,8 +212,4 @@ function writeIfChanged(writes: Map<string, string>, file: string, before: strin
   if (JSON.stringify(JSON.parse(before)) === JSON.stringify(value)) return false;
   writes.set(file, serializeJson(value));
   return true;
-}
-
-function plural(count: number): string {
-  return count === 1 ? '' : 's';
 }

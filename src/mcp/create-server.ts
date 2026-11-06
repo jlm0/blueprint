@@ -253,7 +253,7 @@ export function createBlueprintMcpServer(): McpServer {
     {
       title: 'Manage Blueprint Exploration',
       description:
-        'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline. The tool validates the result in baseline mode, and it writes nothing on an error.',
+        'Create one persistent 2-5 candidate exploration from an exact canonical screen condition, or archive one without deleting its candidates or baseline. The tool validates the result in baseline mode. A create writes nothing on an error, and an archive writes nothing on an error that it adds.',
       inputSchema: withArgumentFixes('explore', exploreInputSchema),
       outputSchema: exploreOutputSchema,
       annotations: {

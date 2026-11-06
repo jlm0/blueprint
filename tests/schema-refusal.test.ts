@@ -108,7 +108,7 @@ describe('a record on an older schema', () => {
 
         const migrated = await migrateBlueprint({ project, dryRun: false });
         assert.deepEqual([migrated.fromVersion, migrated.toVersion, migrated.files], ['1.0.0', BLUEPRINT_SCHEMA_VERSION, [file]]);
-        assert.deepEqual(migrated.changes, [`explorations and history: 1 saved record now carry schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`]);
+        assert.deepEqual(migrated.changes, [`explorations and history: 1 saved record now carries schemaVersion "${BLUEPRINT_SCHEMA_VERSION}".`]);
         assert.equal(migrated.validation.ok, true, migrated.validation.errors.join('\n'));
         assert.equal(JSON.parse(await readFile(path.join(project, file), 'utf8')).schemaVersion, BLUEPRINT_SCHEMA_VERSION);
 

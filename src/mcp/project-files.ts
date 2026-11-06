@@ -27,11 +27,26 @@ interface ProjectFileTransaction {
 
 const projectMutations = new Map<string, Promise<void>>();
 
-/** `inspo` edits no design file, so a style error stops only the tools that change the design. */
-export type MutationGate = 'all-errors' | 'contract-errors';
+/** An archive changes only the lifecycle of an exploration, so an error that the project held before the call does not stop it. */
+export interface AddedErrorsGate {
+  addedTo: BlueprintProjectBundle;
+}
 
-function gated(result: ValidationResult, gate: MutationGate): { errors: string[] } {
-  return { errors: gate === 'contract-errors' ? result.contractErrors : result.errors };
+/** `inspo` edits no design file, so a style error stops only the tools that change the design. */
+export type MutationGate = 'all-errors' | 'contract-errors' | AddedErrorsGate;
+
+function gated(result: ValidationResult, gate: 'all-errors' | 'contract-errors'): string[] {
+  return gate === 'contract-errors' ? result.contractErrors : result.errors;
+}
+
+function addedErrors(before: readonly string[], after: readonly string[]): string[] {
+  const held = new Map<string, number>();
+  for (const error of before) held.set(error, (held.get(error) ?? 0) + 1);
+  return after.filter(error => {
+    const count = held.get(error) ?? 0;
+    held.set(error, count - 1);
+    return count <= 0;
+  });
 }
 
 // A worker check leaves the event loop free, so another mutation of this project must wait until this commit ends.
@@ -53,9 +68,16 @@ export async function assertValidMutation(
   nameFiles: (error: string) => string = error => error
 ): Promise<ProjectCheck> {
   const check = await validate.projected(bundle, signal);
-  const validation = gated(check, gate);
-  if (validation.errors.length > 0) {
-    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${validation.errors.map(error => nameFiles(error)).join('\n')}`);
+  if (typeof gate === 'object') {
+    const added = check.errors.length === 0 ? [] : addedErrors((await validate.projected(gate.addedTo, signal)).errors, check.errors);
+    if (added.length > 0) {
+      throw new Error(`The change adds the errors below, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${added.map(error => nameFiles(error)).join('\n')}`);
+    }
+    return check;
+  }
+  const errors = gated(check, gate);
+  if (errors.length > 0) {
+    throw new Error(`The change failed baseline validation, so Blueprint wrote nothing. Fix: correct each error below, then call the tool again.\n${errors.map(error => nameFiles(error)).join('\n')}`);
   }
   return check;
 }
@@ -67,9 +89,10 @@ export async function assertPersistedProjectValid(
   signal?: AbortSignal,
   gate: MutationGate = 'all-errors'
 ): Promise<void> {
-  const validation = gated(await validate.persisted(projectRoot, projected.fingerprint, signal), gate);
-  if (validation.errors.length > 0) {
-    throw new Error(`Persisted exploration mutation failed baseline validation:\n${validation.errors.join('\n')}`);
+  const persisted = await validate.persisted(projectRoot, projected.fingerprint, signal);
+  const errors = typeof gate === 'object' ? addedErrors(projected.errors, persisted.errors) : gated(persisted, gate);
+  if (errors.length > 0) {
+    throw new Error(`Persisted exploration mutation failed baseline validation:\n${errors.join('\n')}`);
   }
 }
 

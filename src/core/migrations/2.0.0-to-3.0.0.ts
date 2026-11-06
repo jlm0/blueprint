@@ -1,3 +1,4 @@
+import { countPhrase } from '../count-phrase';
 import { asObject, isObject, serializeJson, type RawObject } from '../raw-json';
 import { isSavedRecordFile } from '../storage-records';
 import { stampSchemaVersions, type MigrationStep, type MigrationStepResult } from './step';
@@ -34,18 +35,24 @@ function savedScreenPaths(record: RawObject): Array<{ holder: RawObject; screen:
 function run(input: ReadonlyMap<string, string>): MigrationStepResult {
   const files = new Map(input);
   let moved = 0;
+  let dropped = 0;
   for (const file of [...files.keys()].filter(isSavedRecordFile).sort()) {
     const record = asObject(JSON.parse(files.get(file)!));
     let changed = false;
     for (const { holder, screen } of savedScreenPaths(record)) {
       if (!('flow' in screen)) continue;
-      holder.screen = withPageFromFlow(screen);
-      moved += 1;
+      const migrated = withPageFromFlow(screen);
+      if (migrated.page === screen.page) dropped += 1;
+      else moved += 1;
+      holder.screen = migrated;
       changed = true;
     }
     if (changed) files.set(file, serializeJson(record));
   }
-  const changes = moved > 0 ? [`explorations and history: moved flow to page in ${moved} saved screen${moved > 1 ? 's' : ''}.`] : [];
+  const changes = [
+    ...(moved > 0 ? [`explorations and history: moved flow to page in ${countPhrase(moved, 'saved screen')}.`] : []),
+    ...(dropped > 0 ? [`explorations and history: dropped the flow of ${countPhrase(dropped, 'saved screen')} that already had a page or had no flow text.`] : [])
+  ];
   return { files, changes, stamped: stampSchemaVersions(files, FROM, TO) };
 }
 

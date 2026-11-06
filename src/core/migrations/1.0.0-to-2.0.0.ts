@@ -1,3 +1,4 @@
+import { countPhrase, inflect } from '../count-phrase';
 import { hasDefaultSlot, listUsePlacements, slotContentAccepts, sourceSlotContents } from '../markup';
 import { rewriteAxisSelectors, rewritePlacements, rewriteScreenRecordBindings, type PlacementAttribute, type PlacementRemap } from '../placement-remap';
 import { asArray, asObject, isObject, parseJsonFile, serializeJson, stringList, unique, type RawObject } from '../raw-json';
@@ -139,7 +140,7 @@ function upgradeReusables(files: Map<string, string>, changes: string[]): void {
     placementTotals.conflicts.push(...conflicts);
   }
   if (placementTotals.rewritten > 0) {
-    changes.push(`Rewrote ${placementTotals.rewritten} <blueprint-use> placements in ${placementTotals.files} HTML files to the new axes.`);
+    changes.push(`Rewrote ${countPhrase(placementTotals.rewritten, '<blueprint-use> placement')} in ${countPhrase(placementTotals.files, 'HTML file')} to the new axes.`);
   }
   changes.push(...placementTotals.conflicts);
 
@@ -160,12 +161,14 @@ function upgradeReusables(files: Map<string, string>, changes: string[]): void {
     }
   }
   if (cssRewrites > 0) {
-    changes.push(`Rewrote axis selectors in ${cssRewrites} CSS files to match.`);
+    changes.push(`Rewrote axis selectors in ${countPhrase(cssRewrites, 'CSS file')} to match.`);
   }
 
   const currentHtml = (file: string): string => files.get(file) ?? '';
   const placements = htmlFiles.flatMap(file => listUsePlacements(currentHtml(file)));
 
+  const primitivesBefore = rawPrimitives.map(raw => JSON.stringify(raw));
+  const componentsBefore = rawComponents.map(raw => JSON.stringify(raw));
   const primitives = rawPrimitives.map(raw => migratePrimitive(raw, primitiveAxes.get(String(raw.id))!, {
     atTo: PRIMITIVES_AT_TO.get(String(raw.id)),
     source: currentHtml(String(asObject(raw.prototype).source ?? '')),
@@ -177,10 +180,17 @@ function upgradeReusables(files: Map<string, string>, changes: string[]): void {
     placements,
     changes
   }));
-  changes.push(
-    `primitives.json: ${primitives.length} primitives now carry name, group, platforms, variants, sizes, states, slots, and accessibility in the shared reusable shape; state sets were folded in.`,
-    `components.json: ${components.length} components now carry the shared reusable shape, with a default variant and size; "sections" is now "groups" and "section" is "group".`
-  );
+  const changedPrimitives = primitives.filter((primitive, index) => JSON.stringify(primitive) !== primitivesBefore[index]).length;
+  const changedComponents = components.filter((component, index) => JSON.stringify(component) !== componentsBefore[index]).length;
+  if (changedPrimitives > 0) {
+    changes.push(`primitives.json: ${countPhrase(changedPrimitives, 'primitive', ['now carries', 'now carry'])} name, group, platforms, variants, sizes, states, slots, and accessibility in the shared reusable shape, with state sets folded in.`);
+  }
+  if (changedComponents > 0) {
+    changes.push(`components.json: ${countPhrase(changedComponents, 'component', ['now carries', 'now carry'])} the shared reusable shape, with a default variant and size and a "group" in place of "section".`);
+  }
+  if (componentsFile.groups === undefined && Object.hasOwn(componentsFile, 'sections')) {
+    changes.push('components.json: "sections" is now "groups".');
+  }
 
   writeIfChanged(files, 'primitives.json', keepUnknownFields({
     schemaVersion: nextVersion(primitivesFile),
@@ -205,7 +215,7 @@ function upgradeReusables(files: Map<string, string>, changes: string[]): void {
     }
   }
   if (bindingRewrites > 0) {
-    changes.push(`Moved ${bindingRewrites} screen section binding values to the new axes.`);
+    changes.push(`Moved ${countPhrase(bindingRewrites, 'screen section binding value')} to the new axes.`);
   }
 }
 
@@ -237,7 +247,7 @@ function reclassifyPrimitiveAxes(
   if (move?.variants === 'sizes') {
     sizes = unique([...sizes, ...variants]);
     for (const value of variants) remap.variant.set(value, 'size');
-    notes.push(`primitive ${id}: variants ${variants.join(', ')} are now sizes.`);
+    notes.push(`primitive ${id}: ${inflect(variants.length, 'variant')} ${variants.join(', ')} ${inflect(variants.length, ['is now a size', 'are now sizes'])}.`);
     variants = [];
   }
   if (move?.states) {
@@ -255,7 +265,7 @@ function reclassifyPrimitiveAxes(
         sizes = unique([...sizes, ...moved]);
       }
       for (const value of moved) remap.state.set(value, AXIS_ATTRIBUTES[target]);
-      notes.push(`primitive ${id}: states ${moved.join(', ')} are now ${target}.`);
+      notes.push(`primitive ${id}: ${inflect(moved.length, 'state')} ${moved.join(', ')} ${inflect(moved.length, [`is now a ${AXIS_ATTRIBUTES[target]}`, `are now ${target}`])}.`);
     }
   }
 

@@ -61,6 +61,7 @@ import {
   jsonFileContent,
   loadCurrentProject,
   withProjectMutation,
+  type MutationGate,
   type ProjectFileWrite
 } from './project-files';
 import {
@@ -325,7 +326,8 @@ export async function exploreBlueprint(
       explorations: result.explorations,
       prototypeSourceContents: result.prototypeSourceContents
     };
-    const check = await assertValidMutation(projected, validate, signal);
+    const gate: MutationGate = input.operation.type === 'create' ? 'all-errors' : { addedTo: bundle };
+    const check = await assertValidMutation(projected, validate, signal, gate);
     const output = exploreOutputSchema.parse({
       command: 'explore',
       operation: input.operation.type,
@@ -337,7 +339,7 @@ export async function exploreBlueprint(
     await commitProjectMutation(projectRoot, [
       ...result.sourceWrites.map(write => ({ fileRef: write.path, content: write.content })),
       ...explorationMetadataWrites(bundle, result.exploration)
-    ], check, validate, signal);
+    ], check, validate, signal, gate);
     return output;
   });
 }

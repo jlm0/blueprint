@@ -2,7 +2,7 @@ import { findSectionMarkers } from './markup';
 import { boundaryId } from './address';
 import { primitiveOutsideSetMessage, primitivesOutsideSet } from './base-primitives';
 import { contrastMessage, lintColorContrast } from './contrast-lint';
-import { lintHandBuiltControls, type HandBuiltControlIssue } from './control-lint';
+import { lintHandBuiltControls, type HandBuiltControlIssue, type UnreadableSourceIssue } from './control-lint';
 import { lintLocalStyleValues, type LocalStyleValueIssue } from './style-lint';
 import type { BlueprintProjectBundle, BoundaryKind, PrototypeAsset, ScreenDefinition } from './types';
 
@@ -72,7 +72,22 @@ export function localStyleValueMessage(issue: LocalStyleValueIssue): string {
   return `${issue.property}: "${value}" ${remedy} or declare the literal in prototype.localValueExceptions. Fix: ${issue.tokenStyleRef ? `replace ${restated} with var(${issue.tokenStyleRef})` : `replace "${value}" with var() of a color token`} in ${issue.styleRef}. ${exception}`;
 }
 
+const UNREADABLE_CONSTRUCTS: Readonly<Record<UnreadableSourceIssue['construct'], { problem: string; fix: string }>> = {
+  'cdata-outside-foreign-content': {
+    problem: 'holds "<![CDATA[" outside an inline <svg> or <math>, which a browser and Blueprint read in different ways',
+    fix: 'delete the "<![CDATA[" and "]]>" markers'
+  },
+  'end-tag-attributes': {
+    problem: 'holds an end tag with attributes, which a browser and Blueprint read in different ways',
+    fix: 'delete each attribute from the end tag'
+  }
+};
+
 export function handBuiltControlMessage(issue: HandBuiltControlIssue): string {
+  if (issue.kind === 'unreadable-source') {
+    const { problem, fix } = UNREADABLE_CONSTRUCTS[issue.construct];
+    return `${problem}. A native control can hide there from this check. Fix: ${fix} at line ${issue.line} of ${issue.sourceRef}.`;
+  }
   return `hand-builds a native <${issue.element}>; use <blueprint-use kind="primitive" ref="${issue.primitiveId}"> or mark a deliberate native control with data-blueprint-native="<reason>". Fix: replace this <${issue.element}> at line ${issue.line} of ${issue.sourceRef} with that primitive, or add data-blueprint-native="<reason>" to it.`;
 }
 

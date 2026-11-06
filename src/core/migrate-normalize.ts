@@ -1,5 +1,6 @@
 import { basePrimitiveText } from './base-primitive-text';
 import { BASE_PRIMITIVE_CONTRACT, basePrimitive, type BasePrimitiveText } from './base-primitives';
+import { countPhrase } from './count-phrase';
 import { renameSingleAxisValues } from './migrate-axes';
 import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from './migrate-shapes';
 import { normalizeBrandFonts, normalizeSelectorRoots } from './migrate-style';
@@ -70,7 +71,7 @@ function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, 
     }
   }
   if (rootRewrites > 0) {
-    changes.push(`Removed hardcoded variant, size, and state attributes from ${rootRewrites} reusable root elements; the compiler stamps them.`);
+    changes.push(`Removed hardcoded variant, size, and state attributes from ${countPhrase(rootRewrites, 'reusable root element')}. The compiler stamps them.`);
   }
 
   const remaps = new Map<string, PlacementRemap>();
@@ -94,7 +95,7 @@ function normalizeReusables(input: NormalizeInput, writes: Map<string, string>, 
     movedNotes += result.movedNotes;
   }
   if (restored > 0) {
-    changes.push(`primitives.json: ${restored} primitive${restored > 1 ? 's' : ''} now carry Blueprint's description, accessibility, notes, and value and slot text, and hints from earlier starters use the current wording.`);
+    changes.push(`primitives.json: ${countPhrase(restored, 'primitive', ['now carries', 'now carry'])} Blueprint's description, accessibility, notes, and value and slot text, and hints from earlier starters use the current wording.`);
   }
   if (movedNotes > 0) {
     changes.push(`primitives.json: moved ${movedNotes} app note${movedNotes > 1 ? 's' : ''} on Blueprint primitives to implementationHints.`);
@@ -225,7 +226,7 @@ function moveSizeValues(kind: 'primitive' | 'component', reusable: ReusableDefin
     for (const value of moved) remap[axis === 'state' ? 'state' : 'variant'].set(value.id, 'size');
     changes.push(`${kind} ${reusable.id}: ${axis}${moved.length > 1 ? 's' : ''} ${moved.map(value => value.id).join(', ')} ${moved.length > 1 ? 'are' : 'is'} now ${moved.length > 1 ? 'sizes' : 'a size'}.`);
     if (reusable.unsupported.length !== before) {
-      changes.push(`${kind} ${reusable.id}: dropped unsupported combinations that named the moved ${axis}s; list them again against sizes if they still apply.`);
+      changes.push(`${kind} ${reusable.id}: dropped ${countPhrase(before - reusable.unsupported.length, 'unsupported combination')} that named a moved ${axis}. List each one again against sizes if it still applies.`);
     }
   }
   return remap.state.size > 0 || remap.variant.size > 0 ? remap : undefined;
@@ -274,7 +275,7 @@ function applyRemaps(
       bindings += count;
     }
   }
-  if (placements > 0) changes.push(`Rewrote ${placements} <blueprint-use> placements to the moved sizes.`);
-  if (cssFiles > 0) changes.push(`Rewrote size selectors in ${cssFiles} CSS files to match.`);
-  if (bindings > 0) changes.push(`Moved ${bindings} screen section binding values to sizes.`);
+  if (placements > 0) changes.push(`Rewrote ${countPhrase(placements, '<blueprint-use> placement')} to the moved sizes.`);
+  if (cssFiles > 0) changes.push(`Rewrote size selectors in ${countPhrase(cssFiles, 'CSS file')} to match.`);
+  if (bindings > 0) changes.push(`Moved ${countPhrase(bindings, 'screen section binding value')} to sizes.`);
 }

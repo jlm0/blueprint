@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { normalizeScreenShapes, normalizeTokenShapes, reportNames, sentenceCaseName } from '../src/core/migrate-shapes';
 import { PAGE_FIELDS, SECTION_FIELDS } from '../src/core/screen-contract';
+import { structuredFileErrors } from '../src/core/schemas/issues';
+import { STRUCTURED_FILE_SCHEMAS } from '../src/core/schemas/project';
 
 type RawObject = Record<string, unknown>;
 type Normalize = typeof normalizeScreenShapes;
@@ -90,7 +92,8 @@ describe('normalizeScreenShapes', () => {
     const file = read('screens.json');
     assert.deepEqual(file.screens.map((screen: RawObject) => screen.page), ['web', 'web']);
     assert.deepEqual(file.pages, [page]);
-    assertChange(changes, 'moved from flow to page.');
+    assertChange(changes, 'screens.json: 1 screen moved from flow to page.');
+    assertChange(changes, 'screens.json: dropped the flow of 1 screen that already had a page or had no flow text.');
     assert.equal(changes.some(change => change.includes('new page')), false);
   });
 
@@ -148,12 +151,18 @@ describe('normalizeScreenShapes', () => {
     const { read, changes } = runNormalize(normalizeScreenShapes, {
       'screens.json': screensFile(
         ['not a screen', { id: 'a', name: 'Home Page', sections: ['not a section', { id: 's', name: 'Hero Banner', uses: [7] }] }],
-        [{ id: 'p', name: 'Web Pages' }]
+        [{ id: 'p', name: 'Web Pages' }, { id: 'q', name: 'Phone' }, 'archive']
       )
     });
 
     const file = read('screens.json');
     assert.equal(file.pages[0].name, 'Web pages');
+    assert.equal(file.pages[2], 'archive');
+    const screensSchema = STRUCTURED_FILE_SCHEMAS.find(entry => entry.file === 'screens.json')!.schema;
+    assert.ok(
+      structuredFileErrors('screens.json', screensSchema, file).includes('screens.json: pages[2] must be a JSON object. Fix: write pages[2] as a JSON object.'),
+      'load reports the malformed page'
+    );
     assert.equal(file.screens[0], 'not a screen');
     assert.equal(file.screens[1].name, 'Home page');
     assert.equal(file.screens[1].sections[0], 'not a section');
