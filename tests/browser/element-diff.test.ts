@@ -18,6 +18,11 @@ const OVERLAP = '<div style="position: relative; height: 80px;"><div class="a" s
 const IMAGE = '<img class="a" alt="" width="80" height="40" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==" style="background: rgb(220, 220, 220);">';
 const ART = (attributes: string): string => `<svg width="80" height="80" viewBox="0 0 80 80"><defs><linearGradient id="g"><stop class="b" offset="0"/><stop offset="1" stop-color="white"/></linearGradient></defs><rect class="a" x="10" y="10" width="60" height="60" fill="url(#g)" stroke="black" ${attributes}/></svg>`;
 const BACKGROUND = 'width: 120px; height: 80px; background-image: linear-gradient(red, blue); background-size: 40px 40px; background-repeat: no-repeat;';
+const SUBPIXEL_OVERFLOW = 'body { font: 16px sans-serif; } .a { width: 88.84px; margin: 0; overflow: hidden; white-space: nowrap;';
+const VERTICAL_OVERFLOW = '.a { height: 40px; margin: 0; writing-mode: vertical-rl; overflow: hidden; white-space: nowrap;';
+const FLEX_OVERFLOW = '.a { display: flex; width: 60px; margin: 0; overflow: hidden; white-space: nowrap;';
+const HIDDEN_LABEL_OVERFLOW = '.a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .a { position: relative; width: 100px; margin: 0; overflow: hidden; white-space: nowrap;';
+const VISUALLY_HIDDEN = '.a { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }';
 
 const PAINTS: ReadonlyArray<{ name: string; before: string; after: string; body?: string }> = [
   { name: 'a radius on a background', before: '.a { border-radius: 0; height: 40px; background: red; }', after: '.a { border-radius: 20px; height: 40px; background: red; }', body: '<div class="a"></div>' },
@@ -27,6 +32,7 @@ const PAINTS: ReadonlyArray<{ name: string; before: string; after: string; body?
   { name: 'an element that stops being hidden', before: '.a { display: none; height: 40px; background: red; }', after: '.a { height: 40px; background: red; }', body: '<div class="a"></div>' },
   { name: 'an element that stops being transparent', before: '.a { opacity: 0; height: 40px; background: red; }', after: '.a { opacity: 1; height: 40px; background: red; }', body: '<div class="a"></div>' },
   { name: 'a child of an element that fades in', before: '@keyframes fade { from { opacity: 0; } to { opacity: 1; } } .a { animation: fade 1s forwards; } .a span { color: black; }', after: '@keyframes fade { from { opacity: 0; } to { opacity: 1; } } .a { animation: fade 1s forwards; } .a span { color: red; }', body: '<p class="a"><span>Text</span></p>' },
+  { name: 'a child of an element that wipes in', before: '@keyframes wipe { from { clip-path: inset(50%); } to { clip-path: inset(0); } } .a { animation: wipe 1s forwards; } .a span { color: black; }', after: '@keyframes wipe { from { clip-path: inset(50%); } to { clip-path: inset(0); } } .a { animation: wipe 1s forwards; } .a span { color: red; }', body: '<p class="a"><span>Text</span></p>' },
   { name: 'text-shadow', before: '.a { text-shadow: none; }', after: '.a { text-shadow: 2px 2px 0 red; }' },
   { name: 'letter-spacing', before: '.a { letter-spacing: normal; display: inline-block; width: 200px; }', after: '.a { letter-spacing: 2px; display: inline-block; width: 200px; }' },
   { name: 'word-spacing', before: '.a { word-spacing: normal; width: 200px; }', after: '.a { word-spacing: 12px; width: 200px; }', body: '<p class="a">Two words</p>' },
@@ -59,7 +65,10 @@ const PAINTS: ReadonlyArray<{ name: string; before: string; after: string; body?
   { name: 'a rule on the html element', before: 'html { background: white; }', after: 'html { background: red; }' },
   { name: 'the color of a placeholder', before: '.a::placeholder { color: black; }', after: '.a::placeholder { color: red; }', body: FIELD },
   { name: 'the color of a list marker', before: '.a { margin: 0 0 0 40px; padding: 0; } .a li::marker { color: black; }', after: '.a { margin: 0 0 0 40px; padding: 0; } .a li::marker { color: red; }', body: LIST },
-  { name: 'the color of a ::after part', before: '.a::after { content: "x"; color: black; }', after: '.a::after { content: "x"; color: red; }' }
+  { name: 'the color of a ::after part', before: '.a::after { content: "x"; color: black; }', after: '.a::after { content: "x"; color: red; }' },
+  { name: 'text-overflow on a select', before: '.a { width: 70px; }', after: '.a { width: 70px; text-overflow: ellipsis; }', body: '<select class="a"><option>A long option label here</option></select>' },
+  { name: 'text-overflow on text that overflows by less than 1 px', before: `${SUBPIXEL_OVERFLOW} }`, after: `${SUBPIXEL_OVERFLOW} text-overflow: ellipsis; }`, body: '<p class="a">Text in a line</p>' },
+  { name: 'text-overflow in a vertical writing mode', before: `${VERTICAL_OVERFLOW} }`, after: `${VERTICAL_OVERFLOW} text-overflow: ellipsis; }`, body: '<p class="a">Text in a line</p>' }
 ];
 
 const NO_PAINT: ReadonlyArray<{ name: string; before: string; after: string; body?: string }> = [
@@ -71,7 +80,14 @@ const NO_PAINT: ReadonlyArray<{ name: string; before: string; after: string; bod
   { name: 'a background on an element with display none', before: '.a { display: none; background: white; }', after: '.a { display: none; background: red; }', body: '<div class="a"></div>' },
   { name: 'a background on an element with opacity 0', before: '.a { opacity: 0; height: 40px; background: white; } .a span { color: black; }', after: '.a { opacity: 0; height: 40px; background: red; } .a span { color: red; }', body: '<div class="a"><span>Text</span></div>' },
   { name: 'a background on an element with visibility hidden', before: '.a { visibility: hidden; height: 40px; background: white; }', after: '.a { visibility: hidden; height: 40px; background: red; }', body: '<div class="a"></div>' },
-  { name: 'a radius with nothing to round', before: '.a { border-radius: 0; height: 40px; }', after: '.a { border-radius: 20px; height: 40px; }', body: '<div class="a"></div>' }
+  { name: 'a radius with nothing to round', before: '.a { border-radius: 0; height: 40px; }', after: '.a { border-radius: 20px; height: 40px; }', body: '<div class="a"></div>' },
+  { name: 'color inside a visually hidden label', before: `${VISUALLY_HIDDEN} .a b { color: black; }`, after: `${VISUALLY_HIDDEN} .a b { color: red; }`, body: '<span class="a"><b>Text</b></span>' },
+  { name: 'text-overflow on text that fits', before: '.a { width: 200px; overflow: hidden; white-space: nowrap; }', after: '.a { width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }' },
+  { name: 'text-overflow on a flex container', before: `${FLEX_OVERFLOW} }`, after: `${FLEX_OVERFLOW} text-overflow: ellipsis; }`, body: '<p class="a">Text in a line</p>' },
+  { name: 'text-overflow on a box whose only overflow is a visually hidden label', before: `${HIDDEN_LABEL_OVERFLOW} }`, after: `${HIDDEN_LABEL_OVERFLOW} text-overflow: ellipsis; }`, body: '<p class="a">Ok<span>Order of the long list</span></p>' },
+  { name: 'text-overflow on a one-line label taller than its box', before: '.a { width: 200px; height: 10px; line-height: 20px; overflow: hidden; white-space: nowrap; }', after: '.a { width: 200px; height: 10px; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }' },
+  { name: 'text-wrap: balance on 1 line', before: '.a { width: 200px; }', after: '.a { width: 200px; text-wrap: balance; }' },
+  { name: 'overflow-wrap on short words', before: '.a { width: 200px; }', after: '.a { width: 200px; overflow-wrap: anywhere; }', body: '<p class="a">Two short words</p>' }
 ];
 
 describe('the element diff of two documents', () => {

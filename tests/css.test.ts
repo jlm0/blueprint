@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cssHasImport, isCssLengthLiteral, listCssDeclarations, rewriteCssUrls } from '../src/core/css';
+import { cssHasImport, isCssLengthLiteral, isEmptyInsetShape, listCssDeclarations, rewriteCssUrls } from '../src/core/css';
 
 describe('CSS reader', () => {
   it('keeps offsets and the byte order mark when it rewrites a url', () => {
@@ -86,5 +86,22 @@ describe('image-set strings', () => {
 
   it('leaves an empty string in image-set as written', () => {
     assert.equal(rewriteCssUrls('.a { background-image: image-set("" 1x); }', value => `url("${value}!")`), '.a { background-image: image-set("" 1x); }');
+  });
+});
+
+describe('empty inset shapes', () => {
+  it('reads each computed inset() whose opposing offsets reach 100 %', () => {
+    for (const value of ['inset(50%)', 'inset(50% round 4px)', 'inset(0px 50%)', 'inset(100%)', 'inset(50% 10px)', 'inset(10% 50% 30%)', 'inset(0px 100% 100% 0px)', 'inset(-10% 110%)']) {
+      assert.equal(isEmptyInsetShape(value), true, value);
+    }
+  });
+
+  it('refuses each form that it cannot prove empty', () => {
+    for (const value of [
+      'none', 'inset(0px)', 'inset(49% 49%)', 'inset(50px)', 'inset(10% 20% 30%)', 'inset(50% 10px 40% 0px)', 'inset(50%) content-box', 'inset(calc(50% + 1px))',
+      'circle(0px)', 'polygon(0px 0px, 0px 0px, 0px 0px)', 'url("#x")', 'inset()', 'inset(50%', 'inset(1% 2% 3% 4% 5%)', 'inset(50%) inset(50%)'
+    ]) {
+      assert.equal(isEmptyInsetShape(value), false, value);
+    }
   });
 });

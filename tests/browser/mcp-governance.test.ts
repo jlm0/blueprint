@@ -764,6 +764,73 @@ describe('Blueprint MCP and template governance', () => {
     });
   });
 
+  it('shows the agent tool again when a queued apply finds the revision that the canvas already shows', async () => {
+    await withTempDir(async tempDir => {
+      const projectCopy = path.join(tempDir, 'design', 'blueprint');
+      await cp(miraRoot, projectCopy, { recursive: true });
+      const server = await startServeServer(projectCopy, 0, undefined, loadValidatedProject);
+      try {
+        const { chromium } = await import('playwright');
+        const browser = await chromium.launch();
+        try {
+          const page = await browser.newPage();
+          let snapshotRequests = 0;
+          let firstRequestArrived: () => void = () => undefined;
+          let releaseFirstRequest: () => void = () => undefined;
+          const firstRequestHeld = new Promise<void>(resolve => { firstRequestArrived = resolve; });
+          const firstRequestReleased = new Promise<void>(resolve => { releaseFirstRequest = resolve; });
+          await page.route('**/__blueprint/project?**', async route => {
+            snapshotRequests += 1;
+            if (snapshotRequests === 1) {
+              firstRequestArrived();
+              await firstRequestReleased;
+            }
+            await route.continue();
+          });
+          await page.goto(`${server.url}?board=screens`);
+          await page.locator('[data-board-root="screens"] iframe.canonical-prototype-iframe').first().waitFor({ timeout: 20_000 });
+          await page.evaluate(() => {
+            const record = window as Window & { __BLUEPRINT_TEST_EVENTS__?: number };
+            record.__BLUEPRINT_TEST_EVENTS__ = 0;
+            new EventSource(window.__BLUEPRINT_LIVE_RUNTIME__!.eventsPath).addEventListener('project-changed', () => {
+              record.__BLUEPRINT_TEST_EVENTS__! += 1;
+            });
+          });
+          const hook = {
+            session_id: 'thread-held-apply',
+            turn_id: 'turn-held-apply',
+            cwd: tempDir,
+            tool_name: 'functions.exec',
+            tool_use_id: 'tool-held-apply',
+            tool_input: `await tools.apply_patch("*** Update File: design/blueprint/prototype/screens/workspace.css")`
+          };
+          await runCodexHook(tempDir, { ...hook, hook_event_name: 'PreToolUse' });
+          await page.locator('.bp-chrome-agent-status[data-phase="working"]').waitFor();
+
+          const screenCssPath = path.join(projectCopy, 'prototype/screens/workspace.css');
+          let revision = server.latestProject!().revision;
+          for (let edit = 1; edit <= 3; edit += 1) {
+            await writeFile(screenCssPath, `${await readFile(screenCssPath, 'utf8')}\n[data-blueprint-screen="workspace"] { --blueprint-held-apply-${edit}: 1; }\n`, 'utf8');
+            revision = await publishedRevisionAfter(server, revision);
+            if (edit === 1) await firstRequestHeld;
+          }
+          await page.waitForFunction(() => (window as Window & { __BLUEPRINT_TEST_EVENTS__?: number }).__BLUEPRINT_TEST_EVENTS__ === 3);
+          releaseFirstRequest();
+
+          await page.waitForFunction(() => [...document.querySelectorAll<HTMLIFrameElement>('iframe.canonical-prototype-iframe')]
+            .some(frame => frame.srcdoc.includes('blueprint-held-apply-3')), undefined, { timeout: 20_000 });
+          await page.waitForFunction(() => document.querySelector<HTMLElement>('.bp-chrome-changes')?.dataset.marks !== 'pending', undefined, { timeout: 20_000 });
+          assert.equal(snapshotRequests, 2, 'The second event must fetch the revision that the first apply already shows, or this test proves nothing.');
+          assert.equal(await page.locator('.bp-chrome-agent-status').getAttribute('data-phase'), 'working');
+        } finally {
+          await browser.close();
+        }
+      } finally {
+        await server.close();
+      }
+    });
+  });
+
   it('keeps live edits and the page load working when a CSS comment holds a font rule that does not decode', async () => {
     await withTempDir(async tempDir => {
       const projectCopy = path.join(tempDir, 'design', 'blueprint');
@@ -2046,7 +2113,7 @@ async function frameSlotsOutsideViewport(page: { evaluate: <T, A>(fn: (arg: A) =
   }, selector);
 }
 
-async function publishedRevisionAfter(served: BlueprintServeHandle, revision: string): Promise<string> {
+async function publishedRevisionAfter(served: Pick<BlueprintServeHandle, 'settledProject'>, revision: string): Promise<string> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const settled = await served.settledProject!();
     if (settled && settled.revision !== revision) return settled.revision;

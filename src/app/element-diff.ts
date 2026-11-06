@@ -1,4 +1,5 @@
-import { type BoundaryExtent, measureElementExtent, viewportExtent } from './boundary-extent';
+import { isEmptyInsetShape } from '../core/css';
+import { type BoundaryExtent, measureElementExtent } from './boundary-extent';
 import { yieldToMain } from './frame-mounting';
 import { readPrototypeTwin } from './frame-overlay';
 
@@ -57,13 +58,21 @@ const ELEMENTS_WITH_OWN_CONTENT = ['IMG', 'VIDEO', 'CANVAS', 'IFRAME', 'OBJECT',
 const PSEUDO_ELEMENTS = ['::before', '::after'];
 const ELEMENTS_WITH_PLACEHOLDER = ['INPUT', 'TEXTAREA'];
 const ELEMENTS_WITH_BUILT_IN_TEXT = ['INPUT', 'TEXTAREA', 'SELECT'];
+/** A flex, grid, or `-webkit-box` container puts its text in anonymous items, and `text-overflow` does not inherit into them. */
+const BOXES_WITHOUT_OWN_LINES = ['flex', 'inline-flex', 'grid', 'inline-grid', '-webkit-box', '-webkit-inline-box'];
+/** These properties paint only when they move a character of the text. */
+const LINE_BREAK_PROPERTIES: readonly string[] = ['text-wrap-style', 'overflow-wrap'];
 const NOT_PAINTED_ATTRIBUTE_PREFIXES = ['data-', 'aria-'];
 const NOT_PAINTED_ATTRIBUTES = ['class', 'style', 'id', 'role', 'title', 'tabindex', 'name', 'for', 'target', 'rel'];
+
+type InlineEdge = 'left' | 'right' | 'top' | 'bottom';
 
 interface PaintedContent {
   text: boolean;
   shape: boolean;
   rounded: boolean;
+  /** A pseudo-element, a built-in part, an SVG element, and a form control that draws its own text have no layout to read, so each difference there counts. */
+  layout?: ChangedPair;
 }
 
 let comparedProperties: readonly string[] | undefined;
@@ -77,8 +86,67 @@ function holdsRoundedPaint(style: CSSStyleDeclaration): boolean {
   return ROUNDED_PAINT_NONE.some(([property, none]) => style.getPropertyValue(property) !== none);
 }
 
+function ellipsisCanPaint(element: Element, style: CSSStyleDeclaration): boolean {
+  if (style.getPropertyValue('overflow-x') === 'visible' && style.getPropertyValue('overflow-y') === 'visible') return false;
+  if (BOXES_WITHOUT_OWN_LINES.includes(style.getPropertyValue('display'))) return false;
+  const horizontal = style.getPropertyValue('writing-mode').startsWith('horizontal');
+  return (horizontal ? element.scrollWidth > element.clientWidth : element.scrollHeight > element.clientHeight)
+    || lineContentPassesInlineEnd(element, style, horizontal);
+}
+
+function insetOf(style: CSSStyleDeclaration, side: InlineEdge): number {
+  return Number.parseFloat(style.getPropertyValue(`border-${side}-width`)) + Number.parseFloat(style.getPropertyValue(`padding-${side}`));
+}
+
+/** `scrollWidth` and `clientWidth` round to whole pixels, so only the fractional boxes show an overflow below 1 px. */
+function lineContentPassesInlineEnd(element: Element, style: CSSStyleDeclaration, horizontal: boolean): boolean {
+  const reversed = (style.getPropertyValue('direction') === 'rtl') !== (style.getPropertyValue('writing-mode') === 'sideways-lr');
+  const side: InlineEdge = horizontal ? (reversed ? 'left' : 'right') : (reversed ? 'top' : 'bottom');
+  const inset = insetOf(style, side);
+  const edge = element.getBoundingClientRect()[side] + (reversed ? inset : -inset);
+  return lineContentBoxes(element).some(box => (box.width > 0 || box.height > 0) && (reversed ? box[side] < edge : box[side] > edge));
+}
+
+/** Only text and inline-level children sit in the line boxes of an element, and an absolute or floated child computes to a block display. */
+function lineContentBoxes(element: Element): DOMRect[] {
+  const view = element.ownerDocument.defaultView as Window;
+  const range = element.ownerDocument.createRange();
+  const boxes: DOMRect[] = [];
+  for (let node = element.firstChild; node; node = node.nextSibling) {
+    if (node.nodeType === 3) {
+      range.selectNodeContents(node);
+      boxes.push(range.getBoundingClientRect());
+    } else if (node.nodeType === 1) {
+      const display = view.getComputedStyle(node as Element).getPropertyValue('display');
+      if (display === 'contents') boxes.push(...lineContentBoxes(node as Element));
+      else if (display.startsWith('inline')) boxes.push((node as Element).getBoundingClientRect());
+    }
+  }
+  return boxes;
+}
+
+function characterBoxes(element: Element): string {
+  const range = element.ownerDocument.createRange();
+  const boxes: string[] = [];
+  for (let node = element.firstChild; node; node = node.nextSibling) {
+    if (node.nodeType !== 3) continue;
+    const length = (node.nodeValue ?? '').length;
+    for (let index = 0; index < length; index += 1) {
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const box = range.getBoundingClientRect();
+      boxes.push(`${box.left},${box.top}`);
+    }
+  }
+  return boxes.join(' ');
+}
+
 function differencePaints(property: string, before: CSSStyleDeclaration, after: CSSStyleDeclaration, content: PaintedContent): boolean {
-  if (INHERITED_TEXT_PROPERTIES.includes(property)) return content.text;
+  const { layout } = content;
+  if (property === 'text-overflow') return !layout || ellipsisCanPaint(layout[0], before) || ellipsisCanPaint(layout[1], after);
+  if (INHERITED_TEXT_PROPERTIES.includes(property)) {
+    return content.text && (!layout || !LINE_BREAK_PROPERTIES.includes(property) || characterBoxes(layout[0]) !== characterBoxes(layout[1]));
+  }
   if (SHAPE_PROPERTIES.includes(property)) return content.shape;
   if (RADIUS_PROPERTIES.includes(property)) return content.rounded || holdsRoundedPaint(after);
   const line = STYLE_OF_LINE_COLOR[property];
@@ -138,10 +206,16 @@ function boxesDiffer(before: Element, after: Element): boolean {
   return beforeBox.left !== afterBox.left || beforeBox.top !== afterBox.top || beforeBox.width !== afterBox.width || beforeBox.height !== afterBox.height;
 }
 
-/** The walk reads a paused first keyframe, so an element that fades in reads opacity 0 and still paints. */
+function clipsAll(style: CSSStyleDeclaration): boolean {
+  const clipPath = style.getPropertyValue('clip-path');
+  return clipPath.startsWith('inset(') && isEmptyInsetShape(clipPath);
+}
+
+/** The walk reads a paused first keyframe, so an element that fades or wipes in reads opacity 0 or an empty clip and still paints. */
 function paintsNothingInBoth(beforeElement: Element, afterElement: Element, before: CSSStyleDeclaration, after: CSSStyleDeclaration): boolean {
-  return (before.getPropertyValue('display') === 'none' && after.getPropertyValue('display') === 'none')
-    || (before.getPropertyValue('opacity') === '0' && after.getPropertyValue('opacity') === '0' && beforeElement.getAnimations().length === 0 && afterElement.getAnimations().length === 0);
+  if (before.getPropertyValue('display') === 'none' && after.getPropertyValue('display') === 'none') return true;
+  const hiddenInBoth = (before.getPropertyValue('opacity') === '0' && after.getPropertyValue('opacity') === '0') || (clipsAll(before) && clipsAll(after));
+  return hiddenInBoth && beforeElement.getAnimations().length === 0 && afterElement.getAnimations().length === 0;
 }
 
 /** The walk stops at the topmost element that differs, because its outline already covers what is inside it. */
@@ -168,7 +242,12 @@ async function changedElements(before: Document, after: Document): Promise<Chang
     const ownPaint = beforeStyle.getPropertyValue('visibility') !== 'hidden' || afterStyle.getPropertyValue('visibility') !== 'hidden';
     const svg = afterElement.namespaceURI === SVG_NAMESPACE;
     const text = ownText(afterElement);
-    const content: PaintedContent = { text: paintsText(afterElement, text, afterStyle), shape: svg, rounded: ELEMENTS_WITH_OWN_CONTENT.includes(afterElement.tagName) };
+    const content: PaintedContent = {
+      text: paintsText(afterElement, text, afterStyle),
+      shape: svg,
+      rounded: ELEMENTS_WITH_OWN_CONTENT.includes(afterElement.tagName),
+      layout: svg || ELEMENTS_WITH_BUILT_IN_TEXT.includes(afterElement.tagName) ? undefined : pair
+    };
     if (
       beforeElement.tagName !== afterElement.tagName
       || beforeElement.childElementCount !== afterElement.childElementCount
@@ -213,8 +292,7 @@ function extentHolds(outer: BoundaryExtent, inner: BoundaryExtent): boolean {
 }
 
 function extentIn(element: Element): BoundaryExtent | undefined {
-  const view = element.ownerDocument.defaultView as Window;
-  return measureElementExtent(element, view, viewportExtent(view));
+  return measureElementExtent(element, element.ownerDocument.defaultView as Window);
 }
 
 /** A box that moves or shrinks also changes the pixels of the place that it left. */

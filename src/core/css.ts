@@ -741,6 +741,29 @@ export function isCssMotionValue(value: string): boolean {
   return times <= 2 && easings <= 1;
 }
 
+/** An `inset()` shape whose opposing offsets reach 100 % or more holds no area. A shape with a reference box, or any other form, answers false. */
+export function isEmptyInsetShape(value: string): boolean {
+  const nodes = significantNodes(value);
+  if (nodes.length !== 1 || nodes[0].type !== 'function' || nodes[0].value.toLowerCase() !== 'inset' || nodes[0].unclosed) return false;
+  const offsets: number[] = [];
+  for (const node of nodes[0].nodes) {
+    if (node.type === 'word' && node.value.toLowerCase() === 'round') break;
+    if (node.type !== 'space') offsets.push(insetOffsetPercent(node));
+  }
+  if (offsets.length === 0 || offsets.length > 4) return false;
+  const [top, right = top, bottom = top, left = right] = offsets;
+  return top + bottom >= 100 || left + right >= 100;
+}
+
+/** A length other than 0 depends on the size of the box, so it reads as NaN and its pair of offsets never reaches 100. */
+function insetOffsetPercent(node: valueParser.Node): number {
+  const parsed = node.type === 'word' ? valueParser.unit(node.value) : false;
+  if (parsed === false) return Number.NaN;
+  const number = Number(parsed.number);
+  if (parsed.unit === '%') return number;
+  return number === 0 && (parsed.unit === '' || LENGTH_UNITS.has(parsed.unit.toLowerCase())) ? 0 : Number.NaN;
+}
+
 /** Reads a typography token: a `font` shorthand, a family list, or a length such as letter spacing. */
 export function readFontValue(value: string): FontValue {
   const segments = commaSegments(value);

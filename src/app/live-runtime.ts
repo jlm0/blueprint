@@ -150,7 +150,10 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   markFocusedBoundaryBusy(true);
   const snapshot = await fetchLiveProjectSnapshot(new URL(snapshotPath, window.location.href), event.revision, liveSnapshot);
   liveSnapshot = snapshot;
-  if (snapshot.revision === lastAppliedRevision) return;
+  if (snapshot.revision === lastAppliedRevision) {
+    endAgentApplyStatus();
+    return;
+  }
   const changedPaths = snapshot.revision === event.revision ? event.changedPaths : [];
   const leftChangeBaseline = viewingChangeBaseline;
   if (leftChangeBaseline) setProject(exitChangeBaselineView());
@@ -205,6 +208,10 @@ async function applyProjectChange(event: BlueprintProjectChangedEvent, snapshotP
   const changedFocuses = activityFocusesForChangedPaths(project, changedPaths);
   setChangedBoundaryFocuses(activeActivityKey ? uniqueAgentFocuses([...changedBoundaryFocuses, ...changedFocuses]) : changedFocuses);
   renderAgentFocus();
+  endAgentApplyStatus();
+}
+
+function endAgentApplyStatus(): void {
   markFocusedBoundaryBusy(lastAgentActivity?.phase === 'started' || lastAgentActivity?.phase === 'completed');
   restoreAgentStatusAfterApply();
 }
