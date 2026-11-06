@@ -13,7 +13,7 @@ import {
 } from '../src/prototype/compiler';
 
 const goldenPath = 'tests/golden/compile-output.json';
-const MAX_GROWTH_FOR_4X_PLACEMENTS = 9;
+const MAX_RATIO_TO_EQUAL_WORK = 2;
 const updateGolden = process.env.BLUEPRINT_UPDATE_GOLDEN === '1';
 const fixtureRoots: Record<string, string> = {
   starter: 'starter/design/blueprint',
@@ -127,22 +127,25 @@ describe('compile determinism', () => {
     chat.sections = [];
     const sourceRef = chat.prototype.source;
     const placement = `<blueprint-use kind="component" ref="${component.id}" state="${axisIds(component.states)[0]}"></blueprint-use>`;
-    const fastest = (count: number): number => {
+    const batch = (count: number, compiles: number): number => {
       bundle.prototypeSourceContents[sourceRef] = `<main data-blueprint-screen="chat">${placement.repeat(count)}</main>`;
-      const times = Array.from({ length: 5 }, () => {
-        const started = performance.now();
-        compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
-        return performance.now() - started;
-      });
-      return Math.min(...times);
+      const started = performance.now();
+      for (let index = 0; index < compiles; index += 1) compilePrototypeDocument({ bundle, target: { kind: 'screen', id: 'chat' } });
+      return performance.now() - started;
     };
-    // Other work on the machine can slow one measurement, but quadratic growth fails every attempt.
+    // Short interleaved batches of equal work share each change in core speed under load, and quadratic growth still fails every attempt.
     const ratios: string[] = [];
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const ratio = fastest(8_000) / fastest(2_000);
-      if (ratio < MAX_GROWTH_FOR_4X_PLACEMENTS) return;
-      ratios.push(ratio.toFixed(1));
+      const small: number[] = [];
+      const large: number[] = [];
+      for (let pair = 0; pair < 5; pair += 1) {
+        small.push(batch(2_000, 4));
+        large.push(batch(8_000, 1));
+      }
+      const ratio = Math.min(...large) / Math.min(...small);
+      if (ratio < MAX_RATIO_TO_EQUAL_WORK) return;
+      ratios.push(ratio.toFixed(2));
     }
-    assert.fail(`4x placements took ${ratios.join(', ')} times as long in each attempt`);
+    assert.fail(`1 compile of 8000 placements took ${ratios.join(', ')} times as long as 4 compiles of 2000 in each attempt`);
   });
 });

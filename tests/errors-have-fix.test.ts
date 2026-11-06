@@ -27,6 +27,7 @@ import { fileDigests, withProjectCopy } from './support/project-copies';
 const WRAPPER = 'Wrapper: it adds a prefix to messages that each hold a Fix: line.';
 const RETHROW = 'Rethrow: it passes on a message from a site that this guard checks.';
 const PROSE_TABLE = 'The prose table in this file runs each error rule of lintProse.';
+const HOST_LOG = 'The stdio server writes this text to the MCP host log, not to tool output, so no agent reads it as a repair.';
 
 /** Each expression that the guard cannot prove, with the reason that it is safe. */
 const ALLOW_LIST: readonly FixAllowEntry[] = [
@@ -46,7 +47,9 @@ const ALLOW_LIST: readonly FixAllowEntry[] = [
   { file: 'src/mcp/operations.ts', match: 'validated.error', reason: `${RETHROW} The site is readValidatedProject.` },
   { file: 'src/mcp/project-files.ts', match: 'errors.push(error)', reason: 'The list holds caught errors for an AggregateError, and the message of that AggregateError holds the Fix: line.' },
   { file: 'src/mcp/project-validation.ts', match: 'reply.thrown', reason: `${RETHROW} The worker sends the message of an error that it caught.` },
-  { file: 'src/mcp/serve-server.ts', match: 'snapshot.error', reason: `${RETHROW} The site is readValidatedProject.` }
+  { file: 'src/mcp/serve-server.ts', match: 'snapshot.error', reason: `${RETHROW} The site is readValidatedProject.` },
+  { file: 'src/mcp/server.ts', match: 'error.message', reason: HOST_LOG },
+  { file: 'src/mcp/server.ts', match: 'error instanceof Error ? error.message : String(error)', reason: HOST_LOG }
 ];
 
 const GUARD_FIX = 'Fix: append "Fix: <exact change>" to this message, or add a named entry to ALLOW_LIST in tests/errors-have-fix.test.ts.';

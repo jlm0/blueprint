@@ -35,6 +35,7 @@
     "scan:scope": "node --import tsx src/scripts/scope-scan.ts",
     "extract:artifacts": "node --import tsx src/scripts/create-extraction-artifacts.ts",
     "smoke:browser": "node --import tsx src/scripts/browser-smoke.ts",
+    "skills:install": "node --import tsx src/scripts/install-skills.ts",
     "build:site": "vite build",
     "build:mcp": "vite build --config vite.mcp.config.ts && chmod +x dist/mcp/server.js dist/mcp/codex-activity-hook.js",
     "build": "npm run build:site && npm run build:mcp",

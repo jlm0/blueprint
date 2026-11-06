@@ -13,7 +13,23 @@ import { screenSchema, screenSectionSchema } from '../../src/core/schemas/screen
 import { designTokenSchema, tokenGroupSchema } from '../../src/core/schemas/tokens';
 import { TOKEN_LIMITS } from '../../src/core/token-contract';
 import type { BlueprintProjectBundle } from '../../src/core/types';
-import { inspoInputSchema, validateInputSchema } from '../../src/mcp/schemas';
+import type { BLUEPRINT_MCP_TOOL_NAMES } from '../../src/mcp/create-server';
+import {
+  captureInputSchema,
+  exploreInputSchema,
+  extractInputSchema,
+  indexInputSchema,
+  initInputSchema,
+  inspoInputSchema,
+  migrateInputSchema,
+  promoteInputSchema,
+  queryInputSchema,
+  querySpecSchema,
+  restoreInputSchema,
+  selectionInputSchema,
+  serveInputSchema,
+  validateInputSchema
+} from '../../src/mcp/schemas';
 
 export const SELF_VALIDATING_TOOLS = ['init', 'inspo', 'migrate', 'explore', 'promote', 'restore'] as const;
 
@@ -27,6 +43,8 @@ export interface DirectiveText {
   sources: Readonly<Record<string, string>>;
   scripts: Readonly<Record<string, string>>;
   starterScreens: ReadonlyArray<{ id: string; framePresetId: string }>;
+  /** Each file under `skills/`, keyed by its path from the repository root. */
+  skills: Readonly<Record<string, string>>;
 }
 
 function backticked(text: string): string[] {
@@ -213,8 +231,8 @@ function staleTextFailures(text: DirectiveText): string[] {
 
 const VALIDATE_AFTER_MUTATION = new RegExp(`\\b(?:${SELF_VALIDATING_TOOLS.join('|')})\\b[^.\\n]*\\bthen\\b[^.\\n]*\\b(?:call|run|fix what)\\b[^.\\n]*\\bvalidate\\b`, 'i');
 
-function validateAfterMutationFailures({ agents, readme, instructions, toolDescriptions, sources }: DirectiveText): string[] {
-  const texts = { 'AGENTS.md': agents, 'README.md': readme, 'the server instructions': instructions, ...toolDescriptions, ...sources };
+function validateAfterMutationFailures({ agents, readme, instructions, toolDescriptions, sources, skills }: DirectiveText): string[] {
+  const texts = { 'AGENTS.md': agents, 'README.md': readme, 'the server instructions': instructions, ...toolDescriptions, ...sources, ...skills };
   return Object.entries(texts).flatMap(([label, text]) => {
     const match = VALIDATE_AFTER_MUTATION.exec(text);
     return match ? [`${label} tells an agent to validate after a tool that validates itself: "${match[0]}".`] : [];
@@ -304,6 +322,52 @@ function scriptFailures({ readme, scripts }: DirectiveText): string[] {
   return failures;
 }
 
+const TOOL_INPUTS: Readonly<Record<(typeof BLUEPRINT_MCP_TOOL_NAMES)[number], { safeParse: (value: unknown) => { success: boolean } }>> = {
+  init: initInputSchema,
+  inspo: inspoInputSchema,
+  validate: validateInputSchema,
+  migrate: migrateInputSchema,
+  index: indexInputSchema,
+  query: queryInputSchema,
+  extract: extractInputSchema,
+  capture: captureInputSchema,
+  serve: serveInputSchema,
+  selection: selectionInputSchema,
+  explore: exploreInputSchema,
+  promote: promoteInputSchema,
+  restore: restoreInputSchema
+};
+
+const VALIDATION_MODES = new Set<string>([...validateInputSchema.shape.mode.unwrap().options, ...extractInputSchema.shape.mode.unwrap().options]);
+
+/** A skill example writes `<kind>:<id>`, an optional key as `"screenId?"`, and a choice as `"a\|b"` in place of a value. */
+function sampleJson(example: string): unknown {
+  try {
+    return JSON.parse(example
+      .replaceAll('<kind>:<id>', 'screen:home')
+      .replace(/"([^"\\]+)(?:\\\|[^"\\]+)+"/g, '"$1"')
+      .replace(/"([a-zA-Z]+)\?"/g, '"$1"'));
+  } catch {
+    return undefined;
+  }
+}
+
+function skillFailures({ skills, toolNames }: DirectiveText): string[] {
+  const known = new Set(toolNames);
+  return Object.entries(skills).flatMap(([file, text]) => {
+    const tools = [...captured(text, /mcp__blueprint__([a-z]+)/g), ...namedTools(text)];
+    const examples = captured(text, /```json\n([\s\S]*?)```/g).map(example => example.trim());
+    const queries = captured(text, /^\| [a-z /-]+ \| `(\{[^`]*\})` \|$/gm);
+    return [
+      ...tools.filter(name => !known.has(name)).map(name => `${file} names the tool "${name}", which the tool list does not hold.`),
+      ...STALE_TEXT.filter(({ pattern }) => pattern.test(text)).map(({ pattern, truth }) => `${file} matches ${pattern}, and ${truth}.`),
+      ...captured(text, /"mode":"([a-z]+)"/g).filter(mode => !VALIDATION_MODES.has(mode)).map(mode => `${file} names the mode "${mode}", which validate and extract do not hold.`),
+      ...examples.filter(example => !Object.values(TOOL_INPUTS).some(schema => schema.safeParse(sampleJson(example)).success)).map(example => `${file} holds a JSON example that no tool input accepts: ${example}`),
+      ...queries.filter(query => !querySpecSchema.safeParse(sampleJson(query)).success).map(query => `${file} holds the query shape ${query}, which the query schema does not accept.`)
+    ];
+  });
+}
+
 export function collectDirectiveFailures(text: DirectiveText): string[] {
   return [
     ...toolNameFailures(text),
@@ -321,6 +385,7 @@ export function collectDirectiveFailures(text: DirectiveText): string[] {
     ...changeEntryFailures(text),
     ...starterFrameFailures(text),
     ...layoutFailures(text),
-    ...scriptFailures(text)
+    ...scriptFailures(text),
+    ...skillFailures(text)
   ];
 }

@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 
@@ -14,7 +14,15 @@ export const ERROR_SOURCE_DIRECTORIES: readonly string[] = readdirSync('src', { 
   .map(entry => `src/${entry.name}`)
   .sort();
 
-export type ErrorSiteKind = 'new-error' | 'throw' | 'push' | 'list' | 'blocker' | 'refine';
+/** Top-level files count too, so that a new file such as `src/index.ts` cannot escape the guard. */
+export function errorSourcePaths(root: string): string[] {
+  return readdirSync(path.join(root, 'src'), { withFileTypes: true })
+    .filter(entry => (entry.isDirectory() ? !NON_AGENT_DIRECTORIES.has(entry.name) : isSourceFile(entry.name)))
+    .map(entry => `src/${entry.name}`)
+    .sort();
+}
+
+export type ErrorSiteKind = 'new-error' | 'throw' | 'push' | 'assign' | 'list' | 'blocker' | 'refine' | 'log';
 
 /** One place where a message can end with no `Fix:`: the text that the guard could not prove. */
 export interface FixGap {
@@ -63,6 +71,8 @@ const NO_BINDINGS: Env = new Map();
 const COLLECTOR_NAME = /(?:^|[a-z])(?:errors|Errors|issues|Issues)$/;
 const ERROR_CLASS_NAME = /Error$/;
 const BUILT_IN_ERRORS = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError', 'AggregateError']);
+/** A field of a result that a guarded site filled, so its value needs no second trace. */
+const CHECKED_LISTS = new Set(['errors', 'contractErrors']);
 const ARRAY_PASS_THROUGH = new Set(['filter', 'slice', 'sort', 'reverse', 'concat', 'flat', 'join', 'toSorted']);
 const CALLBACK_RECEIVERS = new Set(['map', 'flatMap', 'forEach', 'filter', 'find']);
 
@@ -80,11 +90,16 @@ export const BANNED_FIX_TEXT: readonly RegExp[] = [
   /^consult\b/i
 ];
 
-function sourceFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const full = path.join(directory, entry.name);
+function isSourceFile(name: string): boolean {
+  return name.endsWith('.ts') && !name.endsWith('.d.ts');
+}
+
+function sourceFiles(sourcePath: string): string[] {
+  if (!statSync(sourcePath).isDirectory()) return isSourceFile(sourcePath) ? [sourcePath] : [];
+  return readdirSync(sourcePath, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(sourcePath, entry.name);
     if (entry.isDirectory()) return sourceFiles(full);
-    return entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts') ? [full] : [];
+    return isSourceFile(entry.name) ? [full] : [];
   });
 }
 
@@ -157,7 +172,7 @@ class MessageTracer {
       if (isCaughtErrorMessage(expression)) return this.gap(expression, 'the message comes from a caught error');
       return [...this.gaps(expression.whenTrue, env), ...this.gaps(expression.whenFalse, env)];
     }
-    if (ts.isPropertyAccessExpression(expression) && (expression.name.text === 'errors' || expression.name.text === 'contractErrors')) return [];
+    if (ts.isPropertyAccessExpression(expression) && CHECKED_LISTS.has(expression.name.text)) return [];
     if (ts.isIdentifier(expression) || ts.isPropertyAccessExpression(expression)) return this.traceReference(expression, env);
     if (ts.isElementAccessExpression(expression)) return this.traceElement(expression, env);
     if (ts.isCallExpression(expression)) return this.traceCall(expression, env);
@@ -215,6 +230,10 @@ class MessageTracer {
 
   private traceCall(call: ts.CallExpression, env: Env): FixGap[] {
     const callee = call.expression;
+    if (isReflectConstruct(call)) {
+      const argument = reflectedMessage(call);
+      return argument ? this.gaps(argument, env) : this.gap(call, 'the error has no message');
+    }
     if (ts.isPropertyAccessExpression(callee)) {
       if (ARRAY_PASS_THROUGH.has(callee.name.text)) return this.gaps(callee.expression, env);
       if ((callee.name.text === 'map' || callee.name.text === 'flatMap') && call.arguments[0]) return this.traceCallback(call.arguments[0], call, env);
@@ -277,6 +296,7 @@ class MessageTracer {
     if (ts.isVariableDeclaration(declaration)) return this.traceVariable(declaration, reference, env);
     if (ts.isPropertyAssignment(declaration)) return this.gaps(declaration.initializer, env);
     if (ts.isParameter(declaration)) return this.traceParameter(declaration, reference, env);
+    if (ts.isBindingElement(declaration) && CHECKED_LISTS.has((declaration.propertyName ?? declaration.name).getText())) return [];
     return this.gap(reference, 'the guard cannot follow this value');
   }
 
@@ -296,13 +316,10 @@ class MessageTracer {
     const symbol = this.checker.getSymbolAtLocation(declaration.name);
     const values: ts.Expression[] = [];
     const visit = (node: ts.Node): void => {
-      if (
-        ts.isBinaryExpression(node) &&
-        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-        ts.isIdentifier(node.left) &&
-        this.checker.getSymbolAtLocation(node.left) === symbol
-      ) {
-        values.push(node.right);
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        const target = unwrap(node.left);
+        const holder = ts.isElementAccessExpression(target) || (ts.isPropertyAccessExpression(target) && target.name.text === 'message') ? unwrap(target.expression) : target;
+        if (ts.isIdentifier(holder) && this.checker.getSymbolAtLocation(holder) === symbol) values.push(node.right);
       }
       ts.forEachChild(node, visit);
     };
@@ -381,6 +398,25 @@ class MessageTracer {
     return this.callers.get(owner) ?? [];
   }
 
+  isCollector(receiver: ts.Expression, seen = new Set<ts.Node>()): boolean {
+    const target = unwrap(receiver);
+    const name = ts.isIdentifier(target) ? target.text : ts.isPropertyAccessExpression(target) ? target.name.text : '';
+    if (COLLECTOR_NAME.test(name)) return true;
+    const declaration = ts.isIdentifier(target) ? this.declarationOf(target) : undefined;
+    if (!declaration || !ts.isParameter(declaration) || seen.has(declaration)) return false;
+    seen.add(declaration);
+    const index = declaration.parent.parameters.indexOf(declaration);
+    return this.callsOf(declaration.parent).some(call => {
+      const argument = call.arguments[index];
+      return argument !== undefined && !ts.isSpreadElement(argument) && this.isCollector(argument, seen);
+    });
+  }
+
+  shorthandGaps(property: ts.ShorthandPropertyAssignment): FixGap[] {
+    const declaration = this.checker.getShorthandAssignmentValueSymbol(property)?.valueDeclaration;
+    return declaration ? this.traceDeclared(declaration, property.name, NO_BINDINGS) : this.gap(property, 'the guard cannot resolve this name');
+  }
+
   /** A pushed catch variable holds an error object and not a message, so the gap names the whole `push`. */
   pushedGaps(call: ts.CallExpression, argument: ts.Expression): FixGap[] {
     const value = ts.isSpreadElement(argument) ? argument.expression : argument;
@@ -429,9 +465,25 @@ function isCaughtErrorMessage(expression: ts.ConditionalExpression): boolean {
   return ts.isBinaryExpression(condition) && condition.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword;
 }
 
+function className(expression: ts.Expression): string {
+  const callee = unwrap(expression);
+  if (ts.isIdentifier(callee)) return callee.text;
+  return ts.isPropertyAccessExpression(callee) ? callee.name.text : '';
+}
+
 function messageArgument(expression: ts.NewExpression): ts.Expression | undefined {
-  const name = ts.isIdentifier(expression.expression) ? expression.expression.text : '';
-  return name === 'AggregateError' ? expression.arguments?.[1] : expression.arguments?.[0];
+  return className(expression.expression) === 'AggregateError' ? expression.arguments?.[1] : expression.arguments?.[0];
+}
+
+function isReflectConstruct(call: ts.CallExpression): boolean {
+  return singleLine(call.expression) === 'Reflect.construct';
+}
+
+function reflectedMessage(call: ts.CallExpression): ts.Expression | undefined {
+  const [target, list] = call.arguments;
+  const values = list && ts.isArrayLiteralExpression(unwrap(list)) ? (unwrap(list) as ts.ArrayLiteralExpression).elements : undefined;
+  const value = values?.[target && className(target) === 'AggregateError' ? 1 : 0];
+  return value && !ts.isSpreadElement(value) ? value : undefined;
 }
 
 /** The text of a zod `.refine` or `ctx.addIssue` that writes its message itself, with no `params.fix` for `agentErrorForIssue`. */
@@ -466,12 +518,17 @@ function isZodCall(expression: ts.Expression): boolean {
   return ts.isIdentifier(current) && current.text === 'z';
 }
 
-function isCollectorPush(call: ts.CallExpression): boolean {
+function isCollectorPush(call: ts.CallExpression, tracer: MessageTracer): boolean {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee) || (callee.name.text !== 'push' && callee.name.text !== 'unshift')) return false;
-  const receiver = callee.expression;
-  const name = ts.isIdentifier(receiver) ? receiver.text : ts.isPropertyAccessExpression(receiver) ? receiver.name.text : '';
-  return COLLECTOR_NAME.test(name);
+  return tracer.isCollector(callee.expression);
+}
+
+function writtenMessage(node: ts.BinaryExpression, tracer: MessageTracer): boolean {
+  if (node.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return false;
+  const target = unwrap(node.left);
+  if (ts.isElementAccessExpression(target)) return tracer.isCollector(target.expression);
+  return ts.isPropertyAccessExpression(target) && target.name.text === 'message';
 }
 
 function isAdvisory(object: ts.ObjectLiteralExpression): boolean {
@@ -505,9 +562,9 @@ function endsWithEmptyFix(node: ts.Node & { text: string }): boolean {
 export function readErrorSites(
   allowList: readonly FixAllowEntry[] = [],
   root: string = process.cwd(),
-  directories: readonly string[] = ERROR_SOURCE_DIRECTORIES
+  sourcePaths: readonly string[] = errorSourcePaths(root)
 ): ErrorSiteReport {
-  const files = directories.flatMap(directory => sourceFiles(path.join(root, directory)));
+  const files = sourcePaths.flatMap(sourcePath => sourceFiles(path.join(root, sourcePath)));
   const program = ts.createProgram(files, {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
@@ -521,7 +578,7 @@ export function readErrorSites(
   });
   const sources = files.map(file => {
     const source = program.getSourceFile(file);
-    if (!source) throw new Error(`The guard did not load ${file}. Fix: keep the file under ${directories.join(', ')} with a .ts name.`);
+    if (!source) throw new Error(`The guard did not load ${file}. Fix: keep the file under ${sourcePaths.join(', ')} with a .ts name.`);
     return source;
   });
   const used = new Set<FixAllowEntry>();
@@ -537,15 +594,36 @@ export function readErrorSites(
     const checkFix = (node: ts.Node, fix: string): void => {
       if (isBanned(fix)) report.genericFixes.push({ file: relative, line: lineOf(node), fix: fix.trim() });
     };
+    const isErrorClass = (name: string): boolean => ERROR_CLASS_NAME.test(name) || errorClasses.has(name);
+    const noMessage = (node: ts.Node): FixGap[] => [{ file: relative, line: lineOf(node), text: singleLine(node), reason: 'the error has no message' }];
+    const isReflectedError = (node: ts.Node): node is ts.CallExpression => (
+      ts.isCallExpression(node) && isReflectConstruct(node) && node.arguments[0] !== undefined && isErrorClass(className(node.arguments[0]))
+    );
     const visit = (node: ts.Node): void => {
       if (
-        (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && (ERROR_CLASS_NAME.test(node.expression.text) || errorClasses.has(node.expression.text))) ||
+        (ts.isNewExpression(node) && isErrorClass(className(node.expression))) ||
         (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && BUILT_IN_ERRORS.has(node.expression.text))
       ) {
-        const argument = node.arguments?.[node.expression.getText() === 'AggregateError' ? 1 : 0];
-        add(node, 'new-error', argument ? tracer.gaps(argument) : [{ file: relative, line: lineOf(node), text: singleLine(node), reason: 'the error has no message' }]);
+        const argument = ts.isNewExpression(node) ? messageArgument(node) : node.arguments[node.expression.getText() === 'AggregateError' ? 1 : 0];
+        add(node, 'new-error', argument ? tracer.gaps(argument) : noMessage(node));
       }
-      if (ts.isThrowStatement(node) && !ts.isNewExpression(unwrap(node.expression)) && !isBuiltInErrorCall(unwrap(node.expression)) && !tracer.isCaughtVariable(node.expression)) {
+      if (isReflectedError(node)) {
+        const argument = reflectedMessage(node);
+        add(node, 'new-error', argument ? tracer.gaps(argument) : noMessage(node));
+      }
+      if (ts.isBinaryExpression(node) && writtenMessage(node, tracer)) {
+        add(node, 'assign', tracer.gaps(node.right));
+      }
+      if (ts.isShorthandPropertyAssignment(node) && node.name.text === 'errors') {
+        add(node, 'list', tracer.shorthandGaps(node));
+      }
+      if (
+        ts.isThrowStatement(node) &&
+        !ts.isNewExpression(unwrap(node.expression)) &&
+        !isBuiltInErrorCall(unwrap(node.expression)) &&
+        !isReflectedError(unwrap(node.expression)) &&
+        !tracer.isCaughtVariable(node.expression)
+      ) {
         add(node, 'throw', tracer.gaps(node.expression));
       }
       if (ts.isPropertyAssignment(node) && node.name.getText() === 'errors' && !isZodCall(node.initializer)) {
@@ -555,7 +633,11 @@ export function readErrorSites(
         if (singleLine(node.expression) === 'Promise.reject' && node.arguments[0] && !tracer.isCaughtVariable(node.arguments[0])) {
           add(node, 'throw', tracer.gaps(node.arguments[0]));
         }
-        if (isCollectorPush(node)) {
+        if (singleLine(node.expression) === 'console.error') {
+          const parts = node.arguments.map(argument => tracer.gaps(argument));
+          add(node, 'log', parts.length === 0 ? noMessage(node) : parts.some(gaps => gaps.length === 0) ? [] : parts.flat());
+        }
+        if (isCollectorPush(node, tracer)) {
           const messages = node.arguments.filter(argument => {
             const value = ts.isSpreadElement(argument) ? argument.expression : argument;
             if (!ts.isObjectLiteralExpression(value)) return true;

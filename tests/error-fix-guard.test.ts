@@ -24,8 +24,23 @@ const MUST_REPORT: Record<string, string> = {
   refine_object: `import { z } from 'zod'; export const s = z.string().refine(v => v.length > 0, { message: 'bad value' });`,
   refine_string: `import { z } from 'zod'; export const s = z.string().refine(v => v.length > 0, 'bad value');`,
   refine_error_key: `import { z } from 'zod'; export const s = z.string().refine(v => v.length > 0, { error: 'bad value' });`,
-  add_issue: `import { z } from 'zod'; export const s = z.string().superRefine((v, ctx) => { ctx.addIssue({ code: 'custom', message: 'bad value' }); });`
+  add_issue: `import { z } from 'zod'; export const s = z.string().superRefine((v, ctx) => { ctx.addIssue({ code: 'custom', message: 'bad value' }); });`,
+  helper_other_name: `function add(out: string[], message: string): void { out.push(message); }\nexport function a(): string[] { const errors: string[] = []; errors.push('x. Fix: y.'); add(errors, 'bad value'); return errors; }`,
+  index_assign: `export function a(): string[] { const errors: string[] = ['x. Fix: y.']; errors[1] = 'bad value'; return errors; }`,
+  index_assign_field: `export function a(): { errors: string[] } { const errors: string[] = ['x. Fix: y.']; errors[1] = 'bad value'; return { errors: errors }; }`,
+  shorthand_literal: `export function a(): { errors: string[] } { const errors = ['bad value']; return { errors }; }`,
+  message_assign: `export function a(): void { const error = new Error('x. Fix: y.'); error.message = 'bad value'; throw error; }`,
+  namespaced_class: `import * as errs from './errs';\nexport function a(): void { throw new errs.Refusal('bad value'); }`,
+  reflect_thrown: `export function a(): void { throw Reflect.construct(Error, ['bad value']); }`,
+  reflect_rejected: `export function a(): Promise<void> { return new Promise((resolve, reject) => { reject(Reflect.construct(Error, ['bad value'])); }); }`,
+  console_error: `export function a(): void { console.error('bad value'); }`
 };
+
+const HELPERS: Record<string, string> = {
+  errs: `export class Refusal extends Error {}`
+};
+
+const TOP_LEVEL_FORM = `export function a(): void { throw new Error('bad value'); }`;
 
 const MUST_PASS: Record<string, string> = {
   fix_in_text: `export function a(): void { throw new Error('bad. Fix: set x in y.json to 1.'); }`,
@@ -46,11 +61,12 @@ describe('the Fix: line guard', () => {
     root = mkdtempSync(path.join(tmpdir(), 'blueprint-fix-guard-'));
     mkdirSync(path.join(root, 'src/core'), { recursive: true });
     symlinkSync(path.join(process.cwd(), 'node_modules'), path.join(root, 'node_modules'));
-    for (const [name, code] of Object.entries({ ...MUST_REPORT, ...MUST_PASS })) {
+    for (const [name, code] of Object.entries({ ...MUST_REPORT, ...MUST_PASS, ...HELPERS })) {
       writeFileSync(path.join(root, 'src/core', `${name}.ts`), `${code}\n`);
     }
     writeFileSync(path.join(root, 'src/core/empty_fix.ts'), `export function a(): void { throw new Error('bad. Fix:'); }\n`);
     writeFileSync(path.join(root, 'src/core/banned_fix.ts'), `export function a(): void { throw new Error('bad. Fix: try again.'); }\n`);
+    writeFileSync(path.join(root, 'src/top_level.ts'), `${TOP_LEVEL_FORM}\n`);
     report = readErrorSites([], root, ['src/core']);
   });
 
@@ -75,6 +91,11 @@ describe('the Fix: line guard', () => {
   it('reports a Fix: line with no text and a Fix: line with banned text', () => {
     assert.ok(report.genericFixes.some(entry => entry.file === 'src/core/empty_fix.ts'));
     assert.ok(report.genericFixes.some(entry => entry.file === 'src/core/banned_fix.ts'));
+  });
+
+  it('reads a top-level file of src', () => {
+    const sites = readErrorSites([], root).sites.filter(site => site.file === 'src/top_level.ts');
+    assert.ok(sites.flatMap(site => site.gaps).length > 0, `src/top_level.ts: the guard found no gap. Fix: read each top-level file of src in readErrorSites in tests/support/error-fix-guard.ts.`);
   });
 
   it('matches an allow entry on the whole expression, so that a new message in the file gets no excuse', () => {

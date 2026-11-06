@@ -71,6 +71,15 @@ Then register the stdio server with your agent host, running from the app reposi
 
 Restart the MCP server after each new build. A running server keeps its tool text and its copy of the canvas page, and that page points at a script the build has deleted.
 
+The agent skills `blueprint-create-sidecar`, `blueprint-edit-canvas`, and `blueprint-handoff` live in `skills/`. Install them from this checkout:
+
+```sh
+npm run skills:install                          # links each skill into ~/.agents/skills
+npm run skills:install -- --target <directory>  # or into another skill directory
+```
+
+Each skill becomes a symlink to its directory in `skills/`, so a pull updates it. An existing copy first moves to a backup directory beside the target, such as `~/.agents/skills-backup`. A second run changes nothing.
+
 The server exposes thirteen project-scoped tools:
 
 | Tool | Purpose |

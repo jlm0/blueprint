@@ -6,6 +6,7 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { loadProjectFromFs } from '../src/core/load';
+import { lintProse } from '../src/core/prose-lint';
 import { captureBlueprint } from '../src/mcp/capture';
 import { BLUEPRINT_MCP_TOOL_NAMES, createBlueprintMcpServer } from '../src/mcp/create-server';
 import { captureInputSchema } from '../src/mcp/schemas';
@@ -13,16 +14,40 @@ import { compilePrototypeDocument } from '../src/prototype/compiler';
 import { collectDirectiveFailures, type DirectiveText } from './support/directive-guard';
 
 const STARTER = 'starter/design/blueprint';
+const SKILLS = 'skills';
+const SKILL_FILES = [
+  'skills/blueprint-create-sidecar/SKILL.md',
+  'skills/blueprint-edit-canvas/SKILL.md',
+  'skills/blueprint-edit-canvas/references/prose.md',
+  'skills/blueprint-handoff/SKILL.md'
+];
 
-function sourceFiles(directory: string): string[] {
+interface ToolText {
+  where: string;
+  text: string;
+}
+
+function filesUnder(directory: string, keep: (name: string) => boolean): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(directory, entry.name);
-    if (entry.isDirectory()) return sourceFiles(full);
-    return entry.name.endsWith('.ts') ? [full.split(path.sep).join('/')] : [];
+    if (entry.isDirectory()) return filesUnder(full, keep);
+    return keep(entry.name) ? [full.split(path.sep).join('/')] : [];
   });
 }
 
-async function readDirectiveText(): Promise<DirectiveText> {
+function sourceFiles(directory: string): string[] {
+  return filesUnder(directory, name => name.endsWith('.ts'));
+}
+
+function describedTexts(where: string, node: unknown): ToolText[] {
+  if (Array.isArray(node)) return node.flatMap((item, index) => describedTexts(`${where}[${index}]`, item));
+  if (!node || typeof node !== 'object') return [];
+  return Object.entries(node).flatMap(([key, value]) => (
+    key === 'description' && typeof value === 'string' ? [{ where, text: value }] : describedTexts(`${where}.${key}`, value)
+  ));
+}
+
+async function readDirectiveText(): Promise<{ text: DirectiveText; toolTexts: ToolText[] }> {
   const server = createBlueprintMcpServer();
   const client = new Client({ name: 'directive-guard', version: '0' });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -32,7 +57,15 @@ async function readDirectiveText(): Promise<DirectiveText> {
   await client.close();
   await server.close();
   assert.deepEqual(tools.map(tool => tool.name).sort(), [...BLUEPRINT_MCP_TOOL_NAMES].sort());
-  return {
+  const toolTexts = [
+    { where: 'the server instructions', text: instructions },
+    ...tools.flatMap(tool => [
+      { where: `the ${tool.name} tool text`, text: tool.description ?? '' },
+      ...describedTexts(`${tool.name} inputSchema`, tool.inputSchema),
+      ...describedTexts(`${tool.name} outputSchema`, tool.outputSchema)
+    ])
+  ];
+  const text: DirectiveText = {
     agents: readFileSync(path.join(STARTER, 'AGENTS.md'), 'utf8'),
     readme: readFileSync('README.md', 'utf8'),
     instructions,
@@ -41,8 +74,10 @@ async function readDirectiveText(): Promise<DirectiveText> {
     captureStateDescription: captureInputSchema.shape.state.description ?? '',
     sources: Object.fromEntries(['src/core', 'src/mcp', 'src/prototype'].flatMap(sourceFiles).map(file => [file, readFileSync(file, 'utf8')])),
     scripts: (JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }).scripts,
-    starterScreens: (JSON.parse(readFileSync(path.join(STARTER, 'screens.json'), 'utf8')) as { screens: Array<{ id: string; framePresetId: string }> }).screens
+    starterScreens: (JSON.parse(readFileSync(path.join(STARTER, 'screens.json'), 'utf8')) as { screens: Array<{ id: string; framePresetId: string }> }).screens,
+    skills: Object.fromEntries(filesUnder(SKILLS, () => true).map(file => [file, readFileSync(file, 'utf8')]))
   };
+  return { text, toolTexts };
 }
 
 function replaced(text: string, from: string, to: string): string {
@@ -51,6 +86,10 @@ function replaced(text: string, from: string, to: string): string {
 }
 
 type Mutation = (text: DirectiveText) => Partial<DirectiveText>;
+
+function skillEdit(file: string, edit: (text: string) => string): Mutation {
+  return ({ skills }) => ({ skills: { ...skills, [file]: edit(skills[file] ?? '') } });
+}
 
 const MUST_FAIL: ReadonlyArray<{ name: string; mutate: Mutation; reports: string }> = [
   { name: 'a tool name that does not exist in AGENTS.md', mutate: ({ agents }) => ({ agents: replaced(agents, 'the `migrate` tool', 'the `upgrade` tool') }), reports: 'names the tool "upgrade"' },
@@ -114,17 +153,36 @@ const MUST_FAIL: ReadonlyArray<{ name: string; mutate: Mutation; reports: string
   { name: 'a README.md with no layout', mutate: ({ readme }) => ({ readme: replaced(readme, '## Repository layout', '## Layout') }), reports: 'has no repository layout' },
   { name: 'a layout that drops a source directory', mutate: ({ readme }) => ({ readme: readme.replace(/^src\/hooks\/.*\n/m, '') }), reports: 'does not name src/hooks/' },
   { name: 'a README.md with no script table', mutate: ({ readme }) => ({ readme: replaced(readme, '## Scripts', '## Commands') }), reports: 'has no script table' },
-  { name: 'a starter frame count that differs', mutate: ({ agents }) => ({ agents: replaced(agents, 'exactly two empty base frames', 'exactly three empty base frames') }), reports: 'states three starter frames' }
+  { name: 'a starter frame count that differs', mutate: ({ agents }) => ({ agents: replaced(agents, 'exactly two empty base frames', 'exactly three empty base frames') }), reports: 'states three starter frames' },
+  { name: 'a skill query shape that does not parse', mutate: skillEdit('skills/blueprint-edit-canvas/SKILL.md', text => replaced(text, '{"type":"sections","screen":"<id>"}', '{"type":"sections","screens":"<id>"}')), reports: 'skills/blueprint-edit-canvas/SKILL.md holds the query shape {"type":"sections","screens":"<id>"}' },
+  { name: 'a skill example that no tool input accepts', mutate: skillEdit('skills/blueprint-edit-canvas/SKILL.md', text => replaced(text, '"candidateLabels":["A","B"]', '"candidateLabels":["A"]')), reports: 'skills/blueprint-edit-canvas/SKILL.md holds a JSON example that no tool input accepts' },
+  { name: 'the old refusal text in a skill', mutate: skillEdit('skills/blueprint-handoff/SKILL.md', text => `${text}\n- Every other tool refuses the folder.\n`), reports: 'skills/blueprint-handoff/SKILL.md matches /Every other tool refuses the folder/' },
+  { name: 'a skill tool name that does not exist', mutate: skillEdit('skills/blueprint-handoff/SKILL.md', text => `${text}\n- Use \`mcp__blueprint__lint\` too.\n`), reports: 'skills/blueprint-handoff/SKILL.md names the tool "lint"' },
+  { name: 'a skill text that calls validate after migrate', mutate: skillEdit('skills/blueprint-handoff/SKILL.md', text => `${text}\n- Run migrate, then call validate on the result.\n`), reports: 'skills/blueprint-handoff/SKILL.md tells an agent to validate after a tool that validates itself' }
 ];
 
 describe('the directive text', () => {
   let text: DirectiveText;
+  let toolTexts: ToolText[];
   before(async () => {
-    text = await readDirectiveText();
+    ({ text, toolTexts } = await readDirectiveText());
   });
 
   it('matches the code', () => {
     assert.deepEqual(collectDirectiveFailures(text), [], 'Fix: correct the text or the code, so that each claim holds.');
+  });
+
+  it('reads each skill file under skills/, and each skill file matches the code', () => {
+    assert.deepEqual(Object.keys(text.skills).sort(), SKILL_FILES);
+    const failures = collectDirectiveFailures(text).filter(failure => failure.startsWith(`${SKILLS}/`));
+    assert.deepEqual(failures, [], 'Fix: correct the skill text or the code, so that each claim holds.');
+  });
+
+  it('holds no prose error in the tool text or the server instructions', () => {
+    const failures = toolTexts.flatMap(({ where, text: prose }) => lintProse(prose)
+      .filter(issue => issue.level === 'error')
+      .map(issue => `${where} ${issue.message} Text: ${prose}`));
+    assert.deepEqual(failures, [], failures.join('\n'));
   });
 
   for (const { name, mutate, reports } of MUST_FAIL) {

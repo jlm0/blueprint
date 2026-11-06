@@ -46,7 +46,7 @@ export const initInputSchema = z
     name: nonEmptyString.describe('Project display name written into the Blueprint manifest.'),
     out: nonEmptyString.describe('Destination design/blueprint directory.'),
     force: z.boolean().default(false).describe('Overwrite colliding starter files in a destination that holds no Blueprint project, and keep unrelated files. Init refuses a Blueprint project also with force.'),
-    start: z.enum(['inspo']).optional().describe('Pass "inspo" for a new product: the sidecar starts with an empty inspo board and no brand.json, and the brand comes from the directions the person approves.')
+    start: z.enum(['inspo']).optional().describe('Pass "inspo" for a new product. The sidecar then starts with an empty inspo board and no brand.json, and the brand comes from the directions the person approves.')
   })
   .strict();
 
@@ -156,7 +156,7 @@ export const captureInputSchema = z
     boundary: capturableBoundarySelectorSchema,
     state: nonEmptyString.optional().describe('Declared state to render. A screen defaults to its first declared state. A primitive or component defaults to its default state.'),
     viewport: nonEmptyString.optional().describe(
-      'Declared frame preset, or a review condition id of the screen. Screens render in that review condition; components and primitives take the preset width instead of the 1280 px default.'
+      'Declared frame preset, or a review condition id of the screen. Screens render in that review condition. Components and primitives take the preset width instead of the 1280 px default.'
     ),
     variant: nonEmptyString.optional().describe('Declared primitive or component variant. Defaults to its default variant.'),
     size: nonEmptyString.optional().describe('Declared primitive or component size. Defaults to its default size.'),
@@ -640,7 +640,7 @@ export const selectionOutputSchema = z
         framePresetId: z.string().optional(),
         explorationId: z.string().optional(),
         explorationRole: z.enum(['current', 'version', 'baseline', 'candidate']).optional(),
-        candidateId: z.string().optional().describe('Exploration candidate the selection was made in; pass it to promote when the person chooses it.'),
+        candidateId: z.string().optional().describe('Exploration candidate the selection was made in. Pass it to promote when the person chooses it.'),
         historyVersion: z.number().int().positive().optional(),
         reference: z.string().describe('The boundary and its enclosing boundaries in kind:id form, as copied by the canvas.'),
         files: z.array(z.string()).describe('Sidecar-relative prototype source and style files that own the selected boundary.'),
