@@ -1,65 +1,50 @@
 <p align="center">
-  <img src=".github/images/banner.png" alt="Blueprint: design canvas and MCP server" width="100%">
+  <img src=".github/images/banner.png" alt="Blueprint: an app's whole design on one canvas" width="100%">
 </p>
 
-Blueprint is a local design canvas and MCP server for modeling an app's interface system as app-owned, agent-readable files. It sits beside an agent session: the agent edits tokens, primitives, components, and screens as plain JSON, HTML, and CSS inside the app repository, and Blueprint checks, renders, and hands them off.
+Blueprint is one top-level view of an app's design: the brand, tokens, primitives, components, and every screen, laid out on a canvas so you can take in the whole thing at once. You and your agents iterate there. Mock up a few versions of a screen, compare them side by side, and pick one before any of it goes into the app's code.
 
-Each app keeps its own sidecar, usually under `design/blueprint/`. Blueprint provides the shared pieces: a brand page, pages for each token group, primitive, and component, a canvas of mobile and desktop screen frames for each screen page, token materialization, primitive and component compilation, isolated screen hosting, dependency queries, and extraction packets for implementation handoff. Blueprint is single-project by design. It does not manage a central registry of every app's design system.
+Agents do most of the editing, so Blueprint keeps them inside guardrails. Files have fixed shapes, every reference must point at something declared, and every validation error ends with `Fix:` and the exact change to make.
 
-## Example: Mira
-
-<p align="center">
-  <img src=".github/images/mira-ai.png" alt="Mira, an AI research assistant, rendered by Blueprint as a desktop workspace and a phone chat" width="100%">
-</p>
-
-[Mira](fixtures/valid/mira-ai/design/blueprint) is an AI research assistant built from the starter's tokens and base primitives, unchanged. Its four components and two screens, a desktop workspace and a phone chat, are the only authored layer, and both frames above are Blueprint renders of those files. [`fixtures/README.md`](fixtures/README.md) covers the other samples: Umbra, an expressive dark retheme, and Meridian, a full strict handoff.
+It runs locally as an MCP server and a review canvas in your browser. The design lives in your app's repository under `design/blueprint/`, as plain JSON, HTML, and CSS. Blueprint is single-project by design, so each app keeps its own.
 
 ## How it works
 
-Blueprint splits authority between two layers:
+Each app's Blueprint folder is called a sidecar. Structured JSON owns what exists and how it connects: the brand guideline, the tokens, the primitives and components with their variants and states, and the screens grouped into pages. HTML and CSS own how each piece looks. Tokens become CSS custom properties, and screens place components and primitives by reference, so a token or component change shows up everywhere it's used.
 
-- **Structured JSON owns the graph.** Stable IDs, declarations, named states, dependencies, production relationships, targets, and review conditions live in `manifest.json`, `brand.json`, `tokens.json`, `primitives.json`, `components.json`, and `screens.json`.
-- **Governed HTML/CSS owns the rendering.** Primitive and component sources define reusable behavior and appearance. Screen sources define unique hierarchy, responsive layout, media, and art direction.
+The agent edits those files through Blueprint's tools, and Blueprint checks each edit:
 
-Screenshots and visual diffs are review evidence only, never source.
+- Every sidecar has the closed set of 33 primitives. Apps restyle them through tokens and build anything app-specific as a component.
+- Validation rejects fields outside the fixed shapes, undeclared references, literal colors and lengths that should be tokens, hand-built native controls, and low contrast.
+- The descriptions agents write for other agents follow Simplified Technical English, with sentences of at most 25 words, so the next agent reads them one way.
+- When Blueprint's file format changes, `validate` reports each older file and `serve` shows a notice on the canvas. `serve` with `focus` or `explorationId`, and every other tool that reads the sidecar, refuse it until `migrate` upgrades it.
 
-Screens compose reusable parts with `<blueprint-use kind="primitive|component" ref="…" state="…">`. Blueprint replaces each use with the referenced root, without wrapper elements, so ordinary sibling, flex, grid, and breakpoint rules keep working. A reusable placed inside another reusable's slot is declared by the source that wrote it, so optional pieces compose without changing their container. Tokens become `--app-*` CSS custom properties. Every screen renders in a sandboxed frame with a no-network, no-script content security policy.
+`serve` opens the canvas. It watches the files and applies each valid edit in place. After each agent turn, a bar lists what changed, such as a component or "Frame sizes", and dashed outlines mark each element whose look changed. Before and After flip between the two. Click anything on the canvas to copy a reference like `primitive:button in section:home/featured in screen:home`, and the agent reads the same selection with the `selection` tool. To stay fast on large projects, the canvas keeps at most 32 frames live and shows a thumbnail for the rest. A frame whose document is over 4 MB shows a title placeholder.
 
-Every boundary is addressable as `kind:id`, for example `primitive:button`, `component:email-signup`, `screen:home`, or `section:home/next-action`. Queries return a focused packet for a single boundary; `project:root` carries the brand guideline. Deep extraction adds the transitive screen → component → primitive → token graph, resolved tokens, the brand guideline, and source paths so an implementation agent can build without reading the canvas DOM.
+To compare directions, ask the agent for an exploration: two to five versions of one screen, shown next to the current one in their own view.
 
-### One sidecar format
+<p align="center">
+  <img src=".github/images/explorations.png" alt="An exploration on the Blueprint canvas: the current transactions screen next to Comfortable and Compact versions" width="100%">
+</p>
 
-Every primitive, component, and screen declares its HTML/CSS source, and the manifest declares a `prototypeHost` policy. Missing or undeclared sources fail validation. Every sidecar carries the closed set of 33 primitives from `src/core/base-primitives.ts`. Apps restyle primitives through tokens and may add variants, sizes, states, and slots above each primitive's floor, but never add or remove primitives: app-specific pieces are components built from primitives. Primitives and components share one JSON shape, one set of rules, and one canvas page. Screens, sections, pages, token groups, and tokens have fixed shapes too, and validation rejects any field outside them.
-
-The prose on primitives, components, screens, and tokens is written for agents, so validation holds it to the structural rules of Simplified Technical English (ASD-STE100): sentences of at most 25 words, no semicolons, phrasal verbs, marketing adjectives, or nouns standing in for verbs. Blueprint writes the description, accessibility, notes, and value and slot text of its own primitives, and every sidecar carries that text unchanged. Screen copy is not checked. The checks port [asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill); see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-`brand.json` holds the brand guideline: personality, voice, and the marks, wordmarks, and lockups with their approved color variants, clear space, minimum sizes, and usage rules. Marks are SVGs drawn with `currentColor` so token-based variants can recolor them. Screens and components place a mark with `<blueprint-use kind="brand-mark" ref="…" variant="…">`, which inlines the SVG colored by the variant's tokens, so a logo edit reaches every placement the way a token edit does. Foundations opens with the brand, and a strict handoff requires one.
-
-Screens and components are organized like a design file. `screens.json` declares pages, such as Web, Mobile, or Landing, and every screen names its page; each page is its own canvas. `components.json` declares groups, and every component names its group. An agent starting a new page or group must declare it first, and validation rejects undeclared references.
-
-Every structured file carries one `schemaVersion`. When Blueprint moves to a new schema, `validate` reports each older file and `serve` shows a notice on the canvas. `serve` with `focus` or `explorationId`, and every other tool that reads the sidecar, refuse it until `migrate` upgrades it.
-
-Validation has three modes. `baseline` checks structure, naming, and the style rules, including lints for literal colors, lengths that restate tokens, hand-built native controls, color contrast, and primitives outside the closed set. `readiness` reports evidence and pending decisions. `strict` adds the full production handoff contract: a brand, implementation targets, bindings, section markers, and every primitive in the set.
+Promoting a version makes it the screen and keeps the old one in history, where `restore` can bring it back. When a screen is ready to build, `extract` gives the implementing agent a packet with the screen, every component, primitive, and token it uses, the brand guideline, and the source paths.
 
 ## Getting started
 
-Requires Node.js 20 or later.
+You need Node.js 20 or later.
 
 ```sh
+git clone https://github.com/jlm0/blueprint.git
+cd blueprint
 npm install
-npx playwright install chromium   # used by capture, browser smoke, and canvas tests
-npm run dev                       # canvas at http://127.0.0.1:5173 showing the starter sidecar
-```
-
-### Connecting an agent
-
-Build the MCP server and static canvas:
-
-```sh
+npx playwright install chromium
 npm run build
+npm run skills:install
 ```
 
-Then register the stdio server with your agent host, running from the app repository root:
+`skills:install` links the three agent skills in `skills/` into `~/.agents/skills`. Add `-- --target <directory>` to link them somewhere else.
+
+Register the MCP server with your agent host, running from your app's repository root:
 
 ```json
 {
@@ -69,64 +54,44 @@ Then register the stdio server with your agent host, running from the app reposi
 }
 ```
 
-Restart the MCP server after each new build. A running server keeps its tool text and its copy of the canvas page, and that page points at a script the build has deleted.
+Then ask the agent to add Blueprint to your app. It runs `init`, which creates `design/blueprint/` with a placeholder brand, neutral tokens, the 33 primitives, and empty phone and web home screens. For a product with no brand yet, `init` with `start: "inspo"` opens an inspo board instead. Paste image links with what you like about each one, and the agent proposes brand directions for you to choose from.
 
-The agent skills `blueprint-create-sidecar`, `blueprint-edit-canvas`, and `blueprint-handoff` live in `skills/`. Install them from this checkout:
+Restart the MCP server after each `npm run build`, because a running server keeps its old tool text and canvas.
 
-```sh
-npm run skills:install                          # links each skill into ~/.agents/skills
-npm run skills:install -- --target <directory>  # or into another skill directory
-```
+## Tools
 
-Each skill becomes a symlink to its directory in `skills/`, so a pull updates it. An existing copy first moves to a backup directory beside the target, such as `~/.agents/skills-backup`. A second run changes nothing.
+Blueprint exposes thirteen project-scoped tools:
 
-The server exposes thirteen project-scoped tools:
-
-| Tool | Purpose |
+| Tool | What it does |
 | --- | --- |
-| `init` | Create a sidecar from the starter: a placeholder brand, neutral tokens, the 33 primitives, and empty `home` phone and `web-home` browser screens on Mobile and Web pages. With `start: "inspo"`, it skips the brand and opens an empty inspo board instead. |
-| `inspo` | Keep the inspo board for a new product. Paste image links in chat with what you like about each one; the agent downloads each image to a git-ignored `inspo/` folder, saves the link and your words in `inspo.json`, and proposes brand directions for you to approve. |
-| `validate` | Check a sidecar in `baseline`, `readiness`, or `strict` mode, and list the design findings the canvas marks and the wording advisories on the prose of reusables, screens, and tokens. Each error ends with `Fix:` and the exact change to make. |
-| `migrate` | Upgrade a sidecar to the current schema, or report the changes with `dryRun`. It makes every mechanical change and returns the remaining decisions as validation errors. |
-| `index` | List every stable boundary ID, plus the declared screen pages and component groups with their members. |
-| `query` | Answer focused questions: `show`, `uses`, `used-by`, `sections`, `prototype-only`, explorations, and history. |
-| `extract` | Return a `focused` or `deep` handoff packet for a single boundary. |
-| `capture` | Render one screen, state, and viewport to PNG, or one component or primitive cropped to its own box. |
-| `serve` | Open the live review canvas for the sidecar, optionally linked to one boundary's page with `focus`. |
-| `selection` | Read what the person selected on the canvas. |
-| `explore` | Create or archive two to five candidate alternatives for a single screen state. |
-| `promote` | Make a chosen candidate canonical, guarded by content digests. |
-| `restore` | Bring back a prior screen version, preserving the current one in history. |
+| `init` | Creates a sidecar from the starter |
+| `inspo` | Keeps the inspo board for a new product |
+| `validate` | Checks a sidecar in `baseline`, `readiness`, or `strict` mode |
+| `migrate` | Upgrades a sidecar to the current file format |
+| `index` | Lists every boundary ID, page, and component group |
+| `query` | Answers `show`, `uses`, `used-by`, section, exploration, and history questions |
+| `extract` | Returns a handoff packet for one boundary |
+| `capture` | Renders a screen, component, or primitive to PNG |
+| `serve` | Opens the review canvas |
+| `selection` | Reads what you selected on the canvas |
+| `explore` | Creates or archives a set of versions for one screen |
+| `promote` | Makes one version the screen |
+| `restore` | Brings back an earlier version from history |
 
 Example calls:
 
 ```json
 {
-  "init": { "projectId": "my-app", "name": "My App", "out": "design/blueprint" },
   "validate": { "project": "design/blueprint", "mode": "strict" },
-  "query": { "project": "design/blueprint", "query": { "type": "used-by", "boundary": "primitive:button" } },
   "extract": { "project": "design/blueprint", "boundary": "screen:home", "mode": "deep" },
-  "capture": { "project": "design/blueprint", "boundary": "screen:home", "state": "default", "viewport": "phone", "out": ".blueprint-artifacts/home.png" },
   "serve": { "project": "design/blueprint", "focus": "component:action-cluster" }
 }
 ```
 
-`init` writes an `AGENTS.md` into the new sidecar that describes the working rules for agents editing it, and `migrate` replaces it with the current copy.
+<details>
+<summary>Showing live agent activity in Codex</summary>
 
-## The review canvas
-
-`serve` starts one loopback runtime per sidecar and reuses it across MCP connections. The first port tried is 4173. The canvas watches the sidecar's files, checks them again every 2 seconds, and applies each valid edit in place, keeping the current page, zoom, and pan. If you open an exploration or history link before its frames exist, the canvas zooms to fit them when they arrive. While an edit has a contract error, the last good state stays visible. An edit with only style errors still applies, and `validate` lists each error.
-
-- **Navigation.** A rail switches between Foundations, Primitives, Components, and Screens. The sub-navigation groups items by declared section or page, and each group collapses. With `focus`, `serve` returns a link that opens one boundary's page; a screen link opens its page and centers the screen.
-- **Selection.** Clicking a screen, section, component, or primitive copies a reference such as `primitive:button in section:home/featured in screen:home`. The `selection` tool returns the same reference to the agent, along with the owning source files.
-- **Turn changes.** A bar lists what changed during the latest agent turn, and a frame preset edit appears there as "Frame sizes". On Screens, a dashed outline marks each element whose computed look changed, and a frame with no outline to draw gets a dashed mark of its own. A frame out of view gets its mark when the view reaches it. Other pages mark the changed boundary, and a brand edit flags the Brand page. Before and After toggle between the turn's starting state and the live project.
-- **Zoomed out.** The canvas keeps at most 32 frames live. Each other frame shows a thumbnail of its last live render, down to the zoom floor. A frame that has not rendered yet, or whose document is over 4 MB, shows a title placeholder.
-- **Findings.** Design findings appear as counts on screen frames and markers on component instances, each with a copyable remedy. `validate` returns the same list to the agent.
-- **Explorations.** Saved alternatives open in an isolated baseline-and-candidates view instead of crowding the canonical screens.
-
-### Live agent activity
-
-Builds include a `blueprint-codex-hook` command that streams tool activity into an open canvas. The canvas then shows what the agent is working on and highlights the boundaries it touches. To enable it, register the hook in the consuming project's Codex configuration:
+The build includes a `blueprint-codex-hook` command that streams tool activity to an open canvas, so the canvas shows what the agent is working on and highlights the boundaries it touches. Register it in the Codex configuration of your app:
 
 ```json
 {
@@ -147,9 +112,15 @@ Builds include a `blueprint-codex-hook` command that streams tool activity into 
 }
 ```
 
-The hook finds the running listener through an owner-only descriptor in the OS temp directory and authenticates with a random per-listener token. The token is never sent to the served page.
+The hook finds the canvas through an owner-only file in the OS temp directory and signs in with a random token that never reaches the page.
 
-## Repository layout
+</details>
+
+## Developing Blueprint
+
+`npm run dev` serves the canvas for the starter sidecar at http://127.0.0.1:5173. The sample sidecars in `fixtures/` go from an app built on the starter's own tokens to a full production handoff, and [`fixtures/README.md`](fixtures/README.md) describes each one.
+
+### Repository layout
 
 ```text
 src/core/       schema types, validation, lints, boundary IDs, queries, extraction packets
@@ -157,14 +128,15 @@ src/app/        browser-native canvas (no UI framework)
 src/prototype/  source compiler, sandbox host policy, review selection
 src/mcp/        MCP tool schemas, operations, capture, and stdio server
 src/hooks/      agent activity hook
-src/scripts/    fixture validation, extraction, scope scan, browser smoke
+src/scripts/    fixture validation, extraction, scope scan, browser smoke, skill install
 schema/         JSON Schema for sidecar files
+skills/         agent skills that skills:install links
 starter/        the sidecar that init copies
-fixtures/       sample sidecars from neutral to full handoff, plus a failure catalog (see fixtures/README.md)
+fixtures/       sample sidecars and a failure catalog
 tests/          node:test suites
 ```
 
-## Scripts
+### Scripts
 
 | Command | Runs |
 | --- | --- |
@@ -180,3 +152,5 @@ tests/          node:test suites
 | `npm run qa` | All of the above |
 
 Generated evidence goes to the ignored `.blueprint-artifacts/` directory. Set `BLUEPRINT_ARTIFACT_ROOT` to send it somewhere else.
+
+The prose checks port [asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill). See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
